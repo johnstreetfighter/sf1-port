@@ -6,18 +6,20 @@
   <sub>Fan-made key art, not affiliated with or endorsed by Capcom.</sub>
 </p>
 
+**Street Fighter': The World Tournament** is a native Windows PC port of Capcom's original 1987 arcade **Street Fighter** (US set 1, six-button controls).
+
+[Windows download](https://github.com/johnstreetfighter/sf1-port/releases/latest) · [Gameplay trailer (MP4)](https://github.com/johnstreetfighter/sf1-port/releases/download/v1.3.3/sf1-port-trailer.mp4) · [Netplay guide](docs/netplay.md)
+
 <p align="center">
   <img src="docs/media/versus-hadoken.gif" alt="2-Player Versus: Ryu vs. Ken Hadoken" width="49%" />
   <img src="docs/media/sagat-boss.gif" alt="1-Player Tournament: Ryu vs. Final Boss Sagat" width="49%" />
 </p>
 
-**Street Fighter: The World Tournament** is a native Windows PC port of Capcom's original 1987 arcade **Street Fighter** (US set 1, six-button controls).
-
 Rather than running the game inside an emulator or rebuilding it from memory, this port translates the original 1987 arcade game and sound programs directly into native Rust. Sprites, background layers, FM music, voice samples, frame timing, AI patterns, and cabinet quirks all behave just as they did on the arcade hardware.
 
 No copyrighted ROM binaries are included in this repository. To play, you need your own local copy of the arcade `sf` ROM set.
 
-Windows executable packages are listed on [GitHub Releases](https://github.com/johnstreetfighter/sf1-port/releases) when available. Extract the entire ZIP and follow `QUICKSTART.txt`. Keep the included `shaders` folder beside `sf-game.exe`. Each version also has release notes, source archives and a SHA-256 checksum for its executable package.
+Extract the entire Windows ZIP and follow `QUICKSTART.txt`. Keep the included `shaders` folder beside `sf-game.exe`. The release page includes a SHA-256 checksum for the package.
 
 ## Screenshots
 
