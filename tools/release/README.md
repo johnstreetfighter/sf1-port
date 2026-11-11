@@ -44,7 +44,7 @@ any runtime/interactive checks actually performed in the release notes. Keep
 packages outside a temporary worktree before archiving that worktree.
 
 Upload both files to the published GitHub Release for the annotated tag. The ZIP
-contains no ROMs, private art or voice packs, user settings or logs. Do not copy a
+contains no ROMs, art or voice packs, user settings or logs. Do not copy a
 whole build or local asset folder into the release. Dependency and shader notices
 remain beside the executable. The quick start links Microsoft's current x64 v14
 runtime and explains where users supply their own ROM set.

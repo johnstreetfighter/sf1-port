@@ -195,7 +195,7 @@ $npBuildInfo = @(
     "Packaged (UTC): $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))",
     "sf-game.exe SHA-256: $(Get-Sha256 (Join-Path $npPackage 'sf-game.exe'))",
     '',
-    'Built from the tagged source. No ROMs, private art/voice packs, settings or logs are included.',
+    'Built from the tagged source. No ROMs, art/voice packs, settings or logs are included.',
     'This package does not grant new licenses; existing source/dependency notices are retained.'
 )
 [IO.File]::WriteAllLines((Join-Path $npPackage 'BUILD.txt'), $npBuildInfo)
@@ -212,7 +212,7 @@ $npQuickStart = @(
     '   Keep the original ROM filenames. Alternatively run sf-game.exe --roms C:\path\to\sf.',
     '4. Run sf-game.exe. The ROM-missing screen explains missing or mismatched files.',
     '',
-    'Optional private packs go beside roms\sf as roms\sf1-port-art and roms\sf1-port-voice.',
+    'Optional packs go beside roms\sf as roms\sf1-port-art and roms\sf1-port-voice.',
     'These packs and the ROMs are separate from this download. SF1+ fighters need their approved art/player tables.',
     'Settings and sf-game.log are saved in %APPDATA%\sf1-port. See README.md for controls and features.',
     '',
