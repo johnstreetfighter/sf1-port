@@ -1,0 +1,139 @@
+{
+  "fighter": "mike",
+  "poses": {
+    "crouch": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_hit": {
+      "origin": "generated",
+      "crc32": "db0d9795",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "duck_punch": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "duck_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "hook_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "iron_peak": {
+      "origin": "generated",
+      "crc32": "01e83726",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_hammer": {
+      "origin": "generated",
+      "crc32": "e94495f5",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_hook": {
+      "origin": "generated",
+      "crc32": "ea6b2333",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "jump_jab_down": {
+      "origin": "generated",
+      "crc32": "f0df1cfd",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch": {
+      "origin": "generated",
+      "crc32": "2440ac84",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "jump_punch_down": {
+      "origin": "generated",
+      "crc32": "044716ea",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_top": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "overhand_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "generated",
+      "crc32": "0f5ac951",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "straight": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "straight_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

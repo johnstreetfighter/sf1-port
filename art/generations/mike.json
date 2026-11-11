@@ -1,0 +1,3747 @@
+{
+  "fighter": "mike",
+  "calls": [
+    {
+      "at": "2026-11-06T14:20:00Z",
+      "move": "body hook",
+      "tool": "PixelLab create_image_pro",
+      "job": "433995c8-a218-42ea-80c3-76c3acec5fca",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "character base and identity: his face, short black hair, red T-shirt, taped wrists, blue jeans, belt, sneakers, exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own hook punch at head height: how his arm, shoulder and back look when he swings a hook; this one goes to the body, lower",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own wind-up for the hook: knees bent, leaning in, the body he punches from",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Mike: a big, heavily muscled American boxer with short black hair and a heavy jaw, brown skin, a short-sleeved red T-shirt, white tape wrapped round his wrists, bare fists, baggy blue jeans with a black belt, white and red sneakers. Facing right, side view toward the opponent on the right. A left hook to the body: he dips his knees and leans his whole upper body forward and to the right, his lead arm bent at a right angle and swung round horizontally at waist height so the fist drives into the opponent's stomach just in front of him, the other fist held up guarding his chin. Both sneakers on the floor, feet apart, front knee bent. The same scale and proportions as his stance and his hook, about 100 pixels tall, his head the same size as in his stance. Nothing else.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: all four about 91 pixels tall against his stance's 103, their heads smaller than his, the punches at chest height; two had no ground shadow. The body hook was inpainted on his own hook's wind-up instead (11d68ba1), so his ROM head and body stay."
+    },
+    {
+      "at": "2026-11-06T14:20:30Z",
+      "move": "overhand right",
+      "tool": "PixelLab create_image_pro",
+      "job": "5041b47b-5001-406f-b432-4297ee0e6a81",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "character base and identity: his face, short black hair, red T-shirt, taped wrists, blue jeans, belt, sneakers, exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x14e0",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his own straight punch fully extended: his reach, his leaning back and legs; the overhand ends lower and more over the top",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x14e7",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own arm cocked high over his head, the wind-up this punch comes down from",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Mike: a big, heavily muscled American boxer with short black hair and a heavy jaw, brown skin, a short-sleeved red T-shirt, white tape wrapped round his wrists, bare fists, baggy blue jeans with a black belt, white and red sneakers. Facing right, side view toward the opponent on the right. An overhand right at the end of the punch: his rear arm has looped up over the top and come down, now driven forward and slightly downward, fully extended at head height, the fist clenched; his upper body leans far forward over his bent front knee, his head tucked behind his shoulder, his other fist low by his ribs. Both sneakers on the floor, feet wide apart, the rear leg straight. The same scale and proportions as his stance and his straight, about 100 pixels tall, his head the same size as in his stance. Nothing else.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: candidates 1 and 3 read as an overhand, back to us, but at about 86 pixels tall against his 104-pixel follow-through, narrower in the body, with a pale streak down the jeans. The overhand was inpainted on his own hook's strike instead (c9271648)."
+    },
+    {
+      "at": "2026-11-06T14:21:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab create_image_pro",
+      "job": "f1b0a750-bd6e-4b18-8554-0cb9c2c59406",
+      "cost": 10,
+      "canvas": [
+        104,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "character base: his own crouch, its legs, height and scale; the legs stay this low",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "his own arm raised straight up above his head: how his arm, taped wrist and fist look going up",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "identity: his face, hair, T-shirt, taped wrists, jeans and sneakers",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Mike: a big, heavily muscled American boxer with short black hair and a heavy jaw, brown skin, a short-sleeved red T-shirt, white tape wrapped round his wrists, bare fists, baggy blue jeans with a black belt, white and red sneakers. Facing right. A crouching uppercut: still low on bent knees, hips low, both sneakers flat on the floor as in his crouch, his upper body rising and leaning back a little, his rear arm driven straight up in front of his face, elbow bent, the fist above his head; the other fist low by his ribs. About 84 pixels tall with the fist, the same scale as his crouch, his head the same size as in his crouch. Nothing else.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "crouching_uppercut",
+          "crc32": "bb63a44d",
+          "touch_ups": [
+            "his ROM head from his victory pose (0x166c), upright, facing right, mouth open, laid over the generated head 26 pixels right and 8 up (uppercut-head.py): the generated head's hair, skin and outline cleared first, 5 holes inside his outline given his shirt's red, and 3 collar pixels left sticking out before his jaw cleared",
+            "single pixels outside his ROM head that no neighbour shares, set to the pen around them (81 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): a straight arm held up, not an uppercut. Now crouching_uppercut is 44eb451d's, candidate 0."
+        }
+      ],
+      "note": "Round one kept none: candidates 1 and 2 were good uppercuts, but his victory pose (0x166c) seemed to give the same upper body from ROM pixels. The maintainer rejected that pieced pose (2026-11-06), so candidate 2 is kept in round two, with his victory pose's ROM head laid over its generated one (uppercut-head.py)."
+    },
+    {
+      "at": "2026-11-06T14:27:00Z",
+      "move": "low body hook",
+      "tool": "PixelLab create_image_pro",
+      "job": "45233f21-bff9-4667-a09d-4b105e823e2d",
+      "cost": 10,
+      "canvas": [
+        128,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "character base: his own crouch, its height, legs and scale; the pose stays this low",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "his own crouching wind-up, leaning forward low: the body this punch comes from",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own standing hook: how his arm and shoulder look when he swings a hook",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Mike: a big, heavily muscled American boxer with short black hair and a heavy jaw, brown skin, a short-sleeved red T-shirt, white tape wrapped round his wrists, bare fists, baggy blue jeans with a black belt, white and red sneakers. Facing right. A low body hook from a deep crouch: squatting low exactly as in his crouch, knees deeply bent, one knee forward, his upper body twisted forward and to the right, his lead arm bent at a right angle and swung round horizontally at waist height so the fist drives into the opponent's stomach in front of him; the other fist up guarding his chin. The same scale as his crouch, about 64 pixels tall and 90 wide, his head the same size as in his crouch. Nothing else.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: candidate 0 only crouched, 1 punched straight at chest height, 2 stood up, 3 held his fist in. The first send (job 7b4f8226), with his stance as a fourth reference, failed at PixelLab with \"Maximum 5 images allowed, got 6\" and charged nothing; this send has three references and the style image. The hook was inpainted on his ducking punch's wind-up instead (9bd0dd17)."
+    },
+    {
+      "at": "2026-11-06T14:40:00Z",
+      "move": "body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "11d68ba1-1502-438f-a9cf-9225bccc01ed",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his lunging hook's wind-up, on its 96x96 grid; the mask covers his near arm folded across his chest (x18-49, y27-49) and the space before him (x50-95, y33-61), sparing his head and his far fist",
+          "note": "inpaint-source-body-hook-96x96.png and inpaint-mask-body-hook.png in the pack's candidates (make-inpaint-1.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Mike the boxer throwing a hook to the body: his near arm, muscular brown-skinned, in his short red T-shirt sleeve, swung out from his shoulder and driven forward to the right at belt height, the elbow slightly bent, the fist clenched with white tape round the wrist, the fist reaching well past his front knee. His red T-shirt over his chest and stomach down to his belt, as on the rest of him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "body_hook",
+          "crc32": "5cb4d702",
+          "touch_ups": [
+            "his near arm inpainted from the shoulder (x18-49, y27-49, and before him x50-95, y33-61), swung out and driven forward at the opponent's body, the fist taped; the rest is his ROM lunging hook's wind-up (0x1409), pixel for pixel; 383 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (18 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06): it read as a straight punch, the arm looked pasted on, and its colours and pixels were off. Now body_hook is a90732cd's."
+        }
+      ],
+      "note": "Kept: the arm driven forward at his lower chest, the fist taped; outside the mask his ROM wind-up, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T14:40:30Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4212da96-7e01-4695-a60c-e9db88c4b500",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up, padded to 96x64; the mask covers his near arm (x20-43, y22-45) and the space before him (x44-95, y27-49), sparing his head",
+          "note": "inpaint-source-low-body-hook-96x64.png and inpaint-mask-low-body-hook.png in the pack's candidates (make-inpaint-1.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Mike the boxer, crouched low, throwing a low hook to the body: his near arm, muscular brown-skinned, in his short red T-shirt sleeve, swung out from his shoulder and driven forward to the right at belt height, the elbow slightly bent, the fist clenched with white tape round the wrist, reaching well in front of his knee. His red T-shirt over his body and his baggy blue jeans over his bent thigh below the arm, as on the rest of him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm came out thin, about half as thick as his ROM arms."
+    },
+    {
+      "at": "2026-11-06T14:41:00Z",
+      "move": "overhand right",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c9271648-79e6-4ef3-a9a1-cc19262071c0",
+      "cost": 6,
+      "canvas": [
+        96,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his lunging hook's strike, on its 96x128 grid; the mask covers his striking arm from the shoulder (x48-57, y20-43) and the space before and above him (x58-95, y0-55)",
+          "note": "inpaint-source-overhand-96x128.png and inpaint-mask-overhand.png in the pack's candidates (make-inpaint-1.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Mike the boxer, back toward us, at the end of an overhand right: his striking arm, muscular brown-skinned, in his short red T-shirt sleeve, has looped over the top: from his raised shoulder the upper arm rises forward, the elbow high at the top of his head, and the forearm drives down and forward so the clenched fist, white tape round the wrist, lands at the height of his own chin, well in front of him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "overhand",
+          "crc32": "d8d3d7cf",
+          "touch_ups": [
+            "his striking arm inpainted from the shoulder (x48-57, y20-43, and x58-95, y0-55), looped over the top, the elbow high, the forearm driven down and forward to the fist; the rest is his ROM lunging hook's strike (0x1560), pixel for pixel; 323 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (27 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06): the arm looked pasted on and did not come over the top clearly. Now overhand is 70017147's."
+        }
+      ],
+      "note": "Kept: the elbow high above his shoulder and the taped fist driven down and forward; outside the mask his ROM hook strike, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T14:50:00Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9bd0dd17-bfd7-4f8b-b298-999975e3061b",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 2,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up, padded to 96x64, with the same mask as 4212da96",
+          "note": "inpaint-source-low-body-hook-96x64.png and inpaint-mask-low-body-hook.png in the pack's candidates (make-inpaint-1.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Mike, a heavyweight boxer with huge arms, crouched low, throwing a low hook to the body: his near arm, as thick and muscular as in the rest of the sprite, the upper arm about 10 pixels thick in his short red T-shirt sleeve, brown skin shaded in bands, swung out from his shoulder and driven forward to the right at belt height, the elbow slightly bent, a big clenched fist with white tape round the wrist, reaching in front of his knee. His red T-shirt over his body and his baggy blue jeans over his bent thigh below the arm, as on the rest of him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "low_body_hook",
+          "crc32": "984fa1aa",
+          "touch_ups": [
+            "his near arm inpainted from the shoulder (x20-43, y22-45, and before him x44-95, y27-49), driven forward low at the opponent's body, as thick as his other arm, the fist taped (the second try: the first, 4212da96, drew it thin); the rest is his ROM ducking punch's wind-up (0x15aa), pixel for pixel; 207 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (25 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06): it read as a straight punch and the arm looked pasted on. Now low_body_hook is 79012fad's."
+        }
+      ],
+      "note": "Kept: the forearm about as thick as his ROM forearms, the fist big and taped; outside the mask his ROM wind-up, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:10:00Z",
+      "move": "body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a90732cd-26b4-4c67-957a-37294c426ae3",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his lunging hook's wind-up on its 96x96 grid; the mask covers his shoulders, chest and near arm and the space before him (x8-95, y16-55), keeping his head and guard fist (x36-63, y0-32)",
+          "note": "inpaint-source-body-hook-2-96x96.png and inpaint-mask-body-hook-2.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms and a short-sleeved red T-shirt, facing right, throwing a left hook to the body: his shoulders and chest turn hard toward the right, his near shoulder rolled forward; his near arm leaves the shoulder with the elbow lifted out to the side and bent at a right angle, the thick forearm swinging round horizontally at belt height so the taped fist arcs in toward the opponent's stomach on the right, knuckles facing in. His far fist stays up at his chin. His red T-shirt covers his chest and stomach down to his belt; the arm joins his shoulder in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "body_hook",
+          "crc32": "881aea93",
+          "touch_ups": [
+            "his shoulders, chest and near arm inpainted (x8-95, y16-55, his head and guard fist kept: x36-63, y0-32), the chest turned into the punch and the arm hooked round, elbow out, the fist arcing in at his belt; the rest is his ROM lunging hook's wind-up (0x1409), pixel for pixel; 658 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (18 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): the arm did not reach out as it should and the body looked off. Now body_hook is 1fa37e96's."
+        }
+      ],
+      "note": "Kept: the chest turned into the punch, the elbow out and the fist arcing in at his belt; outside the mask his ROM wind-up, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:10:20Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2f12c61c-88a7-45b9-8c6a-4d24f4a9d468",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up padded to 96x64; the mask covers his shoulders, back and near arm and the space before him (x8-95, y8-47), keeping his head (x42-65, y0-26)",
+          "note": "inpaint-source-low-body-hook-2-96x64.png and inpaint-mask-low-body-hook-2.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms and a short-sleeved red T-shirt, crouched low, facing right, throwing a low hook to the body: his shoulders turn toward the right, his near shoulder rolled forward; his near arm leaves the shoulder with the elbow lifted out to the side and bent at a right angle, the thick forearm swinging round horizontally at belt height so the taped fist arcs in toward the opponent's stomach on the right, knuckles facing in. His red T-shirt covers his back and chest; his baggy blue jeans over his bent thighs below; the arm joins his shoulder in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm thin and the fist small, with a dark speck by the fist."
+    },
+    {
+      "at": "2026-11-06T16:10:40Z",
+      "move": "overhand right",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "70017147-5fca-4bcd-836f-c0949a724324",
+      "cost": 6,
+      "canvas": [
+        96,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his lunging hook's strike on its 96x128 grid; the mask covers his striking shoulder, upper back and arm and the space before and above him (x40-95, y0-63), keeping the back of his head (x28-55, y10-30)",
+          "note": "inpaint-source-overhand-2-96x128.png and inpaint-mask-overhand-2.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer, his back toward us in a red short-sleeved T-shirt, facing right, landing an overhand right: his right shoulder has rolled up high and forward over his head height, the thick brown-skinned upper arm rising from it, the elbow up level with the top of his head, and the forearm chopping down and forward in an arc so the taped fist lands in front of him at the height of his own face, coming down from above. His red T-shirt across his broad back and shoulder; the arm joins the shoulder in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "overhand",
+          "crc32": "099c289e",
+          "touch_ups": [
+            "his striking shoulder, upper back and arm inpainted (x40-95, y0-63, the back of his head kept: x28-55, y10-30), the shoulder rolled up, the elbow high and the forearm chopping down and forward; the rest is his ROM lunging hook's strike (0x1560), pixel for pixel; 127 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (30 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): his back was turned and the arm did not reach out. Now overhand is 06cec615's."
+        }
+      ],
+      "note": "Kept: the shoulder rolled up, the elbow high and the forearm chopping down to the fist; outside the mask his ROM hook strike, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:11:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f6d305a8-5a52-499f-9cca-c2337d8f9ae1",
+      "cost": 6,
+      "canvas": [
+        80,
+        104
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up at the foot of an 80x104 canvas; the mask covers everything above his legs (x0-79, y0-79), keeping his head (x42-65, y40-66)",
+          "note": "inpaint-source-uppercut-2-80x104.png and inpaint-mask-uppercut-2.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms and a short-sleeved red T-shirt, low on bent knees, facing right, driving a crouching uppercut: his chest and shoulders rise and lift toward the right; his near arm is bent tight at the elbow, the elbow low by his ribs and the thick forearm vertical, driving straight upward in front of his face so the taped fist rises above the top of his head. His far fist low by his ribs. His red T-shirt over his chest down to his belt, his baggy blue jeans over his bent thighs; the arm joins his shoulder in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it drew a second head, on the rising arm above his own."
+    },
+    {
+      "at": "2026-11-06T16:11:20Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0edcfd21-56af-4278-98fb-c2d7f14192f9",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x147b",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his straight's step-in on a 112x112 canvas, 4 pixels up; the mask covers his shoulders, chest and both arms and the space before him (x8-111, y16-59), keeping his head (x38-59, y4-30)",
+          "note": "inpaint-source-clinch-112x112.png and inpaint-mask-clinch.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms and a short-sleeved red T-shirt, facing right, stepping in to clinch: both thick arms reach straight forward from his shoulders at shoulder height, past his chin, and his open hands, white tape on the wrists, grab the collar and shoulders of an opponent standing just in front of him to the right, fingers curled to grip. His chest and shoulders lean forward behind the arms; his red T-shirt down to his belt; both arms join his shoulders in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it drew the opponent too, a figure in a blue gi in his arms."
+    },
+    {
+      "at": "2026-11-06T16:11:40Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "68e6c375-428e-4f0d-a9ff-5d9ceb777eb6",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x147b",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his straight's step-in on a 112x112 canvas, 4 pixels up; the mask covers his shoulders, chest and both arms and the space before him (x8-111, y16-59), keeping his head (x38-59, y4-30)",
+          "note": "inpaint-source-shove-112x112.png and inpaint-mask-shove.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms and a short-sleeved red T-shirt, facing right, shoving an opponent away with both hands: both thick arms thrust straight out forward from his shoulders at chest height, elbows locked, the two open palms flat and upright side by side at the end, white tape on the wrists, his chest leaning into the push. His red T-shirt down to his belt; both arms join his shoulders in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "shove",
+          "crc32": "216dc582",
+          "touch_ups": [
+            "his shoulders, chest and both arms inpainted (x8-111, y16-59, his head kept: x38-59, y4-30), thrust straight out at chest height with both palms open; the rest is his ROM straight's step-in (0x147b), pixel for pixel; 557 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (31 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Dropped: the maintainer rejected it (2026-11-06, round two) and asked for fewer, clearer throw poses; the throw shoves him off on the clinch pose."
+        }
+      ],
+      "note": "Kept: both arms thrust straight out, palms open; outside the mask his ROM step-in, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:12:00Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9cc3b908-a3b5-42c2-afb6-ee134c5c3c69",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up, 16 pixels in on a 96x64 canvas; the mask covers everything below his head (x0-95, y8-63), keeping his head (x58-81, y0-26)",
+          "note": "inpaint-source-rising-96x64.png and inpaint-mask-rising.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer in a short-sleeved red T-shirt and baggy blue jeans, facing right, getting up off the floor: kneeling on his rear knee, the rear shin flat along the floor behind him with its white and red sneaker, his front foot planted flat on the floor with its knee up, and his near brown-skinned arm reaching down straight with the taped hand pressed flat on the floor in front of his knee, pushing himself up. His back bent forward over his knee; a black shadow line along the floor under him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "0f5ac951",
+          "touch_ups": [
+            "everything below his head inpainted (x0-95, y8-63, his head kept: x58-81, y0-26): kneeling, his near hand pressed on the floor, pushing himself up; his head is his ROM ducking punch's wind-up (0x15aa), pixel for pixel; 990 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (61 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ]
+        }
+      ],
+      "note": "Kept: kneeling, his near hand pressed on the floor, both sneakers in their own colours; his head is the ROM pose's, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:14:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ce550f4a-c58f-4a08-a4ed-d69db2dae21d",
+      "cost": 5,
+      "canvas": [
+        64,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1648",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part one: his guard above its belt, as round one's crouching block placed it on a 64x96 canvas; the mask covers the join at his belt (x0-63, y50-71)",
+          "note": "inpaint-source-crouching-block-2-64x96.png and inpaint-mask-crouching-block-2.png in the pack's candidates (make-inpaint-2.py), drawn from round one's parts in his recipe. The first send, at 64x95, was refused before it ran: Pro Flash needs sides in multiples of 4."
+        },
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part two: his crouch's legs below his shirt, as round one placed them",
+          "note": "inpaint-source-crouching-block-2-64x96.png and inpaint-mask-crouching-block-2.png in the pack's candidates (make-inpaint-2.py), drawn from round one's parts in his recipe. The first send, at 64x95, was refused before it ran: Pro Flash needs sides in multiples of 4."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The waist of a heavyweight boxer crouched low: the bottom of his red T-shirt, as wide as his hips, tucked into his black belt with a small grey buckle, and below the belt the top of his baggy blue jeans running into his deeply bent thighs, one continuous body from chest to knees. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "03bd45c6",
+          "touch_ups": [
+            "the join at his belt inpainted (x0-63, y50-71): his shirt's hem as wide as his hips, his belt and buckle, the top of his jeans into his bent thighs; above it his ROM guard (0x1648), below it his ROM crouch's legs (0x156a), pixel for pixel; 102 pixels the inpainting drew off his palette set to his nearest pens",
+            "light grey pixels on the outer edge of his shirt set to his black outline (6 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (8 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): the waist still did not read as one body. Now crouching_block is e5582605's."
+        }
+      ],
+      "note": "Kept: the shirt's hem, belt and buckle running into the crouch's thighs; outside the mask the pieced ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:14:20Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1b7e453f-71c8-4c98-b739-065873d40943",
+      "cost": 6,
+      "canvas": [
+        72,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x160c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part one: his hit pose's upper body, as round one's crouching hit placed it on a 72x108 canvas; the mask covers the join at his belt (x0-71, y58-81)",
+          "note": "inpaint-source-crouching-hit-2-72x108.png and inpaint-mask-crouching-hit-2.png in the pack's candidates (make-inpaint-2.py), drawn from round one's parts in his recipe. The first send, at 70x105, was refused before it ran: Pro Flash needs sides in multiples of 4."
+        },
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part two: his crouch's legs below his shirt, as round one placed them",
+          "note": "inpaint-source-crouching-hit-2-72x108.png and inpaint-mask-crouching-hit-2.png in the pack's candidates (make-inpaint-2.py), drawn from round one's parts in his recipe. The first send, at 70x105, was refused before it ran: Pro Flash needs sides in multiples of 4."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The waist of a heavyweight boxer crouched low and hunched from a blow: the bottom of his red T-shirt, as wide as his hips, tucked into his black belt with a small grey buckle, and below the belt the top of his baggy blue jeans running into his deeply bent thighs, one continuous body from chest to knees. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "316b3d6e",
+          "touch_ups": [
+            "the join at his belt inpainted (x0-71, y58-81): his shirt's hem, belt and buckle and the top of his jeans; above it his ROM hit pose's upper body (0x160c), below it his ROM crouch's legs (0x156a), pixel for pixel; 151 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (18 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): the waist still did not read as one body. Now crouching_hit is c6755374's."
+        }
+      ],
+      "note": "Kept: the shirt's hem, belt and buckle running into the crouch's thighs; outside the mask the pieced ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:20:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "377ec8cb-58e6-4d7b-9912-fedd2a6dac4a",
+      "cost": 6,
+      "canvas": [
+        80,
+        104
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking punch's wind-up at the foot of an 80x104 canvas; the mask covers his shoulder and arm (x0-43, y40-79), the space before his chest (x44-79, y60-79) and a column before his face (x60-79, y4-59), keeping his head (x42-65, y40-66)",
+          "note": "inpaint-source-uppercut-3-80x104.png and inpaint-mask-uppercut-3.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer already drawn, low on bent knees, facing right, driving a crouching uppercut with his near arm: from his rounded red-sleeved shoulder the thick brown-skinned arm bends tight at the elbow, low by his ribs, and the forearm drives straight up in front of his face, the taped fist rising above the top of his head. His one head is the one already drawn; no other head or person. His red T-shirt over his back and chest. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a thin forearm floating in the column before his face, apart from his body. Round one's whole generation (f1b0a750, candidate 2) was kept instead."
+    },
+    {
+      "at": "2026-11-06T16:20:20Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5b255020-366b-4fde-807b-9b5bf67ae2ab",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x147b",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: the same source and mask as 0edcfd21",
+          "note": "inpaint-source-clinch-112x112.png and inpaint-mask-clinch.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer already drawn, alone, facing right, reaching out to clinch: both of his thick brown-skinned arms, in short red T-shirt sleeves, reach straight forward from his shoulders at shoulder height past his chin, and his two open hands, white tape on the wrists, are curled at the ends as if gripping a collar, holding empty air. No other person, no opponent, only his own two arms. His red T-shirt down to his belt; both arms join his shoulders in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "clinch",
+          "crc32": "d20d68e9",
+          "touch_ups": [
+            "his shoulders, chest and both arms inpainted (x8-111, y16-59, his head kept: x38-59, y4-30), reaching forward at shoulder height, open hands gripping a collar; the rest is his ROM straight's step-in (0x147b), pixel for pixel. The first try (0edcfd21) drew the opponent as well; 442 pixels the inpainting drew off his palette set to his nearest pens",
+            "light grey pixels on the outer edge of his shirt set to his black outline (3 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (44 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): messy pixels and joins, the hands wrong. Now clinch is 2df5bbb9's."
+        }
+      ],
+      "note": "Kept: both arms reaching forward at shoulder height, hands curled to grip; outside the mask his ROM step-in, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:30:00Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e875e8d1-a34c-4b65-8e2e-dc54dc83c0e4",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "candidate": "5b255020-366b-4fde-807b-9b5bf67ae2ab#0",
+          "usage": "the picture inpainted: the clinch as generated, in his pens, with his ROM head (from the step-in 0x147b, its fist left out) moved 8 pixels forward and 6 down; the mask covers his shoulders, neck and arms round it (x16-103, y2-49), keeping every pixel of the moved head",
+          "note": "inpaint-source-headbutt-112x112.png and inpaint-mask-headbutt.png in the pack's candidates (make-headbutt.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer already drawn, alone, facing right, driving a headbutt: his head, already drawn, is thrust forward and down; behind it his thick neck and his broad shoulders in his short-sleeved red T-shirt hunch forward, and both his thick brown-skinned arms reach forward at shoulder height on either side of his head, his open hands with white tape on the wrists gripping empty air in front of his forehead, as holding an opponent's collar. No other person; only his own body and two arms, joined in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "headbutt",
+          "crc32": "80e3e2ab",
+          "touch_ups": [
+            "the clinch (5b255020) with his ROM head moved 8 pixels forward and 6 down, and his shoulders, neck and arms round it inpainted (x16-103, y2-49, every pixel of the moved head kept), hunched in behind the head; below the mask his ROM straight's step-in, pixel for pixel; 355 pixels the inpainting drew off his palette set to his nearest pens",
+            "light grey pixels on the outer edge of his shirt set to his black outline (6 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (38 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): the hands bunched before his face and it did not read. Now headbutt is 2bcda950's."
+        }
+      ],
+      "note": "Kept: his ROM head driven forward and down, his shoulders hunched in behind it, still gripping. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:35:00Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "79012fad-55c0-43d0-bcfa-41460782a4be",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 2,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: the same source and mask as 2f12c61c",
+          "note": "inpaint-source-low-body-hook-2-96x64.png and inpaint-mask-low-body-hook-2.png in the pack's candidates (make-inpaint-2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer with huge brown-skinned arms as thick as his neck and a short-sleeved red T-shirt, crouched low, facing right, throwing a low hook: his broad shoulders turn toward the right; his near arm, a thick muscular upper arm about 10 pixels thick and a thick forearm, leaves his rolled-forward shoulder with the elbow lifted out to the side and bent at a right angle, the forearm swinging round horizontally at belt height so his big taped fist arcs in toward the opponent's stomach on the right. His red T-shirt covers his back and chest; his baggy blue jeans over his bent thighs below; the arm joins his shoulder in one piece. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "low_body_hook",
+          "crc32": "d64482ec",
+          "touch_ups": [
+            "his shoulders, back and near arm inpainted (x8-95, y8-47, his head kept: x42-65, y0-26), the arm hooked round at belt height, as thick as his ROM arms (the second try this round: 2f12c61c drew it thin, with a small fist); the rest is his ROM ducking punch's wind-up (0x15aa), pixel for pixel; 73 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (44 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round two): the arm did not reach out as it should. Now low_body_hook is b03d6f43's."
+        }
+      ],
+      "note": "Kept: the forearm as thick as his ROM arms, bent at the elbow, the big taped fist at belt height; outside the mask his ROM wind-up, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:00:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e5582605-5ffc-4d3e-b924-a4ce804777dd",
+      "cost": 5,
+      "canvas": [
+        72,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1648",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part one: his guard down to the chest (rows 0-29), on a 72x96 canvas; the mask covers the band where it meets the crouch (y50-63)",
+          "note": "inpaint-source-crouching-block-3-72x96.png and inpaint-mask-crouching-block-3.png in the pack's candidates (make-inpaint-3.py)."
+        },
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part two: his crouch from row 18, without its forearms",
+          "note": ""
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. One continuous crouching body: the bottom of his red T-shirt over his chest and stomach, leaning forward, runs smoothly down into his hips and the tops of his baggy blue jeans over his deeply bent thighs, the same body width all the way, as in his crouch. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "7ae889ab",
+          "touch_ups": [
+            "his guard (0x1648) down to the chest laid on his crouch (0x156a, without its forearms), and the band where they meet inpainted (y50-63) so his shirt runs into his hips and jeans as one leaning body; above and below the band his ROM pixels; 16 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (3 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): the join still did not read as one body. Now crouching_block is b28c268a's."
+        }
+      ],
+      "note": "Kept: his shirt runs into his hips and jeans as one leaning body; outside the band his ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:00:20Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c6755374-7a73-4ae8-92ec-59a11690a4c5",
+      "cost": 5,
+      "canvas": [
+        72,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x160c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part one: his hit pose down to the chest (rows 0-39), on a 72x96 canvas; the mask covers the band where it meets the crouch (y56-69)",
+          "note": "inpaint-source-crouching-hit-3-72x96.png and inpaint-mask-crouching-hit-3.png in the pack's candidates (make-inpaint-3.py)."
+        },
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted, part two: his crouch from row 22, without its forearms",
+          "note": ""
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. One continuous crouching body, hunched from a blow: the bottom of his red T-shirt over his chest and stomach runs smoothly down into his hips and the tops of his baggy blue jeans over his deeply bent thighs, the same body width all the way, as in his crouch. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "db0d9795",
+          "touch_ups": [
+            "his hit pose (0x160c) down to the chest laid on his crouch (0x156a, without its forearms), and the band where they meet inpainted (y56-69); above and below the band his ROM pixels; 271 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (6 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ]
+        }
+      ],
+      "note": "Kept: one hunched body from chest to thighs; outside the band his ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:00:40Z",
+      "move": "body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1fa37e96-6468-4cbb-a255-1b7a79ab3b60",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his hook's wind-up on its 96x96 grid, its folded near forearm taken out; the mask covers only the upper arm and elbow (x16-57, y26-51)",
+          "note": "inpaint-source-body-hook-3-96x96.png and inpaint-mask-body-hook-3.png in the pack's candidates (make-inpaint-3.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's forearm and fist (x46-79, y17-35), laid from x52, y32, at the opponent's stomach height and kept outside the mask, so the arm keeps his ROM length and fist",
+          "note": "Laid by make-inpaint-3.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer's near upper arm and elbow only: from his near shoulder in its short red T-shirt sleeve, his thick brown-skinned upper arm runs forward and a little down to the elbow, joining the forearm already drawn in front of him, so the arm reaches out to its full length into the opponent's stomach. His red T-shirt over his chest and stomach behind the arm, down to his belt. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "body_hook",
+          "crc32": "0942b5b3",
+          "touch_ups": [
+            "his hook's wind-up (0x1409) with its folded near forearm taken out, his jab's forearm and fist (0x1470, x46-79, y17-35) laid at the opponent's stomach height (from x52, y32), and only the upper arm and elbow joining it to his shoulder inpainted (x16-57, y26-51); the rest is ROM pixels; 357 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (8 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): it still looked straight, and the shoulder did not join. Now body_hook is 7391c683's."
+        }
+      ],
+      "note": "Kept: one full-length arm at stomach height, his ROM forearm and fist; outside the mask ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:01:00Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "b03d6f43-eb09-400b-931a-d75db1737f25",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking wind-up padded to 96x64, its low forearm taken out; the mask covers only the upper arm and elbow (x20-65, y18-43), keeping his head",
+          "note": "inpaint-source-low-body-hook-3-96x64.png and inpaint-mask-low-body-hook-3.png in the pack's candidates (make-inpaint-3.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's forearm and fist (x46-79, y17-35), laid from x52, y24, at belt height and kept outside the mask, so the arm keeps his ROM length and fist",
+          "note": "Laid by make-inpaint-3.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The crouching boxer's near upper arm and elbow only: from his near shoulder, his thick brown-skinned upper arm runs down and forward to the elbow, joining the forearm already drawn in front of him, so the arm reaches out to its full length at belt height. His red T-shirt and the baggy blue jeans of his bent thigh behind and below the arm. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "low_body_hook",
+          "crc32": "98612d03",
+          "touch_ups": [
+            "his ducking wind-up (0x15aa) with its low forearm taken out, his jab's forearm and fist (0x1470) laid at belt height (from x52, y24), and only the upper arm and elbow joining it inpainted (x20-65, y18-43, his head kept); the rest is ROM pixels; 150 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (8 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): it still looked straight. Now low_body_hook is f1f7ea13's."
+        }
+      ],
+      "note": "Kept: one full-length arm at belt height, his ROM forearm and fist; outside the mask ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:01:20Z",
+      "move": "overhand right",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "cddbbda3-5524-40b7-a41a-5c092f6987ab",
+      "cost": 6,
+      "canvas": [
+        96,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his jab's strike on its 96x128 grid, facing us, its arm taken out and its forearm and fist laid 8 pixels lower (from x50, y25); the mask covers his shoulder and upper arm (x30-63, y4-39)",
+          "note": "inpaint-source-overhand-3-96x128.png and inpaint-mask-overhand-3.png in the pack's candidates (make-inpaint-3.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer, facing us, at the end of an overhand right: his far shoulder in its short red T-shirt sleeve is raised high, level with his ear, and his thick brown-skinned upper arm comes up over the top from it and down forward to the forearm already drawn in front of him, the arm reaching out to its full length. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the upper arm arched over past the laid forearm's start, so the two did not meet."
+    },
+    {
+      "at": "2026-11-06T18:01:40Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "28d6a0d1-9093-49fb-892f-85cec489db6e",
+      "cost": 6,
+      "canvas": [
+        72,
+        136
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his victory pose down to the chest on his crouch (0x156a), its straight raised arm taken out, its fist and forearm (x12-27, y8-29) laid upright beside his face; the mask covers his shoulder, the space across his chest and the band at his hips",
+          "note": "inpaint-source-uppercut-3b-72x136.png and inpaint-mask-uppercut-3b.png in the pack's candidates (make-inpaint-3.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The crouching boxer driving an uppercut: his near shoulder in its short red T-shirt sleeve lifts and turns forward, his thick brown-skinned upper arm runs forward from it across his chest to the elbow, bent sharply, low in front of his stomach, joining the upright forearm and fist already drawn beside his face, so the fist drives straight up. His red T-shirt over his chest, and below it his body runs smoothly into his hips and the baggy blue jeans of his bent thighs. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it joined the arm to the victory pose's other fist at his chest and left the laid forearm floating."
+    },
+    {
+      "at": "2026-11-06T18:02:00Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2df5bbb9-777f-456b-aaf1-461ee75b07c1",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x147b",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his straight's step-in on a 112x112 canvas, 4 pixels up, its fists taken out; the mask covers his shoulders, chest and upper arms (x14-57, y18-45), keeping his head",
+          "note": "inpaint-source-clinch-3-112x112.png and inpaint-mask-clinch-3.png in the pack's candidates (make-inpaint-3.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's forearm and fist (x46-79, y17-35), laid twice, from x52, y22 and x56, y28, reaching out at collar height and kept outside the mask, so the arm keeps his ROM length and fist",
+          "note": "Laid by make-inpaint-3.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer's shoulders, chest and two upper arms only: his broad shoulders in his short red T-shirt sleeves, and from each a thick brown-skinned upper arm runs forward to join one of the two forearms already drawn reaching out at collar height, both arms at full length, his hands gripping. His red T-shirt over his chest down to his belt. No other person. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "clinch",
+          "crc32": "1f9567fb",
+          "touch_ups": [
+            "his straight's step-in (0x147b) with its fists taken out, two of his jab's forearms and fists (0x1470) laid reaching out at collar height (from x52, y22 and x56, y28), and only his shoulders, chest and upper arms joining them inpainted (x14-57, y18-45, his head kept); the rest is ROM pixels; 261 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (6 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): the joins and pixels were messy. Now clinch is a745ea94's, these joins inpainted again."
+        }
+      ],
+      "note": "Kept: both arms at full length, his ROM forearms and fists gripping at collar height; outside the mask ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:10:00Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2bcda950-ba93-41c2-8f1d-bf9801d33eed",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "candidate": "2df5bbb9-777f-456b-aaf1-461ee75b07c1#0",
+          "usage": "the picture inpainted: the clinch as generated, in his pens, with his ROM head (from the step-in 0x147b, its fist left out) moved 8 pixels forward and 8 down over his gripping forearms; the mask covers where the head was and his neck (x30-55, y18-43), never the laid forearms or the moved head",
+          "note": "inpaint-source-headbutt-3-112x112.png and inpaint-mask-headbutt-3.png in the pack's candidates (make-headbutt.py, round three)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer's thick neck and broad shoulders in his short red T-shirt, hunched forward and down behind his head, which is already drawn driven forward in a headbutt; his two upper arms run from the shoulders to the forearms already drawn, gripping at collar height. Nothing where his head used to be but his red T-shirt's back and shoulders. No other person. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "headbutt",
+          "crc32": "1f92bf17",
+          "touch_ups": [
+            "the clinch (2df5bbb9) with his ROM head moved 8 pixels forward and 8 down, over his gripping forearms, and only his neck and shoulders behind it inpainted (where the head was, and x30-55, y18-43); the forearms laid from his ROM jab are kept; 91 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (4 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): the joins and pixels were messy. Now headbutt is 84ba11dd's, these joins inpainted again."
+        }
+      ],
+      "note": "Kept: his ROM head driven forward and down over his gripping fists, his shoulders hunched behind it. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:10:20Z",
+      "move": "overhand right",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "06cec615-a4c8-47c9-87c9-965486a3321d",
+      "cost": 6,
+      "canvas": [
+        96,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his jab's strike, facing us, its arm taken out and the jab's forearm from the elbow (x54-79, y17-35) laid lower and further out (from x58, y25); the mask covers his shoulder and upper arm (x30-61, y4-41)",
+          "note": "inpaint-source-overhand-3b-96x128.png and inpaint-mask-overhand-3b.png in the pack's candidates (make-inpaint-3.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer, facing us, at the end of an overhand right: from his shoulder in its short red T-shirt sleeve, his thick brown-skinned upper arm rises forward and up, the elbow high beside his head, then comes down to join the forearm already drawn, which ends in his taped fist in front of him: one unbroken arm. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "overhand",
+          "crc32": "5105e28c",
+          "touch_ups": [
+            "his jab's strike (0x1470), facing us, with its arm taken out, the jab's forearm from the elbow (x54-79, y17-35) laid 8 pixels lower and further out (from x58, y25), and only his shoulder and upper arm inpainted (x30-61, y4-41), rising over the top to it; the rest is ROM pixels. The first try this round (cddbbda3, forearm laid nearer) drew the upper arm arching past the forearm, so the two did not meet; 92 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (4 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): the arm looked straight and the shoulder did not join. Now overhand is 457bbf93's."
+        }
+      ],
+      "note": "Kept: one unbroken full-length arm from his raised shoulder to his ROM fist, his chest toward us; outside the mask ROM pixels. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T18:20:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ec6cd544-6fcf-4027-b020-4e209fc9eea2",
+      "cost": 6,
+      "canvas": [
+        72,
+        136
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: as 28d6a0d1, with the victory pose's other fist taken out too and the upright forearm laid lower, its fist level with his face; the mask covers the channel from its wrist down to his chest and the band at his hips",
+          "note": "inpaint-source-uppercut-3c-72x136.png and inpaint-mask-uppercut-3c.png in the pack's candidates (make-inpaint-3.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The crouching boxer's punching arm, folded tight for an uppercut: from the bottom of the upright forearm already drawn beside his face, the thick brown-skinned forearm continues straight down to a sharp elbow in front of his chest, and from the elbow his upper arm runs back up to his shoulder in its short red T-shirt sleeve. His red T-shirt over his chest around it, and below, his body runs smoothly into his hips and the baggy blue jeans of his bent thighs. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it drew the arm across his stomach in skin and left the laid forearm apart from it."
+    },
+    {
+      "at": "2026-11-06T18:25:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab create_image_pro",
+      "job": "44eb451d-7de7-44e7-83a7-42f844f409b6",
+      "cost": 10,
+      "canvas": [
+        104,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "character base: his own crouch, its legs, height and scale; the legs stay this low",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "his own upright upper body, chest toward us, his taped fist and thick arm; here the arm is bent sharply, not straight",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "identity: his face, hair, T-shirt, taped wrists, jeans and sneakers",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Mike: a big, heavily muscled American boxer with short black hair and a heavy jaw, brown skin, a short-sleeved red T-shirt, white tape wrapped round his wrists, bare fists, baggy blue jeans with a black belt, white and red sneakers. Facing right, his chest toward us. A crouching uppercut at the moment of impact: still low on deeply bent knees, both sneakers flat on the floor as in his crouch, his hips low; his chest and shoulders drive upward and forward; his punching arm is bent at a sharp right angle, the elbow low in front of his stomach, the forearm upright, and the taped fist driven up in front of his face to the height of his forehead, knuckles toward us. His other fist low by his ribs. The arm is thick and muscular. About 84 pixels tall, the same scale as his crouch, his head the same size. Nothing else.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_uppercut",
+          "crc32": "c91c38c5",
+          "touch_ups": [
+            "his ROM head from his victory pose (0x166c), upright, facing right, mouth open, laid over the generated head 28 pixels right and 16 up (uppercut-head-3.py): the generated head's hair, skin and outline cleared first (176 pixels), the generated fist and forearm drawn back over it where they pass before his face, 19 holes inside his outline given his shirt's red, and 2 one-pixel spurs left of his head cleared",
+            "single pixels outside his ROM head that no neighbour shares, set to the pen around them (64 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Replaced: the maintainer rejected it (2026-11-06, round three): not an uppercut, and a much different size from his crouch. Now crouching_uppercut is e3b97ba4's, which keeps this candidate's bent arm."
+        }
+      ],
+      "note": "Kept: candidate 0, a real uppercut, the arm bent sharply and the fist driven up before his face, his chest toward us, 85 pixels tall; his ROM head laid back by uppercut-head-3.py. Candidate 3 was a near twin; 1 and 2 turned his back or tucked the fist behind his head."
+    },
+    {
+      "at": "2026-11-06T20:00:00Z",
+      "move": "body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "7391c683-3610-40d3-bf40-21be230bc5ec",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his hook's wind-up on its 96x96 grid, its folded near forearm taken out; the mask covers the near arm from the shoulder (x12-75, y18-61), keeping his head and guard fist",
+          "note": "inpaint-source-body-hook-4-96x96.png and inpaint-mask-body-hook-4.png in the pack's candidates (make-inpaint-4.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's taped wrist and fist (x68-79, y17-35), laid at x74, y36 as a guide for the punch's reach and kept outside the mask; the inpainting drew its own fist and left this one floating, so it was taken out again",
+          "note": "Laid by make-inpaint-4.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer in a short-sleeved red T-shirt, facing right, landing a left hook to the body: his torso turns toward the right; his near arm is one thick muscular brown-skinned piece from his rounded shoulder: the upper arm drops down and out to a sharp elbow bent at a right angle, low by his hip, and the thick forearm angles up and forward from the elbow to the taped fist already drawn at the opponent's stomach. His red T-shirt over his chest and stomach to his belt, and his blue jeans below. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "body_hook",
+          "crc32": "24953767",
+          "touch_ups": [
+            "his near arm inpainted whole from the shoulder (x12-75, y18-61, his head and guard fist kept), bent at the elbow with the fist driven in at his belt; the rest is his ROM hook's wind-up (0x1409); 554 pixels the inpainting drew off his palette set to his nearest pens",
+            "his jab's fist, laid at x74, y36 as a guide and left floating apart from the inpainted arm, taken out again (90 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (31 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM straight (0x147b, 0x14e0). This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: one bent arm from his shoulder, the fist driven in at his belt; the guide fist taken out. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:00:20Z",
+      "move": "low body hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f1f7ea13-68f6-44b1-b173-1c5f9fc44308",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking wind-up padded to 96x64, its low forearm taken out; the mask covers the near arm from the shoulder (x10-73, y8-51), keeping his head",
+          "note": "inpaint-source-low-body-hook-4-96x64.png and inpaint-mask-low-body-hook-4.png in the pack's candidates (make-inpaint-4.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's taped wrist and fist (x68-79, y17-35), laid at x72, y28 as a guide for the punch's reach and kept outside the mask; the inpainting drew its own fist and left this one floating, so it was taken out again",
+          "note": "Laid by make-inpaint-4.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer in a short-sleeved red T-shirt, crouched low, facing right, throwing a low hook to the body: his near arm is one thick muscular brown-skinned piece from his rounded shoulder: the upper arm runs down and out to a sharp elbow bent at a right angle beside his knee, and the thick forearm angles up and forward from the elbow to the taped fist already drawn in front of him. His red T-shirt over his back and chest, his baggy blue jeans over his bent thighs. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "low_body_hook",
+          "crc32": "c18fc153",
+          "touch_ups": [
+            "his near arm inpainted whole from the shoulder (x10-73, y8-51, his head kept), the elbow bent and the fist driven forward low; the rest is his ROM ducking wind-up (0x15aa); 74 pixels the inpainting drew off his palette set to his nearest pens",
+            "his jab's fist, laid at x72, y28 as a guide and left floating apart from the inpainted arm, taken out again (90 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (50 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM ducking punch (0x15aa, 0x16a0). This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: one bent arm from his shoulder, the fist driven forward low; the guide fist taken out. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:00:40Z",
+      "move": "overhand right",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "457bbf93-b849-47a5-a159-8dacea994aa7",
+      "cost": 6,
+      "canvas": [
+        96,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his jab's strike on its 96x128 grid, chest toward us, its arm taken out; the mask covers the striking arm from the shoulder and the space above (x30-71, y0-51), keeping his head, guard fist and body",
+          "note": "inpaint-source-overhand-4-96x128.png and inpaint-mask-overhand-4.png in the pack's candidates (make-inpaint-4.py)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his jab's taped wrist and fist (x68-79, y17-35), laid at x70, y30 as a guide for the punch's reach and kept outside the mask; the inpainting drew its own fist and left this one floating, so it was taken out again",
+          "note": "Laid by make-inpaint-4.py."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer, his chest toward us in a short-sleeved red T-shirt, facing right, landing an overhand right: his striking arm is one thick muscular brown-skinned piece from his rounded shoulder: the upper arm rises up and forward to a high elbow above the top of his head, and the thick forearm chops down and forward over the top from the elbow to the taped fist already drawn in front of him. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "overhand",
+          "crc32": "c60f3fe6",
+          "touch_ups": [
+            "his striking arm inpainted whole from the shoulder (x30-71, y0-51, his head, guard fist and body kept), the elbow high and the forearm chopping down and forward over the top; the rest is his ROM jab strike (0x1470), his chest toward us; 247 pixels the inpainting drew off his palette set to his nearest pens",
+            "his jab's fist, laid at x70, y30 as a guide and left floating apart from the inpainted arm, taken out again (90 pixels)",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (8 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM straight's strike (0x14e0). This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: one arm from his shoulder, the elbow high and the forearm chopping down over the top; the guide fist taken out. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:01:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "b28c268a-0729-4fbe-b761-030e0d309b76",
+      "cost": 5,
+      "canvas": [
+        72,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x156a",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his approved crouch padded to 72x80; the mask covers his forearms and fists and the space above them (x28-71, y0-45), keeping his head down to his cheek and everything below his arms",
+          "note": "inpaint-source-crouching-block-4-72x80.png and inpaint-mask-crouching-block-4.png in the pack's candidates (make-inpaint-4.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer crouched low, facing right, in a high guard: both thick brown-skinned forearms raised upright on either side of his face, elbows tucked down in front of his chest, his taped fists up at the top of his head, his red T-shirt sleeves at the shoulders. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "3fe12159",
+          "touch_ups": [
+            "his approved crouch (0x156a) with only his forearms and fists inpainted (x28-71, y0-45 of the padded canvas, his head down to his cheek and everything below his arms kept), raised into a high guard before his face; no waist join at all; 302 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (15 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM crouch (0x156a). This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: his crouch with his forearms raised into a guard; no join at his waist. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:01:20Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "93ffd720-ab28-42d9-9cc5-baff2b82f409",
+      "cost": 5,
+      "canvas": [
+        80,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking wind-up at the foot of an 80x80 canvas; the mask covers his near arm and chest (x12-79, y26-63) and a column before his face (x62-79, y0-39), keeping his head",
+          "note": "inpaint-source-uppercut-4-80x80.png and inpaint-mask-uppercut-4.png in the pack's candidates (make-inpaint-4.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. Mike, a heavyweight boxer crouched low, facing right, driving an uppercut up from the crouch: his near arm is one thick muscular brown-skinned piece from his rounded shoulder: the upper arm runs forward to a sharp elbow low in front of his chest, and the thick forearm drives straight up in front of his face so his taped fist rises above the top of his head. His shoulder lifts into the punch; his red T-shirt over his back and chest, his baggy blue jeans over his bent thighs. Only his one head, already drawn. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it drew no arm, only a stray line above him."
+    },
+    {
+      "at": "2026-11-06T20:01:40Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a745ea94-a2c8-4e34-8e8f-7dcf8aea0c8f",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "candidate": "2df5bbb9-777f-456b-aaf1-461ee75b07c1#0",
+          "usage": "the picture inpainted: round three's approved-for-idea clinch as touched up, in his pens; the mask covers the joins of his shoulders and upper arms into the forearms (x28-65, y16-49), keeping his head, the forearms from the wrist on and everything below his chest",
+          "note": "inpaint-source-clinch-4-112x112.png and inpaint-mask-clinch-4.png in the pack's candidates (make-inpaint-4.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer's broad shoulders in his short red T-shirt sleeves and his two thick brown-skinned upper arms, each running smoothly forward from the shoulder into one of the two forearms already drawn reaching out at collar height, clean outlines where arm meets shoulder, no gaps or steps. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "clinch",
+          "crc32": "3694448f",
+          "touch_ups": [
+            "round three's clinch with only the joins inpainted again (x28-65, y16-49): his shoulders and upper arms into the forearms; his head, the forearms from the wrist on and everything below his chest kept; 89 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (6 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM hook wind-up (0x1409) as the grab. This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: the shoulders and upper arms running into the forearms with clean outlines. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:02:00Z",
+      "move": "throw",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "84ba11dd-6b12-4407-b3c6-7e8dade5545e",
+      "cost": 6,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "candidate": "2bcda950-ba93-41c2-8f1d-bf9801d33eed#0",
+          "usage": "the picture inpainted: round three's headbutt as touched up, in his pens; the mask covers the joins of his neck, shoulders and upper arms into the forearms (x28-65, y16-49), keeping his moved head, the forearms from the wrist on and everything below his chest",
+          "note": "inpaint-source-headbutt-4-112x112.png and inpaint-mask-headbutt-4.png in the pack's candidates (make-inpaint-4.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The boxer's thick neck and broad shoulders in his short red T-shirt, hunched forward behind his head, which is already drawn driven forward in a headbutt, and his two thick brown-skinned upper arms running smoothly from the shoulders into the forearms already drawn gripping at collar height, clean outlines where arm meets shoulder, no gaps or steps. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "headbutt",
+          "crc32": "97991a32",
+          "touch_ups": [
+            "round three's headbutt with only the joins inpainted again (x28-65, y16-49): his neck, shoulders and upper arms into the forearms; his moved head, the forearms from the wrist on and everything below his chest kept; 233 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (3 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: nothing: the throw is a grab and a shove with no headbutt. This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: the neck, shoulders and upper arms running into the gripping forearms with clean outlines. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T20:10:00Z",
+      "move": "crouching uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e3b97ba4-720a-4507-9cb2-61460732b036",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ducking wind-up at the foot of an 88x80 canvas, its low forearm and fist taken out; the mask covers the upper arm's way across his chest (x24-85, y36-61), keeping his head, back and legs",
+          "note": "inpaint-source-uppercut-4b-88x80.png and inpaint-mask-uppercut-4b.png in the pack's candidates (make-inpaint-4.py)."
+        },
+        {
+          "candidate": "44eb451d-7de7-44e7-83a7-42f844f409b6#0",
+          "usage": "the bent arm of round three's uppercut (x74-91, y16-49: forearm upright, fist above the head), laid at x66, y8, clear of his face, and kept outside the mask",
+          "note": "It is at his ROM scale: his ROM head fitted that candidate pixel for pixel."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in bands, dark brown outline, exactly the colours and drawing of the rest of the sprite. The crouching boxer's punching arm joined in one piece: from his rounded shoulder in its short red T-shirt sleeve, his thick brown-skinned upper arm runs forward across the front of his chest to the elbow at the bottom of the upright forearm already drawn beside his face, whose taped fist drives up above his head. His red T-shirt over his chest behind the arm, and his baggy blue jeans over his bent thighs below. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_uppercut",
+          "crc32": "878288f8",
+          "touch_ups": [
+            "his ducking wind-up (0x15aa, his crouch's scale) with its low forearm taken out, the bent arm of round three's uppercut (44eb451d, candidate 0, x74-91, y16-49) laid upright beside his face, and only the upper arm joining them inpainted (x24-85, y36-61, his head, back and legs kept). The first try this round (93ffd720, the near arm inpainted whole) drew no arm; 79 pixels the inpainting drew off his palette set to his nearest pens",
+            "single pixels inside the mask that no neighbour shares, set to the pen around them (16 pixels), so the inpainted shading runs in bands as his ROM shading does"
+          ],
+          "note": "Rejected (the maintainer, 2026-11-06, round four). At the review limit the maintainer chose a ROM stand-in: his ROM ducking punch (0x15aa, 0x16a0). This file is no longer in the recipe."
+        }
+      ],
+      "note": "Kept: his ducking wind-up at his crouch's scale, the arm across his chest into the upright forearm, the fist above his head. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-07T00:20:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "04fd3456-8382-433e-bdc9-dae903bfe1d6",
+      "cost": 10,
+      "canvas": [
+        104,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1608",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, short black hair, red T-shirt, taped wrists, blue jeans, sneakers, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: the length, thickness and shading of his extended punching arm, taped wrist and fist",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "fighter": "ryu",
+          "usage": "posing guide only (another fighter): a punch thrown in the air with the knees tucked",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping straight punch, in the air: his body, head and tucked legs exactly as in the pose base, both knees drawn up under him; his front arm driven straight out to the right at shoulder height, fully extended from the shoulder, as long, thick and muscular as the arm in his own jab, the taped fist clenched at the end; his other fist up at his chin. The same scale as the pose base: about 95 pixels wide and 64 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: all four punched well, but drew him at about 85% of his size (his head 12 to 13 pixels wide against his 15), as AP15 found. The jump punch was rebuilt from his ROM jab and tuck instead."
+    },
+    {
+      "at": "2026-11-07T00:21:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "ce63f015-7afb-4e09-a54f-d73c7d5b83f8",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1608",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, short black hair, red T-shirt, taped wrists, blue jeans, sneakers, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x14e0",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his own straight punch: his turned red back and how his extended rear arm, taped wrist and fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "fighter": "ryu",
+          "usage": "posing guide only (another fighter): a punch thrown in the air with the back turned and the knees tucked",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping diagonal punch, in the air: both knees tucked up under him as in the pose base; his shoulders turned so his broad red back half faces us, as in his own straight punch, and his rear arm driven down and forward to the lower right at a 45 degree angle, fully extended from the shoulder, as long, thick and muscular as the arm in his own straight, the taped fist clenched below the level of his knees; his other fist tucked at his chest. The same scale as the pose base: about 88 pixels wide and 76 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "jump_punch_down",
+          "crc32": "044716ea",
+          "touch_ups": [
+            "his ROM head, his straight's turned head (0x14e0, rows 29-39), laid over the generated one at (47, 20) of the candidate's canvas padded 8 rows on top; 8 generated hair and skin pixels round it cleared; 25 pixels changed",
+            "80 single pixels outside the head set to the pen around them (make_air.py)"
+          ]
+        }
+      ],
+      "note": "Kept 2: his back half turned, the arm driven down and forward at his straight's thickness, his knees tucked, at about 96% of his size by the shirt's area; chosen over the later call's (8b32b080), whose shoes were drawn dark from below. 0 and 1 drove the arm more steeply, 3 less."
+    },
+    {
+      "at": "2026-11-07T00:22:00Z",
+      "move": "jumping hook",
+      "tool": "PixelLab create_image_pro",
+      "job": "8c2888cf-ef50-40d9-b250-2c7085db58b4",
+      "cost": 10,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1608",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, short black hair, red T-shirt, taped wrists, blue jeans, sneakers, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own hook punch: his turned red back and his bent hooking arm, elbow out at shoulder height, fist turned in",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping hook punch, in the air: both knees tucked up under him as in the pose base; his shoulders swung round so his broad red back half faces us, as in his own hook punch, and his punching arm bent at a right angle at the elbow, swung round horizontally at head height, the upper arm level with his shoulder and the forearm turned in, the taped fist clenched at the front at the height of his head. His other fist tucked at his chest. The same scale as the pose base: about 88 pixels wide and 68 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: smaller than his size, as the jump punch's call. The jump hook was rebuilt from his ROM hook and tuck instead."
+    },
+    {
+      "at": "2026-11-07T00:26:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "75fd9a7e-52e9-4338-8423-c111aa9940b0",
+      "cost": 10,
+      "canvas": [
+        120,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1608",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, short black hair, red T-shirt, taped wrists, blue jeans, sneakers, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab, at the exact pixel scale to draw him: the size of his head, shoulders and chest, and the length, thickness and shading of his extended punching arm, taped wrist and fist",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "fighter": "ryu",
+          "usage": "posing guide only (another fighter): a punch thrown in the air with the knees tucked",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping straight punch, in the air: his head, shoulders, chest and arms at exactly the size of his own jab, his head 15 pixels wide and his shoulders 45 pixels across; both knees drawn up under him as in the pose base; his front arm driven straight out to the right at shoulder height, fully extended from the shoulder, as long, thick and muscular as the arm in his own jab, the taped fist clenched at the end; his other fist up at his chin. The figure fills the canvas: about 110 pixels wide and 80 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: a larger canvas and sizes in the prompt drew him smaller still. The figure followed the tuck reference's 64-pixel height, so the later calls give a pose base already at his size."
+    },
+    {
+      "at": "2026-11-07T00:40:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "8b32b080-797b-4479-8e7d-049b95658980",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x14e0",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "pose base, identity and exact pixel scale: his turned body, head and tucked legs in the air, the size to draw him at",
+          "note": "Not the ROM pose alone: his straight's turned upper body (0x14e0, rows 29-71) on his tuck's legs (0x1608, rows 30 on), every pixel his ROM's (scratch ref-js.png, 92x72)."
+        },
+        {
+          "rom": {
+            "code": "0x14e0",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his own straight punch: how his extended punching arm, taped wrist and fist are drawn, and their length and thickness",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "fighter": "ryu",
+          "usage": "posing guide only (another fighter): a punch thrown in the air with the back turned and the knees tucked",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping diagonal punch, in the air: his body, head and tucked legs exactly as in the pose base and at exactly its size, his broad red back half turned to us, his head 15 pixels wide; his punching arm driven down and forward to the lower right at a 45 degree angle, fully extended from the shoulder in one straight line, as long, thick and muscular as the arm in his own straight punch, the taped fist clenched below the level of his knees; his other arm tucked in at his side. About 88 pixels wide and 84 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: good punches at about 93% of his size, but the soles of his shoes drawn dark brown and grey from below; the first call's candidate 2 was kept instead."
+    },
+    {
+      "at": "2026-11-07T00:41:00Z",
+      "move": "jumping low jab",
+      "tool": "PixelLab create_image_pro",
+      "job": "e20b5690-43e8-43dc-9296-f381a7f8d573",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his body, head and tucked legs in the air, the size to draw him at",
+          "note": "Not the ROM pose alone: the jump punch's rebuilt pose before its waist was inpainted, his jab's upper body (0x1470, rows 9-53) on his tuck's legs (0x1608, rows 30 on), every pixel his ROM's (scratch ref-jp.png, 90x75)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his extended punching arm, taped wrist and fist are drawn, and their length and thickness",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping downward jab, in the air: his body, head and tucked legs exactly as in the pose base and at exactly its size, his head 15 pixels wide, his chest facing us; leaning forward, his front arm jabbed steeply downward and forward toward the lower right, about 60 degrees below level, fully extended from the shoulder in one straight line, as long, thick and muscular as the arm in his own jab, the taped fist clenched below his front knee; his other fist up at his chin. About 80 pixels wide and 84 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_jab_down",
+          "crc32": "f0df1cfd",
+          "touch_ups": [
+            "his ROM head, his jab's (0x1470, rows 9-21), laid over the generated one at (46, 6) of the candidate's canvas padded 8 rows on top; 13 generated hair and skin pixels round it cleared; 48 pixels changed",
+            "68 single pixels outside the head set to the pen around them (make_air.py)"
+          ]
+        }
+      ],
+      "note": "Kept 0: facing us, the lead arm jabbed down and forward from the shoulder at about 45 degrees, his rear fist at his chin, at his size (the shirt's and skin's areas match the pose base's). 1 was a near twin; 2 stood too upright; 3 dropped the arm straight down."
+    },
+    {
+      "at": "2026-11-07T00:42:00Z",
+      "move": "jumping hammer",
+      "tool": "PixelLab create_image_pro",
+      "job": "5047c15b-ab1e-4fef-bb70-06e4e03f525b",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his body, head and tucked legs in the air, the size to draw him at",
+          "note": "Not the ROM pose alone: the jump punch's rebuilt pose before its waist was inpainted, his jab's upper body (0x1470, rows 9-53) on his tuck's legs (0x1608, rows 30 on), every pixel his ROM's (scratch ref-jp.png, 90x75)."
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his extended arms, taped wrists and fists are drawn, and their length and thickness",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Jumping two-fisted hammer blow, in the air: his body, head and tucked legs as in the pose base and at exactly its size, his head 15 pixels wide; hunched forward over his knees, both arms swung down together in front of him, straight from the shoulders, both taped fists locked together into one double fist, clubbing down and forward to the lower right at the height of his knees. About 84 pixels wide and 80 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept. 0 raised both fists over his head (a wind-up), cut off by the canvas top; 1 held his fists at his chin; 2 and 3 pushed both arms straight out, his head bowed behind them, so no ROM head fitted."
+    },
+    {
+      "at": "2026-11-07T00:43:00Z",
+      "move": "iron upper",
+      "tool": "PixelLab create_image_pro",
+      "job": "0d5d8083-d3f3-46f9-9b95-fa1fcc00b11f",
+      "cost": 10,
+      "canvas": [
+        80,
+        104
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1409",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his bent-kneed lean before a punch, the size to draw him at",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x15aa",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the crouch he springs up from, his fist drawn back low",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "where the uppercut ends: his arm and fist raised above his head, his feet off the ground; how his raised arm is drawn",
+          "note": "Not the ROM pose alone: the Iron Upper's rebuilt peak, his win pose's upper body (0x166c, rows 8-74) on the step pose's belt and legs (0x1406, rows 43 on), every pixel his ROM's (scratch ref-peak.png, 46x136)."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. A rising uppercut, springing up out of a crouch: his knees still bent and straightening, his rear heel lifting off the ground; his whole body driving upward and forward; his rear arm bent at the elbow and driving straight up in front of his chest, the taped fist rising past his chin toward the opponent's jaw; his other fist low at his side. Exactly the size of the references: his head 15 pixels wide, his shoulders 45 pixels across, about 70 pixels wide and 96 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "iron_rise",
+          "crc32": "e6539eb5",
+          "touch_ups": [
+            "his ROM head, his jab's (0x1470, rows 9-21), laid over the generated one at (41, 20) of the candidate's canvas padded 8 rows on top; 8 generated hair and skin pixels round it cleared; 64 pixels changed; his rising fist (x54-67, y24-38) keeps the generated pixels",
+            "58 single pixels outside the head set to the pen around them (make_air.py)"
+          ],
+          "note": "Not used: laid beside his stance and the peak before review, it stood about 90% of his size, his ROM head too big for it, so the Iron Upper rises through his ROM hook follow-through (0x14e7) instead. The file is kept as candidates/mike/iron_rise-unused.png."
+        }
+      ],
+      "note": "Kept 2: his shoulders turning, his rear arm bent and driving up, the fist rising past his face, his knees bent and his rear heel lifting. 0 stayed in the crouch; 1 had not begun the punch; 3 already held the fist above his head, the peak's own pose. About 92% of his size by the hair's width. Then replaced before review; see the kept candidate's note."
+    },
+    {
+      "at": "2026-11-07T00:44:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0530702d-1795-4102-b6fd-c1dfc59e5c4c",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his jab's upper body (0x1470, rows 9-53, its jeans below the belt left off) laid on his tuck's legs (0x1608, rows 30 on), its belt on the tuck's, on a 96x80 canvas; the mask covers the band where they meet (x10-46, y39-50)",
+          "note": "inpaint-source-jump-jp-96x80.png and inpaint-mask-jump-jp.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist in mid-air: the bottom of his red T-shirt tucked into his brown belt, the belt running across his waist with its small white buckle, and below it the top of his baggy blue jeans, rounded over his seat behind him and flowing smoothly into his tucked thighs, one body from chest to knees. Nothing else.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "62f30233",
+          "touch_ups": [
+            "outside the mask (x10-46, y39-50) every pixel is the ROM source's; inside, 137 pixels inpainted, taken to his nearest pens; 10 single pixels inside the mask set to the pen around them (make_air.py)"
+          ],
+          "note": "Round one, rejected by the maintainer (2026-11-07): the waist join was wrong; the inpainting redrew the top of the jeans and the crotch. Round two keeps the tuck's trousers untouched."
+        }
+      ],
+      "note": "Kept: the hem, belt and buckle across his waist and the top of his jeans rounded over his seat into his tucked thighs, where the pieced pose had a flat-topped block of jeans. Inpainting takes no palette: these are the pens its pixels were reduced to."
+    },
+    {
+      "at": "2026-11-07T00:44:30Z",
+      "move": "jumping hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "24a45a36-1940-4bd3-95a7-2810d1e1a1a5",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his hook's strike (0x1560, rows 13-55, its jeans below the belt left off) laid on his tuck's legs (0x1608, rows 30 on), its belt on the tuck's, on a 96x80 canvas; the mask covers the band where they meet (x10-50, y39-51)",
+          "note": "inpaint-source-jump-jh-96x80.png and inpaint-mask-jump-jh.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist in mid-air, his back turned to us: the bottom of his red T-shirt tucked into his brown belt, the belt running across the small of his back, and below it the top of his baggy blue jeans, rounded over his seat and flowing smoothly into his tucked thighs, one body from back to knees. Nothing else.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_hook",
+          "crc32": "b9fa5b29",
+          "touch_ups": [
+            "outside the mask (x10-50, y39-51) every pixel is the ROM source's; inside, 277 pixels inpainted, taken to his nearest pens; 6 single pixels inside the mask set to the pen around them (make_air.py)"
+          ],
+          "note": "Round one, rejected by the maintainer (2026-11-07): the waist join was wrong; the inpainting redrew the top of the jeans and the crotch, so the trousers looked turned away from the player. Round two keeps the tuck's trousers untouched."
+        }
+      ],
+      "note": "Kept: the belt across the small of his back with its loops, and the jeans rounded over his seat into his tucked thighs."
+    },
+    {
+      "at": "2026-11-07T01:00:00Z",
+      "move": "jumping hammer",
+      "tool": "PixelLab create_image_pro",
+      "job": "f68b5407-a580-4c25-9c30-b48af1a222d6",
+      "cost": 10,
+      "canvas": [
+        80,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his body, head and tucked legs in the air, the size to draw him at",
+          "note": "Not the ROM pose alone: the jump punch's rebuilt pose before its waist was inpainted, his jab's upper body (0x1470, rows 9-53) on his tuck's legs (0x1608, rows 30 on), every pixel his ROM's (scratch ref-jp.png, 90x75)."
+        },
+        {
+          "candidate": "5047c15b-ab1e-4fef-bb70-06e4e03f525b#0",
+          "usage": "posing guide: both arms raised over his head with the fists together (here the fists are cut off at the top; draw them whole)",
+          "note": ""
+        },
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "his own raised arm: how his arm, taped wrist and fist are drawn above his head",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. Winding up a two-fisted hammer blow in the air: his knees tucked up under him, his body leaning back a little, both arms raised high above his head, bent slightly at the elbows, both taped fists locked together into one double fist held up behind his head, ready to club down. His whole double fist and both arms fully inside the picture with space above them. His head 15 pixels wide, at exactly the size of the pose base, about 60 pixels wide and 96 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: a hammer wind-up, both fists locked above his head. All four drew him at about 85% of his size, so his ROM head (13 rows) would not sit between the raised arms without covering them. The hammer is one strike pose, as his other jumping attacks are."
+    },
+    {
+      "at": "2026-11-07T01:05:00Z",
+      "move": "jumping hammer",
+      "tool": "PixelLab create_image_pro",
+      "job": "70fa07b5-ef56-4141-bf34-1622a3f552f6",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his body, head and tucked legs in the air, the size to draw him at",
+          "note": "Not the ROM pose alone: the jump punch's rebuilt pose before its waist was inpainted, his jab's upper body (0x1470, rows 9-53) on his tuck's legs (0x1608, rows 30 on), every pixel his ROM's (scratch ref-jp.png, 90x75)."
+        },
+        {
+          "candidate": "f68b5407-a580-4c25-9c30-b48af1a222d6#2",
+          "usage": "the wind-up before this strike: the same figure with both fists locked together above his head",
+          "note": ""
+        },
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his extended arms, taped wrists and fists are drawn, and their length and thickness",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right. The two-fisted hammer blow, the strike, in the air: the same figure as the wind-up reference, after swinging both arms down over the top. His knees tucked up under him, his chest leaning forward, his head up and looking ahead to the right; both arms straight from the shoulders, swung down and forward together at 45 degrees toward the lower right, both taped fists locked into one double fist out in front of his knees. Both arms clearly joined at his shoulders. His head 15 pixels wide, about 80 pixels wide and 80 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_hammer",
+          "crc32": "e94495f5",
+          "touch_ups": [
+            "his ROM head, his jab's (0x1470, rows 9-21), laid over the generated one at (40, 7) of the candidate's canvas padded 8 rows on top; 3 generated hair and skin pixels round it cleared; 64 pixels changed",
+            "39 single pixels outside the head set to the pen around them (make_air.py)"
+          ]
+        }
+      ],
+      "note": "Kept 0: both arms swung down and forward from the shoulders, his taped fists side by side before his knees, his head up. 1 and 3 held the fists apart; 2 hunched lower. About 90% of his size by the shirt's area; the fists touch but are not drawn interlocked."
+    },
+    {
+      "at": "2026-11-07T01:38:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c27d80df-2dc6-4256-9ccb-863abc934ae3",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his jab's upper body (0x1470, rows 9-53, its own jeans left off) set so its belt sits on the tuck's waist, on a 96x84 canvas; the mask covers only the shirt hem and belt band between them (x17-53, y40-48), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jp-2-96x84.png and inpaint-mask-jump-jp-2.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist: the bottom hem of his red T-shirt, tucked into his brown belt with its small white buckle, the belt lying straight across the top of his blue jeans just below it. Only the shirt hem and the belt; the jeans below stay exactly as drawn.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "770e222a",
+          "touch_ups": [
+            "outside the mask every pixel is the source's: all 1,293 of the tuck's trouser and shoe pixels are its ROM pixels, checked; inside, the hem and belt inpainted, taken to his nearest pens; 1 single pixel inside the mask set to the pen around it"
+          ],
+          "note": "Round two, rejected by the maintainer (2026-11-07): it still looked pieced, the torso set 7 pixels right of the trousers' top. Round three realigns it."
+        }
+      ],
+      "note": "Round two (the maintainer, 2026-11-07: the first round's waist join was wrong; keep the tuck's own trousers and crotch). Kept: the hem tucked into a belt with its buckle, sitting on the tuck's jeans."
+    },
+    {
+      "at": "2026-11-07T01:38:30Z",
+      "move": "jumping hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fcadfa61-f97e-4411-9e51-eaf17ab2e6fa",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his hook's turned upper body (0x1560, rows 13-55, its own jeans left off) set so its belt sits on the tuck's waist, on a 96x84 canvas; the mask covers only the shirt hem and belt band between them (x17-51, y41-49), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jh-2-96x84.png and inpaint-mask-jump-jh-2.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist, his back turned to us: the bottom hem of his red T-shirt, tucked into his brown belt, the belt lying straight across the small of his back along the top of his blue jeans just below it. Only the shirt hem and the belt; the jeans below stay exactly as drawn.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_hook",
+          "crc32": "069ac7f1",
+          "touch_ups": [
+            "outside the mask every pixel is the source's: all 1,293 of the tuck's trouser and shoe pixels are its ROM pixels, checked; inside, the hem and belt inpainted, taken to his nearest pens; 5 single pixels inside the mask set to the pen around them",
+            "2 grey pixels in the belt (x40, y43-44) set to the belt's brown"
+          ],
+          "note": "Round two, rejected by the maintainer (2026-11-07): it still looked pieced, the torso set 7 pixels right of the trousers' top. Round three realigns it."
+        }
+      ],
+      "note": "Round two (the maintainer, 2026-11-07: the first round's trousers looked turned away from the player, and the crotch need not change). Kept: the hem and belt across his back, his legs the tuck's, facing the player."
+    },
+    {
+      "at": "2026-11-07T01:39:00Z",
+      "move": "iron upper",
+      "tool": "PixelLab create_image_pro",
+      "job": "8f11d3ac-8dfa-4a98-b3fe-2a96c22b57b7",
+      "cost": 10,
+      "canvas": [
+        80,
+        144
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x14e7",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base, identity and exact pixel scale: his turned back, turned head and his striking arm cocked up on the right, the wind-up this rises from, the size to draw him at",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x166c",
+            "large": true,
+            "rows": 4,
+            "cols": 1
+          },
+          "usage": "his own raised arm: how his arm, taped wrist and fist are drawn straight up above his head",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1406",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "his legs leaving the ground: heels up, toes pointing down",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1400",
+            "large": false,
+            "rows": 6,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Mike: a big, heavily muscled American boxer with short black hair, brown skin, a short-sleeved red T-shirt, white tape round his wrists, bare fists, baggy blue jeans with a brown belt, white and red sneakers. Facing right, toward the opponent on the right. The top of a rising uppercut, leaping off the ground: his broad red back turned toward us exactly as in the pose base, his head turned to the right as in the pose base; his striking arm, on the right side of his body toward the opponent, carried on up from the pose base and driven straight up above his head, fully extended from the shoulder, the taped fist high above his head and slightly forward to the right; his other arm low and bent at his side. His body stretched upward, both feet off the ground, his heels raised and toes pointing down. Exactly the size of the pose base: his head 15 pixels wide, his back 45 pixels across, about 64 pixels wide and 136 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept. All four turned his back with the arm straight up and his feet off the ground, but at about 88 to 93% of his size; the peak was inpainted on his ROM follow-through instead, to keep his scale exactly."
+    },
+    {
+      "at": "2026-11-07T01:45:00Z",
+      "move": "iron upper",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a1974dcc-cff2-404a-91cc-52adc1383598",
+      "cost": 6,
+      "canvas": [
+        80,
+        136
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x14e7",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his hook's follow-through (0x14e7) at canvas (-12, -4), its turned back, rear arm and turned head kept; the mask covers the striking arm's forearm and fist and the space above (x60 on, y0-32), the outer elbow (x68 on, y33-48), room above for the fist (x52 on, y0-23) and everything below his belt (y67 on)",
+          "note": "inpaint-source-iron-peak-80x136.png and inpaint-mask-iron-peak.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours, size and drawing of the rest of the sprite, no stray pixels. Mike the boxer seen from behind, his red T-shirted back to us, leaping up at the top of a rising uppercut toward the right. His striking arm, on the right of his body, rises out of his red short sleeve at the right shoulder and drives straight up, nearly fully extended, a thick brown muscular arm as wide as his other arm, the white-taped fist clenched high above his head and a little forward to the right. Below his belt, his baggy blue jeans seen from behind with back pockets, his legs hanging below him off the ground, knees slightly bent, heels raised and toes pointing down, white and red sneakers. One body, the same size as his back and head.",
+      "candidates": 1,
+      "kept": [],
+      "note": "None kept: the arm came thin out of a leftover stub of red sleeve, and the jeans dark."
+    },
+    {
+      "at": "2026-11-07T01:49:00Z",
+      "move": "iron upper",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e031b402-18f1-4eda-ae9b-5f82451a0738",
+      "cost": 6,
+      "canvas": [
+        80,
+        136
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x14e7",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his hook's follow-through (0x14e7) at canvas (-12, -4), its turned back, rear arm and turned head kept; the mask covers the whole striking arm from the shoulder, its sleeve included (x58 on, y0-48), room above for the fist (x50 on, y0-23) and everything below his belt (y67 on)",
+          "note": "inpaint-source-iron-peak-2-80x136.png and inpaint-mask-iron-peak-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours, size and drawing of the rest of the sprite, no stray pixels. Mike the boxer seen from behind, his red T-shirted back to us, leaping up at the top of a rising uppercut toward the right. From his right shoulder, his short red T-shirt sleeve, and out of it his striking arm driven straight up, nearly fully extended, a thick brown muscular arm as thick as his shoulder and his other arm, shaded in the same skin tones, the white-taped fist clenched high above his head and a little forward to the right. Below his belt, his baggy jeans seen from behind in the same light blue as the jeans in the rest of the sprite, with back pockets, his legs hanging below him off the ground, knees slightly bent, heels raised and toes pointing down, white and red sneakers. One body, the same size as his back and head.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Its arm kept: it rises cleanly from the shoulder, as thick as his other arm, the fist high above his head. Its legs were short and its shoes brown, so everything below the belt was inpainted again on this picture (8278babb)."
+    },
+    {
+      "at": "2026-11-07T01:53:00Z",
+      "move": "iron upper",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "8278babb-3473-43be-91b5-9c1f42f64a89",
+      "cost": 6,
+      "canvas": [
+        80,
+        136
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "candidate": "e031b402-18f1-4eda-ae9b-5f82451a0738#0",
+          "usage": "the picture inpainted: the previous call's peak, its ROM back and head and inpainted arm kept; the mask covers everything below his belt (y67 on)",
+          "note": "inpaint-source-iron-peak-3-80x136.png and inpaint-mask-iron-peak-3.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours, size and drawing of the rest of the sprite, no stray pixels. Mike the boxer seen from behind, leaping off the ground: below his belt, his baggy light blue jeans seen from behind, with two back pockets, as wide at the hips as his belt; two long legs hanging straight down below him, about 60 pixels long from belt to soles, knees only slightly bent, one foot a little behind the other, heels raised and toes pointing down; white sneakers with red stripes and grey soles, the white the same as his wrist tape. Nothing else.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "iron_peak",
+          "crc32": "01e83726",
+          "touch_ups": [
+            "the inpainting's off-palette blues in the legs (708 pixels) taken to his jeans pen of the nearest lightness, not his grey (peak2.py)",
+            "his ROM sneakers laid on the cuffs, the generated shoes cleared first: the left foot from his take-off step (0x1406, x3-14, y97-111) at (24, 101), the right (x25-40, y97-111) at (36, 113)",
+            "his ROM turned head (0x14e7, rows 29-39) laid back exactly; 4 pixels at its right edge, inside the previous call's mask, had changed",
+            "17 single pixels in the inpainted arm and legs set to the pen around them; the shirt's right edge (10 pixels, y36-51) given his black outline, two of them stray grey and white"
+          ],
+          "note": ""
+        }
+      ],
+      "note": "Kept: legs of his length hanging below him, heels up, at his scale above the belt, every pixel of his back, rear arm and head his ROM follow-through's."
+    },
+    {
+      "at": "2026-11-07T02:08:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "229e9c9e-d244-473e-8e56-00bb818abba0",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his jab's upper body (0x1470, rows 9-53, its own jeans left off) at (8, -8), its left side over the seat's outer edge, on a 96x84 canvas; the mask covers only the hem, belt and waistband band (x11-41, y41-47), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jp-3-96x84.png and inpaint-mask-jump-jp-3.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist, one body: the bottom hem of his red T-shirt tucked into his brown belt with its small white buckle at the front, the belt running straight across his waist from his left side to his right side, its ends meeting the outer edges of his jeans below, and the waistband of his blue jeans just under it, the jeans below unchanged.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Round three, not kept: the mask stopped a row short, leaving a six-pixel hole where the tuck's own buckle had been (y48), so it was inpainted again with the mask a row lower."
+    },
+    {
+      "at": "2026-11-07T02:08:30Z",
+      "move": "jumping hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "59747348-bdfe-41bc-965e-145924653af4",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his hook's turned upper body (0x1560, rows 13-55, its own jeans left off) at (-10, -10), its sides over the trousers' top, on a 96x84 canvas; the mask covers only the hem, belt and waistband band (x11-41, y40-47), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jh-3-96x84.png and inpaint-mask-jump-jh-3.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist seen from behind, one body: the bottom hem of his red T-shirt tucked into his brown belt, the belt running straight across the small of his back from side to side, its ends meeting the outer edges of his jeans below, and the waistband of his blue jeans just under it, the jeans below unchanged.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Round three, not kept: the same hole at y48 as the jump punch's call."
+    },
+    {
+      "at": "2026-11-07T02:14:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3f1272b3-ead3-457f-9201-6abcea7a22e2",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1470",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his jab's upper body (0x1470, rows 9-53, its own jeans left off) at (8, -8), its left side over the seat's outer edge, on a 96x84 canvas; the mask covers only the hem, belt and waistband band (x11-41, y41-48), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jp-3b-96x84.png and inpaint-mask-jump-jp-3b.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist, one body: the bottom hem of his red T-shirt tucked into his brown belt with its small white buckle at the front, the belt running straight across his waist from his left side to his right side, its ends meeting the outer edges of his jeans below, and the blue denim waistband and fly of his jeans just under it, joining the jeans below.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "2440ac84",
+          "touch_ups": [
+            "outside the mask every pixel is the source's: all 1,293 of the tuck's trouser and shoe pixels are its ROM pixels, checked; inside, the hem, belt, buckle and waistband inpainted, taken to his nearest pens; 3 single pixels inside the mask set to the pen around them"
+          ],
+          "note": ""
+        }
+      ],
+      "note": "Round three (the maintainer, 2026-11-07: still looked pieced; the join misaligned). The torso moved 7 pixels left and 2 up, so its sides run into the trousers' top, checked over his tuck and the approved diagonal punch. Kept: the hem tucked into a belt across the whole waist, its ends at the jeans' outer edges."
+    },
+    {
+      "at": "2026-11-07T02:14:30Z",
+      "move": "jumping hook",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "800658a4-c5a7-4e30-8395-d0b50e52914b",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#775500",
+        "#996655",
+        "#bb8877",
+        "#cc9988",
+        "#bbbbbb",
+        "#777777",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#0099bb",
+        "#007799",
+        "#005577",
+        "#004455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1560",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his top-of-jump tuck's trousers, crotch and shoes (0x1608, its jeans from row 30 and everything from row 44), untouched, with his hook's turned upper body (0x1560, rows 13-55, its own jeans left off) at (-10, -10), its sides over the trousers' top, on a 96x84 canvas; the mask covers only the hem, belt and waistband band (x11-41, y40-48), never a tuck trouser pixel",
+          "note": "inpaint-source-jump-jh-3b-96x84.png and inpaint-mask-jump-jh-3b.png in the pack's candidates; the source is all his ROM pixels."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Mike the boxer's waist seen from behind, one body: the bottom hem of his red T-shirt tucked into his brown belt, the belt running straight across the small of his back from side to side, its ends meeting the outer edges of his jeans below, and the blue denim waistband of his jeans just under it, joining the jeans below.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_hook",
+          "crc32": "ea6b2333",
+          "touch_ups": [
+            "outside the mask every pixel is the source's: all 1,293 of the tuck's trouser and shoe pixels are its ROM pixels, checked; inside, the hem, belt and waistband inpainted, taken to his nearest pens"
+          ],
+          "note": ""
+        }
+      ],
+      "note": "Round three (the maintainer, 2026-11-07: still looked pieced; the join misaligned). The torso moved 7 pixels left and 3 up, so its sides run into the trousers' top. Kept: the belt across his back, its ends at the jeans' outer edges."
+    }
+  ],
+  "derived": []
+}

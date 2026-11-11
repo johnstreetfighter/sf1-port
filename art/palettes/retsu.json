@@ -1,0 +1,23 @@
+{
+  "fighter": "retsu",
+  "note": "A saffron monk's robe, the classic Shaolin orange, with cream sleeves, trousers and belt and ochre shading: the maintainer's colours, not colours of his ROM palette. The robe's two dark greens turn to saffron and his pale greys to warm cream and ochre.",
+  "from": 3,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#ee8800",
+    "#883344",
+    "#ffeecc",
+    "#ddbbaa",
+    "#aa8855",
+    "#bb6600",
+    "#888899",
+    "#666677",
+    "#444455"
+  ]
+}

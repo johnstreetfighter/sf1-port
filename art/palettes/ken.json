@@ -1,0 +1,23 @@
+{
+  "fighter": "ken",
+  "note": "A gold gi with his hair, wraps and belt as they are: only the red of his gi changes, to his golds and browns.",
+  "from": 1,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#000000",
+    "#cc9900",
+    "#775500",
+    "#997700",
+    "#cc9900",
+    "#664400",
+    "#775500",
+    "#997700",
+    "#997700"
+  ]
+}

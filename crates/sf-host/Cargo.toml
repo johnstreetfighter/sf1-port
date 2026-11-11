@@ -1,0 +1,43 @@
+[package]
+name = "sf-host"
+version.workspace = true
+edition.workspace = true
+description = "Host glue shared by the game and the development launcher: window, audio output and input bindings"
+
+[features]
+# Tracker modules in the Jukebox (ST9, #201) through libopenmpt, built from the
+# vendored source in sf-openmpt with the C++ compiler. On by default; turn it
+# off (`--no-default-features`) on a machine with no C++ compiler, and a tracker
+# module then falls back to the native theme with a log line.
+default = ["tracker"]
+tracker = ["dep:sf-openmpt"]
+
+[dependencies]
+sf-openmpt = { path = "../sf-openmpt", optional = true }
+sf-engine = { path = "../sf-engine" }
+sf-video = { path = "../sf-video" }
+sf-audio = { path = "../sf-audio" }
+minifb = "0.28"
+cpal = "0.15.3"
+gilrs = "0.11"
+socket2 = "=0.6.5"
+serde_json = { workspace = true }
+# Optional directory requests run on a bounded worker, with verified TLS.
+ureq = { version = "=3.5.1", default-features = false, features = ["rustls"] }
+# The game's GPU window (ADR-0010). wgpu 30 is the version librashader
+# 0.12.1's wgpu runtime builds on (VO4); winit 0.30 is winit's current
+# stable release and hands wgpu the raw-window-handle 0.6 it takes.
+winit = "0.30.13"
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "wgsl", "vulkan", "dx12"] }
+pollster = "0.3"
+# The looks (VO4, ADR-0010): RetroArch presets through librashader's wgpu
+# runtime only. librashader is MPL-2.0 OR GPL-3.0-only; this crate takes it
+# under MPL-2.0.
+librashader = { version = "0.12.1", default-features = false, features = ["runtime-wgpu", "presets"] }
+
+# The Jukebox's track decoders (ST8): OGG Vorbis, FLAC and WAV, in one pure-Rust
+# library. MPL-2.0, as librashader is taken above.
+symphonia = { version = "0.6.1", default-features = false, features = ["ogg", "vorbis", "flac", "wav", "pcm"] }
+
+[dev-dependencies]
+png = { workspace = true }

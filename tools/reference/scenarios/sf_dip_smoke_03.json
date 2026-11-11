@@ -1,0 +1,36 @@
+{
+  "scenario_id": "sf-dip-smoke-03",
+  "format_version": 1,
+  "description": "DIP smoke scenario 3 (ticket #42, F2): power-on, no inputs, Service Mode = On (readback DSW1=0x5fff, DSW2=0xffff), frames 0..=20 (duration_frames=21), checkpoints on every frame 0..=20 through the first frame end at which the test screen shows (frame 20, after video RAM holds only 0x103c at frames 16..=19).",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {},
+  "duration_frames": 21,
+  "inputs": [],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+    ]
+  }
+}

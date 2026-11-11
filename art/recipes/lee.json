@@ -1,0 +1,274 @@
+{
+  "fighter": "lee",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x1c00", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-48, -96],
+      "note": "His stance (move 0's header pose)."
+    },
+    {
+      "name": "crouch",
+      "parts": [
+        { "rom": { "code": "0x1f00", "large": true, "rows": 1, "cols": 1 }, "crop": [0, 0, 11, 64] },
+        { "rom": { "code": "0x1f00", "large": true, "rows": 1, "cols": 1 }, "crop": [25, 0, 39, 64], "at": [25, 0] },
+        { "rom": { "code": "0x1f00", "large": true, "rows": 1, "cols": 1 }, "crop": [11, 18, 14, 46], "at": [11, 18] },
+        { "rom": { "code": "0x1f00", "large": true, "rows": 1, "cols": 1 }, "crop": [11, 0, 14, 18], "mirror": true, "at": [11, 0] }
+      ],
+      "anchor": [-36, -64],
+      "note": "His ROM moves have no crouch (moves 5 and 8 are empty). The squat his sweep ends on (0x1f00, stream 0x0fc8e): low on both knees, one hand on the floor between them, his near fist raised before him. In the ROM his head is turned back over his shoulder from the spin; here his head (x11-24, y0-17) is mirrored in place so he looks at the opponent, every pixel his own, and his pigtail trails behind it."
+    },
+    {
+      "name": "crouching_block",
+      "pack": { "crc32": "a383bc8e" },
+      "anchor": [-36, -66],
+      "note": "His crouch with the raised forearm and fist of his standing block (0x1f40) stood on its elbow in place of the guard fist, as Ryu's crouching block raises a forearm; only the elbow, the shoulder and the old fist's place are inpainted. His head, knees and floor hand are the crouch's, pixel for pixel."
+    },
+    {
+      "name": "crouching_hit",
+      "pack": { "crc32": "bef9f2ae" },
+      "anchor": [-40, -64],
+      "note": "His ROM reactions have no crouching hit. The hunched upper body of his hit reaction (0x1fa0, streams 0x070c6 and 0x07130), head jerked down, mouth open and both hands drawn in at his chest, laid on the crouch's knees and lined up by the frog buttons; only the band where they meet, and the floor hand's place between the knees, are inpainted. Head and hands are his ROM pixels."
+    },
+    {
+      "name": "crouching_punch",
+      "pack": { "crc32": "bd34e3ed" },
+      "anchor": [-36, -64],
+      "note": "His crouch with the arm of his straight punch (0x1cc4, stream 0x0f3d6) driven out from its shoulder in place of the guard arm: sleeve, forearm and fist his ROM pixels at full reach. Only the shoulder join and the space the guard arm left are inpainted."
+    },
+    {
+      "name": "crouching_kick",
+      "pack": { "crc32": "250d800b" },
+      "anchor": [-36, -64],
+      "note": "His crouch with the outstretched leg of his sweep (0x1f04) kicked out low from its right hip in place of the right knee, facing the opponent; trouser leg and shoe his ROM pixels. Only the hip and the space under the jacket's hem are inpainted."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x1c66", "large": true, "rows": 2, "cols": 3 },
+      "anchor": [-64, -96],
+      "note": "The throw's grab: his palm strike (stream 0x0f366), his near arm reaching out at head height to seize the opponent's arm, the other at his chest."
+    },
+    {
+      "name": "throw_turn",
+      "rom": { "code": "0x1dec", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-44, -96],
+      "note": "Turning under him: the spin of his sweep (stream 0x0fc8e), low on one knee with his back to us and his arm still reaching out to the opponent."
+    },
+    {
+      "name": "throw_heave",
+      "rom": { "code": "0x1f04", "large": true, "rows": 1, "cols": 2 },
+      "anchor": [-36, -64],
+      "note": "Throwing him over his back: his sweep's strike, bent low with his back to us, both hands pulled down before him, one leg stretched out along the floor."
+    },
+    {
+      "name": "throw_recover",
+      "rom": { "code": "0x1f00", "large": true, "rows": 1, "cols": 1 },
+      "anchor": [-36, -64],
+      "note": "The squat his sweep ends on, as the ROM draws it: still low, his head turned back over his shoulder toward where the opponent landed; then his stance."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x1f46", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-48, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x0705c), head knocked back, one arm flung up."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x1f5d", "large": false, "rows": 5, "cols": 2 }, "turn": 1 }],
+      "anchor": [-48, -96],
+      "note": "His being-thrown set, lifted: his airborne-hit pose (0x1f5d, streams 0x071da-0x07534), knees drawn up, turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x1f5d", "large": false, "rows": 5, "cols": 2 }, "turn": 2 }],
+      "anchor": [-24, -144],
+      "note": "His being-thrown set, over the top: the same pose turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x1388", "large": false, "rows": 1, "cols": 6 },
+      "anchor": [-56, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x077a2-0x07b12), centred on him so the get-up rises where he lies."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x1c06", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-44, -96],
+      "note": "Getting up: his sweep's first pose (stream 0x0fc8e), down on one knee, leaning forward with both hands on his front knee, pushing himself up."
+    },
+    {
+      "name": "jump_top",
+      "rom": { "code": "0x1e4c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -144],
+      "note": "The top of every jump of his (streams 0x0ee30, 0x0efb0, 0x0f0f0): tucked, his knees drawn up, his front fist before him and his rear hand at his chest. Shown 48 pixels up, a suggested height mid-jump; SF1+ moves him through his ROM arcs. His new jumping attacks start and end on it."
+    },
+    {
+      "name": "jump_punch",
+      "pack": { "crc32": "cfb42dfa" },
+      "anchor": [-19, -144],
+      "note": "His top-of-jump tuck (0x1e4c) with the arm of his straight punch (0x1cc4, stream 0x0f3d6) driven straight out from its front shoulder at shoulder height, in place of the guard fist: forearm and fist his ROM pixels at full reach, as his approved crouching punch lays the same arm. Only the shoulder join and the guard fist's place are inpainted; his head, rear hand and tucked legs are the tuck's, pixel for pixel."
+    },
+    {
+      "name": "jump_punch_down",
+      "pack": { "crc32": "ea09c173" },
+      "anchor": [-19, -144],
+      "note": "His top-of-jump tuck with the front arm of his flying kick (0x1ec0, stream 0x0f788), whose head lies exactly on the tuck's, in place of the guard fist: the sleeve and fist reaching down and forward past his knees, his ROM pixels. Only the shoulder join and the guard fist's place are inpainted. By hand: the flying kick's leg outline left hanging under the cuff, and a loose fragment inpainted over the knee, removed."
+    },
+    {
+      "name": "jump_kick",
+      "pack": { "crc32": "53c44f02" },
+      "anchor": [-19, -144],
+      "note": "His top-of-jump tuck with the leg of his jumping heavy kick (0x1ea8, stream 0x0faec) kicked straight out at waist height from the front hip, in place of the front knee, shin and foot: trouser leg and shoe his ROM pixels. Only the hip is inpainted; his head, fists and tucked rear knee are the tuck's, pixel for pixel."
+    },
+    {
+      "name": "step",
+      "rom": { "code": "0x1ccc", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The step-in his lunging punch and high kick start with (streams 0x0f4a6, 0x0f678; 16 pixels forward in the high kick): his weight on the front foot, the front fist raised before his face, the rear fist chambered at his hip."
+    },
+    {
+      "name": "zessh_gather",
+      "parts": [
+        { "rom": { "code": "0x1ccc", "large": true, "rows": 2, "cols": 1 }, "crop": [0, 0, 40, 96] },
+        { "rom": { "code": "0x1ccc", "large": true, "rows": 2, "cols": 1 }, "crop": [40, 44, 24, 52], "at": [40, 44] },
+        { "rom": { "code": "0x1ccc", "large": true, "rows": 2, "cols": 1 }, "crop": [4, 25, 18, 28], "mirror": true, "at": [38, 25] }
+      ],
+      "anchor": [-32, -96],
+      "note": "The Zesshouohken's gather, rebuilt from his ROM pixels: his step-in (0x1ccc) with its raised front arm taken away and its rear arm, the fist chambered at the hip, mirrored onto the front side, so both fists are drawn back to his hips. Two tries at inpainting open palms at his hips were not kept (generation ledger)."
+    },
+    {
+      "name": "zessh_strike",
+      "pack": { "crc32": "5ebb906a" },
+      "anchor": [-64, -80],
+      "note": "The Zesshouohken's strike: his lunging punch's strike (0x1d20, stream 0x0f4a6), stepped in on a deep lunge, with his palm strike's open hand (0x1c66) in place of the fist, and the same sleeve's end, forearm and palm laid again lower, out from under it at his chest: both open palms driven forward, one above the other. Only both wrists and the lower arm's root at his chest are inpainted; head, body, near arm, palms and lunge are his ROM pixels."
+    },
+    {
+      "name": "ready",
+      "rom": { "code": "0x1c60", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-48, -96],
+      "note": "The ready pose his attacks start and end on (streams 0x0f366-0x0f678): low in his wide stance, his front fist at his chin and his rear hand open at his chest."
+    },
+    {
+      "name": "side_chamber",
+      "rom": { "code": "0x1d28", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His side kick's chamber (stream 0x0f5c8): turned side-on, the front knee drawn up."
+    },
+    {
+      "name": "side_kick",
+      "rom": { "code": "0x1d80", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-40, -96],
+      "note": "His side kick's strike (stream 0x0f5c8, x-offset 8): leaning back, the front leg driven out and up, the shoe at chest height."
+    },
+    {
+      "name": "high_chamber",
+      "rom": { "code": "0x1d2c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-16, -96],
+      "note": "His high kick's chamber (stream 0x0f678, x-offset 16): turning his back, the knee raised high, his forearms up."
+    },
+    {
+      "name": "high_kick",
+      "rom": { "code": "0x1d86", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-16, -96],
+      "note": "His high kick's strike (stream 0x0f678, x-offset 32): his back half to us, the leg kicked straight up, the shoe above his head."
+    },
+    {
+      "name": "high_follow",
+      "rom": { "code": "0x1de6", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "His high kick's follow-through (stream 0x0f678, x-offset 24): turned round, the leg coming down."
+    },
+    {
+      "name": "high_land",
+      "rom": { "code": "0x1d8c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-40, -96],
+      "note": "His high kick's landing (stream 0x0f678, x-offset -8): facing forward again, the knee still up."
+    },
+    {
+      "name": "high_settle",
+      "rom": { "code": "0x1c60", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-64, -96],
+      "note": "His ready pose as the high kick ends on it (stream 0x0f678, x-offset -16); then his stance."
+    }
+  ],
+  "moves": [
+    {
+      "name": "crouch",
+      "poses": ["stance", "crouch"],
+      "timing": [40, 60],
+      "note": "His crouch, from his stance."
+    },
+    {
+      "name": "crouching block",
+      "poses": ["crouching_block"],
+      "timing": [60],
+      "note": "One pose, as Ryu's crouching block is."
+    },
+    {
+      "name": "crouching hit",
+      "poses": ["crouch", "crouching_hit", "crouch"],
+      "timing": [30, 20, 30],
+      "note": "One pose, as Ryu's crouching hit is, for the crouching entries of his hit table."
+    },
+    {
+      "name": "crouching punch",
+      "poses": ["crouch", "crouching_punch", "crouch"],
+      "timing": [6, 12, 10],
+      "note": "One new pose, a straight punch from the crouch, as his palm strike (stream 0x0f366) strikes in one."
+    },
+    {
+      "name": "crouching kick",
+      "poses": ["crouch", "crouching_kick", "crouch"],
+      "timing": [6, 14, 14],
+      "note": "His crouching light and medium kick: one new pose, a low kick along the floor, as Ryu's crouching kick strikes in one (0x03a0). His sweep (stream 0x0fc8e), a spinning back sweep, stays his crouching heavy kick as a ROM stream."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_turn", "throw_heave", "throw_recover"],
+      "timing": [8, 10, 14, 10],
+      "note": "The kung fu over-the-back throw (AP2): he seizes the opponent's arm, turns under him and throws him over his back; then his stance. All from his ROM poses: his palm strike as the grab, then his sweep's spin, strike and closing squat. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on the floor. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "rising", "crouch", "stance"],
+      "timing": [60, 12, 10, 60],
+      "note": "From lying he gets up onto one knee, pushing off it, comes up through his crouch and rises into his stance."
+    },
+    {
+      "name": "jumping punch",
+      "poses": ["jump_top", "jump_punch", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, from the top of his jump: a straight punch out at shoulder height. One new pose, as his flying kicks strike in one each (0x1ec0, 0x1ea8). His jumps themselves, his flying kick (0x0f788, 0x0f92a, his diagonal jumping kick) and his jumping heavy kick (0x0faec, the leg kicked straight out from an upright body) stay his ROM streams and are not in the catalogue."
+    },
+    {
+      "name": "jumping diagonal punch",
+      "poses": ["jump_top", "jump_punch_down", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, for forward and back jumps: a punch driven down and forward. One new pose."
+    },
+    {
+      "name": "jumping kick",
+      "poses": ["jump_top", "jump_kick", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Light and medium, from the top of his jump: the front leg kicked straight out at waist height, his fists still on guard and his rear knee tucked. One new pose. His heavy jumping kick (0x0faec) kicks the same leg out from an upright, turned body."
+    },
+    {
+      "name": "zesshouohken",
+      "poses": ["stance", "zessh_gather", "zessh_strike", "step", "ready", "stance"],
+      "timing": [4, 8, 16, 4, 4, 10],
+      "note": "Quarter-circle forward and punch (AP2's double-palm strike): he draws both hands back to his hips, steps in on a deep lunge and drives both open palms forward into the opponent's chest, one above the other; then back through his step-in and ready pose to his stance, as his lunging punch (0x0f4a6) recovers. Two new poses, the gather and the strike; AP2 proposed three, and his own lunging punch strikes in one new pose. SF1+ carries him forward into the lunge."
+    },
+    {
+      "name": "double kick",
+      "poses": ["step", "side_chamber", "side_kick", "side_chamber", "step", "high_chamber", "high_kick", "high_follow", "high_land", "high_settle", "stance"],
+      "timing": [3, 3, 10, 3, 3, 3, 10, 3, 3, 3, 10],
+      "note": "Quarter-circle back and kick (AP2's stand-in, nothing new): his ROM side kick (stream 0x0f5c8) straight into his ROM high kick (stream 0x0f678), stepping forward 16 pixels between them as the high kick's step-in does. Every pose is his ROM art, placed at its stream's x-offset; SF1+ moves him."
+    }
+  ]
+}

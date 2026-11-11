@@ -1,0 +1,265 @@
+{
+  "fighter": "joe",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x1700", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His stance (move 1's header pose)."
+    },
+    {
+      "name": "crouch",
+      "pack": { "crc32": "d6e8f2d1" },
+      "anchor": [-33, -68],
+      "note": "His ROM art has no crouch: move 5's stream pointer (0x0e36a) lands inside a frame record, and move 8 is empty. His approved crouching kick with its front leg inpainted, drawn in under him: the knee bent forward, the shin down to his shoe flat on the floor; then his hair inpainted as a smooth, rounded olive-blond crew cut, as his ROM hair is. Everything else is the kick, pixel for pixel. The second round: his ROM duck (0x17c0) was not low enough; the third: the kick's generated hair did not look right; the fourth: a spiky flat-top made him look like Guile, his hair is rounder and smoother; the fifth: the hair looked see-through (user, 2026-11-04). By hand: the inpaintings' off-palette pixels to his nearest pens, and the skin tones mottled into his hair to its own olive and pale yellow, as his ROM hair is drawn. His rear shoe where the kick's is."
+    },
+    {
+      "name": "crouching_hit",
+      "pack": { "crc32": "2ea97252" },
+      "anchor": [-33, -80],
+      "note": "Generated whole on his duck (0x17c0) and his standing hit (0x18e0), posed as Ryu's crouching hit (0x0548): his knees bent as in his duck, his head snapped back, mouth open, arms thrown wide. His ROM reactions have no crouching hit. His rear shoe where his crouch's is."
+    },
+    {
+      "name": "crouching_kick",
+      "pack": { "crc32": "69370d7c" },
+      "anchor": [-33, -67],
+      "note": "Generated whole with his own low kick's leg (0x1820), posed as Ryu's crouching kick (0x03a0): squatting on his folded rear leg, his fists up guarding his face, his front leg straight out along the floor. His rear shoe where his crouch's is."
+    },
+    {
+      "name": "sweep",
+      "pack": { "crc32": "8cd45f00" },
+      "anchor": [-50, -68],
+      "note": "Generated whole with his own low kick's leg, posed as Ryu's sweep at full reach (0x054b): dropped low on his rear leg, facing us, a hand planted on the floor, his front leg swept straight out along the floor toward the opponent, nothing held. His rear shoe where his crouch's is."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x1768", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The hip toss's grab (AP2): his straight's step-in (stream 0x0e44a), leaning in with both arms drawn in at his chest, as seizing the opponent's waist."
+    },
+    {
+      "name": "throw_turn",
+      "rom": { "code": "0x194a", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "Loading him onto his hip: the punch his low kick turns into (stream 0x0e706), his back turned to us and his arm flung forward over his shoulder, placed at x-offset 16 so his body stays where the grab's is."
+    },
+    {
+      "name": "throw_hurl",
+      "rom": { "code": "0x1a00", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "Throwing him over to land in front: his ducking body punch's strike (stream 0x0e60a), bent low with his arm driven down and forward, placed as the punch places it (x-offset 16)."
+    },
+    {
+      "name": "throw_recover",
+      "rom": { "code": "0x17c4", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-24, -96],
+      "note": "The body punch's wind-up (stream 0x0e60a), low with his fists in, as he comes back up; placed as the punch places it (x-offset 8). Then his stance."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x182c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x065f8), his fists before his chest."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x19ac", "large": true, "rows": 2, "cols": 1 }, "turn": 1 }],
+      "anchor": [-48, -96],
+      "note": "His being-thrown set, lifted: his airborne-hit pose (0x19ac, streams 0x06776-0x06ad6) turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x19ac", "large": true, "rows": 2, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -144],
+      "note": "His being-thrown set, over the top: the same pose turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x1a64", "large": false, "rows": 1, "cols": 6 },
+      "anchor": [-56, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x06ce4-0x07014), face down, centred on him so the get-up rises where he lies."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x1a88", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -72],
+      "note": "Coming up off the floor: the tucked pose at the top of his jumps (streams 0x0dc0c, 0x0df88), his knees drawn under him, set on the ground."
+    },
+    {
+      "name": "jump_top",
+      "rom": { "code": "0x1a88", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -120],
+      "note": "The top of every jump of his (streams 0x0df88, 0x0e0a8, 0x0e1e8): tucked, his knees drawn up and his fists at his chest. Shown 48 pixels up, a suggested height mid-jump; SF1+ moves him through his ROM arcs. His jumping attacks start and end on it."
+    },
+    {
+      "name": "jump_punch",
+      "pack": { "crc32": "b57f103b" },
+      "anchor": [-19, -120],
+      "note": "His ROM top-of-jump tuck (0x1a88) with his front arm inpainted from the shoulder, driven straight out at shoulder height, his other fist at his stomach; the inpainted forearm and fist replaced by his ROM jab's (0x18e4), so the arm has his own length and shading; his whole ROM head kept. Only the shoulder and the chest behind it are inpainted. The second round: the first, inpainted to the fist, had messy colours and pixels; the third: the second's face had lost pixels (user, 2026-11-06)."
+    },
+    {
+      "name": "jump_punch_down",
+      "pack": { "crc32": "5cc6f906" },
+      "anchor": [-19, -120],
+      "note": "His ROM top-of-jump tuck with his front arm inpainted from the shoulder, driven down and forward at 45 degrees past his knees, posed as Ryu's diagonal jumping punch (0x03e5); then his back and shoulder inpainted without the tuck's folded upper arm, so only the punching arm reads. His head and legs are the ROM tuck's, pixel for pixel. The second round: the torso still looked as if his punching arm were tucked in (user, 2026-11-06)."
+    },
+    {
+      "name": "jump_kick",
+      "rom": { "code": "0x1944", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -120],
+      "note": "A ROM stand-in, the user's decision after five rejected rounds (2026-11-06): his flying kick's strike (0x1944, streams 0x0e9bc and 0x0eade), whole, the front leg kicked out and down, placed as the flying kick places it (x-offset 16) at the top-of-jump pose's height. The rejected rounds: one and three, his legs inpainted on the tuck (both feet looked tucked, then two feet on the tucked leg and a cut-off kicking foot); two, rebuilt from the tuck and the flying kick's leg; four, round three edited by hand; five, a new whole generation."
+    },
+    {
+      "name": "jump_kick_high",
+      "pack": { "crc32": "97f0c0c0" },
+      "anchor": [-21, -120],
+      "note": "Generated whole on his top-of-jump tuck and his own high kick (0x1826), posed as Ryu's jumping kick (0x058a): turned away, his back to us, his front leg kicked steeply up, his rear knee tucked. Above the hip every pixel is now his ROM high kick's (0x1826), which the generation had copied with stray pixels; below it is the generated tucked rear leg, its single stray pixels cleaned. Its kicking foot, bare skin in the ROM, wears the Rolling Sobat kick's grey shoe and sock, laid on from that pose (user, 2026-11-06). Lined up with the top-of-jump pose by the top of his hair. The second round: the first had messy colours and pixels (user, 2026-11-06)."
+    },
+    {
+      "name": "sobat_step",
+      "rom": { "code": "0x17c8", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The Rolling Sobat (AP2) from his ROM high kick (stream 0x0e8cc), a free stand-in for new poses: its first pose, his weight shifting onto the front foot."
+    },
+    {
+      "name": "sobat_turn",
+      "parts": [{ "rom": { "code": "0x1a84", "large": false, "rows": 5, "cols": 2 }, "crop": [0, 0, 48, 94] }, { "rom": { "code": "0x1a84", "large": false, "rows": 5, "cols": 2 }, "crop": [20, 94, 17, 1], "at": [20, 94] }],
+      "anchor": [-24, -108],
+      "note": "Turning his back, his rear knee drawn up (the high kick's second pose), shown 12 pixels up as he hops off the front foot. Its ground shadow is left off (the bottom row, and the second row's shadow either side of his sole), as he is off the ground."
+    },
+    {
+      "name": "sobat_kick",
+      "pack": { "crc32": "f57b6f2b" },
+      "anchor": [-13, -113],
+      "note": "The heel whipped round at head height, his back to the opponent: his ROM high kick's strike (0x1826, x-offset 32), with the kicking foot, bare skin in the ROM, inpainted as his grey shoe and sock (user, 2026-11-06). Shown 20 pixels up, the top of the hop, its ground shadow left off. Everything but the foot is the ROM pose, pixel for pixel."
+    },
+    {
+      "name": "sobat_follow",
+      "parts": [{ "rom": { "code": "0x19a0", "large": true, "rows": 2, "cols": 1 }, "crop": [0, 0, 64, 94] }, { "rom": { "code": "0x19a0", "large": true, "rows": 2, "cols": 1 }, "crop": [21, 94, 16, 1], "at": [21, 94] }],
+      "anchor": [-16, -108],
+      "note": "Still turned away, the leg coming down (the high kick's follow-through, x-offset 16), shown 12 pixels up. Its ground shadow is left off (the bottom row, and the second row's shadow either side of his sole), as he is off the ground."
+    },
+    {
+      "name": "sobat_land",
+      "parts": [{ "rom": { "code": "0x19a4", "large": true, "rows": 2, "cols": 1 }, "crop": [0, 0, 64, 94] }, { "rom": { "code": "0x19a4", "large": true, "rows": 2, "cols": 1 }, "crop": [34, 94, 18, 1], "at": [34, 94] }],
+      "anchor": [-40, -100],
+      "note": "Round to face forward, his knee still up (x-offset -8), shown 4 pixels up as he comes down. Its ground shadow is left off (the bottom row, and the second row's shadow either side of his sole), as he is off the ground."
+    },
+    {
+      "name": "sobat_recover",
+      "rom": { "code": "0x19a8", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "Landed facing forward, settling back into his stance (the high kick's last pose)."
+    },
+    {
+      "name": "dynamite_dip",
+      "rom": { "code": "0x17c4", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-24, -96],
+      "note": "The Dynamite Straight (AP2): the dip, his ducking body punch's wind-up (stream 0x0e60a), low with his fists in, placed as the punch places it (x-offset 8)."
+    },
+    {
+      "name": "dynamite_rise",
+      "rom": { "code": "0x1884", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -104],
+      "note": "Springing up: the take-off pose of his jumps (0x1884), his front fist driven out and his rear foot leaving the ground, shown 8 pixels up."
+    },
+    {
+      "name": "dynamite_straight",
+      "pack": { "crc32": "1002be7d" },
+      "anchor": [-20, -105],
+      "note": "The strike, generated whole on his ROM take-off (0x1884) with his jab's arm (0x18e4) and his raised win-pose arm (0x1a60) as guides: his front arm driven up and forward, the fist above his head, his rear foot off the ground. His legs, belt and rear fist are put back to the take-off's ROM pixels, lined up with dynamite_rise so his legs do not move, and his head to its ROM head; the torso and raised arm are generated, their single stray pixels cleaned. The second round: the first, the arm inpainted on the take-off, had the body's proportions off and messy colours (user, 2026-11-06)."
+    },
+    {
+      "name": "dynamite_land",
+      "rom": { "code": "0x1708", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "Landing: the pose every jump of his lands in (streams 0x0df88-0x0e1e8); then his stance."
+    }
+  ],
+  "moves": [
+    {
+      "name": "crouch",
+      "poses": ["stance", "crouch"],
+      "timing": [40, 60],
+      "note": "Played from his stance so review shows him dropping into it; SF1+ holds the crouch pose."
+    },
+    {
+      "name": "crouching block",
+      "poses": ["crouch"],
+      "timing": [60],
+      "note": "His crouch, both fists already up before his face, serves as his crouching block, as Sagat's does (user, 2026-11-03); SF1+ holds it while he blocks. The second round: his standing block (0x176c), ducked only to his ROM duck's height, was not low enough (user, 2026-11-04)."
+    },
+    {
+      "name": "crouching hit",
+      "poses": ["crouch", "crouching_hit", "crouch"],
+      "timing": [30, 20, 30],
+      "note": "One pose, as Ryu's crouching hit is, for the crouching entries of his hit table."
+    },
+    {
+      "name": "crouching kick",
+      "poses": ["crouch", "crouching_kick", "crouch"],
+      "timing": [6, 14, 14],
+      "note": "His light and medium crouching kick. One new pose, as Ryu's crouching kick strikes in one (0x03a0). His ducking body punch (0x0e60a) stays his crouching punch, a ROM stream."
+    },
+    {
+      "name": "sweep",
+      "poses": ["crouch", "sweep", "crouch"],
+      "timing": [6, 16, 16],
+      "note": "His heavy crouching kick: a low sweep at full reach. One new pose, as his crouching kick strikes in one."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_turn", "throw_hurl", "throw_recover"],
+      "timing": [8, 12, 12, 8],
+      "note": "The hip toss (AP2): he grabs the opponent's waist, turns to load him onto his hip and throws him over to land in front. All from his ROM poses; then his stance. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on the floor. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "rising", "crouch", "stance"],
+      "timing": [60, 10, 10, 60],
+      "note": "From lying he draws his knees under him, comes up into his crouch and rises into his stance. All from his ROM poses."
+    },
+    {
+      "name": "jumping punch",
+      "poses": ["jump_top", "jump_punch", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, from the top of his jump. One new pose, as his flying kick strikes in one (0x1944). His jumps themselves and his flying kick (0x0e9bc, 0x0eade), his diagonal jumping attack, stay his ROM streams and are not in the catalogue."
+    },
+    {
+      "name": "jumping diagonal punch",
+      "poses": ["jump_top", "jump_punch_down", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, for forward and back jumps, down and forward. One new pose."
+    },
+    {
+      "name": "jumping kick",
+      "poses": ["jump_top", "jump_kick", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Light and medium: his ROM flying kick's strike, between two top-of-jump poses, a stand-in (user, 2026-11-06). One pose."
+    },
+    {
+      "name": "jumping heavy kick",
+      "poses": ["jump_top", "jump_kick_high", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Turned away and kicked steeply up, as Ryu's heavy jumping kick is his turned pose. One new pose."
+    },
+    {
+      "name": "rolling sobat",
+      "poses": ["stance", "sobat_step", "sobat_turn", "sobat_kick", "sobat_follow", "sobat_land", "sobat_recover", "stance"],
+      "timing": [4, 4, 4, 10, 4, 4, 6, 10],
+      "note": "Quarter-circle back and kick (AP2): a spinning back kick. He turns his back, hops off the front foot and whips the rear heel round at head height, landing facing forward. A free stand-in: his ROM high kick (stream 0x0e8cc) already turns his back and whips the heel round at head height, so its poses are played as a hop, the middle ones shown off the ground; SF1+ moves him. His high kick stays his heavy kick, a ROM stream. If the user wants it to look apart from his high kick, the poses can be generated, as AP2 proposed (4 to 5)."
+    },
+    {
+      "name": "dynamite straight",
+      "poses": ["stance", "dynamite_dip", "dynamite_rise", "dynamite_straight", "dynamite_land", "stance"],
+      "timing": [4, 6, 3, 14, 6, 10],
+      "note": "Dragon punch and punch (AP2): he dips low and springs up into an upward-angled straight, his rear foot leaving the ground at the top. Four poses, as AP2 proposes 3 to 4: the dip and the rise are his ROM poses, the strike is new; SF1+ moves him up and down."
+    }
+  ]
+}

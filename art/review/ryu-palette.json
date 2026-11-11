@@ -1,0 +1,19 @@
+{
+  "fighter": "ryu",
+  "palette": "85c0021e",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 1,
+  "history": [
+    {
+      "palette": "3b1a277b",
+      "verdict": "rejected",
+      "reason": "Ryu should have a non-red gi so as not to be too similar to Ken; change his hair to what it is in SFA (Street Fighter Alpha)."
+    },
+    {
+      "palette": "85c0021e",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

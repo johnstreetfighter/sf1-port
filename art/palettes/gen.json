@@ -1,0 +1,23 @@
+{
+  "fighter": "gen",
+  "note": "A pale grey robe with purple trim and purple shoes: his purple robe turns to his greys, and his red trim and shoes turn to purple.",
+  "from": 8,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#772299",
+    "#442266",
+    "#bbbbbb",
+    "#888888",
+    "#555555",
+    "#555555",
+    "#888888",
+    "#888888",
+    "#bbbbbb"
+  ]
+}

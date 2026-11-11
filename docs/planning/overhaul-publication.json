@@ -1,0 +1,294 @@
+{
+  "spec": {
+    "number": 91,
+    "url": "https://github.com/johnstreetfighter/sf1-port/issues/1"
+  },
+  "approved": "2026-10-27",
+  "published": "O1-O21",
+  "tickets": [
+    {
+      "localId": "O1",
+      "number": 92,
+      "url": null,
+      "title": "O1: Real-time Hitbox, Loose/Tight Hurtbox, and Command-Tracker Diagnostic Overlay",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": "O2",
+      "number": 93,
+      "url": null,
+      "title": "O2: 60-Cell Visual Frame Meter and Deterministic Replay Takeover",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O1"
+      ],
+      "blockerNumbers": [
+        92
+      ]
+    },
+    {
+      "localId": "O3",
+      "number": 94,
+      "url": null,
+      "title": "O3: MatchConfig, RulesetPreset, and Positive-Edge Input + Recovery Buffer Core Toggles",
+      "label": "ready-for-agent",
+      "blockers": [
+        "#90",
+        "O2"
+      ],
+      "blockerNumbers": [
+        90,
+        93
+      ]
+    },
+    {
+      "localId": "O4",
+      "number": 95,
+      "url": null,
+      "title": "O4: Lenient Special Command Trackers, Walk-Gate Interrupts, and Anytime Jump Attacks",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O3"
+      ],
+      "blockerNumbers": [
+        94
+      ]
+    },
+    {
+      "localId": "O5",
+      "number": 96,
+      "url": null,
+      "title": "O5: Standard High/Low/Jump Blocking, Lee/Adon Omniblock Fix, and Symmetrical Shoto Balance",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O3"
+      ],
+      "blockerNumbers": [
+        94
+      ]
+    },
+    {
+      "localId": "O6",
+      "number": 97,
+      "url": null,
+      "title": "O6: Balanced Damage/Chip Scaling, Fireball Slowdown Toggle, True-Second Timer, and Sagat AI Scaling",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O3"
+      ],
+      "blockerNumbers": [
+        94
+      ]
+    },
+    {
+      "localId": "O7",
+      "number": 98,
+      "url": null,
+      "title": "O7: Playable 12-Character SF1 (SF1++) Roster, Direct 1P Ken, and 4-Country Select",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O5",
+        "O6"
+      ],
+      "blockerNumbers": [
+        96,
+        97
+      ]
+    },
+    {
+      "localId": "O8",
+      "number": 99,
+      "url": null,
+      "title": "O8: Extended Scene Compositor and Offline AI 1987 Sprite/Audio Asset Pipeline",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O7"
+      ],
+      "blockerNumbers": [
+        98
+      ]
+    },
+    {
+      "localId": "O9",
+      "number": 100,
+      "url": null,
+      "title": "O9: Audio Jukebox (1987 Synth vs. Red Book CD OST) and Control Schemes (Classic, Pneumatic 2-Pad, Modern)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O8"
+      ],
+      "blockerNumbers": [
+        99
+      ]
+    },
+    {
+      "localId": "O10",
+      "number": 101,
+      "url": null,
+      "title": "O10: Cross-Era Combat Core, Ground Throws, and SF1+ Completed Movesets for Japan & USA (Ryu, Ken, Retsu, Geki, Joe, Mike)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O8",
+        "O9"
+      ],
+      "blockerNumbers": [
+        99,
+        100
+      ]
+    },
+    {
+      "localId": "O11",
+      "number": 102,
+      "url": null,
+      "title": "O11: SF1+ Completed Movesets for China, England, & Thailand (Lee, Gen, Birdie, Eagle, Adon, Sagat) and 12-Character Arcade Endings",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O10"
+      ],
+      "blockerNumbers": [
+        101
+      ]
+    },
+    {
+      "localId": "O12",
+      "number": 103,
+      "url": null,
+      "title": "O12: Two-Step Era/Revision Selector and SFII Era Styles (SF2 WW, CE, HF, Super, ST)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O11"
+      ],
+      "blockerNumbers": [
+        102
+      ]
+    },
+    {
+      "localId": "O13",
+      "number": 104,
+      "url": null,
+      "title": "O13: SFZ Era Styles (SFZ1, SFZ2, SFZ2A, SFZ3 / Upper) and 3-Level Alpha Gauge",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O12"
+      ],
+      "blockerNumbers": [
+        103
+      ]
+    },
+    {
+      "localId": "O14",
+      "number": 105,
+      "url": null,
+      "title": "O14: SFIII Era Styles (SF3 NG, 2I, 3S), Parry, and Super Arts I/II/III",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O12"
+      ],
+      "blockerNumbers": [
+        103
+      ]
+    },
+    {
+      "localId": "O15",
+      "number": 106,
+      "url": null,
+      "title": "O15: SFIV Era Styles (SF4, SSF4, AE2012, USF4), Focus/FADC, and Revenge Ultra Gauge",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O13",
+        "O14"
+      ],
+      "blockerNumbers": [
+        104,
+        105
+      ]
+    },
+    {
+      "localId": "O16",
+      "number": 107,
+      "url": null,
+      "title": "O16: SFV Era Styles (SF5, AE, CE) and V-System Gauge (V-Skill, V-Trigger, V-Reversal, V-Shift)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O15"
+      ],
+      "blockerNumbers": [
+        106
+      ]
+    },
+    {
+      "localId": "O17",
+      "number": 108,
+      "url": null,
+      "title": "O17: SF6 Era Style, 6-Bar Drive Gauge, and Safety Toggles (Ryu, Ken, Retsu)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O16"
+      ],
+      "blockerNumbers": [
+        107
+      ]
+    },
+    {
+      "localId": "O18",
+      "number": 109,
+      "url": null,
+      "title": "O18: Style-Aware Utility AI and Training Mode Scenario Drills / Combo Trials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O17"
+      ],
+      "blockerNumbers": [
+        108
+      ]
+    },
+    {
+      "localId": "O19",
+      "number": 110,
+      "url": null,
+      "title": "O19: 2v1 Dramatic Battle Mode (3-Fighter Camera, Shared/Independent Lifebars, Friendly Fire Toggle)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O8",
+        "O11"
+      ],
+      "blockerNumbers": [
+        99,
+        102
+      ]
+    },
+    {
+      "localId": "O20",
+      "number": 111,
+      "url": null,
+      "title": "O20: Alpha 3-Style \"1987 World Tour\" Single-Player Campaign",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O18",
+        "O19"
+      ],
+      "blockerNumbers": [
+        109,
+        110
+      ]
+    },
+    {
+      "localId": "O21",
+      "number": 112,
+      "url": null,
+      "title": "O21: Deterministic Rollback Netplay, Open Room Browser, and Wired-Only Auto-Filter",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O2",
+        "O18"
+      ],
+      "blockerNumbers": [
+        93,
+        109
+      ]
+    }
+  ],
+  "verified": "titles, labels, body sections and all 27 native blocked_by edges checked after publication"
+}

@@ -1,0 +1,410 @@
+{
+  "scenario_id": "sf-sound-test-03",
+  "format_version": 1,
+  "description": "Ticket #78 (F38), label SM: Service Mode On from power-on; tune transitions across equal, higher, and lower priorities, saving a live tune to 0xc300 (0x01e5) and loading a lower-priority tune into 0xc300 (0x01d3, both empty and occupied), popping the saved tune at opcode 0x0f end (0x03a7), discarding the saved tune (0x0412), stops 0x35, 0x3d, and 0x3f over a saved tune, and repeated commands ignored. Full checkpoints surround every latch command and natural tune end.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    }
+  },
+  "duration_frames": 6250,
+  "inputs": [
+    {
+      "frame": 100,
+      "press": "p1_up",
+      "hold_frames": 400,
+      "comment": "Select 28: 40 steps"
+    },
+    {
+      "frame": 500,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 28: start priority-8 tune 28 from silence"
+    },
+    {
+      "frame": 520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 580,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 29: 1 steps"
+    },
+    {
+      "frame": 590,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 29: start equal-priority tune 29 over live tune 28"
+    },
+    {
+      "frame": 610,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 29: repeat tune 29 command"
+    },
+    {
+      "frame": 690,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 750,
+      "press": "p1_up",
+      "hold_frames": 130,
+      "comment": "Select 36: 13 steps"
+    },
+    {
+      "frame": 880,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 36: start higher-priority tune 36 over live tune 29; pop 29 at 36 natural end"
+    },
+    {
+      "frame": 900,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2680,
+      "press": "p1_down",
+      "hold_frames": 40,
+      "comment": "Select 32: 4 steps"
+    },
+    {
+      "frame": 2720,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 32: start higher-priority tune 32 over popped tune 29"
+    },
+    {
+      "frame": 2740,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2800,
+      "press": "p1_down",
+      "hold_frames": 100,
+      "comment": "Select 28: 10 steps"
+    },
+    {
+      "frame": 2900,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 28: load lower-priority tune 28 into occupied saved slot 0xc300 while 32 plays; pop 28 at 32 end"
+    },
+    {
+      "frame": 2920,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5100,
+      "press": "p1_up",
+      "hold_frames": 140,
+      "comment": "Select 36: 14 steps"
+    },
+    {
+      "frame": 5240,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 36: start higher-priority tune 36 over popped tune 28 for 0x35 stop"
+    },
+    {
+      "frame": 5260,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5320,
+      "press": "p1_down",
+      "hold_frames": 10,
+      "comment": "Select 35: 1 steps"
+    },
+    {
+      "frame": 5330,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 35: stop 0x35 over saved tune 28 and live tune 36"
+    },
+    {
+      "frame": 5350,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5410,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 36: 1 steps"
+    },
+    {
+      "frame": 5420,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 36: start higher-priority tune 36 from silence"
+    },
+    {
+      "frame": 5440,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5500,
+      "press": "p1_down",
+      "hold_frames": 30,
+      "comment": "Select 33: 3 steps"
+    },
+    {
+      "frame": 5530,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 33: load lower-priority tune 33 into empty saved slot 0xc300 while 36 plays"
+    },
+    {
+      "frame": 5550,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5610,
+      "press": "p1_up",
+      "hold_frames": 100,
+      "comment": "Select 3d: 10 steps"
+    },
+    {
+      "frame": 5710,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3d: stop 0x3d over saved tune 33 and live tune 36"
+    },
+    {
+      "frame": 5730,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5790,
+      "press": "p1_down",
+      "hold_frames": 30,
+      "comment": "Select 3a: 3 steps"
+    },
+    {
+      "frame": 5820,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3a: start priority-8 tune 3a from silence"
+    },
+    {
+      "frame": 5840,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5900,
+      "press": "p1_down",
+      "hold_frames": 40,
+      "comment": "Select 36: 4 steps"
+    },
+    {
+      "frame": 5940,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 36: start higher-priority tune 36 over live tune 3a for 0x3f stop"
+    },
+    {
+      "frame": 5960,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6020,
+      "press": "p1_up",
+      "hold_frames": 90,
+      "comment": "Select 3f: 9 steps"
+    },
+    {
+      "frame": 6110,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: stop 0x3f over saved tune 3a and live tune 36"
+    },
+    {
+      "frame": 6130,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 600,
+    "ram_crc_every_frames": 60,
+    "checkpoints": [
+      15,
+      16,
+      17,
+      505,
+      506,
+      507,
+      508,
+      509,
+      510,
+      595,
+      596,
+      597,
+      598,
+      599,
+      600,
+      675,
+      676,
+      677,
+      678,
+      679,
+      680,
+      885,
+      886,
+      887,
+      888,
+      889,
+      890,
+      2552,
+      2553,
+      2554,
+      2555,
+      2556,
+      2557,
+      2558,
+      2559,
+      2560,
+      2561,
+      2562,
+      2563,
+      2564,
+      2725,
+      2726,
+      2727,
+      2728,
+      2729,
+      2730,
+      2905,
+      2906,
+      2907,
+      2908,
+      2909,
+      2910,
+      4889,
+      4890,
+      4891,
+      4892,
+      4893,
+      4894,
+      4895,
+      4896,
+      4897,
+      4898,
+      4899,
+      4900,
+      4901,
+      5245,
+      5246,
+      5247,
+      5248,
+      5249,
+      5250,
+      5335,
+      5336,
+      5337,
+      5338,
+      5339,
+      5340,
+      5425,
+      5426,
+      5427,
+      5428,
+      5429,
+      5430,
+      5535,
+      5536,
+      5537,
+      5538,
+      5539,
+      5540,
+      5715,
+      5716,
+      5717,
+      5718,
+      5719,
+      5720,
+      5825,
+      5826,
+      5827,
+      5828,
+      5829,
+      5830,
+      5945,
+      5946,
+      5947,
+      5948,
+      5949,
+      5950,
+      6115,
+      6116,
+      6117,
+      6118,
+      6119,
+      6120,
+      6249
+    ]
+  },
+  "dip_changes": []
+}

@@ -1,0 +1,57 @@
+; The test theme (ticket #195): a short piece written for this project, with
+; no Capcom or other existing melody, that proves the extended tune table end
+; to end. Three FM channels in A minor, eight bars of 4/4 at about 125 beats
+; a minute (a quarter note is 16 units of 10 ticks of 3 ms), looped for ever.
+; Command 0x40 plays it; no screen lists it.
+
+title    Test theme
+command  0x40
+priority 8
+unit     10
+
+; The tune, with the 1987 stage themes' lead sound.
+channel 0
+  patch 24
+  gate 210
+  forever {
+    A4:4 C5:8 E5:8 D5:4 C5:4
+    B4:4. G4:8 A4:2
+    E5:4 D5:8 C5:8 B4:4 A4:4
+    G4:4 B4:4 A4:2
+    C5:4 E5:8 G5:8 F5:4 E5:4
+    D5:4. B4:8 C5:2
+    A4:4 B4:8 C5:8 D5:4 E5:4
+    C5:4 B4:4 A4:2
+  }
+
+; Arpeggios under it, on the right.
+channel 1
+  patch 25
+  pan right
+  gate 150
+  forever {
+    repeat 2 { A3:4 E4 }
+    repeat 2 { G3 D4 }
+    repeat 2 { F3 C4 }
+    repeat 2 { E3 B3 }
+    repeat 2 { C4 G4 }
+    repeat 2 { G3 D4 }
+    repeat 2 { A3 E4 }
+    repeat 2 { F3 C4 }
+  }
+
+; The bass, on the left: a root and its fifth to the bar.
+channel 2
+  patch 17
+  pan left
+  gate 230
+  forever {
+    A2:2 E2
+    G2 D2
+    F2 C2
+    E2 B1
+    C2 G2
+    G2 D2
+    A2 E2
+    F2 C2
+  }

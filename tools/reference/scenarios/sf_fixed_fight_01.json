@@ -1,0 +1,57 @@
+{
+  "scenario_id": "sf-fixed-fight-01",
+  "format_version": 1,
+  "description": "Fixed fight: 1P Ryu vs CPU Retsu, from power-on through the end of round 2. Reached by coin+start during the title screen and letting country select time out to the default country (Japan) at frame 1865 (the start1 press at 1900 falls inside event 3's country screen). The CPU wins round 1 at ~frame 3330 and round 2 at ~frame 4775 with these inputs; the scenario ends just after the round-2 result, the match decided 2-0. Frame anchors were calibrated from observed captures; see docs/reference/mame-baseline.md.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": ["-video", "none", "-sound", "none", "-nothrottle", "-skip_gameinfo", "-noreadconfig", "-nowriteconfig"],
+    "dipswitches": "factory defaults; observed readback DSW1=0xdfff, DSW2=0xffff"
+  },
+  "controls": {
+    "coin1": { "port": "IN0", "bit": 0 },
+    "coin2": { "port": "IN0", "bit": 1 },
+    "p1_button6": { "port": "IN0", "bit": 2 },
+    "p2_button6": { "port": "IN0", "bit": 8 },
+    "p1_button3": { "port": "IN0", "bit": 9 },
+    "p2_button3": { "port": "IN0", "bit": 10 },
+    "p1_right": { "port": "IN1", "bit": 0 },
+    "p1_left": { "port": "IN1", "bit": 1 },
+    "p1_down": { "port": "IN1", "bit": 2 },
+    "p1_up": { "port": "IN1", "bit": 3 },
+    "p1_button1": { "port": "IN1", "bit": 4 },
+    "p1_button2": { "port": "IN1", "bit": 5 },
+    "p1_button4": { "port": "IN1", "bit": 6 },
+    "p1_button5": { "port": "IN1", "bit": 7 },
+    "p2_right": { "port": "IN1", "bit": 8 },
+    "p2_left": { "port": "IN1", "bit": 9 },
+    "p2_down": { "port": "IN1", "bit": 10 },
+    "p2_up": { "port": "IN1", "bit": 11 },
+    "p2_button1": { "port": "IN1", "bit": 12 },
+    "p2_button2": { "port": "IN1", "bit": 13 },
+    "p2_button4": { "port": "IN1", "bit": 14 },
+    "p2_button5": { "port": "IN1", "bit": 15 },
+    "start1": { "port": "SYSTEM", "bit": 0 },
+    "start2": { "port": "SYSTEM", "bit": 1 },
+    "service1": { "port": "SYSTEM", "bit": 2 }
+  },
+  "duration_frames": 5000,
+  "inputs": [
+    { "frame": 1450, "press": "coin1", "hold_frames": 12, "comment": "insert coin; title screen is up from ~1375" },
+    { "frame": 1520, "press": "start1", "hold_frames": 12, "comment": "1P start; start sound observed ~1522" },
+    { "frame": 1900, "press": "start1", "hold_frames": 12, "comment": "falls inside event 3's country screen (country select already exited on timeout at 1865; see docs/reference/prefight.md)" },
+    { "frame": 2400, "press": "p1_right", "hold_frames": 180, "comment": "walk toward Retsu; fight control begins ~2280" },
+    { "frame": 2590, "press": "p1_button1", "hold_frames": 10, "comment": "light punch" },
+    { "frame": 2630, "press": "p1_button4", "hold_frames": 10, "comment": "light kick" }
+  ],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [790, 794, 1500, 1860, 1980, 2160, 2280, 2460, 2595, 2660, 3360, 3840, 4800, 4990],
+    "checkpoint_notes": "790=warning screen (inside 0x3c254's 240-frame hold over 554-793, tx layer only; see docs/reference/power-on.md); 794=attract entry (consistent state: gfxctrl=0x00 disables layers while videoram holds copyright and INSERT COIN); 1500=start screen (slot 1 at 0x3dfce); 1860=country select; 1980=stage intro (event 4: Retsu's temple background); 2160=ROUND 1; 2280=round 1 fight start (music command 0x28); 2460=walk; 2595=punch; 2660=after attacks; 3360=round 1 result (CPU KO at ~3328, jingle 09/a7 at ~3361); 3840=round 2 fight start; 4800=round 2 KO blow; 4990=round 2 result, match decided"
+  }
+}

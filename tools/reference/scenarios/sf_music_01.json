@@ -1,0 +1,143 @@
+{
+ "scenario_id": "sf-music-01",
+ "format_version": 1,
+ "description": "Bounded music-phrase slice (ticket #11): the fixed fight boot path (1P Ryu vs CPU Retsu, no fight inputs). At 2280 the main CPU sends music command 0x28 (the round music); the phrase compared is frames 2280..=2359: all channels keyed off, a three-voice stab (2280-2297), a six-voice chord (2307), and the first melody notes on channels 3-5, ending one frame before the next chord (2360). Checkpoints every frame over 2279..=2360 carry the music CPU RAM. See docs/reference/music-phrase.md.",
+ "reference": {
+  "rom_set": "sf",
+  "mame_version": "0.289",
+  "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+ },
+ "machine": {
+  "set": "sf",
+  "mame_options": [
+   "-video",
+   "none",
+   "-sound",
+   "none",
+   "-nothrottle",
+   "-skip_gameinfo",
+   "-noreadconfig",
+   "-nowriteconfig"
+  ],
+  "dipswitches": "factory defaults; observed readback DSW1=0xdfff, DSW2=0xffff"
+ },
+ "controls": {
+  "coin1": {
+   "port": "IN0",
+   "bit": 0
+  },
+  "start1": {
+   "port": "SYSTEM",
+   "bit": 0
+  }
+ },
+ "duration_frames": 2370,
+ "inputs": [
+  {
+   "frame": 1450,
+   "press": "coin1",
+   "hold_frames": 12,
+   "comment": "insert coin; title screen is up from ~1375"
+  },
+  {
+   "frame": 1520,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "1P start; start sound observed ~1522"
+  },
+  {
+   "frame": 1900,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "confirm default country Japan at country select (visible by ~1860)"
+  }
+ ],
+ "observations": {
+  "screen_downsample_stride": 4,
+  "ram_crc_every_frames": 10,
+  "checkpoints": [
+   2279,
+   2280,
+   2281,
+   2282,
+   2283,
+   2284,
+   2285,
+   2286,
+   2287,
+   2288,
+   2289,
+   2290,
+   2291,
+   2292,
+   2293,
+   2294,
+   2295,
+   2296,
+   2297,
+   2298,
+   2299,
+   2300,
+   2301,
+   2302,
+   2303,
+   2304,
+   2305,
+   2306,
+   2307,
+   2308,
+   2309,
+   2310,
+   2311,
+   2312,
+   2313,
+   2314,
+   2315,
+   2316,
+   2317,
+   2318,
+   2319,
+   2320,
+   2321,
+   2322,
+   2323,
+   2324,
+   2325,
+   2326,
+   2327,
+   2328,
+   2329,
+   2330,
+   2331,
+   2332,
+   2333,
+   2334,
+   2335,
+   2336,
+   2337,
+   2338,
+   2339,
+   2340,
+   2341,
+   2342,
+   2343,
+   2344,
+   2345,
+   2346,
+   2347,
+   2348,
+   2349,
+   2350,
+   2351,
+   2352,
+   2353,
+   2354,
+   2355,
+   2356,
+   2357,
+   2358,
+   2359,
+   2360
+  ]
+ }
+}

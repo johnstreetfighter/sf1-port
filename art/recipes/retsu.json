@@ -1,0 +1,235 @@
+{
+  "fighter": "retsu",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x1000", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His stance (move 1's header pose)."
+    },
+    {
+      "name": "crouch",
+      "rom": { "code": "0x124d", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-20, -64],
+      "note": "The pose his crouch holds (stream 0x0c40e), placed as it places it (x-offset 4)."
+    },
+    {
+      "name": "crouching_punch_1",
+      "pack": { "crc32": "ce179072" },
+      "anchor": [-20, -64],
+      "note": "His ROM crouch with only his front forearm and hand inpainted: the hand drawn in before his chest, open and upright, as his jab's wind-up (0x1120) draws it in. Everything else is the crouch, pixel for pixel. By hand: the inpainting's off-palette pixels to his nearest body pens."
+    },
+    {
+      "name": "crouching_punch_2",
+      "pack": { "crc32": "ac9c1f37" },
+      "anchor": [-20, -64],
+      "note": "His ROM crouch with only his front arm inpainted: driven straight out at chest height with the open palm forward, fingers up, as his jab strikes (0x1320), posed as Ryu's crouching punch (0x01eb). Everything else is the crouch, pixel for pixel. By hand: the inpainting's off-palette pixels to his nearest body pens."
+    },
+    {
+      "name": "crouching_kick",
+      "pack": { "crc32": "efe79c03" },
+      "anchor": [-29, -63],
+      "note": "Generated on his crouch and his own kick's leg (0x10c4), posed as Ryu's crouching kick (0x03a0): risen off his rear knee, squatting low on his bent rear leg with that foot flat, his front leg straight out to the floor, his crouch's guard kept. His head lines up with his crouch's. The second try: the first kicked out from his kneel, which the user found wrong (2026-11-03). By hand: the lilac grey the generator put on his belt's hanging ends to his belt's grey."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x1320", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "The wrist throw's grab: his jab's strike (stream 0x0c9b6), his open hand out at chest height to seize the opponent's wrist, placed as the jab places it (x-offset 16)."
+    },
+    {
+      "name": "throw_step",
+      "rom": { "code": "0x10ca", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "Stepping across: his lunging punch's strike (stream 0x0ca46), stepped through with his back half turned and his arm still out, holding the wrist, placed as the lunge places it (x-offset 24)."
+    },
+    {
+      "name": "throw_flip",
+      "parts": [{ "rom": { "code": "0x12a4", "large": true, "rows": 1, "cols": 1 }, "mirror": true }],
+      "anchor": [-24, -64],
+      "note": "The flip: the last turned pose of his sweep (stream 0x0cf1a), mirrored to face the opponent, dropped low with both hands down in front where the opponent lands on his back, placed as the sweep places it (x-offset 8)."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x1069", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x04fd2), his head snapped back and his front arm low."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x1209", "large": true, "rows": 1, "cols": 1 }, "turn": 1 }],
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, lifted: the fall pose his knock-outs fly back in (0x1209, stream 0x055e4), turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x1209", "large": true, "rows": 1, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -112],
+      "note": "His being-thrown set, over the top: the same fall pose turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x11e9", "large": false, "rows": 1, "cols": 6 },
+      "anchor": [-56, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x0559c-0x058cc), centred on him as they place it, so the get-up rises where he lies."
+    },
+    {
+      "name": "sitting_up",
+      "rom": { "code": "0x1209", "large": true, "rows": 1, "cols": 1 },
+      "anchor": [-32, -63],
+      "note": "His fall pose (0x1209) set on the ground: sitting on the floor, leaning back on one hand, his legs before him. After the lying pose it reads as sitting up."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x1129", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The half-crouch his crouch rises through into his stance (move 5's header pose, stream 0x0c40e)."
+    },
+    {
+      "name": "jump_top",
+      "rom": { "code": "0x1288", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -144],
+      "note": "The top of every jump of his (streams 0x0c4a8, 0x0c5c8, 0x0c708): knees tucked, his rear fist across his chest and his front hand open up by his head. Shown 48 pixels up, a suggested height mid-jump; SF1+ moves him through his ROM arcs. His jumping attacks start and end on it, as his flying kick (0x0ccd6) strikes from it."
+    },
+    {
+      "name": "jump_punch",
+      "pack": { "crc32": "b4c17f2b" },
+      "anchor": [-27, -144],
+      "note": "His ROM top-of-jump pose (0x1288) with only his front arm inpainted: driven straight out at head height with the open palm forward, as his jab strikes (0x1320), posed as Ryu's jumping punch (0x03ea). Everything else is the ROM pose, pixel for pixel, so his tucked legs do not change between it and the punch. By hand: the inpainting's off-palette pixels to his nearest body pens; a light speck on his fingertips."
+    },
+    {
+      "name": "jump_punch_down",
+      "pack": { "crc32": "9e8b6db9" },
+      "anchor": [-42, -145],
+      "note": "Generated on his top-of-jump pose and his lunging punch's arm (0x10ca), posed as Ryu's diagonal jumping punch (0x03e5): his knees still tucked, his body leaning forward into the punch and his fist driven down and forward. Lined up with the top-of-jump pose by his tucked feet and trouser legs. The second round: the first, his front arm alone inpainted on the ROM pose, drove too steeply and kept him upright; the user asked for a clearer angle and for his body to lean (2026-11-03). Its face is angled by the lean but is his. By hand: the lilac greys on his sleeves to his own greys."
+    },
+    {
+      "name": "jump_kick",
+      "pack": { "crc32": "b7107e7b" },
+      "anchor": [-27, -144],
+      "note": "His ROM top-of-jump pose with only his front leg inpainted: kicked straight out at waist height, then its shin and foot inpainted again (the first drew a thin shin and a stub of a foot), the foot flexed with the toes up; posed as Ryu's jumping kick (0x058a). Everything else is the ROM pose, pixel for pixel, his rear knee still tucked. By hand: the inpainting's off-palette pixels to his nearest body pens; stray specks."
+    },
+    {
+      "name": "jump_kick_high",
+      "pack": { "crc32": "30f18f9a" },
+      "anchor": [-28, -143],
+      "note": "Generated whole on his top-of-jump pose (0x1288) and his own high kick's leg (0x11e0), posed as Ryu's jumping kick (0x058a): his rear knee tucked, his front leg kicked up and forward at the opponent, the foot at head height. Lined up with the top-of-jump pose by his tucked feet and trouser legs. The fourth round: his turned ROM kick (0x1184) aimed into the background; a leg inpainted on the jump pose had a section missing, then a repaired seam that was not clean (user, 2026-11-03), so it was generated whole. By hand: his lilac greys to his own greys."
+    },
+    {
+      "name": "kiai_shot_1",
+      "rom": { "code": "0x1120", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The Kiai Shot's wind-up, a ROM stand-in (user, 2026-11-03): his jab's wind-up (stream 0x0c9b6), his open front hand drawn in before his chest."
+    },
+    {
+      "name": "kiai_shot_2",
+      "rom": { "code": "0x1320", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "The Kiai Shot's thrust, a ROM stand-in (user, 2026-11-03): his jab's open-palm strike (stream 0x0c9b6), placed as the jab places it (x-offset 16); the ki burst leaving his palm is the SF1+ project's effect. Four rounds of generated two-handed poses were rejected, the last three for their belt (too long, then not cleanly edited, then still wrong), and at the review limit the user chose this stand-in."
+    },
+    {
+      "name": "kiai_blast_1",
+      "pack": { "crc32": "120981e0" },
+      "anchor": [40, -92],
+      "note": "The Kiai Shot's blast at full strength, flying right: a pale core with streaks trailing back (job 0936fcb7, candidate 1). Approved by the maintainer, 2026-11-08. Placed where it leaves his palm: its centre about 52 pixels ahead of his centre and 82 up."
+    },
+    {
+      "name": "kiai_blast_2",
+      "pack": { "crc32": "b712bb90" },
+      "anchor": [40, -92],
+      "note": "The blast at full strength with its streaks drawn differently (job 0936fcb7, candidate 3), alternating with the first as it travels. Approved by the maintainer, 2026-11-08."
+    },
+    {
+      "name": "kiai_blast_3",
+      "pack": { "crc32": "0de5e10a" },
+      "anchor": [38, -92],
+      "note": "The blast breaking open, its core splitting into wisps and dots (job a2d53ac5, candidate 4). Approved by the maintainer, 2026-11-08."
+    },
+    {
+      "name": "kiai_blast_4",
+      "pack": { "crc32": "9f687dc7" },
+      "anchor": [41, -95],
+      "note": "The blast as an open ring of wisps (job a2d53ac5, candidate 12). Approved by the maintainer, 2026-11-08."
+    },
+    {
+      "name": "kiai_blast_5",
+      "pack": { "crc32": "2dafc13e" },
+      "anchor": [39, -93],
+      "note": "The ring thinning to dots (job a2d53ac5, candidate 29). Approved by the maintainer, 2026-11-08."
+    },
+    {
+      "name": "kiai_blast_6",
+      "pack": { "crc32": "39ebcab5" },
+      "anchor": [40, -93],
+      "note": "The last scattered dots before it is gone (job a2d53ac5, candidate 37). Approved by the maintainer, 2026-11-08."
+    }
+  ],
+  "moves": [
+    {
+      "name": "crouching punch",
+      "poses": ["crouch", "crouching_punch_1", "crouching_punch_2", "crouching_punch_1", "crouch"],
+      "timing": [8, 4, 12, 4, 20],
+      "note": "Every strength, as Ryu's six crouching punches share one animation: drawn in, then the palm strike, as his jab (0x0c9b6) draws in and strikes. Two new poses, as his jab has. His ROM crouch, crouching block (0x120d), crouching hit (0x12ec) and sweep (0x0cf1a, his heavy crouching kick) stay his ROM streams and are not in the catalogue."
+    },
+    {
+      "name": "crouching kick",
+      "poses": ["crouch", "crouching_kick", "crouch"],
+      "timing": [6, 14, 14],
+      "note": "His light and medium crouching kick: he rises off his rear knee into a squat on his rear foot and drives the leg out low, as Ryu's crouching kick strikes in one pose (0x03a0). One new pose: the chamber his mid kick (0x0cb16) takes was tried twice and dropped as not needed (user, 2026-11-03)."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_step", "throw_flip"],
+      "timing": [8, 10, 16],
+      "note": "The kempo wrist throw (AP2): he seizes the opponent's wrist, steps across and flips him over onto his back in front of him. All from his ROM poses; then his half-crouch and stance. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on his back. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "sitting_up", "crouch", "rising", "stance"],
+      "timing": [60, 12, 10, 6, 60],
+      "note": "From lying he sits up, gets his feet under him into his crouch, and rises through his half-crouch into his stance, as his own crouch rises. All from his ROM poses."
+    },
+    {
+      "name": "jumping punch",
+      "poses": ["jump_top", "jump_punch", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, from the top of his jump. One new pose, as his flying kick strikes in one (0x1248). His jumps themselves and his flying kick (0x0ccd6, 0x0cdf8), the diagonal jumping kick, stay his ROM streams and are not in the catalogue."
+    },
+    {
+      "name": "jumping diagonal punch",
+      "poses": ["jump_top", "jump_punch_down", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, for forward and back jumps. One new pose."
+    },
+    {
+      "name": "jumping kick",
+      "poses": ["jump_top", "jump_kick", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Light and medium, straight out at waist height. One new pose; his tucked front knee is its chamber."
+    },
+    {
+      "name": "jumping heavy kick",
+      "poses": ["jump_top", "jump_kick_high", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Up and forward at head height, from the top of his jump, his rear knee tucked. One new pose."
+    },
+    {
+      "name": "kiai shot",
+      "poses": ["stance", "kiai_shot_1", "kiai_shot_2", "kiai_shot_1", "stance"],
+      "timing": [4, 10, 24, 8, 10],
+      "note": "Quarter-circle forward and punch: a one-handed palm thrust from his ROM art, his jab's wind-up and open-palm strike, as a short burst of ki leaves his hand (the SF1+ project's effect). A ROM stand-in for AP2's two-handed thrust from a lunge, chosen by the user (2026-11-03) and listed in docs/planning/art-upgrades.md."
+    },
+    {
+      "name": "kiai blast",
+      "poses": ["kiai_blast_1", "kiai_blast_2", "kiai_blast_1", "kiai_blast_3", "kiai_blast_4", "kiai_blast_5", "kiai_blast_6"],
+      "timing": [2, 2, 2, 2, 2, 2, 3],
+      "note": "The Kiai Shot's short-range blast (the maintainer, 2026-11-08), 15 frames as the engine runs it: out at full strength and travelling, then breaking up and fading in front of him. Each frame is one effect sprite of at most 32x32 in his own palette; the engine draws them as the blast's effect object, not as his body. Approved by the maintainer, 2026-11-08, from the first round (30 generations)."
+    }
+  ]
+}

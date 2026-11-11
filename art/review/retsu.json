@@ -1,0 +1,180 @@
+{
+  "fighter": "retsu",
+  "poses": {
+    "crouch": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_kick": {
+      "origin": "generated",
+      "crc32": "efe79c03",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_punch_1": {
+      "origin": "generated",
+      "crc32": "ce179072",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_punch_2": {
+      "origin": "generated",
+      "crc32": "ac9c1f37",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grab": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick": {
+      "origin": "generated",
+      "crc32": "b7107e7b",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick_high": {
+      "origin": "generated",
+      "crc32": "30f18f9a",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "jump_punch": {
+      "origin": "generated",
+      "crc32": "b4c17f2b",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch_down": {
+      "origin": "generated",
+      "crc32": "9e8b6db9",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "jump_top": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_1": {
+      "origin": "generated",
+      "crc32": "120981e0",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_2": {
+      "origin": "generated",
+      "crc32": "b712bb90",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_3": {
+      "origin": "generated",
+      "crc32": "0de5e10a",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_4": {
+      "origin": "generated",
+      "crc32": "9f687dc7",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_5": {
+      "origin": "generated",
+      "crc32": "2dafc13e",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_blast_6": {
+      "origin": "generated",
+      "crc32": "39ebcab5",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_shot_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kiai_shot_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "sitting_up": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_flip": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_step": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

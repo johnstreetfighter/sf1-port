@@ -1,0 +1,283 @@
+{
+  "fighter": "eagle",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x2920", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His stance (move 1's header pose)."
+    },
+    {
+      "name": "crouch",
+      "pack": { "crc32": "7a057856" },
+      "anchor": [-27, -72],
+      "note": "His ROM moves have no crouch (moves 5 to 7 are empty). His stance (0x2920) from the head down to his belt, upright, both sticks crossed before his chest, on bent legs: the thighs and knees of the top of his jump (0x2a40), its waist set under his stance's belt, cut above its hanging feet, with his stance's own trouser hems, shoes and ground shadow set under them, the front shin straight under the front knee. Only the shins' lower ends, where they meet the hems, are inpainted. He stands 72 pixels tall against his stance's 93."
+    },
+    {
+      "name": "crouching_block",
+      "pack": { "crc32": "f6f2ccdf" },
+      "anchor": [-27, -71],
+      "note": "His standing block (0x2aa0, move 4's header pose) down to its belt, both sticks crossed in an X before his face, on the crouch's legs. Every pixel is his ROM art or the approved crouch's; nothing was generated."
+    },
+    {
+      "name": "crouching_hit",
+      "pack": { "crc32": "613f1b7a" },
+      "anchor": [-28, -70],
+      "note": "His ROM reactions have no crouching hit. The first pose of his standing-hit reaction (0x2aa8, which his hit streams start on), head knocked back and mouth open, down to its belt, on the crouch's legs. Every pixel is his ROM art or the approved crouch's; nothing was generated."
+    },
+    {
+      "name": "crouching_sweep",
+      "pack": { "crc32": "6735d064" },
+      "anchor": [-25, -73],
+      "note": "His crouching LK, AP2's low stick sweep: his stick jab's strike (0x2980, stream 0x1239e) down to its belt on the crouch's legs, its whole striking arm (shaded sleeve, forearm, fist and stick) turned 50 degrees down about the shoulder and set 3 pixels back into his torso, so the stick sweeps low before his front foot. Round two: the whole shoulder and upper arm are inpainted, over the jab's own full shaded sleeve turned as the guide, with his head and the torso's front edge outside the mask, and the waist band where the jab's belt meets the crouch's trousers; his head, his rear hand and its stick, and the striking forearm, fist and stick are his ROM pixels. The maintainer, round one: \"Arm looks pasted on.\" (only a small join at the shoulder was inpainted then)."
+    },
+    {
+      "name": "crouching_uppercut",
+      "pack": { "crc32": "f5d0aba0" },
+      "anchor": [-25, -110],
+      "note": "His crouching HK, AP2's rising stick uppercut: the same stick jab on the crouch's legs, its striking arm turned 60 degrees up about the shoulder, the stick driven up over his head. Only the shoulder's join and the waist band are inpainted."
+    },
+    {
+      "name": "thrust_windup",
+      "rom": { "code": "0x298c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-24, -96],
+      "note": "His low thrust's wind-up (stream 0x12628, drawn 8 forward): leaning in, both sticks drawn low by his hip."
+    },
+    {
+      "name": "rising_strike",
+      "pack": { "crc32": "295e0a1c" },
+      "anchor": [-32, -114],
+      "note": "His standing MK, AP2's rising stick strike: his stick jab's strike (0x2980) with its whole striking arm turned 35 degrees up about the shoulder and set 3 pixels back into his torso, the stick swung up and forward over the opponent's head height. Round two: his upper arm at the jab's full width, its own shaded sleeve down to its dark underside turned as the guide, and the whole shoulder and upper arm inpainted over it, his head outside the mask. The maintainer, round one: \"the upper part of the arm (bicep/tricep) does not look as full as it should be, looks malformed\" (the round-one sleeve's underside had been trimmed by hand)."
+    },
+    {
+      "name": "smash_windup",
+      "rom": { "code": "0x2988", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-56, -96],
+      "note": "Both sticks swung up over his rear shoulder, the front knee raised: the first pose of his spinning sticks and low thrust (streams 0x12408, 0x12628), drawn 24 back as they draw it."
+    },
+    {
+      "name": "smash",
+      "pack": { "crc32": "81babe5e" },
+      "anchor": [-24, -82],
+      "note": "His standing HK, AP2's two-stick overhead smash, at its end: the upper body of his jumping stick strike (0x2a44, streams 0x126f8, 0x1285a, 0x129bc), hunched forward with both arms driven down before him and both sticks pointing down at the opponent's knees, on his stance's legs. 0x2a44 is the top of his jump with the arms forward, so its waist sits on his stance's belt as the crouch's does. Only the waist band is inpainted; by hand, holes the inpainting kept in his black waistband, where his stance's hands were taken off it, filled black. Round two, by hand: the maroon band where his two forearms' outlines met opened up, one outline pixel kept on each forearm, so the background shows between them (the maintainer, round one: \"between the forearms should look transparent\")."
+    },
+    {
+      "name": "jab_windup",
+      "rom": { "code": "0x292c", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-24, -96],
+      "note": "His stick jab's wind-up (stream 0x1239e, 8 forward): the front stick drawn back across his chest."
+    },
+    {
+      "name": "jab",
+      "rom": { "code": "0x2980", "large": true, "rows": 2, "cols": 3 },
+      "anchor": [-48, -96],
+      "note": "His stick jab's strike (stream 0x1239e, 16 forward): the front arm thrust out, the stick at the opponent's head."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x2aa8", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x09016), head knocked back, mouth open."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x2aac", "large": true, "rows": 2, "cols": 1 }, "turn": 1 }],
+      "anchor": [-48, -96],
+      "note": "His being-thrown set, lifted: his airborne-hit pose (0x2aac, streams 0x09194, 0x09744), knees up and arms flung, turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x2aac", "large": true, "rows": 2, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -144],
+      "note": "His being-thrown set, over the top: the same pose turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x2b69", "large": false, "rows": 1, "cols": 6 },
+      "anchor": [-56, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x096fc-0x09a2c), on his back, centred on him so the get-up rises where he lies."
+    },
+    {
+      "name": "rising",
+      "pack": { "crc32": "d1fe7055" },
+      "anchor": [-19, -56],
+      "note": "Getting up, pushing off his knees: the upper body of the squat his jumps take off from (0x29e8), bent forward with a stick in each hand and both hands low, set 16 rows lower and 8 further forward than the crouch's upper body, so his hands come down on his knees, on the crouch's legs. Only the waist band where its shirt and belt meet the crouch's thighs is inpainted; his head, hands and sticks are his ROM pixels. His ROM art has no pose that reads as getting up. He stands 56 pixels tall against the crouch's 72."
+    },
+    {
+      "name": "jump_top",
+      "rom": { "code": "0x2a40", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-36, -144],
+      "note": "The top of his jump, the tuck all three of his jumps pass through (streams 0x11eb4, 0x12014, 0x12174, drawn 4 back), knees drawn up and both sticks crossed before his chest, shown 48 pixels up; his new jumping attacks start and end on it."
+    },
+    {
+      "name": "jump_high",
+      "pack": { "crc32": "4f108425" },
+      "anchor": [-34, -177],
+      "note": "A jumping punch: the approved rising strike's upper body (his stick jab, 0x2980, its arm turned 35 degrees up, the stick swung up and forward over the opponent's head height) on the tuck's legs (0x2a40: thighs, knees, hanging shins and feet), lined up so its legs fall where the top of the jump has them. The waist band is the approved crouching sweep's (the same jab body on the same thighs). Nothing is generated."
+    },
+    {
+      "name": "jump_jab",
+      "pack": { "crc32": "c463b808" },
+      "anchor": [-34, -152],
+      "note": "A jumping punch: his stick jab's strike (0x2980) down to its belt, its own ROM arm thrust out level, the stick at the opponent's head, on the tuck's legs, lined up as jump_high is. The waist band is the approved crouching sweep's. Nothing is generated."
+    },
+    {
+      "name": "jump_poke",
+      "pack": { "crc32": "825a3151" },
+      "anchor": [-34, -152],
+      "note": "His jumping LK, AP2's downward stick poke: the approved crouching sweep (his jab's arm turned 50 degrees down, the stick driven down and forward) with the crouch's shins, hems and shoes swapped for the tuck's hanging shins and feet. The crouch's thighs and knees are the tuck's own pixels, so the legs join with no seam. Nothing is generated."
+    },
+    {
+      "name": "jump_swing",
+      "pack": { "crc32": "161c1cbf" },
+      "anchor": [-72, -143],
+      "note": "His jumping MK, AP2's horizontal stick swing: the arms-spread pose of his spinning sticks (0x2b00, stream 0x124d8), both sticks out level, down to its belt, on the tuck's legs from its row 38, 2b00's belt on his stance's as the crouch sets it on the tuck's thighs. Only the waist band, where its shirt meets the tuck's trousers, is inpainted; his head, arms and sticks are his ROM pixels."
+    },
+    {
+      "name": "jump_smash",
+      "rom": { "code": "0x2a44", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-24, -144],
+      "note": "His jumping HK, AP2's two-stick downward smash: his ROM jumping stick strike (0x2a44, streams 0x126f8, 0x1285a, 0x129bc, drawn 24 forward), hunched forward with both sticks driven down before him, shown 48 pixels up as the top of the jump is."
+    },
+    {
+      "name": "jump_squat",
+      "rom": { "code": "0x29e8", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The squat his jumps take off from and land in (streams 0x11eb4, 0x129bc), bent forward with a stick in each hand."
+    },
+    {
+      "name": "jump_rise",
+      "rom": { "code": "0x29ec", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-36, -120],
+      "note": "Rising off the floor and coming down again (streams 0x11eb4, 0x129bc, drawn 4 back), legs trailing, sticks crossed; shown 24 pixels up."
+    },
+    {
+      "name": "spin_front",
+      "rom": { "code": "0x2b00", "large": true, "rows": 2, "cols": 3 },
+      "anchor": [-64, -96],
+      "note": "His spinning sticks (stream 0x124d8), facing us: both arms spread, both sticks out level, on one leg."
+    },
+    {
+      "name": "spin_side",
+      "rom": { "code": "0x2a4a", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-48, -96],
+      "note": "His spinning sticks (stream 0x124d8), turning: facing the opponent, the sticks swung round."
+    },
+    {
+      "name": "spin_back",
+      "rom": { "code": "0x2b08", "large": true, "rows": 2, "cols": 3 },
+      "anchor": [-56, -96],
+      "note": "His spinning sticks (stream 0x124d8, drawn 8 forward), his back to us, both arms spread."
+    },
+    {
+      "name": "spin_turn",
+      "rom": { "code": "0x23a8", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-48, -96],
+      "note": "His spinning sticks (stream 0x124d8), turning back toward us."
+    }
+  ],
+  "moves": [
+    {
+      "name": "crouch",
+      "poses": ["stance", "crouch"],
+      "timing": [40, 60],
+      "note": "His crouch, from his stance."
+    },
+    {
+      "name": "crouching block",
+      "poses": ["crouching_block"],
+      "timing": [60],
+      "note": "One pose, as Ryu's crouching block is."
+    },
+    {
+      "name": "crouching hit",
+      "poses": ["crouch", "crouching_hit", "crouch"],
+      "timing": [30, 20, 30],
+      "note": "One pose, as Ryu's crouching hit is, for the crouching entries of his hit table."
+    },
+    {
+      "name": "crouching stick sweep",
+      "poses": ["crouch", "crouching_sweep", "crouch"],
+      "timing": [6, 14, 12],
+      "note": "His crouching LK (AP2's low stick sweep): one new pose, the stick swept low before his front foot, as Ryu's crouching kick strikes in one (0x03a0). His crouching MK, AP2's low two-stick thrust, is his ROM low thrust (stream 0x12628), which also stays his crouching punch."
+    },
+    {
+      "name": "crouching stick uppercut",
+      "poses": ["crouch", "crouching_uppercut", "crouch"],
+      "timing": [6, 16, 14],
+      "note": "His crouching HK (AP2's rising stick uppercut): one new pose, the stick driven straight up from the crouch."
+    },
+    {
+      "name": "rising stick strike",
+      "poses": ["thrust_windup", "rising_strike", "stance"],
+      "timing": [6, 14, 10],
+      "note": "His standing MK (AP2's rising stick strike): from his low thrust's wind-up, both sticks low by his hip, the front stick swung up and forward; one new pose, as his stick jab (stream 0x1239e) winds up and strikes in one. His standing LK, AP2's low stick poke, is his ROM stick jab."
+    },
+    {
+      "name": "two-stick smash",
+      "poses": ["smash_windup", "smash", "stance"],
+      "timing": [8, 16, 12],
+      "note": "His standing HK (AP2's two-stick overhead smash): both sticks swung up over his shoulder (his ROM wind-up), then brought down together before him; one new pose."
+    },
+    {
+      "name": "throw",
+      "poses": ["jab", "jab_windup", "smash_windup", "stance"],
+      "timing": [8, 10, 14, 10],
+      "note": "The stick hook (AP2): he hooks a stick behind the opponent's neck and flings him over to land in front. All from his ROM poses: his stick jab's strike, the stick reaching out behind the neck, as the hook; its wind-up, the stick drawn back across his chest, as the pull; both sticks swung up over his rear shoulder (0x2988) as the fling; then his stance. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on the floor. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "rising", "crouch", "stance"],
+      "timing": [60, 12, 10, 60],
+      "note": "From lying on his back he pushes himself up off his knees, bent forward and low, comes up through his crouch and rises into his stance."
+    },
+    {
+      "name": "jumping high strike",
+      "poses": ["jump_top", "jump_high", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every punch strength from a straight-up jump: the stick swung up and forward over the opponent's head height. One new pose, as his stick jab strikes in one (stream 0x1239e)."
+    },
+    {
+      "name": "jumping stick jab",
+      "poses": ["jump_top", "jump_jab", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every punch strength from forward and back jumps: the stick thrust straight out at the opponent's head. One new pose."
+    },
+    {
+      "name": "jumping stick poke",
+      "poses": ["jump_top", "jump_poke", "jump_top"],
+      "timing": [6, 12, 8],
+      "note": "His jumping LK (AP2's downward stick poke): the stick driven down and forward. One new pose."
+    },
+    {
+      "name": "jumping stick swing",
+      "poses": ["jump_top", "jump_swing", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "His jumping MK (AP2's horizontal stick swing): both arms flung out, both sticks swung round level. One new pose, the arms-spread pose of his spinning sticks."
+    },
+    {
+      "name": "jumping two-stick smash",
+      "poses": ["jump_top", "jump_smash", "jump_top"],
+      "timing": [6, 16, 8],
+      "note": "His jumping HK (AP2's two-stick downward smash): his ROM jumping stick strike, both sticks driven down before him. His jumps and his leaping stick strikes (streams 0x126f8, 0x1285a, 0x129bc) stay his ROM streams."
+    },
+    {
+      "name": "manchester black",
+      "poses": ["smash_windup", "spin_front", "spin_side", "spin_back", "spin_turn", "spin_front", "spin_side", "spin_back", "spin_turn", "stance"],
+      "timing": [6, 4, 4, 4, 4, 4, 4, 4, 4, 10],
+      "note": "Quarter-circle forward and punch (AP2's stand-in): his ROM spinning-sticks barrage (stream 0x124d8) as the ROM plays it, both sticks swung up over his shoulder, then two turns of the spin with both sticks out; in the catalogue so SF1+ can re-time it. SF1+ carries him forward (the stream's x-offsets: 28, then 4 a pose). Nothing new."
+    },
+    {
+      "name": "st andrews green",
+      "poses": ["jump_squat", "jump_rise", "jump_top", "jump_smash", "jump_rise", "jump_squat", "stance"],
+      "timing": [4, 6, 8, 14, 6, 4, 10],
+      "note": "Quarter-circle back and kick (AP2's stand-in): his ROM leaping stick strike (stream 0x129bc) as the ROM plays it, a leap from his squat with both sticks driven down at the top; in the catalogue so SF1+ can re-time it and move him through the arc. Nothing new."
+    }
+  ]
+}

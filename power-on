@@ -1,0 +1,31 @@
+# sf1-port match configuration (tickets #94 O3..#97 O6)
+preset = "definitive_overhaul"
+
+[toggles]
+positive_edge_attacks = true
+negative_edge_specials = true
+recovery_input_buffer = true
+recovery_buffer_window = 4
+lenient_command_trackers = true
+command_tracker_window = 28
+command_release_grace = 8
+interruptible_walk_cycle = true
+anytime_jump_attacks = true
+fast_prejump_crouch = true
+standard_high_low_block = true
+symmetric_shotos_and_blockable_dp = true
+balanced_damage_and_chip = true
+chip_death = false
+disable_fireball_slowdown = true
+real_second_timer_and_draws = true
+fair_cpu_and_sagat_scaling = true
+cpu_reaction_delay = 8
+
+[roster]
+full_cast = true
+four_country = true
+ban = "unrestricted"
+mode = "arcade"
+p1 = "Ryu"
+p2 = "Ken"
+country = "Japan"

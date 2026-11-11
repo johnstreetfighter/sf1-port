@@ -1,0 +1,2367 @@
+{
+  "fighter": "retsu",
+  "calls": [
+    {
+      "at": "2026-11-03T21:00:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "08cbf189-e75b-4533-a871-6ff788bb4bc1",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM crouch, padded to 96x64 at (2, 0); the mask covers his front forearm and hand (x31-52, y16-38)",
+          "note": "inpaint-source-crouch-96x64.png and inpaint-mask-punch-windup.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front arm in a crouching punch's wind-up: his front hand drawn back in close before his chest, just in front of his other fist, the elbow bent low, the light grey sleeve to the elbow and his bare forearm, the hand open with the fingers together and upright, ready to strike. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch_1",
+          "crc32": "ce179072",
+          "touch_ups": [
+            "his front arm inpainted (x31-52, y16-38), the hand drawn in before his chest, open and upright, as his jab draws it in (0x1120); the rest is his ROM crouch, pixel for pixel; 42 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "Kept: the hand drawn in, open and upright, as his jab's wind-up (0x1120) draws it in; outside the mask his ROM crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T21:00:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2f6497ec-7dd9-4e9d-ab54-db63e7894467",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM crouch, padded to 96x64 at (2, 0); the mask covers his front arm and the space it strikes into (x32-95, y14-38)",
+          "note": "inpaint-source-crouch-96x64.png and inpaint-mask-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front arm in a crouching palm strike: from his shoulder his arm drives straight out to the right at chest height, fully extended, the light grey sleeve to the elbow, then his bare forearm and his open hand, palm forward and fingers up, as in his standing palm strike. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch_2",
+          "crc32": "ac9c1f37",
+          "touch_ups": [
+            "his front arm inpainted (x32-95, y14-38), driven straight out at chest height with the open palm forward, as his jab strikes (0x1320); the rest is his ROM crouch, pixel for pixel; 66 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "Kept: the arm straight out at chest height, the open palm forward as in his ROM jab (0x1320); outside the mask his ROM crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T21:00:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f92fa8f1-9af0-4f65-abf8-21fa6eb2a450",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM crouch, padded to 96x64 at (2, 0); the mask covers his front leg from the knee down (x30-66, y38-63)",
+          "note": "inpaint-source-crouch-96x64.png and inpaint-mask-kick-chamber.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg, the chamber of a low kick from his crouch: his front knee lifted higher, his bare foot drawn up off the floor beneath the knee, toes pointing down, his loose light grey trouser leg, the same size as his other leg. Nothing else in the empty space; the floor stays empty under the lifted foot.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick_chamber",
+          "crc32": "53891cc0",
+          "touch_ups": [
+            "his front leg inpainted from the knee down (x30-66, y38-63), the foot drawn up off the floor under the knee, toes down; the rest is his ROM crouch, pixel for pixel; 52 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "ground shadow in black (33 pixels; row 62 x19-45, row 63 x18-46): where his front foot stood in the crouch, now lifted, as his ROM chamber (0x10c0) keeps it under the raised foot"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-03): \"It just doesn't look good, needs a different pose altogether.\" Its retry (e34013b9) was rejected too, and the chamber dropped."
+        }
+      ],
+      "note": "Kept: the foot lifted under the knee, toes down; outside the mask his ROM crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T21:00:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "240bbc1e-dfcd-4a87-a5b8-9037f984b2fa",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM crouch, padded to 96x64 at (2, 0); the mask covers his front leg from the knee down and the space it kicks into (x30-95, y38-63)",
+          "note": "inpaint-source-crouch-96x64.png and inpaint-mask-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg in a low crouching kick: from his hip his front leg kicks straight out forward to the right just above the floor, at shin height, the knee locked, his loose light grey trouser leg, then his bare shin and his bare foot flexed, the sole facing right and the toes up, the same size as his other leg. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "dc1d370e",
+          "touch_ups": [
+            "his front leg inpainted from the knee down (x30-95, y38-63), kicked straight out at shin height, the foot flexed with the toes up; the rest is his ROM crouch, pixel for pixel; 110 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "ground shadow in black (54 pixels; row 62 x19-50, row 63 x18-62): run on under the kicking leg, as under his ROM kick (0x10c4)"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-03) for kicking out from a kneel, his rear knee down. Now crouching_kick is edae4568's, squatting on his rear foot."
+        }
+      ],
+      "note": "Kept: the leg straight out at shin height, the foot flexed, toes up; outside the mask his ROM crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T21:15:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "a70c92c0-2ee1-4a76-b7f9-793462b3ce00",
+      "cost": 10,
+      "canvas": [
+        88,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his crouch, his head, robe, belt, hands, trousers and exact pixel scale and hip level to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x10c0",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his own kick's chamber: how his raised knee, loose trouser leg and lifted bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x01a6",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): a low squat with the weight back on the bent rear leg, its foot flat",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity: his face, bald head, build and proportions",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Crouching kick's chamber: risen off his rear knee into a low squat, his weight back on his deeply bent rear leg with that foot flat on the floor, as the posing guide squats, his front knee bent and drawn up before him and his front bare foot lifted off the floor under it, ready to snap out low; his body upright. His hands stay up as in his crouch reference: his rear fist before his chest, his front hand open before him. The same scale as his crouch reference: about 55 pixels wide and 64 pixels tall, his head the same size as in his crouch.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept. 0, 2 and 3 stood up out of the squat, 80 to 88 pixels tall against his crouch's 64; 1 kept his crouch's height but squats on both flat feet, with no chamber. The chamber was inpainted on the kick instead (e34013b9), so his body and rear leg match it."
+    },
+    {
+      "at": "2026-11-03T21:18:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "edae4568-c5a9-4ae5-94d0-a46d7003ab8f",
+      "cost": 10,
+      "canvas": [
+        120,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x124d",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his crouch, his head, robe, belt, hands, trousers and exact pixel scale and hip level to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x10c4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own kick: how his kicking leg, loose light grey trouser leg and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03a0",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouching kick, squatting on the bent rear leg with the foot flat, the front leg straight out low along the floor",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Crouching kick: risen off his rear knee, he squats low on his deeply bent rear leg with that foot flat on the floor, his body upright and leaning a little back, and kicks his front leg straight out forward and down, low along the floor, the knee locked and the bare foot at floor level, as the posing guide shows. His hands stay up as in his crouch reference: his rear fist before his chest, his front hand open before him. The same scale as his crouch reference: about 95 pixels wide and 62 pixels tall, his head the same size as in his crouch.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "efe79c03",
+          "touch_ups": [
+            "41 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "All four squatted on the bent rear foot with the front leg straight out to the floor, at his crouch's height (63). 0 and 2 kept his crouch's guard; 1 and 3 opened the robe and raised the front hand. Kept 0: its face matches his ROM crouch and stance, so no ROM head was needed. A first send (job 58d91e62-adf4-4395-b179-f440d6064d09) also had his stance as an identity reference and failed at PixelLab (\"Maximum 5 images allowed, got 6\"); it charged nothing, so it has no entry of its own."
+    },
+    {
+      "at": "2026-11-03T21:22:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e34013b9-133e-4b18-8b1d-9be5a91eb661",
+      "cost": 6,
+      "canvas": [
+        120,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "edae4568-c5a9-4ae5-94d0-a46d7003ab8f#0",
+          "usage": "the picture inpainted: the kick as generated, already in his pens; the mask covers his front leg and the space before him, not his robe (x64-119, y42-75)",
+          "note": "edae4568-0.png and inpaint-mask-squat-chamber.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg, the chamber of a low kick from his squat: from under his robe his front thigh comes forward and his knee is drawn up and bent sharply before him, his shin hanging straight down beneath the knee and his bare foot lifted off the floor, toes pointing down, his loose light grey trouser leg gathered at the calf, the same thickness as his other leg. Nothing else in the empty space; the floor stays empty under the lifted foot.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick_chamber",
+          "crc32": "1894fe1b",
+          "touch_ups": [
+            "his front leg inpainted (x64-119, y42-75), the knee drawn up before him and the foot lifted under it, toes down; the rest is the kick (edae4568, candidate 0), pixel for pixel; 57 pixels the inpainting drew off his palette set to his nearest body pens",
+            "29 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "ground shadow in black (17 pixels; row 74 x27-72, row 75 x29-76): run on under the lifted foot, as his ROM chamber (0x10c0) keeps it under the raised foot"
+          ],
+          "note": "Dropped: the user rejected it (2026-11-03) and then dropped the chamber as not needed, so the crouching kick plays crouch, kick, crouch. Kept in the pack's candidates as e34013b9-0-packed-dropped.png."
+        }
+      ],
+      "note": "Kept: the knee drawn up before him, the foot lifted under it, toes down; outside the mask the kick, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T21:22:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "af3210f8-33e6-45fd-adf6-5fa2106d2f85",
+      "cost": 6,
+      "canvas": [
+        120,
+        88
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "edae4568-c5a9-4ae5-94d0-a46d7003ab8f#0",
+          "usage": "the picture inpainted: the kick as generated, already in his pens; the mask covers his front leg and the space before him, not his robe (x64-119, y42-75)",
+          "note": "edae4568-0.png and inpaint-mask-squat-chamber.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg, the chamber of a low kick from his squat: from under his robe his front thigh comes forward and his knee is drawn up and bent sharply before him, his shin hanging straight down beneath the knee and his bare foot lifted off the floor, toes pointing down, his loose light grey trouser leg gathered at the calf, the same thickness as his other leg. Nothing else in the empty space; the floor stays empty under the lifted foot.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: much the same chamber, the shin angled and the foot less clean than seed 1987's. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:00:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e9dc700e-5701-4397-b7d8-4f949c460b4d",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his raised front arm and the space it strikes into (x48-127, y0-34)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front arm in a jumping palm strike: from his shoulder his arm drives straight out to the right at head height, fully extended, the light grey sleeve to the elbow, then his bare forearm and his open hand, palm forward and fingers up. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "b4c17f2b",
+          "touch_ups": [
+            "his front arm inpainted (x48-127, y0-34 of the padded pose), driven straight out at head height with the open palm forward, as his jab strikes (0x1320); the rest is his ROM top-of-jump pose (0x1288), pixel for pixel; 145 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "11 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "a light grey speck on his fingertips (x82-83, y12): the first pixel to his brown outline, the second cleared"
+          ]
+        }
+      ],
+      "note": "Kept: the arm straight out at head height, the open palm forward; outside the mask his ROM top-of-jump pose, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:00:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a1cbbe03-5b10-47f6-9680-14b74b6e005e",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his raised front arm and the space down and forward of it, not his knee (x48-127, y0-38; x58-127, y38-95)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-punch-down.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front arm in a diagonal jumping punch: from his shoulder his arm drives down and forward at a steep angle toward the floor in front of him, fully extended, the light grey sleeve to the elbow, then his bare forearm and his clenched fist, the same size as his other fist. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm hangs more down than forward, the fist by his knee. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:00:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "557a2804-c74a-4174-a9f5-e4c6419f9994",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his front leg and the space it kicks into, not his robe (x44-127, y38-79)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg in a jumping kick: from his hip his front leg kicks straight out to the right at waist height, the knee locked, his loose light grey trouser leg gathered at the calf, then his bare shin and his bare foot flexed at the end, toes up, as big as his other foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Its leg was kept, but not as a pose of its own: its shin was 3 to 4 pixels thick and its foot a stub, so they were inpainted again (4ec1939a), and that is jump_kick. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:00:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "68f45470-2237-49fc-b263-a343f5b8ec88",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his face, bald head, robe, belt, trousers, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x04a8",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): both hands drawn back together to the rear hip before a two-handed thrust",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, gathering: in his fighting stance, his knees bent and his weight settling back, he draws both open palms back together to his rear hip, palms facing each other with the wrists together, his shoulders turned back a little, as the posing guide gathers. The same size as his stance reference: about 60 pixels wide and 93 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: all four stood in a wide horse stance with the hands apart at the sides rather than together at the rear hip, and the robe and face drifted from his ROM art. The gathering was inpainted on the thrust instead (f896daf8)."
+    },
+    {
+      "at": "2026-11-03T22:00:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "31a2ffad-341f-44a9-839b-3b22e0adb25c",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his face, bald head, robe, belt, trousers, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his extended arm, open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a two-handed palm thrust at chest height from a lunge, back leg straight",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, the thrust: stepping into a long lunge, his front knee bent and his back leg straight, his body facing right, he thrusts both open palms straight forward at chest height, the heels of the hands together, one hand above the other, his arms fully extended, as the posing guide thrusts. The same scale as his stance reference: about 95 pixels wide and 90 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_2",
+          "crc32": "d6234168",
+          "touch_ups": [
+            "134 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "his belt's hanging ends shortened to end on row 69 (about half their length; user, 2026-11-03: too long): 39 pixels below it to the robe's own greys, the ends closed in black"
+          ],
+          "note": "First packed as 15d6226f and approved (2026-11-03); then the user found the belt's hanging ends too long, so they were shortened and the file is new (d6234168). The user then found the belt not cleanly edited: the robe below the shortened ends was inpainted again (6be538b8), and that is kiai_shot_2 now. Then replaced (user, 2026-11-03): the edits were not clean enough, and the user chose to generate the Kiai Shot's three poses and the heavy kick whole."
+        }
+      ],
+      "note": "All four thrust both palms from a lunge, back leg straight. Kept 0, his stance's height (93) and his robe and belt nearest his ROM art; its face, mouth open in a shout, matches his ROM shout (0x1288), so no ROM head was needed. 2 was close; 1 and 3 lunged lower with the belt flying."
+    },
+    {
+      "at": "2026-11-03T22:07:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4ec1939a-33c1-46d7-8cb8-be60f5e5cd75",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "557a2804-c74a-4174-a9f5-e4c6419f9994#0",
+          "usage": "the picture inpainted: the kick, reduced to his pens; the mask covers its shin and foot past the trouser cuff (x74-127, y30-56)",
+          "note": "inpaint-source-jump-kick-128x96.png and inpaint-mask-jump-kick-foot.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. The end of Retsu's kicking leg: past his light grey trouser cuff, his bare shin as thick as his other shin, then his big bare foot flexed, the sole facing right and the toes pointing up, about 14 pixels from heel to toes, with a rounded heel and small toe marks at the top; brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "b7107e7b",
+          "touch_ups": [
+            "his front leg inpainted (x44-127, y38-79), kicked straight out at waist height (557a2804), then its thin shin and stub of a foot inpainted again (x74-127, y30-56), a full shin and the foot flexed, toes up; the rest is his ROM top-of-jump pose (0x1288), pixel for pixel; 51 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "14 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "stray specks floating off his body cleared (3 pixels in groups of fewer than 6)"
+          ]
+        }
+      ],
+      "note": "Kept: a full shin and the foot flexed, toes up; the rest is 557a2804's leg on his ROM top-of-jump pose. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:07:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2437823d-6e2e-4a2e-bb71-a7055d27d997",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his raised front arm and the space down and forward of it, not his knee (x48-127, y0-38; x58-127, y38-95)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-punch-down.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front arm in a diagonal jumping punch: from his shoulder his arm drives down and forward at a steep angle toward the floor in front of him, fully extended, the light grey sleeve to the elbow, then his bare forearm and his clenched fist, the same size as his other fist. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: it redrew his raised guard hand as well as the punching arm, three hands in all. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:07:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6aade5e3-547b-452f-a26e-6ca28617cb9c",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his arms and chest (x44-100, y36-58) and his rear hip (x38-62, y50-68)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-gather.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu gathering his ki for the Kiai Shot: his dark grey sleeveless robe over his chest, both arms drawn back, his elbows bent behind him, both open palms together at his rear hip to the left, palms facing each other with the wrists touching, the light grey sleeves and his bare forearms. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arms came out muddled, and the mask's top edge left the thrust's fingertips and the top line of its sleeve hanging in the air. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:07:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ce2d460e-0f2a-4d38-9409-f83644441134",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his arms and chest (x44-100, y36-58)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-recover.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu drawing his hands back after the Kiai Shot: his dark grey sleeveless robe over his chest, both arms drawn back in, his elbows bent low at his sides, his open palms upright before his chest, close to his body, the light grey sleeves and his bare forearms. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a good recovery, but the mask's top edge left the thrust's fingertips and the top line of its sleeve hanging in the air; redone with the mask widened (6755704b). Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:12:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f896daf8-26a8-4062-8c91-4dacade59105",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his arms and chest (x44-58, y34-58; x59-100, y35-58), the thrust's fingertips (x86-100, y24-34) and his rear hip (x38-62, y50-68), not his jaw",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-gather-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu gathering his ki for the Kiai Shot, seen from the side, facing right: his dark grey sleeveless robe crossed over his chest, both of his light grey sleeved arms bent and pulled back along his side, both bare hands open and pressed together, palm to palm, low at his rear hip by the belt, at the left side of his body. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_1",
+          "crc32": "2c2f6072",
+          "touch_ups": [
+            "his arms and chest inpainted (x44-100, y34-58, the thrust's fingertips x86-100, y24-34, and his rear hip x38-62, y50-68), both arms pulled back along his side with the palms pressed together at his rear hip; the rest is the thrust (31a2ffad, candidate 0), pixel for pixel; 501 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "50 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-03) as badly stitched, the arms and hands unclear. Now kiai_shot_1 is 2c2eb0c6's, with his whole upper body inpainted."
+        }
+      ],
+      "note": "Kept: both arms pulled back along his side, the palms together at his rear hip; outside the mask the thrust, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:12:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6755704b-659d-44c5-a445-cf47fe54dd4e",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his arms and chest (x44-58, y34-58; x59-100, y35-58) and the thrust's fingertips (x86-100, y24-34), not his jaw",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-recover-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu drawing his hands back after the Kiai Shot: his dark grey sleeveless robe over his chest, both arms drawn back in, his elbows bent low at his sides, his open palms upright before his chest, close to his body, the light grey sleeves and his bare forearms. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_3",
+          "crc32": "bcc71ed2",
+          "touch_ups": [
+            "his arms and chest inpainted (x44-100, y34-58 and the thrust's fingertips x86-100, y24-34), both arms drawn back in with the palms upright before his chest; the rest is the thrust (31a2ffad, candidate 0), pixel for pixel; 306 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "52 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-03) as badly stitched, the arms and hands unclear. Now kiai_shot_3 is 4f07c6c5's, with his whole upper body inpainted."
+        }
+      ],
+      "note": "Kept: the palms drawn back upright before his chest; outside the mask the thrust, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:12:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "7aa2a74b-30ff-4e93-bea2-17f8393facb0",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his raised front arm and the space down and forward of it, not his knee (x48-127, y0-38; x58-127, y38-95)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-punch-down.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's only front arm in a diagonal jumping punch, his guard hand no longer raised: from his shoulder the arm drives forward and down at forty-five degrees, fully extended, the light grey sleeve to the elbow, then his bare forearm and his clenched fist well out in front of his knees, the same size as his other fist. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "76f35074",
+          "touch_ups": [
+            "his front arm inpainted (x48-127, y0-38 and x58-127, y38-95), driven forward and down with the fist clenched, his raised guard hand gone; the rest is his ROM top-of-jump pose (0x1288), pixel for pixel; 182 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "11 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-03): the arm should drive further forward, and his body lean into the punch. Now jump_punch_down is 8dbd0769's, generated whole and leaning."
+        }
+      ],
+      "note": "Kept: one front arm driven forward and down, the fist well out in front of his knees; outside the mask his ROM top-of-jump pose, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ebc711e7-a8d3-4231-97ee-0f327e80e4b3",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his front leg and the space up and forward of it, right of his raised hand (x44-127, y38-79; x64-127, y0-37)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-kick-high.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg in a heavy jumping kick at the opponent to the right: from his hip his front leg kicks up and forward to the right, the knee locked, the foot at head height, his loose light grey trouser leg gathered at the calf, then his bare shin and his bare foot flexed, the sole facing right and the toes up, as big as his other foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "1f1248be",
+          "touch_ups": [
+            "his front leg inpainted (x44-127, y38-79, and the space up and forward of it, right of his raised hand, x64-127, y0-37), kicked up and forward at the opponent, the foot at head height; the rest is his ROM top-of-jump pose (0x1288), pixel for pixel; 170 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "14 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "stray specks floating off his body cleared (3 pixels in groups of fewer than 6)"
+          ],
+          "note": "Replaced: the user found a section missing (2026-11-03): the thigh was cut off by a straight edge where it met his raised arm's elbow, outside the mask. Its join was inpainted again (5baa2175), and that is jump_kick_high now."
+        }
+      ],
+      "note": "Kept: the leg kicked up and forward at the opponent, the foot at head height; outside the mask his ROM top-of-jump pose, pixel for pixel. It replaces his ROM turned kick (0x1184), whose leg the user saw going into the background (2026-11-03). Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "b228f431-6e87-497e-980f-bffd9f5dd31b",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump pose, padded to 128x96 at (8, 4); the mask covers his front leg and the space up and forward of it, right of his raised hand (x44-127, y38-79; x64-127, y0-37)",
+          "note": "inpaint-source-jump-128x96.png and inpaint-mask-jump-kick-high.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's front leg in a heavy jumping kick at the opponent to the right: from his hip his front leg kicks up and forward to the right, the knee locked, the foot at head height, his loose light grey trouser leg gathered at the calf, then his bare shin and his bare foot flexed, the sole facing right and the toes up, as big as his other foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: much the same kick, with white specks on the trouser leg. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2c2eb0c6-538e-43f5-8c94-6a0c47615e4d",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his whole upper body round his head (x36-104, y36-58; x36-56 and x72-104, y24-35) and his rear hip (x30-62, y50-68)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-gather-3.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu gathering his ki for the Kiai Shot, facing right, his whole upper body drawn as one: his dark grey sleeveless robe crossed over his chest, his light grey long sleeves, both arms bent with the elbows pulled back behind him, and both bare hands open and pressed palm to palm, clearly visible low at his rear hip by the belt, at the left side of his body, fingers pointing forward. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_1",
+          "crc32": "d864083c",
+          "touch_ups": [
+            "his whole upper body round his head inpainted (x36-104, y36-58; x36-56 and x72-104, y24-35; and his rear hip x30-62, y50-68), both arms pulled back along his side with the palms pressed together at his rear hip; the rest is the thrust (31a2ffad, candidate 0), pixel for pixel; 386 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "50 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "his belt's hanging ends shortened to end on row 69 (about half their length; user, 2026-11-03: too long): 39 pixels below it to the robe's own greys, the ends closed in black",
+            "the robe below the shortened belt ends inpainted again (6be538b8, x50-78, y70-84), its folds drawn whole where the straps' outlines had run on; 83 pixels to his nearest body pens"
+          ],
+          "note": "First packed as 4c339998; the user found the belt not cleanly edited (2026-11-03), so the robe below its shortened ends is 6be538b8's, as on the thrust, and the file is new (d864083c). Then replaced (user, 2026-11-03): the edits were not clean enough, and the user chose to generate the Kiai Shot's three poses and the heavy kick whole."
+        }
+      ],
+      "note": "Kept: his upper body drawn as one, the arms pulled back and the palms pressed flat together at his rear hip; outside the mask the thrust, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6aa268b9-57b5-49e0-ae5d-e632442ed5ea",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his whole upper body round his head (x36-104, y36-58; x36-56 and x72-104, y24-35) and his rear hip (x30-62, y50-68)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-gather-3.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu gathering his ki for the Kiai Shot, facing right, his whole upper body drawn as one: his dark grey sleeveless robe crossed over his chest, his light grey long sleeves, both arms bent with the elbows pulled back behind him, and both bare hands open and pressed palm to palm, clearly visible low at his rear hip by the belt, at the left side of his body, fingers pointing forward. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a fist at his hip rather than open palms. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4f07c6c5-9640-44d5-9fdf-969bcf80cfaa",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his whole upper body round his head (x36-104, y36-58; x36-56 and x72-104, y24-35)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-recover-3.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu drawing his hands back after the Kiai Shot, facing right, his whole upper body drawn as one: his dark grey sleeveless robe crossed over his chest, his light grey long sleeves, both elbows bent low at his sides, and both bare hands open and upright, clearly visible before his chest, the palms facing forward, close to his body. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_3",
+          "crc32": "0ee20acc",
+          "touch_ups": [
+            "his whole upper body round his head inpainted (x36-104, y36-58; x36-56 and x72-104, y24-35), both arms drawn back in with the palms upright before his chest; the rest is the thrust (31a2ffad, candidate 0), pixel for pixel; 213 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "52 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "his belt's hanging ends shortened to end on row 69 (about half their length; user, 2026-11-03: too long): 39 pixels below it to the robe's own greys, the ends closed in black",
+            "the robe below the shortened belt ends inpainted again (6be538b8, x50-78, y70-84), its folds drawn whole where the straps' outlines had run on; 83 pixels to his nearest body pens"
+          ],
+          "note": "First packed as 3d50c8fd; the user found the belt not cleanly edited (2026-11-03), so the robe below its shortened ends is 6be538b8's, as on the thrust, and the file is new (0ee20acc). Then replaced (user, 2026-11-03): the edits were not clean enough, and the user chose to generate the Kiai Shot's three poses and the heavy kick whole."
+        }
+      ],
+      "note": "Kept: both palms upright before his chest, the same size; outside the mask the thrust, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fc97bae8-bb47-4c14-b60c-27da69f863b0",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the Kiai Shot's thrust as generated, in his pens; the mask covers his whole upper body round his head (x36-104, y36-58; x36-56 and x72-104, y24-35)",
+          "note": "31a2ffad-0.png and inpaint-mask-kiai-recover-3.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu drawing his hands back after the Kiai Shot, facing right, his whole upper body drawn as one: his dark grey sleeveless robe crossed over his chest, his light grey long sleeves, both elbows bent low at his sides, and both bare hands open and upright, clearly visible before his chest, the palms facing forward, close to his body. Nothing else in the empty space; nothing stretches out to the right.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: much the same, the hands less even than seed 1987's. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:33:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "8dbd0769-9bb3-4711-ab1e-f6dc2b09cc96",
+      "cost": 10,
+      "canvas": [
+        112,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his top-of-jump pose, his face, bald head, robe, belt, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x10ca",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own lunging punch: how his fully extended arm, sleeve and clenched fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a diagonal jumping punch, the body leaning forward, the fist driven down and forward",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Diagonal jumping punch, in the air: his knees tucked up beneath him as in the pose base, his body leaning forward into the punch, he drives his front fist down and forward at forty-five degrees, the arm fully extended, his rear fist kept by his chest, as the posing guide shows. The same scale as the pose base: his head, robe and legs the same size, the figure about 75 pixels wide and 70 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "jump_punch_down",
+          "crc32": "9e8b6db9",
+          "touch_ups": [
+            "23 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "All four leaned into the punch with the fist driven down and forward and the knees tucked, 74 to 79 tall against his top-of-jump pose's 73. Kept 1: his height, a clean robe; 0 had maroon patches on the shoulder. The heads are angled by the lean but are his, so no ROM head was needed."
+    },
+    {
+      "at": "2026-11-03T22:50:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5baa2175-ce81-428d-a63e-f2480c98b7d3",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "ebc711e7-a8d3-4231-97ee-0f327e80e4b3#0",
+          "usage": "the picture inpainted: the heavy kick, reduced to his pens; the mask covers the join of his thigh and raised arm's elbow (x50-76, y18-46)",
+          "note": "inpaint-source-jump-kick-high-128x96.png and inpaint-mask-jump-kick-high-seam.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Retsu's kicking thigh in its loose light grey trouser leg rising from his hip up and forward to the right, drawn whole and continuous with the rest of the leg, passing in front of his bent arm's elbow; his forearm and elbow in the light grey sleeve behind it, joined to his raised hand above; dark outlines between them.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "2e5b6351",
+          "touch_ups": [
+            "his front leg inpainted (x44-127, y38-79, and the space up and forward of it, right of his raised hand, x64-127, y0-37), kicked up and forward at the opponent, the foot at head height; the rest is his ROM top-of-jump pose (0x1288), pixel for pixel; 170 pixels the inpainting drew off his palette, or in his lilac greys, set to his nearest body pens",
+            "14 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "stray specks floating off his body cleared (3 pixels in groups of fewer than 6)",
+            "the join of his thigh and raised arm's elbow inpainted again (5baa2175, x50-76, y18-46), the thigh drawn whole in front of the elbow where the first inpainting had cut it off at its mask's edge; 47 pixels to his nearest body pens"
+          ],
+          "note": "Then replaced (user, 2026-11-03): the edits were not clean enough, and the user chose to generate the Kiai Shot's three poses and the heavy kick whole."
+        }
+      ],
+      "note": "Kept: the thigh drawn whole in front of his elbow. The same request with seed 1987 (job fd50b728-5a83-451b-a193-408f945070b9) failed at PixelLab under heavy load and charged nothing, so it has no entry of its own. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:50:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "bab80f02-315f-4e45-8736-9492a2fc9686",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the thrust as generated, reduced to his pens; the mask covers the belt's hanging ends and the robe below them (x55-75, y63-84)",
+          "note": "inpaint-source-kiai-thrust-128.png and inpaint-mask-kiai-belt.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, exactly the colours and the drawing of the rest of the sprite. Below the knot of Retsu's light grey belt, its two ends hang only a short way down the front of his dark grey robe, about six pixels, side by side, and stop with clean ends; below them his dark grey robe with its long folds and dark outlines continues to the hem, as around it.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the belt ends came back as long as before. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:50:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3110cc4d-e2df-4721-af6e-b8b1f6a976fe",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the thrust as generated, reduced to his pens; the mask covers the belt's hanging ends and the robe below them (x55-75, y63-84)",
+          "note": "inpaint-source-kiai-thrust-128.png and inpaint-mask-kiai-belt.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, exactly the colours and the drawing of the rest of the sprite. Below the knot of Retsu's light grey belt, its two ends hang only a short way down the front of his dark grey robe, about six pixels, side by side, and stop with clean ends; below them his dark grey robe with its long folds and dark outlines continues to the hem, as around it.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: wide flat belt ends, still long. The hand-shortened ends were kept instead, and only the robe below them redone (6be538b8). Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:50:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6be538b8-3823-4556-929a-7d87529cc61b",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the thrust with its belt ends shortened by hand (the second round's kiai_shot_2, d6234168); the mask covers the robe below the ends (x50-78, y70-84)",
+          "note": "inpaint-source-kiai-thrust-short-straps-128.png and inpaint-mask-kiai-robe.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, exactly the colours and the drawing of the rest of the sprite. The lower front of Retsu's dark grey robe below his short belt ends: plain dark grey cloth with long diagonal folds and dark outlines, hanging down to the hem as the robe does on either side; no belt, no light strips, nothing light.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_2",
+          "crc32": "f2aa8e9e",
+          "touch_ups": [
+            "134 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens",
+            "his belt's hanging ends shortened to end on row 69 (about half their length; user, 2026-11-03: too long): 39 pixels below it to the robe's own greys, the ends closed in black",
+            "the robe below the shortened belt ends inpainted again (6be538b8, x50-78, y70-84), its folds drawn whole where the straps' outlines had run on; 83 pixels to his nearest body pens"
+          ],
+          "note": "Then replaced (user, 2026-11-03): the edits were not clean enough, and the user chose to generate the Kiai Shot's three poses and the heavy kick whole."
+        }
+      ],
+      "note": "Kept: the robe's folds drawn whole below the short belt ends, nothing light left; the same strip (x50-78, y70-84) goes on the gathering and the recovery, whose pixels there are the thrust's. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T22:50:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1576970a-18f5-4288-930e-1c0ddddfc6d2",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "31a2ffad-341f-44a9-839b-3b22e0adb25c#0",
+          "usage": "the picture inpainted: the thrust with its belt ends shortened by hand (the second round's kiai_shot_2, d6234168); the mask covers the robe below the ends (x50-78, y70-84)",
+          "note": "inpaint-source-kiai-thrust-short-straps-128.png and inpaint-mask-kiai-robe.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, exactly the colours and the drawing of the rest of the sprite. The lower front of Retsu's dark grey robe below his short belt ends: plain dark grey cloth with long diagonal folds and dark outlines, hanging down to the hem as the robe does on either side; no belt, no light strips, nothing light.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a light speck left where the old strap was. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, 0-6 and 8-11)."
+    },
+    {
+      "at": "2026-11-03T23:05:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "24a9964c-1f05-4ce7-b12b-c2ab5a2f1d52",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his face, bald head, robe, belt, trousers, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a two-handed palm thrust at chest height from a lunge, back leg straight",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt knotted at the front with two short ends hanging just below the knot, no longer than a hand, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, the thrust: stepping into a long lunge, his front knee bent and his back leg straight, his body facing right, he thrusts both open palms straight forward at chest height, the heels of the hands together, one hand above the other, his arms fully extended, his mouth open in a shout, as the posing guide thrusts. The same scale as his stance reference: about 95 pixels wide and 90 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: 2 had short belt ends but curled hands, like fists; 0 and 3 flung the belt ends out behind him; 1 lunged lower with the ends hanging. Asked again with open hands spelt out (f443efa7)."
+    },
+    {
+      "at": "2026-11-03T23:05:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "94d94cc2-f0a1-466e-b7f8-d405e395b22e",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his top-of-jump pose, his face, bald head, robe, belt, tucked legs, guarding hands and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x11e0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own high kick: how his high kicking leg, loose trouser leg and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a jumping kick, the rear knee tucked and the front leg kicked out",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Heavy jumping kick, in the air: his rear knee tucked up under him as in the pose base, he kicks his front leg up and forward to the right at the opponent, the knee locked and his bare foot at head height, the sole facing right, his loose light grey trouser leg whole from hip to calf, his rear fist across his chest and his front hand up by his head as in the pose base, as the posing guide kicks. The same scale as the pose base: his head, robe and legs the same size, the figure about 90 pixels wide and 80 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "jump_kick_high",
+          "crc32": "30f18f9a",
+          "touch_ups": [
+            "4 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "Kept 1: the foot at head height toward the opponent, the rear knee tucked, the thigh whole from hip to foot, his jump pose's height (72 against 73). 0 and 2 kicked lower; 3 drew no kick."
+    },
+    {
+      "at": "2026-11-03T23:12:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "f443efa7-b2a6-4437-9099-73a88c3cf155",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his face, bald head, robe, belt, trousers, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his extended arm, open hand with the fingers up and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a two-handed open-palm thrust at chest height from a lunge, back leg straight",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt knotted at the front with two short ends hanging straight down just below the knot, no longer than a hand, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, the thrust: stepping into a long lunge, his front knee bent and his back leg straight, his body facing right, he thrusts both hands straight forward at chest height, both hands wide open with the fingers straight and together pointing up, the palms facing forward, the heels of the hands together, one hand above the other, his arms fully extended, his mouth open in a shout, as the posing guide thrusts. The same scale as his stance reference: about 95 pixels wide and 90 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_2",
+          "crc32": "b8df1f6a",
+          "touch_ups": [
+            "75 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Dropped: the user rejected the generated Kiai Shot a fourth time, its belt still wrong (2026-11-03), and at the review limit chose a ROM stand-in (his jab's wind-up and palm strike). Kept in the pack's candidates as f443efa7-0-packed-dropped.png."
+        }
+      ],
+      "note": "All four thrust open palms with short belt ends, at his stance's height. Kept 0: its robe hangs to mid-thigh as in his ROM art; 1 to 3 cut it to jacket length."
+    },
+    {
+      "at": "2026-11-03T23:18:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "3b1649b4-a2f2-4050-8b91-5533c5fe1676",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "f443efa7-b2a6-4437-9099-73a88c3cf155#0",
+          "usage": "pose base and identity: his Kiai Shot thrust, the exact lunge, legs, feet, robe, short belt ends, face and size to keep",
+          "note": "The thrust as generated, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x04a8",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): both hands drawn back together to the rear hip before a two-handed thrust",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt knotted at the front with two short ends hanging straight down just below the knot, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, gathering: in exactly the same long lunge as the pose base (the same legs, feet, robe, belt and size), his front knee bent and his back leg straight, he draws both arms back along his side and presses both open hands together, palm to palm, low at his rear hip by the belt, fingers pointing forward, his shoulders turned back a little, gathering his ki, as the posing guide gathers. Exactly the size of the pose base: about 85 pixels wide and 92 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: all four drew him 113 to 115 pixels tall against the thrust's 92. Asked again on a 104-pixel canvas (aee959fe)."
+    },
+    {
+      "at": "2026-11-03T23:18:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "f24c1de5-5d52-4c6c-92bf-bff91119577a",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "f443efa7-b2a6-4437-9099-73a88c3cf155#0",
+          "usage": "pose base and identity: his Kiai Shot thrust, the exact lunge, legs, feet, robe, short belt ends, face and size to keep",
+          "note": "The thrust as generated, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1120",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "posing guide for the hands only: his own jab's wind-up, his open front hand drawn in upright before his chest",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt knotted at the front with two short ends hanging straight down just below the knot, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, the recovery: in exactly the same long lunge as the pose base (the same legs, feet, robe, belt and size), his front knee bent and his back leg straight, he draws both arms back in after the thrust, his elbows bent low at his sides and both open hands upright before his chest, close to his body, palms facing forward, fingers up, as the posing guide draws its hand in. Exactly the size of the pose base: about 70 pixels wide and 92 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "kiai_shot_3",
+          "crc32": "fd8087a2",
+          "touch_ups": [
+            "52 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Dropped: the user rejected the generated Kiai Shot a fourth time, its belt still wrong (2026-11-03), and at the review limit chose a ROM stand-in (his jab's wind-up and palm strike). Kept in the pack's candidates as f24c1de5-1-packed-dropped.png."
+        }
+      ],
+      "note": "Kept 1: both palms upright before his chest in the thrust's lunge, robe and belt, 93 tall. 0 drew the thrust again; 2 stood up out of the lunge; 3 drew his stance with one arm out."
+    },
+    {
+      "at": "2026-11-03T23:25:00Z",
+      "move": "kiai shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "aee959fe-3a99-4d6a-bcae-4d60c127ea3b",
+      "cost": 10,
+      "canvas": [
+        104,
+        104
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#445555",
+        "#883344",
+        "#bbcccc",
+        "#99aaaa",
+        "#667777",
+        "#334444",
+        "#888899",
+        "#666677",
+        "#444455"
+      ],
+      "references": [
+        {
+          "candidate": "f443efa7-b2a6-4437-9099-73a88c3cf155#0",
+          "usage": "pose base and identity: his Kiai Shot thrust, the exact lunge, legs, feet, robe, short belt ends, face and size to keep",
+          "note": "The thrust as generated, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own palm strike: how his open hand and bare forearm are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x04a8",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): both hands drawn back together to the rear hip before a two-handed thrust",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Retsu: a bald, clean-shaven, lean Shorinji kempo monk, a dark grey sleeveless robe over a light grey long-sleeved shirt, a light grey belt knotted at the front with two short ends hanging straight down just below the knot, the robe hanging to mid-thigh, loose light grey trousers gathered at the calves, bare feet. Facing right. Kiai Shot, gathering: in exactly the same long lunge as the pose base (the same legs, feet, robe, belt and size), his front knee bent and his back leg straight, he draws both arms back along his side and presses both open hands together, palm to palm, low at his rear hip by the belt, fingers pointing forward, his shoulders turned back a little, gathering his ki, as the posing guide gathers. Exactly the size of the pose base, no bigger: his head, robe and legs the same size, the figure about 80 pixels wide and 92 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "kiai_shot_1",
+          "crc32": "c7a6f5ec",
+          "touch_ups": [
+            "42 pixels in his lilac greys or lining maroon, which his ROM body is not drawn in, set to his nearest body pens"
+          ],
+          "note": "Dropped: the user rejected the generated Kiai Shot a fourth time, its belt still wrong (2026-11-03), and at the review limit chose a ROM stand-in (his jab's wind-up and palm strike). Kept in the pack's candidates as aee959fe-0-packed-dropped.png."
+        }
+      ],
+      "note": "All four at the thrust's size (91 to 93). Kept 0: both arms drawn back, his hand low at his hip, the thrust's robe, short belt ends and lunge. None pressed the palms together as plainly as asked."
+    },
+    {
+      "at": "2026-11-08T13:05:00Z",
+      "move": "kiai blast",
+      "tool": "PixelLab create_image_pro",
+      "job": "a2cb98b8-8944-48c8-8049-6bce6c9925dd",
+      "cost": 10,
+      "canvas": [
+        32,
+        32
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#334444",
+        "#445555",
+        "#667777",
+        "#888899",
+        "#99aaaa",
+        "#bbcccc",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1320",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "art style and scale: his own 1987 palm strike; the blast leaves this open palm, drawn with this outline and shading",
+          "note": "Drawn from its pens by sf-art reference."
+        },
+        {
+          "rom": {
+            "code": "0x01e8",
+            "large": true,
+            "rows": 0,
+            "cols": 0
+          },
+          "fighter": "ryu",
+          "usage": "size and shape of a 1987 projectile sprite: one compact energy shape about this size",
+          "note": "The Hadoken's ball tile, drawn in Retsu's pens by sf-art reference."
+        }
+      ],
+      "prompt": "One frame of Retsu's Kiai Shot, a short-range ki blast in the 1987 Capcom Street Fighter arcade style: a compact burst of pale spirit energy shoved out from an open palm, a puffed ring-like shockwave with a bright core and three or four short streaks trailing to the left, moving right. Flat simple shading, dark grey outline, no gradients, no glow halo, no text, nothing else in the frame. Pale cream and light grey-blue energy on a transparent background, filling most of the frame.",
+      "candidates": 64,
+      "kept": [],
+      "note": "Not kept: with his palm strike as a reference every candidate drew a tiny Retsu with his arm out and a small ring at his hand, cut across the 32-pixel tiles. Asked again with no figure reference (0936fcb7). The first round the maintainer approved for the blast (2026-11-08, up to 50 generations)."
+    },
+    {
+      "at": "2026-11-08T13:16:00Z",
+      "move": "kiai blast",
+      "tool": "PixelLab create_image_pro",
+      "job": "0936fcb7-73b0-4c6f-a5d8-b570d796de53",
+      "cost": 10,
+      "canvas": [
+        32,
+        32
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#334444",
+        "#445555",
+        "#667777",
+        "#888899",
+        "#99aaaa",
+        "#bbcccc",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x01e8",
+            "large": true,
+            "rows": 0,
+            "cols": 0
+          },
+          "fighter": "ryu",
+          "usage": "size and shape of a 1987 projectile sprite: one compact energy shape about this size",
+          "note": "The Hadoken's ball tile, drawn in Retsu's pens by sf-art reference."
+        }
+      ],
+      "prompt": "A ki energy blast effect sprite only, no person, no hand, no arm: a compact burst of pale spirit energy flying right, a puffed ring-like shockwave with a bright cream core and three or four short streaks trailing to the left. 1987 Capcom Street Fighter arcade sprite style: flat simple shading, dark grey outline, no gradients, no glow halo, no text. Pale cream and light grey-blue energy on a transparent background, centred and filling most of the frame.",
+      "candidates": 64,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "kiai_blast_1",
+          "crc32": "120981e0",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        },
+        {
+          "candidate": 3,
+          "pose": "kiai_blast_2",
+          "crc32": "b712bb90",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        }
+      ],
+      "note": "All 64 a pale comet, outlined, its streaks trailing left, about 24 pixels wide. Kept 1 and 3: the cleanest two, their streaks different enough to alternate as it travels. Packed at his pens with no touch-ups (every pixel an exact pen)."
+    },
+    {
+      "at": "2026-11-08T13:24:00Z",
+      "move": "kiai blast",
+      "tool": "PixelLab create_image_pro",
+      "job": "a2d53ac5-aa76-4863-8a7a-44cbeca4d910",
+      "cost": 10,
+      "canvas": [
+        32,
+        32
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#334444",
+        "#445555",
+        "#667777",
+        "#888899",
+        "#99aaaa",
+        "#bbcccc",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "0936fcb7-73b0-4c6f-a5d8-b570d796de53#1",
+          "usage": "the blast itself at full strength: its colours, outline, size and style, to be shown breaking apart and fading",
+          "note": "As generated."
+        }
+      ],
+      "prompt": "The same ki energy blast as the reference, now breaking apart and fading out: its round core burst open into a loose ring of pale wisps and scattered dots drifting right, the streaks gone, much of the frame empty, the last moment before it vanishes. Effect sprite only, no person, no hand. 1987 Capcom Street Fighter arcade sprite style: flat simple shading, dark grey outline on the larger wisps, no gradients, no glow halo, no text. Pale cream and light grey-blue on a transparent background.",
+      "candidates": 64,
+      "kept": [
+        {
+          "candidate": 4,
+          "pose": "kiai_blast_3",
+          "crc32": "0de5e10a",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        },
+        {
+          "candidate": 12,
+          "pose": "kiai_blast_4",
+          "crc32": "9f687dc7",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        },
+        {
+          "candidate": 29,
+          "pose": "kiai_blast_5",
+          "crc32": "2dafc13e",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        },
+        {
+          "candidate": 37,
+          "pose": "kiai_blast_6",
+          "crc32": "39ebcab5",
+          "note": "Approved by the maintainer, 2026-11-08; in his recipe."
+        }
+      ],
+      "note": "38 drawn, 26 empty: they run as a sequence from the whole ball, through the core bursting open into a ring, to scattered dots. Kept 4, 12, 29 and 37 as the fade's four steps. Packed at his pens with no touch-ups. The round's spend ends here: 30 of the 50 generations the maintainer approved."
+    }
+  ]
+}

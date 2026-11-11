@@ -1,0 +1,1047 @@
+{
+  "fighter": "birdie",
+  "calls": [
+    {
+      "at": "2026-11-07T12:50:30Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ef1bf0cc-7679-4168-a1d3-7397092837e4",
+      "cost": 5,
+      "canvas": [
+        64,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x240c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump, upright with his fists on guard and his knees drawn up, from the head down to the knees (rows 0-75), set on the ground",
+          "note": "inpaint-source-crouch-64x92.png and inpaint-mask-crouch.png in candidates/birdie/round1 (make_crouch.py)."
+        },
+        {
+          "rom": {
+            "code": "0x2400",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "his stance's boots and two-row ground shadow (rows 117-127), laid under the knees; the mask covers only the ankles between them (x8-61, y70-81), sparing the boots"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting low on his heels: his dark grey ripped jeans folded tight at the knees, the lower legs short and tucked under his thighs, the jeans' cuffs going into his brown boots, which stand flat on the floor. Empty background around the legs.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "46d2858b",
+          "touch_ups": [
+            "his stance's upper body (0x2400, rows 4-50) laid over the tuck's above row 47: the tuck's is his stance's with the head 4 pixels forward, and from row 47 down the two match pixel for pixel, so his crouch is his stance from the waist up",
+            "a second rip the inpainting drew low on the rear leg, above the boot, given his jeans' black-and-grey dither",
+            "a stray brown pixel jutting from the front boot's heel, and two pixels of the tuck's near elbow under his vest, removed"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:00:20Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a098315a-3ad6-4b31-9d89-12436f7c1f2d",
+      "cost": 5,
+      "canvas": [
+        68,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/birdie/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2600",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the first pose of his standing-hit reaction from the head to the belly (rows 4-56), laid on the crouch's legs at its torso's place; the mask covers the waist band where its belly and vest meet the jeans (x10-59, y45-57), sparing the flung hand",
+          "note": "inpaint-source-crouching-hit-68x92.png and inpaint-mask-crouching-hit.png in candidates/birdie/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler hit while squatting, his upper body jerked back: his bare belly and the bottom edges of his open black leather vest run down into the top of his dark grey ripped jeans over his bent knees; one body, joined cleanly at the waist. Nothing else.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "0fe139d7",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 89 pixels differ from the source, and the 208 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:00:25Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "44889e0f-9fc1-40bf-93d3-a37d86592ef9",
+      "cost": 6,
+      "canvas": [
+        112,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/birdie/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x27a8",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his kick's leg, thigh to boot (x34-99, y63-88), laid from the crouch's front hip 10 pixels above his kick's own height, in place of the crouch's front thigh, shin and boot; the mask covers the hip (x28-51, y48-67) and the space under the thigh (x30-53, y72-87)",
+          "note": "inpaint-source-crouching-kick-112x92.png and inpaint-mask-crouching-kick.png in candidates/birdie/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting on his folded rear leg and kicking his front leg straight out: the thigh of his dark grey ripped jeans runs from his hip under his bare belly into the outstretched leg, joined cleanly at the hip; under the thigh, his folded rear leg's jeans and empty space down to the floor.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "dcd7a5c3",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 64 pixels differ from the source, and the 165 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "2 light specks inside his dark jeans set to the pens around them",
+            "a 7-pixel stub of black outline left hanging below the hip, between the thigh and his rear leg, removed"
+          ],
+          "note": "Rejected by the maintainer in round one: \"The leg join should be a little lower.\" Replaced by round two's."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:00:30Z",
+      "move": "sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "89d140db-2af2-4501-a1f9-b0d41f2554da",
+      "cost": 6,
+      "canvas": [
+        112,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/birdie/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x27a8",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his kick's leg, thigh to boot, laid low along the floor, 4 pixels below his kick's own height and 6 further out; the mask covers the hip as the thigh runs down to it (x28-57, y48-75) and the space under it (x30-55, y76-87)",
+          "note": "inpaint-source-sweep-112x92.png and inpaint-mask-sweep.png in candidates/birdie/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting low on his folded rear leg and sweeping his front leg out along the floor: the thigh of his dark grey ripped jeans runs down from his hip under his bare belly into the outstretched leg lying low along the ground, joined cleanly at the hip; under the hip, his folded rear leg's jeans and empty space down to the floor.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "sweep",
+          "crc32": "e5a98e47",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 202 pixels differ from the source, and the 48 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "a brown seam the inpainting drew across the thigh (13 pixels) given his jeans' greys"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:00:35Z",
+      "move": "high kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fc5942a0-01f2-4a33-94d5-8795d22f135e",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x27a8",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his kick's strike as the body: head, arms, vest, belt and standing leg, with the kicking leg taken away; that leg (x30-99, y63-88) turned 40 degrees up about the hip (rot.py: Scale2x three times, turned, sampled back) and laid as a guide; the mask covers the turned leg, 2 pixels around it, and the hip it rises from (x24-49, y54-79), sparing the standing leg",
+          "note": "inpaint-source-high-kick-128x128.png and inpaint-mask-high-kick.png in candidates/birdie/round1."
+        },
+        {
+          "rom": {
+            "code": "0x2726",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "his kick chamber's ground shadow (rows 126-127), under the standing foot"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler standing on one leg doing a high front kick: his kicking leg, in dark grey ripped jeans with a black outline and black-and-grey dithered shading, swung straight up from his hip toward head height, his brown boot at its end; the jeans leg joins his hip under his studded black belt cleanly. Empty background around the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "high_kick",
+          "crc32": "37227cf5",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 258 pixels differ from the source, and the 573 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "1 light specks inside his dark jeans set to the pens around them",
+            "a 6-pixel spike of black outline hanging under the raised thigh, beside his standing leg, removed"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:48:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2d194362-ef0e-49b8-9a93-b0a7ab96657d",
+      "cost": 6,
+      "canvas": [
+        112,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/birdie/tools builds the sources and masks."
+        },
+        {
+          "rom": {
+            "code": "0x27a8",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his kick's leg, thigh to boot (x34-99, y63-88), laid 5 pixels lower on the crouch's front hip than round one's; the mask covers the hip (x28-53, y50-71) and the space under the thigh (x30-55, y76-87)",
+          "note": "inpaint-source-crouching-kick-112x92.png and inpaint-mask-crouching-kick.png in candidates/birdie/round2."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting on his folded rear leg and kicking his front leg straight out: the thigh of his dark grey ripped jeans comes out low from his hip, below his bare belly, and runs into the outstretched leg, joined cleanly at the hip; under the thigh, his folded rear leg's jeans and empty space down to the floor.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "8c9f4b91",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 92 pixels differ from the source, and the 130 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "a 7-pixel stub of black outline left hanging below the hip, between the thigh and his rear leg, removed"
+          ],
+          "note": "Rejected by the maintainer in round two: \"Join still too high.\" Replaced by round three's. The maintainer, round three: \"If we have to accept one, the previous iteration was good enough\": this file is the accepted fallback if round four's is rejected."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T13:48:05Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9c04a44f-1f21-4bd8-9c90-e0582f92f54e",
+      "cost": 5,
+      "canvas": [
+        68,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/birdie/tools builds the sources and masks."
+        },
+        {
+          "rom": {
+            "code": "0x2400",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "through the crouch: his stance's upper body, guard up, kept as it is; the crouch's rear boot and the bottom of its rear leg are cleared and the mask covers the rear leg below the seat (x0-35, y66-87), sparing the front leg",
+          "note": "inpaint-source-rising-68x92.png and inpaint-mask-rising.png in candidates/birdie/round2. His ROM art has no pose that reads as getting up."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler getting up from the floor, down on one knee: his rear knee rests on the ground under his hip, the shin of his dark grey ripped jeans lying back along the floor behind him, the toe of his brown boot on the ground at the back; his front foot is planted. Empty background around the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "e900dc7c",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 531 pixels differ from the source, and the 190 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "the rear boot's 9 orange outline pixels given his boots' brown outline",
+            "his two-row black ground shadow carried on under the rear boot (28 pixels); the mask stopped above it"
+          ],
+          "note": "Rejected by the maintainer in round two: \"It looks too similar to the crouch, Doesn't read as rising.\" Replaced by round three's."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:10:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a728b5b3-4bf4-485e-8216-c75087d61061",
+      "cost": 6,
+      "canvas": [
+        112,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_round3.py in the pack's candidates/birdie/tools builds the sources and masks."
+        },
+        {
+          "rom": {
+            "code": "0x27a8",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his kick's leg, thigh to boot (x34-99, y63-88), turned 14 degrees up about the hip (rot.py) and laid from the crouch's hip crease, where the front thigh meets the seat (the thigh's top about 7 pixels below round two's), so the boot stays at shin height; the mask covers the turned leg, 2 pixels around it, and the hip (x28-55, y50-87), sparing his belly",
+          "note": "inpaint-source-crouching-kick-112x92.png and inpaint-mask-crouching-kick.png in candidates/birdie/round3."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting on his folded rear leg and kicking his front leg straight out: the leg comes out low from the crease of his hip, where his thigh meets his seat, and runs level into the outstretched dark grey ripped jeans leg and his brown boot; above it, his jeans' waist and hip under his bare belly; under the thigh, his folded rear leg and empty space down to the floor. Black outline, black-and-grey dithered shading on the jeans.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "874f7e2d",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 52 pixels differ from the source, and the 618 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "1 light specks inside his dark jeans set to the pens around them"
+          ],
+          "note": "Rejected by the maintainer in round three: \"try again, now it's too low. If we have to accept one, the previous iteration was good enough.\" Replaced by round four's."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:10:05Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "83859433-2433-45ea-8e55-2953907110e6",
+      "cost": 5,
+      "canvas": [
+        96,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "9c04a44f-1f21-4bd8-9c90-e0582f92f54e#0",
+          "usage": "round two's kneeling legs (the crouch's front leg and boot planted, the rear knee down, the shin back along the floor), below the waist",
+          "note": "make_round3.py in the pack's candidates/birdie/tools builds the source and mask."
+        },
+        {
+          "rom": {
+            "code": "0x28a0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his headbutt lunge's upper body (rows 0-45: head low, torso bent far forward, both fists before him), laid at the kneel's waist so the fists come over the front knee; the mask covers the waist band where its belt meets the jeans (x10-55, y46-61)",
+          "note": "inpaint-source-rising-96x92.png and inpaint-mask-rising.png in candidates/birdie/round3."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler pushing himself up off the floor from one knee, bent far forward over his front knee: the bottom of his black leather vest and his studded black belt run into the waist of his dark grey ripped jeans over his kneeling legs; one body, joined cleanly at the waist. Nothing else.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "2e7ecdf5",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 157 pixels differ from the source, and the 247 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ],
+          "note": "Rejected by the maintainer in round three: \"Almost good, there is clipping or a bad join where his bottom/butt is.\" Its seat fixed by hand for round four (derived)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:16:20Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3d73fb9a-3835-41a3-8b1a-ec4992152a84",
+      "cost": 6,
+      "canvas": [
+        112,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "ef1bf0cc-7679-4168-a1d3-7397092837e4#0",
+          "usage": "the picture inpainted is built on his crouch as packed (his stance's upper body on this candidate's legs), so his ROM head, arms, body, rear thigh and boots stay pixel for pixel",
+          "note": "make_round4.py in the pack's candidates/birdie/tools builds the sources and masks."
+        },
+        {
+          "candidate": "a728b5b3-4bf4-485e-8216-c75087d61061#0",
+          "usage": "round three's level leg from the thigh outward (x52 on, as touched up), raised 4 pixels so the join sits about halfway between round two's and round three's; the mask covers only the hip join (x28-55, y50-83), sparing his belly",
+          "note": "inpaint-source-crouching-kick-112x92.png and inpaint-mask-crouching-kick.png in candidates/birdie/round4."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler squatting on his folded rear leg and kicking his front leg straight out: the thigh of his dark grey ripped jeans comes out of his hip just below his bare belly and runs straight into the outstretched leg, joined cleanly at the hip; under the thigh, his folded rear leg's jeans and empty space down to the floor. Black outline, black-and-grey dithered shading on the jeans.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "65eea6da",
+          "touch_ups": [
+            "outside the mask every pixel is the source's (his crouch and round three's leg); inside, 219 pixels differ from the source, and the 311 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "a grey pixel the inpainting left standing off his belly's outline at the hip removed"
+          ],
+          "note": "the maintainer, round four: \"the leg join is perfect now, but somehow his front hand is doubled.\" The leg and join are kept; the doubled fist is fixed by hand for round five (derived)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:16:25Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fd4681cd-11e8-48b7-ba5b-2260802e795b",
+      "cost": 5,
+      "canvas": [
+        96,
+        92
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "83859433-2433-45ea-8e55-2953907110e6#0",
+          "usage": "round three's rising pose as packed; the mask covers only the seat and the back of the waist (x12-34, y46-62)",
+          "note": "inpaint-source-rising-96x92.png and inpaint-mask-rising.png in candidates/birdie/round4."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler kneeling and bent far forward: the back of his waist and his seat, a clean rounded seat in his dark grey ripped jeans with a black outline and black-and-grey dithered shading, his black studded belt running continuously across the back of his waist into the jeans' top; no gaps, no skin.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more). Not kept: it changed 71 pixels and left the holes at the back of the belt; the seat was fixed by hand instead (seat_r4.py, derived)."
+    },
+    {
+      "at": "2026-11-07T14:53:20Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "7b64bd99-f175-4e8e-873a-438d25c55080",
+      "cost": 6,
+      "canvas": [
+        112,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x240c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his top-of-jump tuck as the body: head, arms, vest and near knee down to the hanging rear foot, with the front leg taken away; below row 47, left of x44 (canvas, the tuck's plus 4 on the left), the seat, hip and rear thigh are his approved crouching kick's (AP21), whose legs there are the tuck's",
+          "note": "make_air.py in the pack's candidates/birdie/tools builds the sources and masks; inpaint-source-jump-kick-high-112x96.png and inpaint-mask-jump-kick-high.png in candidates/birdie/ap22-r1."
+        },
+        {
+          "candidate": "3d73fb9a-3835-41a3-8b1a-ec4992152a84#0",
+          "usage": "his approved crouching kick's leg (AP21, kick 0x27a8's leg, thigh to boot: x40-107, y54-73 of its picture) turned 40 degrees up about the hip (rot.py) and laid from the tuck's front hip as a guide; the mask covers the turned leg, 2 pixels around it, and the hip it comes from (x30-51, y44-71), sparing the near knee"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler in mid-air, knees tucked, kicking his front leg up high: his kicking leg, in dark grey ripped jeans with a black outline and black-and-grey dithered shading, swung straight up and forward from his hip toward head height, his brown boot at its end; the jeans leg joins his hip under his bare belly and the bottom of his black leather vest cleanly. Empty background around the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "fd378b71",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 63 pixels differ from the source, and the 426 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ],
+          "note": "Rejected by the maintainer in round one: \"redo his whole lower half, the non-kicking leg should probably be at a different angle to look more animated\", \"Leg looks pasted on\", \"Too like the jump kick.\" Replaced by round two's."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:53:25Z",
+      "move": "jumping diagonal kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6c7fef02-2815-4abb-b848-5868087d1016",
+      "cost": 6,
+      "canvas": [
+        112,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x240c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his top-of-jump tuck as the body: head, arms, vest and near knee down to the hanging rear foot, with the front leg taken away; below row 47, left of x44 (canvas, the tuck's plus 4 on the left), the seat, hip and rear thigh are his approved crouching kick's (AP21), whose legs there are the tuck's",
+          "note": "make_air.py in the pack's candidates/birdie/tools builds the sources and masks; inpaint-source-jump-kick-down-112x108.png and inpaint-mask-jump-kick-down.png in candidates/birdie/ap22-r1."
+        },
+        {
+          "candidate": "3d73fb9a-3835-41a3-8b1a-ec4992152a84#0",
+          "usage": "his approved crouching kick's leg (AP21, kick 0x27a8's leg, thigh to boot: x40-107, y54-73 of its picture) turned 35 degrees down about the hip (rot.py) and laid from the tuck's front hip as a guide; the mask covers the turned leg, 2 pixels around it, and the hip it comes from (x30-51, y50-75), sparing the near knee"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler in mid-air, his rear knee tucked, driving a flying kick down and forward: his kicking leg, in dark grey ripped jeans with a black outline and black-and-grey dithered shading, thrust straight down and forward from his hip, his brown boot at its end; the jeans leg joins his hip under his bare belly cleanly. Empty background around the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_down",
+          "crc32": "7f22da34",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 318 pixels differ from the source, and the 482 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T14:53:30Z",
+      "move": "bull horn",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "d383ad74-935f-4c7f-8917-dfc2c9745ae7",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x271a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his diving attack's landing (streams 0x1165c, 0x119a0) as the body, rows 16-111: crouched low and leaning in, the near arm driven straight forward at waist height; its upright head and neck taken away (x36-63, y18-46, sparing the near shoulder); its near forearm and fist (x56-95, y50-79) laid again 2 pixels forward and 9 higher, behind everything, as his far arm; the mask covers the neck between his shoulders and head (x38-50, y35-48 of the pose) and the far forearm's root under his chin (x58-69, y46-55), sparing the head and the near arm",
+          "note": "make_air.py in the pack's candidates/birdie/tools builds the sources and masks; inpaint-source-bull-horn-96x96.png and inpaint-mask-bull-horn.png in candidates/birdie/ap22-r1. His legs below row 111 are the pose's own, laid back after."
+        },
+        {
+          "rom": {
+            "code": "0x28a0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his headbutt lunge's lowered head (x79-95, y6-27: crown forward, face down, his mohawk toward the opponent), every pixel, set at (49, 30) of the pose, low between his shoulders and behind his near arm"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler charging head-first like a bull, his head lowered between his shoulders and both arms driven straight forward: the back of his neck and his bare muscular shoulders run cleanly from his shoulders into the back of his lowered head; his far forearm comes out from under his chin. One body, no gaps.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "bull_horn",
+          "crc32": "3c9e3536",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 56 pixels differ from the source, and the 23 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "a hair-yellow pixel on the outline of his near shoulder set to his outline brown, and a one-pixel hole in the top line of his neck filled",
+            "a 5-pixel gap the inpainting left open between the back of his neck and the top of his near arm filled with his skin"
+          ],
+          "note": "Rejected by the maintainer in round one: \"Looks like 4 arms and the head seems malformed\", \"Head hidden or lost\", \"Arms look wrong.\" Replaced by round two's."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T15:17:45Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a79b952d-b21e-4f5f-8640-2fd8f40feccb",
+      "cost": 6,
+      "canvas": [
+        148,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "candidate": "fc5942a0-01f2-4a33-94d5-8795d22f135e#0",
+          "usage": "his approved standing high kick (AP21, as touched: his kick's strike 0x27a8, the leg swung up from an inpainted hip) placed 20 pixels in from the left, with its standing leg (below row 62, left of the kicking thigh) taken out and turned 26 degrees back about the hip (rot.py) so it trails down and back, and its floor shadow removed; the mask covers everything from the belt down (x24-75, y61-93: hip, seat, both upper thighs) and the whole turned leg with 2 pixels around it; the kicking shin and boot and everything above the belt stay",
+          "note": "make_air_r2.py in the pack's candidates/birdie/tools builds the sources and masks; inpaint-source-jump-kick-high-148x128.png and inpaint-mask-jump-kick-high.png in candidates/birdie/ap22-r2."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler in a flying high kick, legs split wide in mid-air: his front leg swung straight up toward head height, his rear leg stretched straight down and back behind him; his dark grey ripped jeans with a black outline and black-and-grey dithered shading run from his studded black belt into both thighs through one rounded hip and seat, joined cleanly, no seams. Empty background between the legs.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "c396fee4",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 553 pixels differ from the source, and the 754 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "5 studs on his belt the inpainting drew in his light skin colour set to his studs' light grey (pen 6), as his ROM belts are"
+          ],
+          "note": "Rejected by the maintainer in round two: \"Nearly perfect. The kicking leg could just be a slight bit longer.\" Its leg lengthened by hand for round three (derived)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    },
+    {
+      "at": "2026-11-07T15:17:50Z",
+      "move": "bull horn",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2c2786de-7ac7-439a-b28f-8cf406f7497c",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#995500",
+        "#888855",
+        "#bbbb77",
+        "#444444",
+        "#555555",
+        "#666666",
+        "#777777"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x271a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his diving attack's landing as the body, rows 16-111, with its one real arm driven forward at waist height; its upright head and neck taken away (x36-63, y18-46, sparing the near shoulder); its near fist and the end of the wristband (x74-93, y62-79) laid again 2 pixels forward and 6 higher, behind everything, as the far fist peeking past it; the mask covers only the back of the neck between his shoulders and head (x37-49, y30-47 of the pose), sparing the head and the near arm",
+          "note": "make_air_r2.py in the pack's candidates/birdie/tools builds the sources and masks; inpaint-source-bull-horn-96x96.png and inpaint-mask-bull-horn.png in candidates/birdie/ap22-r2. His legs below row 111 are the pose's own, laid back after."
+        },
+        {
+          "rom": {
+            "code": "0x28a0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his headbutt lunge's lowered head (x79-95, y6-27: crown forward, face down), every pixel, drawn in front of everything at (48, 25) of the pose, resting on the near arm's top line"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Birdie the punk brawler charging head-first like a bull, his bald head with its blond mohawk lowered and thrust forward: the back of his thick neck runs cleanly from the top of his bare muscular shoulders into the back of his head. One body, no gaps.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "bull_horn",
+          "crc32": "8abb498e",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 86 pixels differ from the source, and the 35 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards (pens 7 and 14 are the same grey; packing gives it pen 14, which his stance draws more)."
+    }
+  ],
+  "derived": [
+    {
+      "pose": "crouching_block",
+      "crc32": "06aa6e66",
+      "from": {
+        "fighter": "birdie",
+        "pose": "crouch",
+        "crc32": "46d2858b"
+      },
+      "touch_ups": [
+        "his standing block's upper body (0x2588, rows 4-50) laid over the crouch's above row 47, as his stance's is: its waist matches the crouch's row for row, so no pixel is generated"
+      ]
+    },
+    {
+      "pose": "crouching_punch",
+      "crc32": "6f854721",
+      "from": {
+        "fighter": "birdie",
+        "pose": "crouch",
+        "crc32": "46d2858b"
+      },
+      "touch_ups": [
+        "his jab's upper body (0x2480, rows 4-50, from 33 pixels in) laid over the crouch's above row 47, as his stance's is: its waist matches the crouch's row for row, so no pixel is generated"
+      ]
+    },
+    {
+      "pose": "rising",
+      "crc32": "5e3717c8",
+      "from": {
+        "fighter": "birdie",
+        "pose": "rising",
+        "crc32": "2e7ecdf5"
+      },
+      "touch_ups": [
+        "his studded black belt drawn straight across the back of his waist (rows 50-53, from his back's outline to x38) in black with a stud every four pixels (pens 6 over 7), as his ROM belts are: it covers the holes the lunge's belt crop left and the jeans that stuck up above it, so the seat below is the kneeling legs' own rounded jeans",
+        "light specks on his back's outline above the belt set to black outline"
+      ],
+      "note": "Rejected by the maintainer in round four: \"his butt still isn't rounded.\" seat_r4.py in the pack's candidates/birdie/tools; the maintainer, round three: \"Almost good, there is clipping or a bad join where his bottom/butt is.\""
+    },
+    {
+      "pose": "crouching_kick",
+      "crc32": "410b00bf",
+      "from": {
+        "fighter": "birdie",
+        "pose": "crouching_kick",
+        "crc32": "65eea6da"
+      },
+      "touch_ups": [
+        "the second front fist, 4 pixels above his own, removed: above the leg (rows 0-49, from x44) the 87 pixels that differed are the approved crouch's again; the leg and its join are round four's, untouched"
+      ],
+      "note": "fix_r5.py in the pack's candidates/birdie/tools. Rounds one to three never had the second fist: round four's source laid round three's picture from x52 on, 4 pixels higher, and that crop held the crouch's front fist as well as the leg."
+    },
+    {
+      "pose": "rising",
+      "crc32": "31ae258c",
+      "from": {
+        "fighter": "birdie",
+        "pose": "rising",
+        "crc32": "2e7ecdf5"
+      },
+      "touch_ups": [
+        "his studded black belt drawn straight across the back of his waist (rows 50-53, from his back's outline to x38) in black with a stud every four pixels (pens 6 over 7), as his ROM belts are: it covers the holes the lunge's belt crop left and the jeans that stuck up above it, so the seat below is the kneeling legs' own rounded jeans",
+        "light specks on his back's outline above the belt set to black outline",
+        "the back of his seat below the belt redrawn as a rounded curve (rows 54-71, rearmost at rows 59-62, rounding in to the kneeling thigh), with his black outline and the jeans' black-and-grey dither inside, as his crouch's seat curves: 57 pixels"
+      ],
+      "note": "seat_r4.py, then fix_r5.py, in the pack's candidates/birdie/tools. The maintainer, round four: \"his butt still isn't rounded.\""
+    },
+    {
+      "pose": "jump_kick",
+      "crc32": "176dbc92",
+      "from": {
+        "fighter": "birdie",
+        "pose": "crouching_kick",
+        "crc32": "65eea6da"
+      },
+      "touch_ups": [
+        "the approved crouching kick (round five's file, 410b00bf: this candidate with fix_r5.py's second fist removed) from row 47 down: the kicked leg and hip join from x44 on (rows 47-79), and left of x44 his seat and rear thigh down to row 69, laid on his top-of-jump tuck (0x240c), whose legs the crouch's are from row 47; the tuck's own rear shin and hanging foot below row 70, and its head, arms and body above row 47. No pixel is generated."
+      ],
+      "note": "make_air.py in the pack's candidates/birdie/tools (air.py: body_without_front_leg, crouching_kick_leg)."
+    },
+    {
+      "pose": "jump_kick_high",
+      "crc32": "e440e220",
+      "from": {
+        "fighter": "birdie",
+        "pose": "jump_kick_high",
+        "crc32": "c396fee4"
+      },
+      "touch_ups": [
+        "the kicking leg lengthened 5 pixels along its own line, by hand: across the shin at right angles to the leg (through x84, y46) the rest of the shin, the cuff and the boot moved 4 pixels out and 3 up, and the gap filled with the 5 pixels of shin just inside the cut, repeated, so the outline and dither run on; the boot's pixels, the thigh and the hip join are round two's"
+      ],
+      "note": "fix_ap22_r3.py in the pack's candidates/birdie/tools. The maintainer, round two: \"Nearly perfect. The kicking leg could just be a slight bit longer.\""
+    }
+  ]
+}

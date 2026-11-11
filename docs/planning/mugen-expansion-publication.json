@@ -1,0 +1,137 @@
+{
+  "spec": {
+    "number": 113,
+    "url": null
+  },
+  "parentOverhaulSpec": {
+    "number": 91,
+    "url": "https://github.com/johnstreetfighter/sf1-port/issues/1"
+  },
+  "approved": "2026-10-28",
+  "published": "M1-M8",
+  "tickets": [
+    {
+      "localId": "M1",
+      "number": 114,
+      "url": null,
+      "title": "M1: Offline M.U.G.E.N Extractor, 4-to-6-Button Normal Bridge, and Zero-Tile SF1 Boss Throw-Victim Offsets",
+      "label": "ready-for-agent",
+      "blockers": [
+        "O7",
+        "O8"
+      ],
+      "blockerNumbers": [
+        98,
+        99
+      ]
+    },
+    {
+      "localId": "M2",
+      "number": 115,
+      "url": null,
+      "title": "M2: Expansion Ruleset Toggles, Character/Style Filter UI, and Flagship What-If Era Styles for SF2 & SFZ3",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M1",
+        "O13"
+      ],
+      "blockerNumbers": [
+        114,
+        104
+      ]
+    },
+    {
+      "localId": "M3",
+      "number": 116,
+      "url": null,
+      "title": "M3: Flagship What-If Era Styles (SF3 3S, USF4, SF5 CE, SF6) for All 12 Tournament Fighters",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M2",
+        "O17"
+      ],
+      "blockerNumbers": [
+        115,
+        108
+      ]
+    },
+    {
+      "localId": "M4",
+      "number": 117,
+      "url": null,
+      "title": "M4: Ansatsuken & Martial Masters Bonus Challengers (Gouken, Akuma, Evil Ryu '87, Goutetsu, Sheng Long)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M3"
+      ],
+      "blockerNumbers": [
+        116
+      ]
+    },
+    {
+      "localId": "M5",
+      "number": 118,
+      "url": null,
+      "title": "M5: Street Fighter '89 (Final Fight) & Saikyo Bonus Challengers (Gou Hibiki, Dan Hibiki, Cody Travers, Guy, Mike Haggar)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M3"
+      ],
+      "blockerNumbers": [
+        116
+      ]
+    },
+    {
+      "localId": "M6",
+      "number": 119,
+      "url": null,
+      "title": "M6: Pre-Shadaloo & Alpha Bridge Bonus Challengers (Charlie Nash, M. Bison, Chun-Li '87)",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M3"
+      ],
+      "blockerNumbers": [
+        116
+      ]
+    },
+    {
+      "localId": "M7",
+      "number": 120,
+      "url": null,
+      "title": "M7: Bonus Challenger Arcade Mode Campaigns, Secret Rival Intrusions, and 1987 Ending Cinematics",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M4",
+        "M5",
+        "M6"
+      ],
+      "blockerNumbers": [
+        117,
+        118,
+        119
+      ]
+    },
+    {
+      "localId": "M8",
+      "number": 121,
+      "url": null,
+      "title": "M8: Expanded Roster Integration for Utility AI, 2v1 Dramatic Battle Lore Episodes, 1987 World Tour, and Online Room Browser Filters",
+      "label": "ready-for-agent",
+      "blockers": [
+        "M7",
+        "O18",
+        "O19",
+        "O20",
+        "O21"
+      ],
+      "blockerNumbers": [
+        120,
+        109,
+        110,
+        111,
+        112
+      ]
+    }
+  ],
+  "verified": "titles, labels, body sections, sub-issue links, and all native blocked_by edges checked after publication"
+}

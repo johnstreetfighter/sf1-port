@@ -1,0 +1,188 @@
+{
+  "spec": {
+    "number": 1,
+    "url": null
+  },
+  "tickets": [
+    {
+      "localId": 1,
+      "number": 2,
+      "url": null,
+      "title": "Reproduce one fixed fight in a pinned MAME baseline",
+      "blockers": []
+    },
+    {
+      "localId": 2,
+      "number": 3,
+      "url": null,
+      "title": "Run a scenario comparison and prove that it detects divergence",
+      "blockers": [
+        1
+      ]
+    },
+    {
+      "localId": 3,
+      "number": 4,
+      "url": null,
+      "title": "Display the fixed fight's first frame from native asset decoding",
+      "blockers": [
+        2
+      ]
+    },
+    {
+      "localId": 4,
+      "number": 5,
+      "url": null,
+      "title": "Advance a bounded native idle scene with matching timing",
+      "blockers": [
+        3
+      ]
+    },
+    {
+      "localId": 5,
+      "number": 6,
+      "url": null,
+      "title": "Move the player left and right from keyboard input",
+      "blockers": [
+        4
+      ]
+    },
+    {
+      "localId": 6,
+      "number": 7,
+      "url": null,
+      "title": "Reproduce crouch and return to standing",
+      "blockers": [
+        5
+      ]
+    },
+    {
+      "localId": 7,
+      "number": 8,
+      "url": null,
+      "title": "Reproduce one complete jump and landing",
+      "blockers": [
+        5
+      ]
+    },
+    {
+      "localId": 8,
+      "number": 9,
+      "url": null,
+      "title": "Land one light punch against a controlled target",
+      "blockers": [
+        5
+      ]
+    },
+    {
+      "localId": 9,
+      "number": 10,
+      "url": null,
+      "title": "Play one recovered hit sound at the correct event time",
+      "blockers": [
+        8
+      ]
+    },
+    {
+      "localId": 10,
+      "number": 11,
+      "url": null,
+      "title": "Play one bounded phrase of the fixed fight's music",
+      "blockers": [
+        2
+      ]
+    },
+    {
+      "localId": 11,
+      "number": 12,
+      "url": null,
+      "title": "Recover one decision of the fixed opponent",
+      "blockers": [
+        5
+      ]
+    },
+    {
+      "localId": 12,
+      "number": 13,
+      "url": null,
+      "title": "Size the next recovery batch from the working native slices",
+      "blockers": [
+        6,
+        7,
+        9,
+        10,
+        11
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "child": 3,
+      "blocker": 2
+    },
+    {
+      "child": 4,
+      "blocker": 3
+    },
+    {
+      "child": 5,
+      "blocker": 4
+    },
+    {
+      "child": 6,
+      "blocker": 5
+    },
+    {
+      "child": 7,
+      "blocker": 6
+    },
+    {
+      "child": 8,
+      "blocker": 6
+    },
+    {
+      "child": 9,
+      "blocker": 6
+    },
+    {
+      "child": 10,
+      "blocker": 9
+    },
+    {
+      "child": 11,
+      "blocker": 3
+    },
+    {
+      "child": 12,
+      "blocker": 6
+    },
+    {
+      "child": 13,
+      "blocker": 7
+    },
+    {
+      "child": 13,
+      "blocker": 8
+    },
+    {
+      "child": 13,
+      "blocker": 10
+    },
+    {
+      "child": 13,
+      "blocker": 11
+    },
+    {
+      "child": 13,
+      "blocker": 12
+    }
+  ],
+  "verified": {
+    "issues": 13,
+    "tickets": 12,
+    "dependencies": 15,
+    "bodiesMatch": true,
+    "labelsMatch": true,
+    "allOpen": true
+  }
+}

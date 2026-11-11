@@ -1,0 +1,1840 @@
+{
+  "fighter": "joe",
+  "calls": [
+    {
+      "at": "2026-11-04T13:11:00Z",
+      "move": "crouch",
+      "tool": "PixelLab create_image_pro",
+      "job": "e9f5a29f-3f03-40cb-8fc8-855679c566cc",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base and identity: his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x17c0",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his own lowest ducking pose: how his bent legs and baggy red trousers fold when he ducks",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouch, knees deeply bent, hips low, back upright, fists up",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Crouching on guard: knees deeply bent, hips low, both shoes flat on the floor, his back upright and leaning a little forward, both fists up before his chin, as the posing guide crouches. The same scale as the stance: about 55 pixels wide and 64 pixels tall, his head the same size as in his stance.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: all four at his stance's scale but only half-crouched, 76 to 84 pixels tall against his stance's 94; candidate 2 had an open hand."
+    },
+    {
+      "at": "2026-11-04T13:13:00Z",
+      "move": "crouch",
+      "tool": "PixelLab create_image_pro",
+      "job": "5eccc578-4865-4b0c-a236-730bf4f60048",
+      "cost": 10,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base and identity: his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x17c0",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his own ducking pose: how his bent legs and baggy red trousers fold, but the crouch goes much lower",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a deep crouch, knees deeply bent, hips low, back upright, fists up",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. A deep, low crouch on guard: squatting down with his knees deeply bent and spread, his hips dropped almost to knee height, both shoes flat on the floor, his back upright and leaning a little forward, both fists up before his chin, as the posing guide crouches. Much lower than his ducking pose: about 55 pixels wide and only 64 pixels tall, his head the same size as in his stance.",
+      "candidates": 9,
+      "kept": [],
+      "note": "Not kept: nine deep squats, 49 to 58 pixels tall, but the shorter canvas drew him about 15% smaller than his stance, his head and chest narrower. Candidate 7 was the pose base of the next four calls; their kicks and sweep came out at his stance's scale."
+    },
+    {
+      "at": "2026-11-04T13:16:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab create_image_pro",
+      "job": "2d6526f3-f945-4c72-92ad-12eee8ee2978",
+      "cost": 10,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "5eccc578-4865-4b0c-a236-730bf4f60048#7",
+          "usage": "pose base and identity: his crouch, his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale and hip level",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x176c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his own standing block: how he holds his guard up when he blocks",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0123",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouching block, the front forearm raised high before the face",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Crouching block: squatting low exactly as in the pose base, knees deeply bent, both shoes flat on the floor, he raises his front forearm high and upright before his face to block, his rear fist tucked by his chin, his head ducked behind the guard, as the posing guide blocks. The same scale as the pose base: about 50 pixels wide and 58 pixels tall, his head the same size.",
+      "candidates": 9,
+      "kept": [],
+      "note": "Not kept: drawn at the small crouch's scale, 42 to 52 pixels tall. In the first round his crouching block was his ROM standing block (0x176c); in the second it holds his inpainted crouch."
+    },
+    {
+      "at": "2026-11-04T13:16:00Z",
+      "move": "crouching hit",
+      "tool": "PixelLab create_image_pro",
+      "job": "6fe1cd63-f792-479d-8ccc-b956651e5478",
+      "cost": 10,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "5eccc578-4865-4b0c-a236-730bf4f60048#7",
+          "usage": "pose base and identity: his crouch, his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale and hip level",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x0548",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): hit while crouching, the head snapped back",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Hit while crouching: squatting low as in the pose base, knees deeply bent, both shoes flat on the floor, his head snapped back and his face grimacing, his mouth open, his upper body jolted back, his fists thrown loose before his chest, as the posing guide reels. The same scale as the pose base: about 50 pixels wide and 58 pixels tall, his head the same size.",
+      "candidates": 9,
+      "kept": [],
+      "note": "Not kept: all nine drifted toward the posing guide, with a knotted karate belt and its hanging ends, his body broader and 65 to 69 pixels tall."
+    },
+    {
+      "at": "2026-11-04T13:16:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "d687eb8a-29b4-43c4-9096-89dc19982e15",
+      "cost": 10,
+      "canvas": [
+        128,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "5eccc578-4865-4b0c-a236-730bf4f60048#7",
+          "usage": "pose base and identity: his crouch, his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale and hip level",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x1820",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own low kick: how his kicking leg, baggy trouser and grey shoe are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03a0",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouching kick, squatting on the bent rear leg, the front leg straight out low along the floor",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Crouching kick: squatting low on his deeply bent rear leg with that shoe flat on the floor, his body leaning back a little, he kicks his front leg straight out forward low along the floor, the knee locked and the grey shoe at floor level, sole facing right; his fists up guarding his face as in the pose base, as the posing guide kicks. The same scale as the pose base: about 85 pixels wide and 56 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "69370d7c",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 0: squatting on his folded rear leg, his fists up guarding his face, his front leg straight out along the floor, at his stance's scale. 1 dropped his guard to his chest; 2 was shorter; 3 knelt on his rear knee with a fist out."
+    },
+    {
+      "at": "2026-11-04T13:16:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "16329a05-6941-460b-81c9-619dcdc7a39a",
+      "cost": 10,
+      "canvas": [
+        128,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "5eccc578-4865-4b0c-a236-730bf4f60048#7",
+          "usage": "pose base and identity: his crouch, his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, exact pixel scale and hip level",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x1820",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own low kick: how his kicking leg, baggy trouser and grey shoe are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x054b",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a sweep at full reach, a hand on the floor, the leg straight out along the floor",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Low sweep at full reach: dropped very low on his bent rear leg, one hand planted on the floor beside him, he sweeps his front leg straight out forward along the floor toward the opponent at ankle height, the knee locked and the grey shoe at the end; nothing in his hands, as the posing guide sweeps. The same scale as the pose base: about 90 pixels wide and 48 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 3,
+          "pose": "sweep",
+          "crc32": "8cd45f00",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 3: facing us, low on his rear leg, a hand planted on the floor, his front leg swept straight out along the floor toward the opponent, as Geki's approved sweep. 0 planted no hand and read as a crouching kick; 1 bent over looking at the floor; 2 raised the sweeping shoe sole up."
+    },
+    {
+      "at": "2026-11-04T13:20:00Z",
+      "move": "crouch",
+      "tool": "PixelLab create_image_pro",
+      "job": "e7e5ce0b-6378-4765-a245-626422ccad41",
+      "cost": 10,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base and identity: his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes, and his exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "candidate": "d687eb8a-29b4-43c4-9096-89dc19982e15#0",
+          "usage": "the same fighter squatting at the right scale: how low his hips go and how big his head and chest are when he squats",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouch, knees deeply bent, hips low, back upright, fists up",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. A low crouch on guard: squatting down with both knees deeply bent, his hips as low as in his crouching kick, both shoes flat on the floor, his back upright and leaning a little forward, both fists up before his chin, as the posing guide crouches. Exactly his stance's pixel scale: his head, shoulders, chest and arms the same size as in his stance and his crouching kick; about 52 pixels wide and 66 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: at his stance's scale again, but 73 to 79 pixels tall, no lower than his own ROM duck (0x17c0, 74), so the first round showed the duck as his crouch."
+    },
+    {
+      "at": "2026-11-04T13:22:00Z",
+      "move": "crouching hit",
+      "tool": "PixelLab create_image_pro",
+      "job": "3be48916-81f5-416f-99a9-a053dc90caa7",
+      "cost": 10,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x17c0",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his ducking crouch, his face, spiky blond hair, bare torso and fists, red trousers, narrow belt and grey shoes, exact pixel scale and hip level",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x18e0",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his own standing hit: how his face and head look when he is struck",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0548",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): hit while crouching, the head snapped back",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a plain narrow black belt with a grey buckle, flared over grey shoes. Facing right. Hit while ducking: his legs bent exactly as in the pose base, both shoes flat on the floor, his head snapped back and his face grimacing with his mouth open as in his own hit pose, his shoulders jolted back, his fists thrown loose before his chest, as the posing guide reels. Exactly the pose base's pixel scale and height: about 52 pixels wide and 74 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "crouching_hit",
+          "crc32": "2ea97252",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 2: his knees bent as in his duck, his head snapped back, mouth open, arms thrown wide. 0 leaned forward and did not read as hit; 1 and 3 also reeled, less widely."
+    },
+    {
+      "at": "2026-11-04T13:39:00Z",
+      "move": "crouch",
+      "tool": "PixelLab create_image_pro",
+      "job": "adaf8b42-2e43-43db-8da3-88a2995a0eb3",
+      "cost": 10,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "d687eb8a-29b4-43c4-9096-89dc19982e15#0",
+          "usage": "pose base and scale: his deep squat, his hip height, head, chest and guard, exact pixel scale",
+          "note": "Cropped to the figure; already in his pens."
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "identity: his face, spiky blond hair, bare torso and fists, red trousers, belt and grey shoes",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouch, both knees deeply bent, both feet flat, hips low, back upright, fists up",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with short spiky blond hair and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. A low crouch on guard: the same deep squat, hip height, head, chest and guard as the pose base, both fists up before his face, but his front leg drawn in: the front knee deeply bent and pushed forward, its grey shoe flat on the floor under the knee, his rear knee deeply bent with that shoe flat on the floor behind, as the posing guide crouches. Exactly the pose base's pixel scale and height: about 54 pixels wide and 66 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The second round (user, 2026-11-04: his ROM duck was not low enough). Not kept: at his stance's scale but 71 to 79 pixels tall, no lower than the duck. The crouch was then inpainted on the kick itself."
+    },
+    {
+      "at": "2026-11-04T13:42:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ba6a2a51-e409-474c-aa52-2f4216f99f1c",
+      "cost": 6,
+      "canvas": [
+        128,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "d687eb8a-29b4-43c4-9096-89dc19982e15#0",
+          "usage": "the picture inpainted: his approved crouching kick as generated, already in his pens, on its 128x72 canvas; the mask covers his front leg from the hip and the floor before him (x50-127, y38-71) and the space before his belt (x60-90, y35-37)",
+          "note": "inpaint-source-crouching-kick-128x72.png and inpaint-mask-crouch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's front leg in a low crouch: from his hip, his baggy red trouser leg, as thick as his other leg, runs forward to a sharply bent knee just in front of his belt, then the shin drops straight down to his grey shoe set flat on the floor under the knee, toe pointing right, the trouser flared over the shoe as on his other leg. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "1fed01ae",
+          "touch_ups": [
+            "his front leg inpainted from the hip (x50-127, y38-71, and before his belt x60-90, y35-37), drawn in under him: the knee bent forward, the shin down to his shoe flat on the floor; the rest is his approved crouching kick (d687eb8a, candidate 0), pixel for pixel; 187 pixels the inpainting drew off his palette set to his nearest pens"
+          ],
+          "note": "Replaced: the user rejected its hair (2026-11-04), the crouching kick's own generated hair. Now crouch is 6c735ebc's, this crouch with its hair inpainted."
+        }
+      ],
+      "note": "Kept: a low crouch 67 pixels tall at his stance's scale, his front knee bent forward and its shoe flat under it, meeting his rear leg at the crotch with no seam; his crouching block holds it too. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-04T13:42:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ac067d40-b06d-4bbe-b58a-da26d3060199",
+      "cost": 6,
+      "canvas": [
+        128,
+        72
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "d687eb8a-29b4-43c4-9096-89dc19982e15#0",
+          "usage": "the picture inpainted: his approved crouching kick as generated, already in his pens, on its 128x72 canvas; the mask covers his front leg from the hip and the floor before him (x50-127, y38-71) and the space before his belt (x60-90, y35-37)",
+          "note": "inpaint-source-crouching-kick-128x72.png and inpaint-mask-crouch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's front leg in a low crouch: from his hip, his baggy red trouser leg, as thick as his other leg, runs forward to a sharply bent knee just in front of his belt, then the shin drops straight down to his grey shoe set flat on the floor under the knee, toe pointing right, the trouser flared over the shoe as on his other leg. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a block of darker red above the knee showed where the mask's upper box was, and its front shoe sat a pixel below the rear one. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-04T13:51:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "58271218-84e2-4b8f-9908-77ee0878d5df",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "ba6a2a51-e409-474c-aa52-2f4216f99f1c#0",
+          "usage": "the picture inpainted: the round-two crouch as packed (1fed01ae), padded to 96x80 at (8, 13); the mask covers his hair, the top of his forehead and the space above his head (x32-54, y8-17) and the back of his head (x34-39, y18-21)",
+          "note": "inpaint-source-crouch-96x80.png and inpaint-mask-crouch-hair.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's hair: a short, stiff, spiky blond flat-top crew cut standing straight up about five pixels above his forehead, olive-blond with pale yellow highlights, its flat top edge broken into short square spikes with black tips, a firm dark brown outline, the back and sides cropped short over the back of his head. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "The third round (user, 2026-11-04: his hair did not look right). Not kept: pale, skin-toned hair with a comb of black tips standing above it. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-04T13:51:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6c735ebc-d143-4908-b69b-b48584db79cb",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "ba6a2a51-e409-474c-aa52-2f4216f99f1c#0",
+          "usage": "the picture inpainted: the round-two crouch as packed (1fed01ae), padded to 96x80 at (8, 13); the mask covers his hair, the top of his forehead and the space above his head (x32-54, y8-17) and the back of his head (x34-39, y18-21)",
+          "note": "inpaint-source-crouch-96x80.png and inpaint-mask-crouch-hair.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's hair: a short, stiff, spiky blond flat-top crew cut standing straight up about five pixels above his forehead, olive-blond with pale yellow highlights, its flat top edge broken into short square spikes with black tips, a firm dark brown outline, the back and sides cropped short over the back of his head. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "ea1a61eb",
+          "touch_ups": [
+            "his hair inpainted (x32-54, y8-17, and the back of his head x34-39, y18-21) as a spiky olive-blond flat-top; the rest is the round-two crouch, pixel for pixel; 112 pixels the inpainting drew off his palette set to his nearest pens",
+            "the gaps between the black spike tips on the hair's top row (y10, 9 pixels) closed in his dark brown outline (pen 1), as his ROM hair's top edge is drawn",
+            "dark red specks in his hair to his hair's olive (pen 9): 2 pixels"
+          ],
+          "note": "Replaced: the user rejected the spiky flat-top (2026-11-04): it made him look like Guile; his hair is rounder and smoother. Now crouch is 152a32dc's."
+        }
+      ],
+      "note": "Kept: olive-blond with yellow highlights and a brown outline, as his ROM hair; its black tips stood apart above the hair until the top row was closed in brown. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-04T13:55:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "152a32dc-a086-4c84-919c-ff33181bc6f3",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "ba6a2a51-e409-474c-aa52-2f4216f99f1c#0",
+          "usage": "the picture inpainted: the round-two crouch as packed (1fed01ae), padded to 96x80 at (8, 13); the mask covers his hair, the top of his forehead and the space above his head (x32-54, y8-17) and the back of his head (x34-39, y18-21)",
+          "note": "inpaint-source-crouch-96x80.png and inpaint-mask-crouch-hair.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's hair: a short, smooth, rounded blond crew cut that follows the round dome of his skull, about three pixels thick over the top of his head, olive-blond with pale yellow highlights in soft rounded clumps, a smooth curved dark brown outline with only a few tiny dark dots along the top, nothing standing up and no flat top, the back cropped short over the back of his head. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "d6e8f2d1",
+          "touch_ups": [
+            "his hair inpainted (x32-54, y8-17, and the back of his head x34-39, y18-21) as a smooth, rounded olive-blond crew cut; the rest is the round-two crouch, pixel for pixel; 45 pixels the inpainting drew off his palette set to his nearest pens",
+            "skin tones mottled into his hair above his hairline (rows 12-16, 13 pixels) to his hair's own colours, as his ROM hair is drawn: pale skin to pale yellow (pen 10), mid skin to olive (pen 9), and a light brown in its outline to his dark brown (pen 1)"
+          ],
+          "note": "The fifth round (user, 2026-11-04: the hair looked see-through): the skin tones in it recoloured by hand; it was packed as 06fa1ce8 before."
+        }
+      ],
+      "note": "The fourth round (user, 2026-11-04: the flat-top made him look like Guile; his hair is rounder and smoother). Kept: a smooth rounded dome, mottled olive and pale yellow, with a smooth brown outline, as his ROM hair. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-04T13:55:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5d705728-233a-44b8-a561-c7dc68642429",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "ba6a2a51-e409-474c-aa52-2f4216f99f1c#0",
+          "usage": "the picture inpainted: the round-two crouch as packed (1fed01ae), padded to 96x80 at (8, 13); the mask covers his hair, the top of his forehead and the space above his head (x32-54, y8-17) and the back of his head (x34-39, y18-21)",
+          "note": "inpaint-source-crouch-96x80.png and inpaint-mask-crouch-hair.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer's hair: a short, smooth, rounded blond crew cut that follows the round dome of his skull, about three pixels thick over the top of his head, olive-blond with pale yellow highlights in soft rounded clumps, a smooth curved dark brown outline with only a few tiny dark dots along the top, nothing standing up and no flat top, the back cropped short over the back of his head. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: rounded too, but paler and wider, with dark red specks at the back of his head. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T13:40:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "cbc32a15-64d3-474e-a0d7-29f66a9aec34",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump tuck, padded to 96x80 at (8, 4); the mask covers right of his face (x46-95, y0-30) and his front forearm and fist (x22-95, y26-44)",
+          "note": "inpaint-source-jump-96x80.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer, tucked in mid-air, throws a jumping punch: from his broad bare shoulder his muscular bare arm, about 9 pixels thick and as thick as in the rest of the sprite, drives straight out to the right at head height, fully extended, ending in his clenched bare fist; his other fist stays tucked at his chest. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm came out floating right of his face, cut off from his shoulder, with his tucked arm drawn again below it. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T13:40:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c8439da8-e3e2-4583-bacc-22c30b694de4",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump tuck, padded to 96x80 at (8, 4); the mask covers his legs below the belt (x18-95, y39-79), sparing his rear shoe (x0-19, y56-79)",
+          "note": "inpaint-source-jump-96x80.png and inpaint-mask-jump-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the kickboxer in mid-air, jumping kick: his rear knee stays tucked up under him with its shin folded back to the grey shoe at the lower left, and his front leg kicks straight out forward to the right at waist height, the knee locked, in baggy red trousers flaring at the ankle, ending in his grey shoe, sole facing right. The red trousers drawn in the same dark-red shading as the rest. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "8eb2a8d0",
+          "touch_ups": [
+            "his legs inpainted below the belt (x18-95, y39-79, sparing his rear shoe x0-19, y56-79), the front leg kicked straight out at waist height, the rear knee still tucked; the rest is his ROM top-of-jump tuck (0x1a88), pixel for pixel; 350 pixels the inpainting drew off his palette set to his nearest pens"
+          ],
+          "note": "Round one, rejected by the user (2026-11-06): the legs wrong and messy colours. Round two's jumping kick is rebuilt from his ROM poses alone (the tuck and his flying kick's leg), with nothing generated. The user then preferred it to round two's ROM rebuild; round three inpaints only its rear leg again (eadf6bda)."
+        }
+      ],
+      "note": "Kept: the front leg straight out at waist height, the rear knee tucked to his ROM shoe. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T13:40:00Z",
+      "move": "dynamite straight",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5171178e-7904-4d11-bb67-e06053fb80e3",
+      "cost": 6,
+      "canvas": [
+        80,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1884",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM jump take-off, padded to 80x112 at (8, 16); the mask covers right of and above his face (x44-79, y0-48), his chin (x36-79, y32-48) and his front arm (x20-79, y37-48), sparing his rear fist (x30-79, y49-60)",
+          "note": "inpaint-source-dynamite-80x112.png and inpaint-mask-dynamite.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer springs up off the ground into a rising straight punch: from his broad bare shoulder his muscular bare arm, about 9 pixels thick, drives straight up and forward at a 45 degree angle toward the upper right, fully extended, the elbow locked, ending in his clenched bare fist high above head height; his chin tucked behind the shoulder; his other fist stays at his chest. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm came out floating above right of his head, cut off from his shoulder. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T13:50:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "94e064c2-9f5f-44e5-a918-adfd5bac9358",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump tuck, padded to 96x80 at (8, 4); the mask covers his front arm from the shoulder (x18-95, y21-44) and right of his face (x45-95, y0-20)",
+          "note": "inpaint-source-jump-96x80.png and inpaint-mask-jump-punch-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer, legs tucked in mid-air, throws a jumping punch: his bare muscular arm leaves his round shoulder just below his chin and drives straight out to the right at shoulder height as one continuous unbroken limb, about 9 pixels thick, the elbow locked, ending in his clenched bare fist far to the right; below it his bare chest and his other fist tucked at his stomach above the belt. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "380cd5ac",
+          "touch_ups": [
+            "his front arm inpainted from the shoulder (x18-95, y21-44, and right of his face x45-95, y0-20), driven straight out at shoulder height, the fist clenched; the rest is his ROM top-of-jump tuck (0x1a88), pixel for pixel. The second mask: the first (from x22, below his shoulder) left the arm floating, cut off from his shoulder; 414 pixels the inpainting drew off his palette set to his nearest pens"
+          ],
+          "note": "Round one, rejected by the user (2026-11-06): messy colours and pixels. Round two keeps its shoulder and puts his ROM jab's forearm and fist in place of the inpainted ones."
+        },
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "289f3c2d",
+          "touch_ups": [
+            "round one's inpainted forearm and fist (right of x40) replaced by his ROM jab's (0x18e4, columns 40 on, rows 8-29, two rows down); the jab's chest below its arm left out and the arm's lower outline closed in his dark brown (pen 1, row 26, x40-47)",
+            "20 single pixels in the inpainted shoulder and chest set to the pen around them"
+          ],
+          "note": "Round two. Rejected by the user (2026-11-06): the face had lost pixels. Round three puts his whole ROM head back."
+        },
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "b57f103b",
+          "touch_ups": [
+            "as round two: round one's inpainted forearm and fist replaced by his ROM jab's (0x18e4, columns 40 on, rows 8-29, two rows down), the jab's chest left out, the arm's lower outline closed in pen 1; single pixels in the inpainted shoulder and chest set to the pen around them",
+            "his whole ROM head from the tuck put back (rows 0-17, and rows 18-21 left of x39): 33 pixels, the nose, mouth and chin round two had cleared"
+          ]
+        }
+      ],
+      "note": "Kept: the arm straight out at shoulder height from his shoulder, the fist clenched. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T13:50:00Z",
+      "move": "dynamite straight",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f9095c0a-b43e-4314-be3a-5b16b5affc52",
+      "cost": 6,
+      "canvas": [
+        80,
+        112
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1884",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM jump take-off, padded to 80x112 at (8, 16); the mask covers right of his face (x44-79, y0-48) and his chin, chest and front arm (x18-79, y31-48), sparing his rear fist (x30-79, y49-60)",
+          "note": "inpaint-source-dynamite-80x112.png and inpaint-mask-dynamite-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer springs up into a rising uppercut-straight: his bare muscular arm leaves his round shoulder by his chin and drives up and forward toward the upper right at a 45 degree angle as one continuous unbroken limb, about 9 pixels thick, the elbow locked, passing in front of his chin, ending in his clenched bare fist above the height of his head; his mouth open shouting; below it his bare chest and his other fist at his stomach. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm up at the right angle, but thin and broken where it meets his shoulder. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T14:00:00Z",
+      "move": "dynamite straight",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "da0d0e5e-23f5-4929-8552-85abab4617d4",
+      "cost": 6,
+      "canvas": [
+        80,
+        112
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1884",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM jump take-off, padded to 80x112 at (8, 16); the mask covers right of his face (x44-79, y0-48) and his chin, chest and front arm (x18-79, y31-48), sparing his rear fist (x30-79, y49-60)",
+          "note": "inpaint-source-dynamite-80x112.png and inpaint-mask-dynamite-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer springs up into a rising straight punch angled upward: his thick muscular bare arm, as thick as his other arm, about 10 pixels wide with a big round shoulder and bulging biceps, drives up and forward toward the upper right at a 45 degree angle as one continuous unbroken limb, the elbow locked, passing just in front of his chin, ending in his big clenched bare fist above the height of his head; his face in profile looking up at the fist, mouth open; below it his bare chest and his other fist at his stomach. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "dynamite_straight",
+          "crc32": "a33d2144",
+          "touch_ups": [
+            "his front arm, his chin and the chest behind them inpainted (x18-79, y31-48, and right of his face x44-79, y0-30), the arm driven up and forward at 45 degrees, the fist above his head; the rest is his ROM jump take-off (0x1884), pixel for pixel, his hair and eyes included; 421 pixels the inpainting drew off his palette set to his nearest pens"
+          ],
+          "note": "Round one, rejected by the user (2026-11-06): the body's proportions off and messy colours. Round two is a new whole generation (608b0142)."
+        }
+      ],
+      "note": "Kept: a thick arm, one limb from his shoulder, driven up and forward with the fist above his head. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T14:00:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "832aa21e-d05c-472c-a3ef-35e78f09a4de",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, rounded olive-blond hair, bare torso, red trousers, grey shoes, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x18ea",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own straight punch: how his punching arm and fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a diagonal jumping punch, knees tucked, body leaning, fist driven down and forward",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with a short, smooth, rounded olive-blond crew cut and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Diagonal jumping punch, in the air: his knees tucked up under him as in the pose base, his body leaning forward into the punch, he drives his front fist down and forward at a 45 degree angle toward the floor in front of him, the arm straight, his rear fist tucked at his chest, as the posing guide punches. The same scale as the pose base: about 70 pixels wide and 72 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: all four were about 15% larger than his tuck (78 to 85 pixels tall against 72), with paler, smoother hair than his; his ROM head laid over candidate 1 came out too small for its body. The diagonal punch was inpainted on the tuck instead (108d05ed)."
+    },
+    {
+      "at": "2026-11-06T14:00:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "4564fc20-3965-4602-96f0-f149166f1f94",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, rounded olive-blond hair, bare torso, red trousers, grey shoes, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1826",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own high kick: how his kicking leg, baggy red trouser and grey shoe are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a jumping kick, the rear knee tucked and the front leg kicked straight out",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark brown outline, no soft gradients. Joe: a muscular, shirtless American kickboxer with a short, smooth, rounded olive-blond crew cut and a square jaw, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, flared over grey shoes. Facing right. Heavy jumping kick, in the air: his rear knee tucked up under him as in the pose base, he kicks his front leg up and forward to the right at the opponent, the knee locked and his grey shoe at head height, sole facing right; both fists up guarding his chest and chin, as the posing guide kicks. The same scale as the pose base: about 80 pixels wide and 72 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "jump_kick_high",
+          "crc32": "01dd0b92",
+          "touch_ups": [
+            "his ROM head from his high kick (0x1826, rows 0-8, columns 0-16) laid over the generated one, three rows down where the generated upper body sits, as his body below it is that pose's: 36 pixels, all in his hair and the back of his head"
+          ],
+          "note": "Round one, rejected by the user (2026-11-06): messy colours and pixels. Round two puts every pixel above his hip back to his ROM high kick's."
+        },
+        {
+          "candidate": 2,
+          "pose": "jump_kick_high",
+          "crc32": "773833b5",
+          "touch_ups": [
+            "above his hip every pixel is his ROM high kick's (0x1826, rows 0-50, three rows below the candidate's top), the generated copy of it and the rows above it cleared; below, the generated tucked rear leg",
+            "9 single pixels in the generated rear leg set to the pen around them"
+          ],
+          "note": "Round two, approved; then the user asked for its bare kicking foot to be his grey shoe, matching the Rolling Sobat kick (2026-11-06)."
+        },
+        {
+          "candidate": 2,
+          "pose": "jump_kick_high",
+          "crc32": "97f0c0c0",
+          "touch_ups": [
+            "as round two: above his hip every pixel his ROM high kick's (0x1826, rows 0-50, three rows below the candidate's top), the generated copy of it and the rows above it cleared; single pixels in the generated rear leg set to the pen around them",
+            "the kicking foot, bare skin in the ROM, replaced by the Rolling Sobat kick's grey shoe and sock (6648b05c's inpainting as touched up, its mask x69-90, y2-20, laid on at the same place in the ROM pose): 108 pixels"
+          ]
+        }
+      ],
+      "note": "Kept 2: turned away, the leg kicked steeply up, the shoe above his head, the rear knee tucked; its upper body is his ROM high kick's (0x1826). 1 and 3 faced us and kicked at chest height, near twins of the jumping kick; 0 did not kick."
+    },
+    {
+      "at": "2026-11-06T14:10:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "108d05ed-9e35-4842-8ea7-45f1573b961b",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump tuck, padded to 96x80 at (8, 4); the mask covers his front arm from the shoulder (x18-95, y21-44) and the space before his knees (x42-95, y45-79)",
+          "note": "inpaint-source-jump-96x80.png and inpaint-mask-jump-punch-down.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark brown outline, exactly the colours and the drawing of the rest of the sprite. Joe the shirtless kickboxer, legs tucked in mid-air, hunched forward, throws a diagonal jumping punch: his bare muscular arm leaves his round shoulder just below his chin and drives down and forward toward the lower right at a 45 degree angle as one continuous unbroken limb, about 9 pixels thick, the elbow locked, passing in front of his knee, ending in his clenched bare fist below and in front of his knees; his other fist tucked at his stomach above the belt; his red trousers on his tucked thigh behind the arm. Skin in the same tan tones with brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "5f3ccb1e",
+          "touch_ups": [
+            "his front arm inpainted from the shoulder (x18-95, y21-44, and before his knees x42-95, y45-79), driven down and forward at 45 degrees past his knees, the fist clenched; the rest is his ROM top-of-jump tuck (0x1a88), pixel for pixel; 316 pixels the inpainting drew off his palette set to his nearest pens"
+          ],
+          "note": "Approved in round one, then rejected by the user (2026-11-06): the torso still looked as if his punching arm were tucked in. Round three inpaints his back again (0cb9d28c)."
+        }
+      ],
+      "note": "Kept: the arm driven down and forward past his knees, his ROM head and legs kept. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (every opaque pen of his)."
+    },
+    {
+      "at": "2026-11-06T16:30:00Z",
+      "move": "dynamite straight",
+      "tool": "PixelLab create_image_pro",
+      "job": "608b0142-1d2e-468c-b5dc-9408b883e775",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1884",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his springing take-off pose, his face, rounded olive-blond hair, bare torso, red trousers, grey shoes, legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x18e4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own straight punch: the length, thickness and shading of his extended punching arm and fist",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1a60",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "his own win pose: how his arm and fist are drawn when raised above his head",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Joe: a muscular, shirtless American kickboxer with a short rounded olive-blond crew cut, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, grey shoes. Facing right. Rising straight punch, springing up off the ground: his body, legs and head exactly as in the pose base, his rear foot off the ground; his front arm driven straight up and forward at a 45 degree angle toward the upper right, fully extended, as thick and muscular as the arms in his own straight punch and his raised win pose, the fist clenched above the height of his head; his other fist at his stomach. The same scale as the pose base: about 60 pixels wide and 110 pixels tall, his head the same size. No floor and no shadow.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "dynamite_straight",
+          "crc32": "1002be7d",
+          "touch_ups": [
+            "his legs, belt and rear fist put back to his ROM take-off (0x1884, rows 33 on, one row down), and his head to its ROM head (rows 0-12, two rows down, the generated head cleared first); the torso and the raised arm are generated",
+            "32 single pixels in the generated torso and arm set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Round two (user, 2026-11-06: the round-one strike's proportions off, its colours messy). Kept 0: his take-off body and legs, the arm up and forward at his jab's length; its legs matched the ROM take-off's pixels but for scattered strays, so they were put back to the ROM's. 1 and 2 faced us, 3 turned his back further than the rise."
+    },
+    {
+      "at": "2026-11-06T19:00:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "eadf6bda-0986-4cb6-a840-589b3607846e",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "c8439da8-e3e2-4583-bacc-22c30b694de4#0",
+          "note": "inpaint-source-jump-kick-3.png and inpaint-mask-jump-kick-3.png in the pack's candidates.",
+          "usage": "the picture inpainted: round one's jumping kick as touched up, 96x80; the mask covers his rear leg and the hip behind the kick (x8-29, y39-79) and the space below the kicking leg (x30-52, y53-79)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark red outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Joe the kickboxer in mid-air: his front leg already kicks straight out to the right at hip height. Below it, one single rear leg in the same baggy red trousers, joined cleanly at his hip: the thigh goes down and slightly forward from the hip under the kicking leg, the knee bends, and the shin folds back down so his one grey shoe hangs below his hip, sole down. Only two legs in total. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "01fb7901",
+          "touch_ups": [
+            "round one's jumping kick (c8439da8) with its rear leg and the hip behind the kick inpainted again (x8-29, y39-79, and below the kicking leg x30-52, y53-79): one rear leg, the thigh down from the hip, the knee bent, the shin folded back to the shoe below his hip; the inpainted pixels held to his pens for what they draw (red to his trouser pens, grey to his shoe pens, the rest to his skin and outline pens)",
+            "30 single pixels in the inpainting set to the pen around them"
+          ],
+          "note": "Round three. Rejected by the user (2026-11-06): the tucked leg had two feet, and the kicking foot looked cut off. The user chose one more try by hand."
+        },
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "7ec68c87",
+          "touch_ups": [
+            "as round three: round one's jumping kick with its rear leg and the hip behind the kick inpainted again as one bent leg, held to his trouser and shoe pens, single pixels set to the pen around them",
+            "the tuck's second, lower shoe erased (x8-18, y68-75) and the upper shoe's sole closed in black (pen 0, row 68), so the tucked leg has one foot",
+            "the kicking foot redrawn whole: the generated shoe right of x72 (y37-53) cleared and the grey shoe of his ROM flying kick's straight leg (0x1944, columns 69 on, rows 45-58) laid on at (+3, -6) at the trouser cuff: 106 pixels"
+          ],
+          "note": "Round four, by hand. Rejected by the user (2026-11-06), who asked for a new generation."
+        }
+      ],
+      "note": "Round three (user, 2026-11-06: round one only needed its rear leg corrected, as it looked as if both feet were tucked, and the legs did not join cleanly). Kept: one bent rear leg, joined at the hip. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards, each held to the pens of what it draws (trousers, shoes, skin and outline)."
+    },
+    {
+      "at": "2026-11-06T19:00:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0cb9d28c-16f3-4c68-92d8-8e0ac89e7501",
+      "cost": 5,
+      "canvas": [
+        96,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "candidate": "108d05ed-9e35-4842-8ea7-45f1573b961b#0",
+          "note": "inpaint-source-jump-punch-down-3.png and inpaint-mask-jump-punch-down-3.png in the pack's candidates.",
+          "usage": "the picture inpainted: the round-one diagonal punch as touched up, 96x80; the mask covers his back and the tuck's folded upper arm (x13-29, y17-38, and x30-35, y22-38)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading in clean bands, dark brown outline, exactly the colours and the drawing of the rest of the sprite, no stray pixels. Joe the shirtless kickboxer hunched forward in mid-air: his broad bare muscular back and shoulder seen from the side, rounded back muscles, smooth tan skin shading; no arm on this side of his body, because his only visible arm is the one already reaching down and forward to punch. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "5cc6f906",
+          "touch_ups": [
+            "his back and shoulder inpainted (x13-29, y17-38, and x30-35, y22-38) without the tuck's folded upper arm, so only the punching arm reads; the rest is the approved diagonal punch, pixel for pixel; the inpainted pixels held to his pens for what they draw (red to his trouser pens, grey to his shoe pens, the rest to his skin and outline pens)",
+            "38 single pixels in the inpainting set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Round three (user, 2026-11-06: the torso still looked as if his punching arm were tucked in). Kept: his back without the folded upper arm. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards, each held to the pens of what it draws (trousers, shoes, skin and outline)."
+    },
+    {
+      "at": "2026-11-06T19:00:00Z",
+      "move": "rolling sobat",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6648b05c-5456-4804-9319-baac498e6b92",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1826",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "note": "inpaint-source-sobat-96x96.png and inpaint-mask-sobat-foot.png in the pack's candidates.",
+          "usage": "the picture inpainted: his ROM high kick, padded to 96x96 at (7, 2); the mask covers the kicking foot (x69-90, y2-20)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, black outline, exactly the colours and the drawing of the rest of the sprite. The end of Joe's high-kicking leg: the red trouser cuff and his foot in a grey shoe and sock, light grey with mid grey and dark grey shading and a black outline, the sole pointing up and to the right, the same grey as his other shoe; no bare skin on the foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "sobat_kick",
+          "crc32": "f57b6f2b",
+          "touch_ups": [
+            "his ROM high kick (0x1826, padded to 96x96 at (7, 2)) with the kicking foot inpainted as his grey shoe and sock (x69-90, y2-20); the rest is the ROM pose, pixel for pixel; the inpainted pixels held to his pens for what they draw (red to his trouser pens, grey to his shoe pens, the rest to his skin and outline pens)",
+            "8 single pixels in the inpainting set to the pen around them",
+            "his ground shadow left off: the bottom row, and the second row's black either side of his sole (x26-40 kept)"
+          ]
+        }
+      ],
+      "note": "Round three (user, 2026-11-06: the kicking foot is skin where it should be his grey shoe and sock). Kept: a grey shoe on the kicking foot. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards, each held to the pens of what it draws (trousers, shoes, skin and outline)."
+    },
+    {
+      "at": "2026-11-06T21:00:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "7b8a18d2-2101-4afa-8ec9-175ae58d0b18",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbcc",
+        "#888899",
+        "#666677",
+        "#888855",
+        "#bbbb77",
+        "#440000",
+        "#660000",
+        "#990000",
+        "#bb0000"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1a88",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his face, rounded olive-blond hair, bare torso, fists at his chest, red trousers, grey shoes and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1944",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own flying kick: how his straight kicking leg, baggy red trouser and grey shoe and sock are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "fighter": "ryu",
+          "usage": "posing guide only (another fighter): a jumping kick, one rear knee tucked and the front leg kicked straight out",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x1700",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading in clean bands, dark brown outline, no soft gradients, no stray pixels. Joe: a muscular, shirtless American kickboxer with a short rounded olive-blond crew cut, a bare muscular chest and arms, bare fists, baggy red trousers with a black belt, grey shoes. Facing right. Jumping kick, in the air: his upper body, head and fists exactly as in the pose base, hunched with both fists up at his chest. His front leg kicks straight out forward to the right at hip height, the knee locked, its baggy red trouser leg ending in a fully drawn grey shoe and sock, sole facing right, as in his own flying kick. His one rear leg is tucked up under him: the thigh down from the hip, the knee bent, the shin folded back, ending in a single grey shoe. Exactly two legs and two feet, both joined cleanly at his hips. The same scale as the pose base: about 80 pixels wide and 72 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 3,
+          "pose": "jump_kick",
+          "crc32": "2e358d13",
+          "touch_ups": [
+            "his ROM head from the tuck (0x1a88, rows 0-12, columns 18-37) laid back where the generated one lines up with it: 52 pixels",
+            "the upper of the two rear shoes the generation copied from the tuck erased (29 pixels, columns 0-5, rows 53-59 of the figure), the trouser's back edge closed in his dark red outline (pen 11) and the lower shoe's top in black (pen 0, row 60), so the tucked leg has one foot",
+            "brown and red specks inside the kicking shoe (columns 59-66, rows 31-47 of the figure) to his dark grey (pen 8): 8 pixels",
+            "71 single pixels below the head set to the pen around them"
+          ],
+          "note": "Round five. Rejected by the user (2026-11-06), who chose his ROM flying kick (0x1944) as the jumping kick instead."
+        }
+      ],
+      "note": "Round five (user, 2026-11-06: generate a new one). Kept 3: the tuck's body and scale, 72 pixels tall as the tuck, the kick straight out at hip height with a grey shoe; its head matched the ROM tuck's at the same place. 0 stood upright rather than hunched as the tuck, 1 faced us, 2 kicked upward."
+    }
+  ]
+}

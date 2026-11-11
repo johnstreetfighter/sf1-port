@@ -1,0 +1,23 @@
+{
+  "fighter": "adon",
+  "note": "Silver hair, red socks and red-trimmed shorts: his red hair and his grey socks trade places.",
+  "from": 11,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996644",
+    "#cc8866",
+    "#ddaa88",
+    "#ccaa00",
+    "#aa7700",
+    "#990000",
+    "#555555",
+    "#777777",
+    "#bbbbbb",
+    "#550000",
+    "#990000",
+    "#cc4400",
+    "#ddccaa"
+  ]
+}

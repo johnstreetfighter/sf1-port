@@ -1,0 +1,22 @@
+#reference "../crt/crt-royale.slangp"
+
+# PRO MONITOR (ticket #208, spec #203): CRT-Royale, a studio monitor of the
+# PVM kind fed RGB. Written for this game, not upstream; the shaders it
+# reaches are the vendored Royale passes. Proposed values, for the user to
+# approve by eye on the 3200x2000 screen.
+#
+# An aperture grille at Royale's 3-pixel triad: about 800 triads across a
+# 2389-wide true 4:3 picture, a high-TVL monitor's pitch.
+mask_type = "0.000000"
+mask_triad_size_desired = "3.000000"
+# Tight beams for sharp, dark-gapped scanlines; a little diffusion, no
+# halation: a monitor's phosphor glow, not a TV's bloom.
+beam_min_sigma = "0.020000"
+beam_max_sigma = "0.250000"
+halation_weight = "0.000000"
+diffusion_weight = "0.050000"
+# A flat tube with small corners.
+geom_mode_runtime = "0.000000"
+border_size = "0.005000"
+# 224 lines never interlace.
+interlace_detect_toggle = "0.000000"

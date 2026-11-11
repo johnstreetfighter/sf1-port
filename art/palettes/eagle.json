@@ -1,0 +1,23 @@
+{
+  "fighter": "eagle",
+  "note": "Navy suit trousers, the maintainer's choice and not a colour of his ROM palette: his four trouser browns turn to a dark navy ramp, and his white shirt stays.",
+  "from": 10,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#660000",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#ccccdd",
+    "#aaaabb",
+    "#888899",
+    "#887700",
+    "#bbaa00",
+    "#223377",
+    "#112266",
+    "#111155",
+    "#000055"
+  ]
+}

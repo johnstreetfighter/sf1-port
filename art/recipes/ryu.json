@@ -1,0 +1,85 @@
+{
+  "fighter": "ryu",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x0063", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "Move 1's header pose."
+    },
+    {
+      "name": "crouch",
+      "rom": { "code": "0x0120", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-24, -64],
+      "note": "Move 5's header pose."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x0480", "large": true, "rows": 1, "cols": 1 },
+      "anchor": [-32, -64],
+      "note": "His knock-out fall pose, set on the ground. Played after the lying pose it reads as rising to his knees."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x0484", "large": true, "rows": 0, "cols": 3 },
+      "anchor": [-64, -32],
+      "note": "The pose every knock-out stream ends on, centred on him so the get-up rises where he lies (the ROM's end-of-round knock-out shifts it 48 pixels back; user, 2026-11-02)."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x0480", "large": true, "rows": 1, "cols": 1 }, "turn": 1 }],
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, lifted: his fall pose turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x0480", "large": true, "rows": 1, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -112],
+      "note": "His being-thrown set, over the top: his fall pose turned upside down, higher still."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x00c0", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x01b82), leaning back with his hands up."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x042a", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "The shoulder throw's grab: his Hadoken thrust (stream 0x01362), both hands forward to seize the collar and sleeve, placed as the Hadoken places it (x-offset 16)."
+    },
+    {
+      "name": "throw_turn",
+      "pack": { "crc32": "cc3890e5" },
+      "anchor": [-13, -89],
+      "note": "Generated: his back turned on the opponent, knees bent, fists raised before his shoulder to haul him over, stepped 20 pixels in toward him. PixelLab Pro on a 108-pixel canvas (the size the user chose) with his ROM grab as the style image, for his lean build and flat shading; mirrored by hand. The second try: the first faced the opponent and read as later art (user, 2026-11-03)."
+    },
+    {
+      "name": "throw_heave",
+      "pack": { "crc32": "51452992" },
+      "anchor": [-24, -80],
+      "note": "Generated: bent far forward with both arms swung down, the opponent thrown over him to land in front, still 20 pixels in toward where he stood. The same canvas and style image; mirrored to face where the opponent lands and the ground shadow joined by hand. The second try: the first had a heavy black outline, a flying belt end and later-style shading (user, 2026-11-03)."
+    }
+  ],
+  "moves": [
+    {
+      "name": "get-up",
+      "poses": ["lying", "rising", "crouch", "stance"],
+      "timing": [60, 12, 10, 60],
+      "note": "His knock-out played in reverse into his stance, from ROM poses only. Approved by the user on 2026-11-02 as serviceable; listed in docs/planning/art-upgrades.md for new sprites once the game is complete."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_turn", "throw_heave"],
+      "timing": [8, 10, 16],
+      "note": "The shoulder throw (AP2): he grabs the collar and sleeve, turns and hoists the opponent over his shoulder, and throws him to land in front of him. The opponent plays his being-thrown set; SF1+ turns Ryu round afterwards to face him on his new side."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on his back. All from his own ROM poses. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    }
+  ]
+}

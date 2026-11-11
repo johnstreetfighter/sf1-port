@@ -1,0 +1,19 @@
+{
+  "fighter": "mike",
+  "palette": "4db61d39",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 1,
+  "history": [
+    {
+      "palette": "c2d4746d",
+      "verdict": "rejected",
+      "reason": "Some frames show his tongue through an open mouth, so changing his red shirt to blue also turns his tongue blue."
+    },
+    {
+      "palette": "4db61d39",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "announcer",
+  "name": "The announcer",
+  "about": "The overhaul's announcer (spec #216, EH9 #225): one voice with the 1987 ROM's ROUND 1 / FIGHT!, calling the era call-outs and finished combos. Designed from a description, never cloned.",
+  "voice": {
+    "source": "ai",
+    "vendor": "elevenlabs",
+    "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+    "model": "eleven_v4",
+    "settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22500,
+    "design": {
+      "description": "A ringside announcer at a 1980s world fighting tournament. Adult man, strong mid-range voice, a little gravel, loud and bright. He barks single words and short phrases with hard consonants, as if he's calling the action over a crowd through a cheap PA. No breathiness, no long vowels, no commentary.",
+      "description_from": "docs/design/2026-11-04-era-hud-and-callouts-design.md, The announcer (agreed in grilling, 2026-11-04, tuned toward the 1987 voice that says ROUND 1 and FIGHT!)",
+      "preview_text": "ROUND ONE! FIGHT! SUPER! PERFECT! COUNTER! PUNISH COUNTER! REVERSAL! FIRST ATTACK! PERFECT PARRY! ALPHA COUNTER! CRUSH COUNTER! BURNOUT! CUSTOM COMBO! FIVE HIT COMBO! TWELVE HIT COMBO!",
+      "model": "eleven_ttv_v3",
+      "guidance_scale": 5,
+      "loudness": 0.5,
+      "seed": 22500,
+      "picked": "round 1, preview 2 (archive/design/round1_preview2.wav)"
+    }
+  }
+}

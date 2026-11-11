@@ -1,0 +1,24 @@
+{
+  "fighter": "eagle",
+  "palette": "5500b8c5",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 2,
+  "history": [
+    {
+      "palette": "73d7d632",
+      "verdict": "rejected",
+      "reason": "Doesn't look good; try something else."
+    },
+    {
+      "palette": "24bfc4f2",
+      "verdict": "rejected",
+      "reason": "Second try still needs redoing (the maintainer, 2026-11-08)."
+    },
+    {
+      "palette": "5500b8c5",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

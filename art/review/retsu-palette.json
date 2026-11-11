@@ -1,0 +1,29 @@
+{
+  "fighter": "retsu",
+  "palette": "08cbff74",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 3,
+  "history": [
+    {
+      "palette": "f1213955",
+      "verdict": "rejected",
+      "reason": "Doesn't look good; try something else."
+    },
+    {
+      "palette": "dbf71518",
+      "verdict": "rejected",
+      "reason": "Second try still needs redoing (the maintainer, 2026-11-08)."
+    },
+    {
+      "palette": "add5cfbc",
+      "verdict": "rejected",
+      "reason": "The grey that runs through his outfit (sleeves, belt, trousers) clashes with the orange."
+    },
+    {
+      "palette": "08cbff74",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

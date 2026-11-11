@@ -1,0 +1,1890 @@
+{
+  "fighter": "sagat",
+  "calls": [
+    {
+      "at": "2026-11-03T00:33:30Z",
+      "move": "crouch",
+      "tool": "PixelLab create_image_pro",
+      "job": "e57623f6-08a8-4862-97f5-56197ab76291",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#996644",
+        "#664400",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#660099",
+        "#440044",
+        "#990088",
+        "#444444",
+        "#999999",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character base: identity, proportions, pixel scale, outline and shading",
+          "note": "His stance (64x119). Cut from a fight frame whose backdrop was black, so his black (the eyepatch's rim, lines in his face, his ground shadow) showed as transparent."
+        },
+        {
+          "rom": {
+            "code": "0x2f06",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his lowest stance in the original art: how his bent legs, shorts and taped shins are drawn",
+          "note": "His Tiger Shot's throwing pose (134x111), with the start of the fireball. Cut from a fight frame whose backdrop was black, so his black (the eyepatch's rim, lines in his face, his ground shadow) showed as transparent."
+        }
+      ],
+      "prompt": "The same fighter as the references: Sagat, a tall bald Muay Thai fighter with an eyepatch, purple shorts and grey taped shins and feet, drawn as a 1987 Capcom arcade sprite. He is in a defensive crouch facing right: knees deeply bent, hips low, back upright, both fists up guarding his face. Keep his exact proportions, pixel scale, dark outline and shading from the references; the crouch is about 64 pixels wide and 85 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "crouch",
+          "crc32": "3d92661e",
+          "touch_ups": [
+            "eyepatch rim pasted from his ROM stance (stance x34-38 y7-11 to x70-74 y35-39; 9 pixels hidden behind his hand), his black: 6 pixels to pen 0 (#000000)",
+            "eyepatch centre pasted from his ROM stance, pen 10: 4 pixels to pen 10 (#444444)",
+            "the eyepatch strap (x74, y30-32) in black, as in his ROM poses: 3 pixels to pen 0 (#000000)",
+            "the generator's light strap line at x72 y33 to the skin round it: 1 pixel to pen 3 (#cc9977)",
+            "the generator's light strap line at x73 y33 to the skin round it: 1 pixel to pen 4 (#ddaa88)",
+            "the generator's light strap line at x72 y34 to the skin round it: 1 pixel to pen 2 (#996644)",
+            "the generator's light strap line at x71 y35 to the skin round it: 1 pixel to pen 2 (#996644)",
+            "the generator's light strap line at x70 y36 to the skin round it: 1 pixel to pen 3 (#cc9977)",
+            "the second, angled stripe across his shorts (11 pixels, x38-44 y80-85) painted out in the shorts' purples",
+            "the light streak between his forearms (x82, y45-50) darkened: 6 pixels to pen 1 (#664400)",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 43 pixels to pen 1 (#664400)",
+            "dark purple specks on the tape's outline, to the tape's dark grey: 11 pixels to pen 10 (#444444)",
+            "ground shadow in black on rows 116-117, x44-91, as under his ROM poses: 95 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "Made in the art pipeline's spike (2026-11-02). Candidate 1 was the one real crouch of four. The palette lacks his black (pen 0), so the touch-ups restore it where his ROM poses use it. Later calls take his palette from `sf-art palette` and references from `sf-art reference`."
+    },
+    {
+      "at": "2026-11-03T00:36:08Z",
+      "move": "crouching medium kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "5116ff54-0cb7-4603-81de-e74c428ee786",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#996644",
+        "#664400",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#660099",
+        "#440044",
+        "#990088",
+        "#444444",
+        "#999999",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, body height and hip level",
+          "note": "Cropped to 63x91, before the touch-ups."
+        },
+        {
+          "rom": {
+            "code": "0x2d84",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "how his extended kicking leg, taped shin and foot are drawn in the original art",
+          "note": "His light kick at full extension (94x118). Cut from a fight frame whose backdrop was black, so his black (the eyepatch's rim, lines in his face, his ground shadow) showed as transparent."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "identity: his head, eyepatch, face and torso exactly as in the original art",
+          "note": "Cut from a fight frame whose backdrop was black, so his black (the eyepatch's rim, lines in his face, his ground shadow) showed as transparent."
+        }
+      ],
+      "prompt": "The same fighter as the references: Sagat, a tall bald Muay Thai fighter with an eyepatch, no beard, purple shorts and grey taped shins and feet, drawn as a 1987 Capcom arcade sprite facing right. He performs a crouching medium kick: from the same low crouch as the first reference, his front leg shoots straight out to the right at shin height, foot flexed, while his back leg stays bent under him and both fists stay up guarding his face. Keep his exact proportions, pixel scale, dark outline and shading; the figure is about 90 pixels tall with the kicking leg reaching about 120 pixels wide.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "crouching_kick_2",
+          "crc32": "ea4cc5db",
+          "touch_ups": [
+            "above his waistband (rows 0-65) the approved crouch's upper body, touched, placed -9,-6 from the crouch candidate: 1785 pixels, so his head, eyepatch and guard are the crouch's",
+            "the second, angled stripe across his shorts (10 light pixels and 3 of its dark edge, rows 74-78) painted out in the shorts' purples; the side stripe stays",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 13 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 110-111, x23-121, in the gaps between his feet, as under his ROM poses: 176 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "Made in the spike (2026-11-02). Three of four candidates kicked on the identical body. None is packed yet: its four candidates wait in the art pack's candidates folder for Sagat's pilot (AP7), and carry the same missing black. AP7 kept candidates 1 and 2 as his crouching kick: both came back on the crouch candidate's body, so above the waistband each carries the approved crouch, touched as it is. Candidate 1 (crouching_kick_1, 237aeaf0) was later dropped as not needed (user, 2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T17:33:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab create_image_pro",
+      "job": "8bfdec4c-cf12-482e-9880-93f3a2fcada4",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), after its touch-ups, 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2d8c",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "his own standing block: how his guarding arms and wrapped fists are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0123",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouching block with the front forearm raised high",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching block: in exactly the same low crouch as his crouch reference (knees deeply bent, hips low, back upright, the same legs and shorts), his front forearm is raised high and upright in front of his face to block, the wrapped fist above his head, and his rear fist held low in front of his chest, as the posing guide shows. Exactly the size of his crouch reference: about 63 pixels wide and 91 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Candidates 1 and 3 raised the forearm; 1 is nearer his crouch's size. 0 is the crouch again; 2 turned his back. Every candidate filled the eyepatch with black. Candidate 1 was packed as crouching_block (aaec31ee), then dropped: the user said his crouch already serves as his crouching block (2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T17:33:00Z",
+      "move": "crouching hit",
+      "tool": "PixelLab create_image_pro",
+      "job": "e5e840cf-b043-4c11-9e0a-44949cb7d730",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), after its touch-ups, 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2e00",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own standing hit reaction: his face and arms when he is struck",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0548",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): hit while crouching, head snapped back",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Hit while crouching: still in the same low crouch as his crouch reference (knees deeply bent, hips low, the same legs and shorts), his head snaps back with his mouth open in pain, his shoulders thrown back, his front arm flung up and out, his rear fist low, as the posing guide shows. About the size of his crouch reference: about 70 pixels wide and 88 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "0bff0f24",
+          "touch_ups": [
+            "the eyepatch's inside, rows 26-47, in his dark grey with its black rim kept, as in his ROM poses: 5 pixels to pen 10 (#444444)",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 7 pixels to pen 1 (#664400)"
+          ]
+        }
+      ],
+      "note": "Only candidate 0 stayed in his crouch (it kept the crouch's own feet and shadow); 1 to 3 rose nearly to standing."
+    },
+    {
+      "at": "2026-11-03T17:33:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "2feeb762-290c-45d2-9963-ad6b94b87f82",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), after its touch-ups, 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c86",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his fully extended punching arm and wrapped fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x01eb",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a crouching punch, arm straight out at chest height",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching punch: from exactly the same low crouch as his crouch reference (knees deeply bent, hips low, the same legs and shorts), he leans his shoulders forward and drives his front fist straight out to the right at chest height, the arm fully extended, his rear fist kept up by his face, as the posing guide shows. The same scale as his crouch reference: about 100 pixels wide and 86 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch",
+          "crc32": "c540eb53",
+          "touch_ups": [
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 2 pixels to pen 1 (#664400)"
+          ]
+        }
+      ],
+      "note": "All four punched; candidate 0 keeps his face toward us (2 and 3 turned his back). Its eyepatch came out as his ROM one, dark grey in a black rim."
+    },
+    {
+      "at": "2026-11-03T17:33:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "8882c413-0bf3-46c8-b05f-c8eb728830fe",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), after its touch-ups, 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2d84",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own kick: how his extended kicking leg, taped shin and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03a9",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a low crouching sweep, leg out along the floor, hand down",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching sweep at full extension: dropped very low, his rear knee bent deep under him and one wrapped hand on the floor for balance, he swings his front leg straight out to the right along the floor at ankle height, the taped foot flexed, his body leaning low, as the posing guide shows. The same scale as his crouch reference (the same head, shorts and shins): about 115 pixels wide and 64 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Candidates 0 to 2 swept along the floor; 3 kicked upward. 0 keeps his head up and a hand on the floor. Candidate 0 was packed as sweep_1 (a2e87ab3) for the first review, then replaced: the user found it drew him smaller than he is, with other arms than the rest of the sweep and a buckle on his shorts (2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T17:50:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "fd97e1f3-b255-47d6-a331-4818ae35af62",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "8882c413-0bf3-46c8-b05f-c8eb728830fe#0",
+          "usage": "pose base: his sweep, the exact body, head, arms, kneeling rear leg, size and scale to keep",
+          "note": "Cropped to 104x72, before its touch-ups."
+        },
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "his crouch: how his bent front leg, shorts and taped shin are drawn",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching sweep, the start: exactly the same body, head, arms and kneeling rear leg as the pose base (down on his rear knee, one wrapped hand on the floor, the other fist at his chest), but his front leg is still bent and drawn in close to his body, the knee up and the taped foot on the floor just in front of him, ready to swing out. The same scale as the pose base: about 70 pixels wide and 72 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: all four knelt upright and came back about a fifth larger than his ROM head (skull 18 to 19 pixels wide 8 rows below the crown, against 15 to 16). The half-way call's candidates serve as the recovery instead."
+    },
+    {
+      "at": "2026-11-03T17:50:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "e95d0232-91fa-4a12-b171-57410190d8c7",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "8882c413-0bf3-46c8-b05f-c8eb728830fe#0",
+          "usage": "pose base: his sweep, the exact body, head, arms, kneeling rear leg, size and scale to keep",
+          "note": "Cropped to 104x72, before its touch-ups."
+        },
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "his crouch: how his bent front leg, shorts and taped shin are drawn",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, purple Muay Thai shorts with a light stripe down the side, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching sweep, half way: exactly the same body, head, arms and kneeling rear leg as the pose base (down on his rear knee, one wrapped hand on the floor, the other fist at his chest), but his front leg is only half way out, swinging forward low above the floor with the knee still a little bent, the taped foot at shin height about half the reach of the pose base. The same scale as the pose base: about 88 pixels wide and 72 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "sweep_2",
+          "crc32": "dcde2ae8",
+          "touch_ups": [
+            "the eyepatch's inside, rows 28-49, in his dark grey with its black rim kept, as in his ROM poses: 4 pixels to pen 10 (#444444)",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 5 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 121-122, x20-76, in the gaps between his feet, as under his ROM poses: 84 pixels to pen 0 (#000000)"
+          ]
+        },
+        {
+          "candidate": 1,
+          "pose": "sweep_3",
+          "crc32": "80f35861",
+          "touch_ups": [
+            "the eyepatch's inside, rows 29-50, in his dark grey with its black rim kept, as in his ROM poses: 6 pixels to pen 10 (#444444)",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 1 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 120-121, x22-89, in the gaps between his feet, as under his ROM poses: 69 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "Knelt more upright than the pose base, at his head's size (16 to 17). Played after the full reach, as Ryu's sweep strikes first, they read as the leg drawn back as he rises: 2 half way, 1 drawn in."
+    },
+    {
+      "at": "2026-11-03T18:50:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "3233713b-6bce-492a-a9c3-18540c9433ed",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact head, guard, body, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "candidate": "5116ff54-0cb7-4603-81de-e74c428ee786#2",
+          "usage": "the kick this chamber leads into: the same body, his front leg then straight out",
+          "note": "As packed in the first round (9216e2df), 99x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c8c",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "his own low kick's chamber in the original art: how his raised knee, taped shin and foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching kick, the chamber: in exactly the same low crouch as his crouch reference, with the same head, the same raised guard of both fists before his face and the same shorts, he lifts his front knee up toward his chest, the taped foot off the floor and tucked back under the knee, ready to snap out into the kick shown in the kick reference; his rear leg stays bent under him with the foot flat. The same scale as his crouch reference: about 66 pixels wide and 91 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: all four dropped onto the rear knee and stood 108 to 117 pixels tall, against his crouch's 91; his ROM chamber, a standing knee raise, pulled them up."
+    },
+    {
+      "at": "2026-11-03T18:50:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "23e73d7e-2173-4aec-b8a9-e1bcf07f4bc3",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e95d0232-91fa-4a12-b171-57410190d8c7#1",
+          "usage": "pose base: the exact body, head, arms, shorts, kneeling rear leg, size and scale to keep",
+          "note": "sweep_3 as packed (80f35861), 74x93."
+        },
+        {
+          "candidate": "e95d0232-91fa-4a12-b171-57410190d8c7#2",
+          "usage": "the same sweep half way out: how the front leg swings forward",
+          "note": "sweep_2 as packed (dcde2ae8), 95x95."
+        },
+        {
+          "rom": {
+            "code": "0x2d84",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own kick in the original art: how his straight kicking leg, taped shin and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching sweep at full reach: exactly the same body, head, arms, shorts and kneeling rear leg as the pose base (down on his rear knee, one arm reaching straight down to the floor, his torso upright and leaning a little forward), but his front leg is now swung straight out to the right along the floor at ankle height, the knee straight and the taped foot flexed, continuing the half-way pose's reach. Exactly the same size as the pose base, the same head, torso, shorts and shins: the figure about 118 pixels wide and 93 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "sweep_1",
+          "crc32": "830859e2",
+          "touch_ups": [
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 1 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 121-122, x9-116, in the gaps between his feet, as under his ROM poses: 169 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "The retry for the full reach, on the recovery poses' body. Candidate 0 keeps their size, hanging arm and plain shorts; 1 and 2 lean lower, 3 raised both fists."
+    },
+    {
+      "at": "2026-11-03T19:00:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "2743df1b-296d-40a8-b4a1-4ba6e28d49fc",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his deep squat, the exact head, guard, body, shorts, legs, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "candidate": "5116ff54-0cb7-4603-81de-e74c428ee786#1",
+          "usage": "the same squat a moment later, the front leg on its way out: the same body",
+          "note": "crouching_kick_1 after its stripe was painted out, 92x91."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Crouching kick, the wind-up: exactly the pose base's deep squat, NOT kneeling: his rear foot flat on the floor with the rear knee bent high, hips low, back upright, the same head, the same guard of both fists before his face and the same shorts. Only his front leg moves: the front foot is lifted a little off the floor and drawn back under the front knee, the knee bent sharply and pointing forward, before the leg snaps out into the second reference's kick. Exactly the size of the pose base: about 66 pixels wide and 91 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "None kept: all four rose out of the squat into a half-standing knee raise, 108 to 113 pixels tall. So the chamber was inpainted on the crouch instead."
+    },
+    {
+      "at": "2026-11-03T19:05:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "aa79bfd7-738f-417f-8158-9e4e593acf4e",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "the picture inpainted: the approved crouch as packed (3d92661e), padded to 96x96 at (4, 3); the mask covers his front shin and foot only (x40-73, y69-91)",
+          "note": "inpaint-source-crouch-96.png and inpaint-mask-front-leg.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, the same colours as the rest of the sprite. Sagat's front leg in a crouching kick's wind-up: his front shin and bare taped foot drawn back up under his bent front knee, the foot lifted clear off the floor by about ten pixels, toes pointing down and forward, ready to snap out into a kick; the same grey tape around his shin and ankle. Nothing on the floor under it.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Everything outside the mask came back the crouch's own pixels; the foot tucked under the knee, lifted off the floor. 49 pixels off his palette, set to his nearest pens. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards. Packed as crouching_kick_chamber (92f2a823), then replaced: the user found the foot and shin wrong (2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T19:05:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e217d51c-f07e-4c57-b948-a98b30fcb7ef",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "the picture inpainted: the approved crouch as packed (3d92661e), padded to 96x96 at (4, 3); the mask covers his front shin and foot only (x40-73, y69-91)",
+          "note": "inpaint-source-crouch-96.png and inpaint-mask-front-leg.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, the same colours as the rest of the sprite. Sagat's front leg in a crouching kick's wind-up: his front shin and bare taped foot drawn back up under his bent front knee, the foot lifted clear off the floor by about ten pixels, toes pointing down and forward, ready to snap out into a kick; the same grey tape around his shin and ankle. Nothing on the floor under it.",
+      "candidates": 1,
+      "kept": [],
+      "note": "The other seed: the foot lower and less tucked. Not kept. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T19:50:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "b654860f-00b8-47f8-abe9-3bbd0632fcff",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "the picture inpainted: the approved crouch as packed (3d92661e), padded to 96x96 at (4, 3); the mask covers his front leg below mid-thigh but not his shorts (x38-80, y60-91)",
+          "note": "inpaint-source-crouch-96.png and inpaint-mask-front-leg-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front leg, the chamber of a low kick from his deep squat: his thick muscular front thigh runs from his shorts forward to a sharply bent knee, and from the knee his shin angles back down underneath it; grey tape wrapped around the shin and ankle; his bare foot, as big as his other foot (about 15 pixels long, with toes), lifted clear off the floor under the knee, toes pointing down. The knee and thigh as thick as in the rest of the crouch.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the knee came back clipped at the mask's edge. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T19:50:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "8ae61716-35a8-4cfd-bfde-53c637bd9d67",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 7,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "the picture inpainted: the approved crouch as packed (3d92661e), padded to 96x96 at (4, 3); the mask covers his front leg below mid-thigh but not his shorts (x38-80, y60-91)",
+          "note": "inpaint-source-crouch-96.png and inpaint-mask-front-leg-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front leg, the chamber of a low kick from his deep squat: his thick muscular front thigh runs from his shorts forward to a sharply bent knee, and from the knee his shin angles back down underneath it; grey tape wrapped around the shin and ankle; his bare foot, as big as his other foot (about 15 pixels long, with toes), lifted clear off the floor under the knee, toes pointing down. The knee and thigh as thick as in the rest of the crouch.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the foot hangs almost to the floor, hardly a chamber. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T19:50:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e4be1b81-28a9-4d2a-b2bf-6720a1c4a535",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "the picture inpainted: the approved crouch as packed (3d92661e), padded to 96x96 at (4, 3); the mask covers his front leg below mid-thigh but not his shorts (x38-80, y60-91)",
+          "note": "inpaint-source-crouch-96.png and inpaint-mask-front-leg-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front leg, the chamber of a low kick from his deep squat: his thick muscular front thigh runs from his shorts forward to a sharply bent knee, and from the knee his shin angles back down underneath it; grey tape wrapped around the shin and ankle; his bare foot, as big as his other foot (about 15 pixels long, with toes), lifted clear off the floor under the knee, toes pointing down. The knee and thigh as thick as in the rest of the crouch.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick_chamber",
+          "crc32": "c511799b",
+          "touch_ups": [
+            "inpainted his front leg below mid-thigh only (x38-80, y60-91 of the padded crouch, not his shorts): the shin tucked back under the knee and the foot lifted off the floor, toes down; the rest is the approved crouch, pixel for pixel; 56 pixels the inpainting drew off his palette set to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Kept: the shin tucked under the knee, the foot full size and lifted, toes down; outside the mask the crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "4c96df5a-2e96-4efe-8ac1-908f52e2b7c6",
+      "cost": 15,
+      "canvas": [
+        160,
+        160
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his own airborne pose from his hop, the exact head, build, shorts, legs and size to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c86",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his fully extended punching arm and wrapped fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03ea",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a jumping punch straight out at head height",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Jumping punch, in the air: his body upright, his front knee drawn up and his rear leg bent beneath him as in the pose base, he drives his front fist straight out to the right at head height, the arm fully extended, his rear fist kept up by his face, as the posing guide shows. Exactly the size of the pose base and his stance, his head, shorts and shins the same size: the figure about 100 pixels wide and 110 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "A 160-pixel canvas, because PixelLab draws a figure at about three quarters of its canvas and these stand about 110 tall. All four punched at his size; 2 has clean shorts (3 has a stray mark). Candidate 2 was packed as jump_punch (e51fa683), then replaced: its legs differ from his knee pose's, which the punch starts and ends on (user, 2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab create_image_pro",
+      "job": "2271d612-1836-49cb-9cf9-efaa963c7070",
+      "cost": 15,
+      "canvas": [
+        160,
+        160
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his own airborne pose from his hop, the exact head, build, shorts, legs and size to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c86",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own jab: how his fully extended punching arm and wrapped fist are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e5",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a diagonal jumping punch driven down and forward",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Diagonal jumping punch, in the air: leaning forward over his tucked legs, his knees drawn up beneath him, he drives his front fist down and forward at a steep angle toward the floor in front of him, the arm fully extended, his rear fist kept by his chest, as the posing guide shows. Exactly the size of the pose base and his stance, his head, shorts and shins the same size: the figure about 100 pixels wide and 100 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "jump_punch_down",
+          "crc32": "ecb1a552",
+          "touch_ups": [
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 1 pixels to pen 1 (#664400)"
+          ]
+        }
+      ],
+      "note": "1 and 2 drove the fist down and forward; 2 has clean shorts (1 a stray stripe)."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "7d16a998-8d1d-439e-94ff-2c94dd13011a",
+      "cost": 15,
+      "canvas": [
+        160,
+        160
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his own airborne pose from his hop, the exact head, build, shorts, legs and size to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2d84",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own kick: how his straight kicking leg, taped shin and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a jumping kick straight out at waist height, the rear knee tucked",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Jumping kick, in the air: his rear knee tucked up under him, he kicks his front leg straight out to the right at waist height, the knee locked and the taped foot flexed, both fists up guarding his face, as the posing guide shows. Exactly the size of the pose base and his stance, his head, shorts and shins the same size: the figure about 120 pixels wide and 105 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "jump_kick_high",
+          "crc32": "7da9aeea",
+          "touch_ups": [
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 2 pixels to pen 1 (#664400)"
+          ]
+        }
+      ],
+      "note": "3 kicked straight out at waist height; 1 and 2 kicked high, turned away, and 2 became the heavy jumping kick, as Ryu's heavy is his turned spin pose; 0 drew the knee pose again. Candidate 3 was packed as jump_kick (3e6c116c), then replaced: its legs differ from his knee pose's, and its foot was wrong (user, 2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "jumping diagonal kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "f352097f-d16b-4ff7-8389-29916d4c03e8",
+      "cost": 15,
+      "canvas": [
+        160,
+        160
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base: his own airborne pose from his hop, the exact head, build, shorts, legs and size to keep",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2d84",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own kick: how his straight kicking leg, taped shin and bare foot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e0",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a diagonal jumping kick driven down and forward",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Diagonal jumping kick, in the air: his rear knee tucked up under him, he kicks his front leg straight out down and forward at a steep angle toward the floor in front of him, the knee locked and the taped foot flexed, both fists up guarding his face, as the posing guide shows. Exactly the size of the pose base and his stance, his head, shorts and shins the same size: the figure about 110 pixels wide and 110 pixels tall. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "jump_kick_down",
+          "crc32": "e359ffc2",
+          "touch_ups": [
+            "the light line across the back of his shorts (22 pixels) painted out in their purples: from behind his side stripe is out of sight",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 2 pixels to pen 1 (#664400)"
+          ]
+        }
+      ],
+      "note": "Only 1 kicked down and forward (turned away); 0, 2 and 3 drew the knee pose again."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "low tiger shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "902885b9-72b2-4a97-b6be-4a390ef92a84",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, feet, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2f00",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his own Tiger Shot wind-up in the original art: how he draws his arms back",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Low Tiger Shot, the wind-up: in exactly the same deep crouch as the pose base (knees deeply bent, hips low, the same legs, feet and shorts), he draws both hands back together to his rear hip, palms facing each other, his shoulders turned back, gathering his strength, as his own Tiger Shot wind-up draws his arm back. Exactly the size of the pose base: about 70 pixels wide and 91 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "low_tiger_shot_1",
+          "crc32": "06c8205e",
+          "touch_ups": [
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 14 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 121-122, x32-91, in the gaps between his feet, as under his ROM poses: 88 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "All four squatted with the hands drawn back, 100 to 116 tall against the crouch's 91; 1 is the lowest."
+    },
+    {
+      "at": "2026-11-03T21:10:00Z",
+      "move": "low tiger shot",
+      "tool": "PixelLab create_image_pro",
+      "job": "70fd3709-97c4-4bc1-8433-a6faf034e67f",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "e57623f6-08a8-4862-97f5-56197ab76291#1",
+          "usage": "pose base: his crouch, the exact body, legs, feet, shorts, size and hip level to keep",
+          "note": "The approved crouch as packed (3d92661e), 63x91."
+        },
+        {
+          "rom": {
+            "code": "0x2f06",
+            "large": true,
+            "rows": 3,
+            "cols": 3
+          },
+          "usage": "his own Tiger Shot thrust in the original art: how his extended arm and wrapped hand are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "character identity: his face, eyepatch, build, proportions and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x2c00",
+            "large": true,
+            "rows": 3,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, brown outline on the skin, no heavy black outline, no soft gradients. Sagat: a tall, bald, heavily muscled Muay Thai fighter, no beard, a black eyepatch over one eye on a thin black strap, plain purple Muay Thai shorts with one light stripe down the side and no buckle, grey wraps on his hands, grey tape around his shins and ankles, bare feet. Facing right. Low Tiger Shot, the release: in the same deep crouch as the pose base (knees deeply bent, hips low, the same legs, feet and shorts), he thrusts both arms straight forward and a little down to the right at shin height, the wrapped hands together and open, his body leaning forward over his front knee, as his own Tiger Shot thrust drives his arm forward. The same scale as the pose base: about 105 pixels wide and 88 pixels tall.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "low_tiger_shot_2",
+          "crc32": "ae578d51",
+          "touch_ups": [
+            "stray specks floating off his body cleared (41 pixels in groups of fewer than 12)",
+            "dark grey and dark purple specks on his skin's outline, to his brown outline: 2 pixels to pen 1 (#664400)",
+            "ground shadow in black on rows 121-122, x11-86, in the gaps between his feet, as under his ROM poses: 128 pixels to pen 0 (#000000)"
+          ]
+        }
+      ],
+      "note": "1 thrust both arms lowest, about knee height, from a deep lunge, as AP2 describes, with sparks round the hands; 0 kept the crouch's legs but thrust at chest height; 2 and 3 stood tall."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a7a48e95-96c1-4d1f-80d8-248704562cc2",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM knee pose, cropped to the figure and padded to 128x128 at (8, 0); the mask covers his front arm and the space it punches into (x50-127, y0-36)",
+          "note": "inpaint-source-knee-128.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front arm in a jumping punch: from his shoulder his muscular arm drives straight out to the right at head height, fully extended, ending in his grey-wrapped fist, the same size and drawing as his other wrapped fist. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "e2d89cb3",
+          "touch_ups": [
+            "his front arm inpainted, straight out at head height (x50-127, y0-36 of the padded knee pose); the rest is his ROM knee pose, pixel for pixel; 90 pixels the inpainting drew off his palette set to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Kept: the arm straight out at head height; outside the mask his ROM knee pose, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "688c543e-22d3-4c35-b6ba-3c621e4bb95a",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM knee pose, cropped to the figure and padded to 128x128 at (8, 0); the mask covers his front arm and the space it punches into (x50-127, y0-36)",
+          "note": "inpaint-source-knee-128.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front arm in a jumping punch: from his shoulder his muscular arm drives straight out to the right at head height, fully extended, ending in his grey-wrapped fist, the same size and drawing as his other wrapped fist. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a stray white speck under the arm. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "d2923b04-244e-472b-95d1-9da17fa1f0c3",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM knee pose, cropped to the figure and padded to 128x128 at (8, 0); the mask covers his raised leg and the space it kicks into, not his shorts (x55-127, y48-100)",
+          "note": "inpaint-source-knee-128.png and inpaint-mask-jump-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front leg in a jumping kick: from his hip his thick muscular thigh and shin kick straight out to the right at waist height, the knee locked, grey tape around the shin and ankle, his bare foot flexed at the end, toes up, as big as his other foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a thinner leg; both seeds ended in a stub of a foot. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "67f2e191-b043-4366-aca1-42536b74f1fe",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2d0a",
+            "large": true,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM knee pose, cropped to the figure and padded to 128x128 at (8, 0); the mask covers his raised leg and the space it kicks into, not his shorts (x55-127, y48-100)",
+          "note": "inpaint-source-knee-128.png and inpaint-mask-jump-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. Sagat's front leg in a jumping kick: from his hip his thick muscular thigh and shin kick straight out to the right at waist height, the knee locked, grey tape around the shin and ankle, his bare foot flexed at the end, toes up, as big as his other foot. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Its leg was kept, but not as a pose of its own: its stub of a foot was inpainted again (a2212e1d), and that is jump_kick. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "bd4187fb-4dd3-42b1-a164-97c84f7f4098",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "67f2e191-b043-4366-aca1-42536b74f1fe#0",
+          "usage": "the picture inpainted: the kick below, reduced to his pens; the mask covers its foot only (x110-127, y36-69)",
+          "note": "inpaint-source-jump-kick-128.png and inpaint-mask-jump-kick-foot.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. The end of Sagat's kicking leg: past the grey ankle tape, his big bare foot, flexed, the sole facing right and the toes pointing straight up, about 14 pixels from heel to toes, with a rounded heel below the ankle and small toe marks at the top; brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: stray specks round the foot. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-03T21:45:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a2212e1d-b18b-48c2-83ea-532f9020677e",
+      "cost": 6,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#bbbbbb",
+        "#777777",
+        "#999999",
+        "#555555",
+        "#444444",
+        "#440044",
+        "#660099",
+        "#990088",
+        "#bb00bb"
+      ],
+      "references": [
+        {
+          "candidate": "67f2e191-b043-4366-aca1-42536b74f1fe#0",
+          "usage": "the picture inpainted: the kick below, reduced to his pens; the mask covers its foot only (x110-127, y36-69)",
+          "note": "inpaint-source-jump-kick-128.png and inpaint-mask-jump-kick-foot.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, brown outline, exactly the colours and the drawing of the rest of the sprite. The end of Sagat's kicking leg: past the grey ankle tape, his big bare foot, flexed, the sole facing right and the toes pointing straight up, about 14 pixels from heel to toes, with a rounded heel below the ankle and small toe marks at the top; brown outline. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "7738cb3b",
+          "touch_ups": [
+            "his raised leg inpainted, kicked straight out at waist height (x55-127, y48-100, not his shorts), then its foot inpainted again (x110-127, y36-69), flexed with the toes up; the rest is his ROM knee pose, pixel for pixel; 88 pixels the inpainting drew off his palette set to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Kept: a clean flexed foot, toes up; the rest is 67f2e191's leg on his ROM knee pose. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards."
+    }
+  ]
+}

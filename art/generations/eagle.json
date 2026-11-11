@@ -1,0 +1,769 @@
+{
+  "fighter": "eagle",
+  "calls": [
+    {
+      "at": "2026-11-07T15:05:40Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "44ab99c5-03da-4b8a-ac97-67393e9b24aa",
+      "cost": 5,
+      "canvas": [
+        72,
+        76
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2920",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance from the head down to his belt (rows 0-45), upright, both sticks crossed before his chest"
+        },
+        {
+          "rom": {
+            "code": "0x2a40",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump from its waist down (rows 36-55), 5 right and 8 down: the thighs, knees and shins, cut above the hanging feet"
+        },
+        {
+          "rom": {
+            "code": "0x2920",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's trouser hems, shoes and ground shadow (rows 86-95) under the cut shins, the front one 10 pixels in; the mask covered the shins' lower ends and the hems (rows 57-66)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching low: his baggy dark brown trousers run down from his bent knees, over his shins, to the trouser hems resting on his red shoes, both feet planted flat on the floor. Each trouser leg is one continuous shape with a black outline and the same brown shading as his thighs. Empty background between the legs.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the front knee came back cut off square, and the front shin and hem as two loose pieces. The source was rebuilt with the front shin straight under the knee (the next call); this first source was overwritten."
+    },
+    {
+      "at": "2026-11-07T15:17:50Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "df197c8d-3b89-4e7a-bda6-6fc96f75053e",
+      "cost": 5,
+      "canvas": [
+        72,
+        76
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2920",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance from the head down to his belt (rows 0-45), upright, both sticks crossed before his chest",
+          "note": "inpaint-source-crouch-b-72x76.png and inpaint-mask-crouch-b.png in the pack's candidates/eagle/r1 (make_r1.py, eagle.py in candidates/eagle/tools)."
+        },
+        {
+          "rom": {
+            "code": "0x2a40",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump from its waist down (row 36), 5 right and 8 down: the thighs and knees, the rear leg to row 54 and the front knee to row 55, its shin going back under him taken away"
+        },
+        {
+          "rom": {
+            "code": "0x2920",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's rear hem, shoe and ground shadow (rows 86-95) under the rear leg, and its front trouser leg's foot, hem, shoe and shadow (rows 84-95) 7 pixels in, straight under the front knee; the mask covers the front knee's lower end onto its shin (x36-61, rows 56-66) and the rear leg onto its hem (x10-31, rows 60-65)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching low: his bent front knee, in baggy dark brown trousers, comes down into a short shin that ends in the trouser hem resting on his red shoe; his rear trouser leg runs straight down into its hem on his rear shoe. Each trouser leg is one continuous shape with a black outline and the same brown shading as his thighs.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "7a057856",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 4 single pixels in the inpainted shins unlike all four neighbours set to the pens around them",
+            "the rear trouser leg's right edge (x27, y59-62), where the tuck's leg was cut, given his black outline",
+            "two holes in his black waistband (x34 y44, x33 y45), where the tuck's stick crossed it, filled black"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:17:55Z",
+      "move": "rising stick strike",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c3e4604b-6430-40fd-98e3-de478c76c879",
+      "cost": 6,
+      "canvas": [
+        104,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e), 32 rows down the canvas, with its whole striking arm (right of x61, rows 8-37: shaded sleeve, forearm, fist and stick) turned 35 degrees up about the shoulder (63, 25) (rot.py); the mask covers the shoulder's join (within 7 pixels of the joint, right of x60)",
+          "note": "inpaint-source-rising-strike-104x128.png and inpaint-mask-rising-strike.png in the pack's candidates/eagle/r1 (make_r1.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter swinging a short fighting stick upward: his front arm, in a rolled-up lilac-grey shirt sleeve, rises from his shoulder up and forward, his fist holding the stick high. The sleeve grows cleanly out of his shoulder, its outline and folds running on from his shirt; his chest and suspenders stay as they are.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising_strike",
+          "crc32": "0fe2c7d7",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 1 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "46 pixels of the turned sleeve's underside left hanging below it, under the armpit (x62-79, y60-69), removed; the sleeve's lowest row there (y59, x61-79) set to his outline pen (12), and the torso's front edge under the arm (y60-67), uncovered when the jab's arm was turned away, given his outline pen as the ROM draws it lower down"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07): \"the upper part of the arm (bicep/tricep) does not look as full as it should be, looks malformed.\" Replaced in round two (295e0a1c)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:18:00Z",
+      "move": "two-stick smash",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "285597a3-3fd8-4033-9f60-3f27ffaded20",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2a44",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his jumping stick strike (streams 0x126f8, 0x1285a, 0x129bc), 7 right and 10 down: its upper body above its waist (rows 0-35), hunched forward, and below it only its forearms, fists and sticks; the mask covers the waist band (rows 42-49, x10-45) where its shirt meets his stance's trousers, sparing the forearms",
+          "note": "inpaint-source-smash-96x96.png and inpaint-mask-smash.png in the pack's candidates/eagle/r1 (make_r1.py in candidates/eagle/tools)."
+        },
+        {
+          "rom": {
+            "code": "0x2920",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's legs from his belt down (rows 46-95), without his hands' last rows (46-49)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter bent forward over his legs, smashing both sticks down before him: the bottom of his lilac-grey shirt is tucked into the black waistband of his baggy dark brown trousers, one clean waist with a black outline, no hands at his waist.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "smash",
+          "crc32": "65ea49af",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 2 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "7 transparent holes in his black waistband (rows 46-47), left where his stance's hands were taken off the belt and kept by the inpainting, filled black"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07): \"between the forearms should look transparent.\" Fixed by hand in round two (81babe5e, derived)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:22:40Z",
+      "move": "crouching stick sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "7fe080a7-8462-438c-aabc-5d25ff9750df",
+      "cost": 5,
+      "canvas": [
+        96,
+        76
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e) down to its belt (rows 0-50), 16 left and 5 up onto his stance's place, on the approved crouch's legs (this ledger's kept crouch, df197c8d#0 touched up) from row 44 down, his black waistband and below; its whole striking arm (right of x61, rows 8-37: shaded sleeve, forearm, fist and stick) turned 50 degrees down about the shoulder (63, 25) (rot.py); the mask covers the shoulder's join (within 7 pixels of the joint, right of the torso's front edge) and the waist band where the jab's belt meets the crouch's trousers (rows 43-46), sparing his rear hand",
+          "note": "inpaint-source-crouching-sweep-96x76.png and inpaint-mask-crouching-sweep.png in the pack's candidates/eagle/r1 (make_r1b.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching, sweeping a short fighting stick low along the floor: his front arm, in a rolled-up lilac-grey shirt sleeve, swings down and forward from his shoulder. The sleeve grows cleanly out of his shoulder, its outline and folds running on from his shirt. His shirt is tucked into the black waistband of his baggy dark brown trousers, one clean waist.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_sweep",
+          "crc32": "9efc9e03",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 3 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "1 pixels where the waist mask met the front thigh's top (rows 44-47 of the crouch, from x33) set back to the approved crouch's: a stray light pixel and specks the inpainting drew in the waistband's two holes"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07): \"Arm looks pasted on.\" Replaced in round two (6735d064)."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. The turned arm leaves out the sleeve's inner underside by the armpit (rows 31-37 left of x70), and the torso's front edge under the arm takes his outline pen (eagle.py, jab_arm and jab_body)."
+    },
+    {
+      "at": "2026-11-07T15:22:45Z",
+      "move": "crouching stick uppercut",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "99ca28e8-8c97-4d38-a2c7-c3e203a79139",
+      "cost": 6,
+      "canvas": [
+        72,
+        120
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e) down to its belt (rows 0-50), 16 left and 5 up onto his stance's place, on the approved crouch's legs (this ledger's kept crouch, df197c8d#0 touched up) from row 44 down, his black waistband and below; its whole striking arm (right of x61, rows 8-37: shaded sleeve, forearm, fist and stick) turned 60 degrees up about the shoulder (63, 25) (rot.py); the mask covers the shoulder's join (within 7 pixels of the joint, right of the torso's front edge) and the waist band where the jab's belt meets the crouch's trousers (rows 43-46), sparing his rear hand",
+          "note": "inpaint-source-crouching-uppercut-72x120.png and inpaint-mask-crouching-uppercut.png in the pack's candidates/eagle/r1 (make_r1b.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching, driving a short fighting stick straight up in an uppercut: his front arm, in a rolled-up lilac-grey shirt sleeve, rises steeply from his shoulder. The sleeve grows cleanly out of his shoulder, its outline and folds running on from his shirt. His shirt is tucked into the black waistband of his baggy dark brown trousers, one clean waist.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_uppercut",
+          "crc32": "f5d0aba0",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 4 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "5 pixels where the waist mask met the front thigh's top (rows 44-47 of the crouch, from x33) set back to the approved crouch's: a stray light pixel and specks the inpainting drew in the waistband's two holes"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. The crouch sits 44 rows lower on this canvas, to fit the raised stick. The turned arm leaves out the sleeve's inner underside by the armpit, as on the sweep."
+    },
+    {
+      "at": "2026-11-07T15:22:50Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9190a924-06cb-46a6-afab-b51732127d79",
+      "cost": 5,
+      "canvas": [
+        72,
+        76
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x29e8",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the squat his jumps take off from (stream 0x11eb4), its upper body down to its belt (rows 0-58) and both hands (to row 61), bent forward with a stick in each hand, 8 right and 16 lower than the crouch's upper body, so the hands come down on his knees, on the approved crouch's legs (this ledger's kept crouch, df197c8d#0 touched up) from row 44 down, his black waistband and below; the mask covers the waist band where its shirt and belt meet the thighs (rows 52-59), sparing his hands",
+          "note": "inpaint-source-rising-72x76.png and inpaint-mask-rising.png in the pack's candidates/eagle/r1 (make_r1b.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter getting up from the floor, bent forward low over his knees with his hands on them: the bottom of his lilac-grey shirt tucked into the black waistband of his baggy dark brown trousers, his hips low between his bent legs, one clean waist with a black outline.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "d1fe7055",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 5 single pixels inside the mask unlike all four neighbours set to the pens around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:58:40Z",
+      "move": "crouching stick sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "19e72928-a667-4df8-97de-3735729b82c8",
+      "cost": 5,
+      "canvas": [
+        96,
+        76
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e) down to its belt (rows 0-50), 16 left and 5 up onto his stance's place, its torso's front edge under the arm outlined, on the approved crouch's legs from row 44 down; its whole striking arm, the sleeve kept at its full width down to its own dark underside (right of x61, rows 8-33, outlined below at row 34 where the armpit is cut away), turned 50 degrees down about the shoulder (63, 25) and set 3 pixels back into the torso (eagle.py, turned_arm_full); the mask covers the whole shoulder and upper arm (the turned arm within 17 pixels of the joint, and the shoulder's cap within 7, from one pixel behind it), never his head; and the waist band (rows 43-46) as in round one",
+          "note": "inpaint-source-crouching-sweep-96x76.png and inpaint-mask-crouching-sweep.png in the pack's candidates/eagle/r2 (make_r2.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching, sweeping a short fighting stick low: his front arm hangs down and forward from a round, full shoulder. His upper arm is thick and muscular inside a rolled-up lilac-grey shirt sleeve with grey shading and a dark outline, growing out of his shoulder as one piece with his shirt, down to the rolled cuff at his elbow.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the front knee came back cut off square, and the front shin and hem as two loose pieces. The source was rebuilt with the front shin straight under the knee (the next call); this first source was overwritten. One of two seeds sent with the same source, mask and prompt. Not kept: a fold across the shoulder; seed 2026's sleeve is cleaner."
+    },
+    {
+      "at": "2026-11-07T15:58:45Z",
+      "move": "crouching stick sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a0edde65-b241-457e-8a66-85b9c25e5526",
+      "cost": 5,
+      "canvas": [
+        96,
+        76
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e) down to its belt (rows 0-50), 16 left and 5 up onto his stance's place, its torso's front edge under the arm outlined, on the approved crouch's legs from row 44 down; its whole striking arm, the sleeve kept at its full width down to its own dark underside (right of x61, rows 8-33, outlined below at row 34 where the armpit is cut away), turned 50 degrees down about the shoulder (63, 25) and set 3 pixels back into the torso (eagle.py, turned_arm_full); the mask covers the whole shoulder and upper arm (the turned arm within 17 pixels of the joint, and the shoulder's cap within 7, from one pixel behind it), never his head; and the waist band (rows 43-46) as in round one",
+          "note": "inpaint-source-crouching-sweep-96x76.png and inpaint-mask-crouching-sweep.png in the pack's candidates/eagle/r2 (make_r2.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter crouching, sweeping a short fighting stick low: his front arm hangs down and forward from a round, full shoulder. His upper arm is thick and muscular inside a rolled-up lilac-grey shirt sleeve with grey shading and a dark outline, growing out of his shoulder as one piece with his shirt, down to the rolled cuff at his elbow.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_sweep",
+          "crc32": "6735d064",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 12 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "1 pixels where the waist mask met the front thigh's top (rows 44-47, from x33) set back to the approved crouch's"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the front knee came back cut off square, and the front shin and hem as two loose pieces. The source was rebuilt with the front shin straight under the knee (the next call); this first source was overwritten. One of two seeds sent with the same source, mask and prompt."
+    },
+    {
+      "at": "2026-11-07T15:58:50Z",
+      "move": "rising stick strike",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1089a4d9-de6b-46de-8e87-540e24443d30",
+      "cost": 6,
+      "canvas": [
+        104,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e), 32 rows down the canvas, its torso's front edge under the arm outlined; its whole striking arm, the sleeve kept at its full width down to its own dark underside (right of x61, rows 8-33, outlined below at row 34 where the armpit is cut away), turned 35 degrees up about the shoulder (63, 25) and set 3 pixels back into the torso (eagle.py, turned_arm_full); the mask covers the whole shoulder and upper arm (the turned arm within 17 pixels of the joint, and the shoulder's cap within 7, from one pixel behind it), never his head",
+          "note": "inpaint-source-rising-strike-104x128.png and inpaint-mask-rising-strike.png in the pack's candidates/eagle/r2 (make_r2.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter swinging a short fighting stick upward: his front arm rises up and forward from a round, full shoulder. His upper arm is thick and muscular, a full bicep and tricep inside a rolled-up lilac-grey shirt sleeve with grey shading and a dark outline, growing out of his shoulder as one piece with his shirt, up to the rolled cuff at his elbow.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the front knee came back cut off square, and the front shin and hem as two loose pieces. The source was rebuilt with the front shin straight under the knee (the next call); this first source was overwritten. One of two seeds sent with the same source, mask and prompt. Not kept: light specks outside the sleeve's outline at the armpit; seed 2026's upper arm is fuller and cleaner."
+    },
+    {
+      "at": "2026-11-07T15:58:55Z",
+      "move": "rising stick strike",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "09fb9b9b-5448-4038-955d-7b843a4c7370",
+      "cost": 6,
+      "canvas": [
+        104,
+        128
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2980",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his stick jab's strike (stream 0x1239e), 32 rows down the canvas, its torso's front edge under the arm outlined; its whole striking arm, the sleeve kept at its full width down to its own dark underside (right of x61, rows 8-33, outlined below at row 34 where the armpit is cut away), turned 35 degrees up about the shoulder (63, 25) and set 3 pixels back into the torso (eagle.py, turned_arm_full); the mask covers the whole shoulder and upper arm (the turned arm within 17 pixels of the joint, and the shoulder's cap within 7, from one pixel behind it), never his head",
+          "note": "inpaint-source-rising-strike-104x128.png and inpaint-mask-rising-strike.png in the pack's candidates/eagle/r2 (make_r2.py, eagle.py in candidates/eagle/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter swinging a short fighting stick upward: his front arm rises up and forward from a round, full shoulder. His upper arm is thick and muscular, a full bicep and tricep inside a rolled-up lilac-grey shirt sleeve with grey shading and a dark outline, growing out of his shoulder as one piece with his shirt, up to the rolled cuff at his elbow.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising_strike",
+          "crc32": "295e0a1c",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 6 single pixels inside the mask unlike all four neighbours set to the pens around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the front knee came back cut off square, and the front shin and hem as two loose pieces. The source was rebuilt with the front shin straight under the knee (the next call); this first source was overwritten. One of two seeds sent with the same source, mask and prompt."
+    },
+    {
+      "at": "2026-11-07T16:30:00Z",
+      "move": "jumping stick swing",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "27a45233-6ce4-4a12-b9b2-c4f3aa1f10d9",
+      "cost": 5,
+      "canvas": [
+        96,
+        84
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#660000",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ccccdd",
+        "#aaaabb",
+        "#888899",
+        "#887700",
+        "#bbaa00",
+        "#666677",
+        "#665555",
+        "#554444",
+        "#443333"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2b00",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "the arms-spread pose of his spinning sticks (stream 0x124d8), rows 0-37 (down to its belt and the top of its trousers), its belt (rows 35-37, x46-68) on his stance's (rows 44-46, x14-35), laid over the legs; the canvas is the 96-pixel window from column 18 of a 130-pixel canvas; the one transparent row between the two pieces given the trousers' row below it; the mask covers the waist band, rows 41-48, x26-58 of the window, where opaque or next to it",
+          "note": "inpaint-source-jump-swing-96x84.png and inpaint-mask-jump-swing.png in the pack's candidates/eagle/air/r1 (make_r1.py, air.py in candidates/eagle/air)."
+        },
+        {
+          "rom": {
+            "code": "0x2a40",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump, rows 38 down (its thighs, knees, hanging shins and feet, below its own belt and stick ends), 5 right and 8 down in his stance's coordinates (34 more right on the 130-pixel canvas), as his approved crouch lays its thighs"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Eagle the English stick fighter in mid-air, spinning with both arms spread wide: the bottom of his lilac-grey shirt with its black braces is tucked into the black waistband of his baggy dark brown trousers, one clean waist with a black outline, running straight down into the tops of his tucked trouser legs.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_swing",
+          "crc32": "161c1cbf",
+          "touch_ups": [
+            "inpainting's colours reduced to his nearest pens; 1 single pixels inside the mask unlike all four neighbours set to the pens around them",
+            "the inpainting's 96-pixel window laid back at column 18 of the 130-pixel canvas, between the arms' and sticks' ROM pixels outside it"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    }
+  ],
+  "derived": [
+    {
+      "pose": "crouching_block",
+      "crc32": "f6f2ccdf",
+      "from": {
+        "fighter": "eagle",
+        "pose": "crouch",
+        "crc32": "7a057856"
+      },
+      "touch_ups": [
+        "his standing block's upper body (0x2aa0, rows 0-48, 3 right and 3 up) laid over the crouch's above row 44, its belt on the crouch's black waistband; no pixel is generated"
+      ]
+    },
+    {
+      "pose": "crouching_hit",
+      "crc32": "613f1b7a",
+      "from": {
+        "fighter": "eagle",
+        "pose": "crouch",
+        "crc32": "7a057856"
+      },
+      "touch_ups": [
+        "the first pose of his standing-hit reaction (0x2aa8, rows 0-47, 2 right and 2 up) laid over the crouch's above row 44, its belt on the crouch's black waistband; no pixel is generated"
+      ]
+    },
+    {
+      "pose": "smash",
+      "crc32": "81babe5e",
+      "from": {
+        "fighter": "eagle",
+        "pose": "smash",
+        "crc32": "65ea49af"
+      },
+      "touch_ups": [
+        "round one's file (65ea49af) with the gap between his forearms opened (the maintainer, round one: \"between the forearms should look transparent\"): 14 pixels of the maroon band where the two forearms' outlines met (x53-66, y40-51) made transparent, keeping one outline pixel on each forearm"
+      ],
+      "note": "fix_smash_r2.py in the pack's candidates/eagle/tools; no generation."
+    },
+    {
+      "pose": "jump_high",
+      "crc32": "4f108425",
+      "from": {
+        "fighter": "eagle",
+        "pose": "rising_strike",
+        "crc32": "295e0a1c"
+      },
+      "touch_ups": [
+        "the approved rising strike's upper body (295e0a1c: the jab's rows 0-50, its arm turned 35 degrees up, shoulder and upper arm inpainted in AP23) on the tuck's legs (0x2a40, 5 right and 8 down), with the approved crouching sweep's waist band (rows 40-51, x0-45), the same jab body on the same thighs; no pixel is generated"
+      ],
+      "note": "touch_ups.py and air.py in the pack's candidates/eagle/air; no generation."
+    },
+    {
+      "pose": "jump_jab",
+      "crc32": "c463b808",
+      "from": {
+        "fighter": "eagle",
+        "pose": "crouching_sweep",
+        "crc32": "6735d064"
+      },
+      "touch_ups": [
+        "his stick jab's strike (0x2980, stream 0x1239e) down to its belt (its rows 0-50, 16 left and 7 up), its own ROM arm thrust out level at head height, on the tuck's legs (0x2a40 from its row 36, 5 right and 8 down: thighs, knees, hanging shins and feet; its stick ends above row 40 left out)",
+        "the waist band (rows 40-51, x0-45) is the approved crouching sweep's (6735d064): the same jab body on the same thighs, its waist inpainted in AP23; no pixel is generated"
+      ],
+      "note": "touch_ups.py and air.py in the pack's candidates/eagle/air; no generation."
+    },
+    {
+      "pose": "jump_poke",
+      "crc32": "825a3151",
+      "from": {
+        "fighter": "eagle",
+        "pose": "crouching_sweep",
+        "crc32": "6735d064"
+      },
+      "touch_ups": [
+        "the approved crouching sweep (6735d064) above row 52, and its arm and stick wherever they differ from the approved crouch below it, on the tuck's hanging shins and feet (0x2a40, 5 right and 8 down) in place of the crouch's shins, hems, shoes and shadow; the crouch's thighs and knees are the tuck's own pixels, so the legs join with no seam; no pixel is generated"
+      ],
+      "note": "touch_ups.py and air.py in the pack's candidates/eagle/air; no generation."
+    }
+  ]
+}

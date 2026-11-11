@@ -1,0 +1,267 @@
+{
+  "fighter": "sagat",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 },
+      "anchor": [-32, -128],
+      "note": "His stance, as he stands a second into round 1."
+    },
+    {
+      "name": "crouch",
+      "pack": { "crc32": "3d92661e" },
+      "anchor": [-31, -91],
+      "note": "Generated: his ROM art has no crouch. PixelLab Pro drew it from his stance and Tiger Shot; then by hand his own eyepatch was pasted from his ROM stance, partly behind his hand, with its strap in black, a second stripe the generator drew across his shorts painted out, the light streak between his forearms darkened, stray grey and purple specks on his outline set to his own outline colours, and the ground shadow his ROM poses carry added. Centred on him, his back foot on the ground."
+    },
+    {
+      "name": "crouching_hit",
+      "pack": { "crc32": "0bff0f24" },
+      "anchor": [-31, -97],
+      "note": "Generated on his crouch and his standing hit (0x2e00), posed as Ryu's crouching hit (0x0548): his head snapped back, mouth open, his front arm flung up. His ROM reactions have no crouching hit (entries 0x3a-0x3c play standing poses). By hand: the eyepatch's grey inside, outline specks."
+    },
+    {
+      "name": "crouching_punch",
+      "pack": { "crc32": "c540eb53" },
+      "anchor": [-31, -92],
+      "note": "Generated on his crouch and his jab (0x2c86), posed as Ryu's crouching punch (0x01eb): his front fist straight out at chest height, his rear fist by his face, his rear knee dropped. By hand: outline specks (his eyepatch came out as his ROM one)."
+    },
+    {
+      "name": "crouching_kick_chamber",
+      "pack": { "crc32": "c511799b" },
+      "anchor": [-31, -91],
+      "note": "His approved crouch with only his front leg below mid-thigh repainted by inpainting: the shin tucked back under the knee and his foot, full size, lifted off the floor, toes down, the chamber his own low kick takes before it strikes. Everything else is the crouch, pixel for pixel. The second try: the first repainted the shin and foot alone, and the user found them wrong (2026-11-03). By hand: the inpainting's off-palette pixels to his nearest pens."
+    },
+    {
+      "name": "crouching_kick_2",
+      "pack": { "crc32": "ea4cc5db" },
+      "anchor": [-31, -91],
+      "note": "The spike's crouching-kick call, candidate 2: his front leg straight out at shin height, his guard up. It came back on the crouch candidate's body, so above his waistband it carries the approved crouch itself, touched as it is, eyepatch and guard included. By hand also: the second, angled stripe across his shorts painted out, as on the crouch (user, 2026-11-03); outline specks; the ground shadow, run on under the kick as under his ROM kicks. No new generation. (Candidate 1, the leg half way out, was dropped as not needed: user, 2026-11-03.)"
+    },
+    {
+      "name": "sweep_1",
+      "pack": { "crc32": "830859e2" },
+      "anchor": [-31, -96],
+      "note": "Generated on sweep_3, so his size, arms and shorts match the rest of the sweep (user, 2026-11-03: the first full reach drew him smaller, with other arms and a buckle on his shorts): down on his rear knee, his arm reaching to the floor, his front leg straight out along the floor at ankle height. By hand: outline specks, the ground shadow."
+    },
+    {
+      "name": "sweep_2",
+      "pack": { "crc32": "dcde2ae8" },
+      "anchor": [-31, -95],
+      "note": "Generated on the first full reach: the leg coming back, half way. By hand: the eyepatch's grey inside, outline specks, the ground shadow."
+    },
+    {
+      "name": "sweep_3",
+      "pack": { "crc32": "80f35861" },
+      "anchor": [-31, -93],
+      "note": "The same call: the leg drawn in, his knee up, about to rise into his crouch. By hand: the eyepatch's grey inside, outline specks, the ground shadow."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x2f06", "large": true, "rows": 3, "cols": 3 },
+      "anchor": [-56, -128],
+      "note": "The tiger clinch's grab: his Tiger Shot thrust (stream 0x144b4), both arms forward at head height to seize the opponent's head, placed as the Tiger Shot places it (x-offset 8)."
+    },
+    {
+      "name": "throw_knee",
+      "rom": { "code": "0x2d0a", "large": true, "rows": 3, "cols": 2 },
+      "anchor": [-48, -128],
+      "note": "The clinch's knee: his Tiger Knee pose (stream 0x14242), his knee driven up with both fists high, on his standing foot."
+    },
+    {
+      "name": "throw_fling",
+      "rom": { "code": "0x2d00", "large": true, "rows": 3, "cols": 2 },
+      "anchor": [-32, -128],
+      "note": "The throw down: his lunging punch's strike (stream 0x13f10), leaning far forward with his arms swung down, placed as the lunge places it (x-offset 16)."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x2e00", "large": true, "rows": 3, "cols": 2 },
+      "anchor": [-48, -128],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x0a472), his head back and mouth open."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x2e0c", "large": true, "rows": 3, "cols": 1 }, "turn": 1 }],
+      "anchor": [-64, -96],
+      "note": "His being-thrown set, lifted: the recoil every knock-out of his starts with (0x2e0c, stream 0x0ab80), turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x2e0c", "large": true, "rows": 3, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -176],
+      "note": "His being-thrown set, over the top: the same recoil turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "parts": [
+        { "rom": { "code": "0x2e88", "large": true, "rows": 0, "cols": 3 }, "crop": [0, 0, 128, 28] },
+        { "rom": { "code": "0x2e88", "large": true, "rows": 0, "cols": 3 }, "crop": [13, 28, 115, 4], "at": [13, 28] },
+        { "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 }, "crop": [38, 15, 1, 5], "turn": 3, "at": [5, 11] },
+        { "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 }, "crop": [37, 16, 1, 5], "turn": 3, "at": [6, 12] },
+        { "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 }, "crop": [36, 16, 1, 5], "turn": 3, "at": [6, 13] },
+        { "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 }, "crop": [35, 17, 1, 4], "turn": 3, "at": [7, 14] },
+        { "rom": { "code": "0x2c00", "large": true, "rows": 3, "cols": 1 }, "crop": [34, 18, 1, 3], "turn": 3, "at": [8, 15] }
+      ],
+      "anchor": [-64, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x0ab38-0x0ae68), centred on him so the get-up rises where he lies. At a knock-out his eyepatch has come off: it lies on the floor by his head (x0-12, y28-31), and his eye is bare. Mid-round it stays on him (user, 2026-11-03). So the pose is drawn without that corner of the floor, and his stance's eyepatch (x34-38, y15-20, only its black and dark grey) is laid over his eye, just before his nose, a column at a time, each turned a quarter anticlockwise to his head's angle, its strap trimmed to his head's outline."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x2d80", "large": true, "rows": 3, "cols": 1 },
+      "anchor": [-32, -128],
+      "note": "His half-crouched guard (the first pose of his intro hop and Tiger Knee). Played after his crouch it reads as rising to his feet."
+    },
+    {
+      "name": "jump_lift",
+      "rom": { "code": "0x2c8c", "large": true, "rows": 3, "cols": 1 },
+      "anchor": [-32, -128],
+      "note": "Leaving the ground: the second pose of his intro hop and Tiger Knee (streams 0x13bfa, 0x14242), his rear leg drawn up."
+    },
+    {
+      "name": "jump_knee",
+      "rom": { "code": "0x2d0a", "large": true, "rows": 3, "cols": 2 },
+      "anchor": [-48, -176],
+      "note": "In the air: the pose his hop and Tiger Knee hold at the top, his front knee up and both fists high. Shown 48 pixels up, a suggested height mid-jump; SF1+ moves him through the arc. His jumping attacks start and end on it."
+    },
+    {
+      "name": "jump_punch",
+      "pack": { "crc32": "e2d89cb3" },
+      "anchor": [-24, -175],
+      "note": "His ROM knee pose (0x2d0a) with only his front arm inpainted: his fist straight out at head height, as Ryu's jumping punch (0x03ea). Everything else is the knee pose, pixel for pixel, so his legs do not change between it and the punch. The second try: the first, generated whole, drew his legs another way (user, 2026-11-03). By hand: the inpainting's off-palette pixels to his nearest pens."
+    },
+    {
+      "name": "jump_punch_down",
+      "pack": { "crc32": "ecb1a552" },
+      "anchor": [-24, -159],
+      "note": "Generated on his airborne knee pose and his jab's arm, posed as Ryu's diagonal jumping punch (0x03e5): his front fist driven down and forward, his legs tucked. By hand: outline specks."
+    },
+    {
+      "name": "jump_kick",
+      "pack": { "crc32": "7738cb3b" },
+      "anchor": [-24, -175],
+      "note": "His ROM knee pose (0x2d0a) with only his raised leg inpainted: kicked straight out at waist height, as Ryu's jumping kick (0x058a), then its foot inpainted again, flexed with the toes up. Everything else is the knee pose, pixel for pixel, so his legs and guard do not change between it and the kick. The second try: the first, generated whole, drew his legs another way and the foot wrong (user, 2026-11-03). By hand: the inpainting's off-palette pixels to his nearest pens."
+    },
+    {
+      "name": "jump_kick_high",
+      "pack": { "crc32": "7da9aeea" },
+      "anchor": [-29, -162],
+      "note": "The same call's other candidate: turned away, his leg kicked high and forward, as Ryu's heavy jumping kick is his turned spin pose (0x05a0). By hand: outline specks."
+    },
+    {
+      "name": "jump_kick_down",
+      "pack": { "crc32": "e359ffc2" },
+      "anchor": [-30, -153],
+      "note": "Generated on his airborne knee pose and his high kick's leg, posed as Ryu's diagonal jumping kick (0x03e0): turned away, his leg driven down and forward. By hand: the light line the generator drew across the back of his shorts painted out (from behind his side stripe is out of sight); outline specks."
+    },
+    {
+      "name": "low_tiger_shot_1",
+      "pack": { "crc32": "06c8205e" },
+      "anchor": [-36, -100],
+      "note": "Generated on his crouch and his own Tiger Shot wind-up (0x2f00): squatting, both hands drawn back to his rear hip. By hand: outline specks, the ground shadow. His rear foot where the crouch's is."
+    },
+    {
+      "name": "low_tiger_shot_2",
+      "pack": { "crc32": "ae578d51" },
+      "anchor": [-31, -93],
+      "note": "Generated on his crouch and his own Tiger Shot thrust (0x2f06), as AP2 describes it: from low down he thrusts both arms forward at knee height, lunging over his front knee. The shot is his ROM projectile, launched lower by SF1+. By hand: the sparks the generator drew round his hands cleared, outline specks, the ground shadow. His rear foot where the crouch's is."
+    }
+  ],
+  "moves": [
+    {
+      "name": "crouch",
+      "poses": ["stance", "crouch"],
+      "timing": [40, 60],
+      "note": "Played from his stance so review shows him dropping into it; SF1+ holds the crouch pose."
+    },
+    {
+      "name": "crouching block",
+      "poses": ["crouch"],
+      "timing": [60],
+      "note": "His crouch, both fists already up before his face, serves as his crouching block (user, 2026-11-03); SF1+ holds it while he blocks."
+    },
+    {
+      "name": "crouching hit",
+      "poses": ["crouch", "crouching_hit", "crouch"],
+      "timing": [30, 20, 30],
+      "note": "One pose, as Ryu's crouching hit is, for the crouching entries of his hit table."
+    },
+    {
+      "name": "crouching punch",
+      "poses": ["crouch", "crouching_punch", "crouch"],
+      "timing": [6, 12, 20],
+      "note": "Every strength, as Ryu's six crouching punches share one strike. One new pose, as his own jab and lunge have."
+    },
+    {
+      "name": "crouching kick",
+      "poses": ["crouch", "crouching_kick_chamber", "crouching_kick_2", "crouching_kick_chamber", "crouch"],
+      "timing": [4, 5, 12, 4, 14],
+      "note": "His light and medium crouching kick: chambered, then snapped out, as his own low kick (0x13fa0) chambers before it strikes. Quicker than the first try, which the user found stiff (2026-11-03)."
+    },
+    {
+      "name": "sweep",
+      "poses": ["crouch", "sweep_1", "sweep_2", "sweep_3", "crouch"],
+      "timing": [6, 16, 8, 8, 20],
+      "note": "His heavy crouching kick: struck at full reach first, as Ryu's sweep is, then the leg drawn back as he rises. Three new poses, as his own high kick (0x14030) has."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_knee", "throw_fling"],
+      "timing": [8, 12, 16],
+      "note": "The tiger clinch (AP2): he seizes the opponent's head with both hands, drives a knee into him and throws him down in front. All from his ROM poses; then his stance. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on his back. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "crouch", "rising", "stance"],
+      "timing": [60, 12, 10, 60],
+      "note": "From lying to his crouch, then his half-crouched guard, then his stance: four poses, as Ryu's get-up has."
+    },
+    {
+      "name": "jump",
+      "poses": ["rising", "jump_lift", "jump_knee", "jump_lift", "crouch"],
+      "timing": [6, 6, 30, 6, 10],
+      "note": "His jump arc, one for all three directions: his own ROM hop (the intro and Tiger Knee hop on these poses), landing in his crouch. SF1+ moves him through the arc."
+    },
+    {
+      "name": "jumping punch",
+      "poses": ["jump_knee", "jump_punch", "jump_knee"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, from his jump's top pose. One new pose, as his jab has."
+    },
+    {
+      "name": "jumping diagonal punch",
+      "poses": ["jump_knee", "jump_punch_down", "jump_knee"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, for forward and back jumps. One new pose."
+    },
+    {
+      "name": "jumping kick",
+      "poses": ["jump_knee", "jump_kick", "jump_knee"],
+      "timing": [6, 14, 8],
+      "note": "Light and medium. His knee pose is its chamber, as his low kick chambers before it strikes."
+    },
+    {
+      "name": "jumping heavy kick",
+      "poses": ["jump_knee", "jump_kick_high", "jump_knee"],
+      "timing": [6, 16, 8],
+      "note": "Heavy, turned away as Ryu's heavy jumping kick is."
+    },
+    {
+      "name": "jumping diagonal kick",
+      "poses": ["jump_knee", "jump_kick_down", "jump_knee"],
+      "timing": [6, 16, 8],
+      "note": "Every strength, for forward and back jumps."
+    },
+    {
+      "name": "low tiger shot",
+      "poses": ["crouch", "low_tiger_shot_1", "low_tiger_shot_2", "crouch"],
+      "timing": [6, 12, 16, 20],
+      "note": "Quarter-circle forward and kick (AP2): two new body poses, as his high Tiger Shot (0x144b4) has; SF1+ launches his ROM projectile low. His high Tiger Shot and Tiger Knee stay his ROM streams (0x144b4, 0x14242)."
+    }
+  ]
+}

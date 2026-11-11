@@ -1,0 +1,19 @@
+{
+  "fighter": "gen",
+  "palette": "492de8ed",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 1,
+  "history": [
+    {
+      "palette": "956bc0c2",
+      "verdict": "rejected",
+      "reason": "Looks good, but the colours are not different enough from his normal palette to read well; try different colours."
+    },
+    {
+      "palette": "492de8ed",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

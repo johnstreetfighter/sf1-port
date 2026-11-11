@@ -1,0 +1,973 @@
+{
+  "fighter": "adon",
+  "calls": [
+    {
+      "at": "2026-11-07T15:45:30Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "b938e83f-50fb-459a-a7eb-9d170db8b5e0",
+      "cost": 5,
+      "canvas": [
+        64,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x3060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance from the head down to its belt (rows 0-42), upright, fists on guard; and its ankle wraps, bare feet and ground shadow, the front leg's (x34-50, rows 80-95) under the knee and the rear leg's (x8-23, rows 79-95) under the seat",
+          "note": "inpaint-source-crouch-64x72.png and inpaint-mask-crouch.png in candidates/adon/round1 (make_crouch.py)."
+        },
+        {
+          "rom": {
+            "code": "0x3248",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump: its shorts and horizontal front thigh (rows 40-48, and the shorts' seat to row 53), 3 pixels right and 2 down so its belt meets the stance's; the shin folded under the thigh left out. The mask covers the knee's underside and the ankles between the thigh and seat and the wraps (x8-59, rows 48-57), sparing the wraps"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer squatting low on his heels: under his dark purple-black shorts his bare tan legs are folded tight, the front knee under the horizontal thigh going straight down into his grey ankle wrap, the back of the shorts rounding into the rear calf and the rear grey ankle wrap; his bare feet flat on the floor. Empty background between the legs.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "af2ef1ac",
+          "touch_ups": [
+            "the front ankle wrap's top: 15 grey pixels the inpainting spread left of the shin removed, and the wrap closed under the knee with the top row of his stance's own wrap (row 80)",
+            "1 speck of his shorts' dark purple inside the ankle wraps set to the pens around it"
+          ],
+          "note": "Rejected by the maintainer in round one: \"calf/foot join on the front leg is bad\". Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:51:40Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9f044488-4375-4224-b9e9-bb7606e7e450",
+      "cost": 5,
+      "canvas": [
+        64,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the picture inpainted is built on his crouch as packed, so his ROM head, arms, body, shorts and rear leg stay pixel for pixel",
+          "note": "make_ground.py and adon.py in the pack's candidates/adon/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x312c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block from the head to above its belt (rows 0-34), its lifted knee left out, laid on the crouch's belt and legs 1 pixel right and 5 down; the mask covers the waist band where its narrower waist meets the crouch's belt (x6-33, rows 34-40)",
+          "note": "inpaint-source-crouching-block-64x72.png and inpaint-mask-crouching-block.png in candidates/adon/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer crouching on guard: his bare muscular tan stomach and the sides of his waist run straight down into his black belt with its yellow studs and the top of his dark shorts; one body, joined cleanly at the waist. Nothing else.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: it changed one pixel of the 166 in its mask, so the crouching block is the pieced source itself, recorded as derived from the crouch."
+    },
+    {
+      "at": "2026-11-07T15:51:45Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3605d103-1b06-4744-a8e2-fdfa6c44d497",
+      "cost": 5,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the picture inpainted is built on his crouch as packed, so his ROM head, arms, body, shorts and rear leg stay pixel for pixel",
+          "note": "make_ground.py and adon.py in the pack's candidates/adon/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x31e4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his low kick's leg, thigh to foot (x45 on, rows 51-91, without his shorts' pens), turned 27 degrees up about its hip (rot.py: Scale2x three times, turned, sampled back) and laid from the crouch's front hip, in place of the crouch's front thigh, knee, wrap and foot, under the crouch's shorts; the mask covers the hip and the turned thigh (x22-51, rows 43-59), sparing the shorts",
+          "note": "inpaint-source-crouching-kick-96x72.png and inpaint-mask-crouching-kick.png in candidates/adon/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer squatting on his folded rear leg and kicking his front leg straight out low: the bare tan muscular thigh comes out from under the front of his dark shorts at the hip and runs into the outstretched shin, joined cleanly at the hip with a smooth dark brown outline; under the thigh, empty space down to the floor.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "f03c8989",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 64 pixels differ from the source, and the 34 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:51:50Z",
+      "move": "sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1662670a-db9f-408a-a196-c083972e4c35",
+      "cost": 5,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the picture inpainted is built on his crouch as packed, so his ROM head, arms, body, shorts and rear leg stay pixel for pixel",
+          "note": "make_ground.py and adon.py in the pack's candidates/adon/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x31e4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the same leg turned 17 degrees up, laid 2 pixels lower, low along the floor; the mask covers the hip and the turned thigh (x22-53, rows 43-65), sparing the shorts",
+          "note": "inpaint-source-sweep-96x72.png and inpaint-mask-sweep.png in candidates/adon/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer squatting low on his folded rear leg and sweeping his front leg out along the floor: the bare tan muscular thigh comes out from under the front of his dark shorts at the hip and runs down into the outstretched leg low along the ground, joined cleanly at the hip with a smooth dark brown outline; under the hip, empty space down to the floor.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "sweep",
+          "crc32": "e735db8d",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 105 pixels differ from the source, and the 77 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "the leg beyond the inpainted hip (x 54 on: shin, wrap and foot) moved up a row, so the swept foot's sole rests on his ground line instead of a row below his shadow",
+            "28 black and dark red pixels the inpainting drew along the thigh's outline given his legs' dark brown outline (pen 1)",
+            "a pale and a grey speck in the thigh's underside outline (37,58 and 33,57) given the same dark brown"
+          ],
+          "note": "Rejected by the maintainer in round one: \"Too like the crouching kick\", \"Doesn't read as a sweep\". Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T15:56:20Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c572eea5-22e0-4574-a53f-b437aba77bda",
+      "cost": 5,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the picture inpainted is built on his crouch as packed, so his ROM head, arms, body, shorts and rear leg stay pixel for pixel",
+          "note": "make_ground.py and adon.py in the pack's candidates/adon/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x324c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the hunched upper body of his hit recovery, head down, front hand reaching to the knee (rows 0-45, the forearm and hand to row 53), unturned, its waist on the crouch's belt lowered 7 pixels with the crouch's shorts; the crouch's front thigh, knee, wrap and foot planted where they are",
+          "note": "inpaint-source-rising-96x72.png and inpaint-mask-rising.png in candidates/adon/round1 (make_rising.py, at 0 degrees and a 7-pixel drop)."
+        },
+        {
+          "rom": {
+            "code": "0x3060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's rear shin, wrap and foot (rows 60-95) turned 80 degrees to lie back along the floor as the guide for the rear leg; the mask covers the waist band (x6-30, rows 43-49), the hip where the lowered shorts meet the front thigh (x24-39, rows 47-57) and the rear leg below the seat (x0-35, rows 56-68)"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer getting up off the floor, down on one knee: his bare tan stomach runs cleanly into his black belt with yellow studs and his dark shorts; the back of the shorts rounds into his rear thigh, which goes straight down to the rear knee resting on the floor, the rear shin lying back along the floor into his grey ankle wrap and bare foot; his front thigh comes out of the shorts at the hip to his raised front knee.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "ea4ffa50",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 216 pixels differ from the source, and the 155 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "the rear knee's bottom outline, which ran a row below his ground shadow (x15-28), moved up onto the shadow's row",
+            "3 grey wrap-coloured specks inside the rear knee's outline given his legs' dark brown outline (pen 1)"
+          ],
+          "note": "Rejected by the maintainer in round one: the same calf and foot join on the front leg as the crouch. Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:20:40Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c1fc086e-b71b-4338-84e1-a34f5b0a383d",
+      "cost": 5,
+      "canvas": [
+        64,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the round-one crouch: his stance's upper body, the tuck's shorts and thigh, the rear leg, all kept"
+        },
+        {
+          "rom": {
+            "code": "0x3060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's front lower leg (x33-50, rows 73-95: the calf's bottom, wrap, foot and shadow) under the knee, the round-one thigh turned 25 degrees up about the hip; the mask covers the knee, calf and the hip under the thigh (x28-55, rows 44-55)",
+          "note": "Its source was overwritten by the next try's in candidates/adon/round2 (make_round2.py's first form)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer squatting low: his front thigh rises from his dark shorts to a rounded bare knee, and under the knee his muscular tan calf, shaded like the rest of his legs with a dark brown outline, runs straight down into his grey ankle wrap and bare foot, one leg; under the thigh, his hip and empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: it changed 2 pixels of 290, and with the thigh turned 25 degrees the knee stood high, reading as a raised knee rather than a squat."
+    },
+    {
+      "at": "2026-11-07T16:23:30Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "10bd952f-7e84-4263-9964-5ac9c219ff68",
+      "cost": 5,
+      "canvas": [
+        64,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "b938e83f-50fb-459a-a7eb-9d170db8b5e0#0",
+          "usage": "the round-one crouch: his stance's upper body, the tuck's shorts and thigh, the rear leg, all kept"
+        },
+        {
+          "rom": {
+            "code": "0x3060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance's front lower leg as one piece (x33-50): the shaded calf (rows 70-79) as the guide inside the mask, running into the ankle wrap's top outline (row 80), the wrap from row 85, the bare foot and ground shadow, at the crouch's ground line; the round-one front thigh turned 8 degrees up about the hip (rot.py) above it. The mask covers the hip under the thigh, the knee and the whole calf down to the wrap's top (x28-55, rows 44-59), sparing the shorts, the wrap and the foot",
+          "note": "inpaint-source-crouch-64x72.png and inpaint-mask-crouch.png in candidates/adon/round2 (make_round2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer squatting low: his front thigh runs from his dark shorts to a rounded bare knee, and under the knee his muscular tan calf, shaded like the rest of his legs with a dark brown outline, runs straight down into his grey ankle wrap and bare foot as one leg; under the thigh, his hip and empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "a88b1bde",
+          "touch_ups": [
+            "8 transparent holes the inpainting left in the front thigh's underside (x31-38, rows 51-53) filled, the outline in his legs' dark brown"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:24:40Z",
+      "move": "sweep",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f01c4b4b-03a9-495c-9368-514a7cdea443",
+      "cost": 6,
+      "canvas": [
+        112,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "c572eea5-22e0-4574-a53f-b437aba77bda#0",
+          "usage": "the round-one rising pose as packed, its shorts, seat and kneeling rear leg (left of x31, from row 47): the body dropped onto the rear knee"
+        },
+        {
+          "rom": {
+            "code": "0x3304",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his body punch's upper body (rows 0-41), bent forward, rear fist at his chin, front arm reaching forward, 16 pixels left and 7 down so its waist meets the kneel's lowered belt; the mask covers the waist band (x6-39, rows 45-50)"
+        },
+        {
+          "rom": {
+            "code": "0x31e4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his low kick's leg turned 31 degrees up about the hip (rot.py), laid from the front of the kneel's shorts long and nearly flat along the floor, its calf lengthened 8 pixels by repeating a run of its columns; the mask covers the hip and thigh (x24-51, rows 50-63), sparing the shorts",
+          "note": "inpaint-source-sweep-112x72.png and inpaint-mask-sweep.png in candidates/adon/round2 (make_sweep2.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer dropped low on his rear knee and leaning forward into a sweep: his bare tan stomach runs cleanly into his black belt with yellow studs and his dark shorts; from the front of the shorts his bare muscular thigh runs down and out into his front leg stretched long and flat along the floor, joined cleanly at the hip with a smooth dark brown outline; empty space above the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "sweep",
+          "crc32": "c880c885",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 182 pixels differ from the source, and the 204 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "two pixels of the belt's top outline jutting out behind his lower back (x10-11, row 47) removed, so his back runs into the seat",
+            "the lowered belt's studs, which the inpainting redrew in bright yellow and purple, given back his crouch's own belt rows (the stance's rows 40-42, 7 lower): 28 pixels"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:25:10Z",
+      "move": "get-up",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "54ff78aa-f948-4dcd-bf39-cef399133c53",
+      "cost": 5,
+      "canvas": [
+        96,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "candidate": "c572eea5-22e0-4574-a53f-b437aba77bda#0",
+          "usage": "the round-one rising pose as packed, kept as it is: its upper body, hand, shorts and kneeling rear leg"
+        },
+        {
+          "candidate": "10bd952f-7e84-4263-9964-5ac9c219ff68#0",
+          "usage": "the round-two crouch's front leg (thigh, calf, wrap, foot and shadow) in place of the round-one crouch's, wherever the rising pose's upper body and hand leave it showing; the mask covers the hip and the whole calf from the knee to the wrap's top (x28-55, rows 46-59), the calf as the guide, sparing the upper body, hand, wrap and foot",
+          "note": "inpaint-source-rising-96x72.png and inpaint-mask-rising.png in candidates/adon/round2 (make_round2b.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer getting up off one knee, hand on his front knee: from his dark shorts his front thigh runs to a rounded bare knee under his hand, and under the knee his muscular tan calf, shaded like the rest of his legs with a dark brown outline, runs straight down into his grey ankle wrap and bare foot as one leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rising",
+          "crc32": "095bff80",
+          "touch_ups": [
+            "outside the mask every pixel is the source's; inside, 51 pixels differ from the source, and the 15 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:51:50Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1e47265c-d216-40cb-8a9c-fe09e05e19f7",
+      "cost": 5,
+      "canvas": [
+        72,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x3248",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump: its shorts and tucked legs (rows from 39), 3 pixels right and 2 down in his stance's coordinates, as on his crouch"
+        },
+        {
+          "rom": {
+            "code": "0x30c4",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his jab's upper body (rows 0-42, 3 pixels right, as on his crouching punch), its arm taken away past the shoulder (x >= 41, rows 10-33)"
+        },
+        {
+          "rom": {
+            "code": "0x330a",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "the front arm of his flying kick's dive, from under his jaw to the fist (x >= 62 from row 22, x >= 68 from row 19), laid 24 pixels left and 4 up so it leaves the jab's shoulder; the mask covers the shoulder join (x38-49, rows 13-31), sparing his head and the chest's front edge, the arm's root inside it as the guide",
+          "note": "inpaint-source-jump-punch-down-72x80.png and inpaint-mask-jump-punch-down.png in candidates/adon/ap26/r1 (ap26_make_r1.py and ap26_air.py in the pack's candidates/adon/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer in mid-air with his knees tucked, punching down and forward: his bare tan muscular front arm grows out of his shoulder beside his jaw and runs straight down and forward to the fist, the round shoulder cap joining the chest cleanly with a smooth dark brown outline, shaded like his other arm. One body, nothing pasted on, no spikes.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "71a7bb16",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 71 pixels differ from the source, and the 74 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "a pale skin pixel the inpainting left outside the arm's lower outline at the shoulder (43,29) removed"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:51:55Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2f8f8e66-0418-452a-8fea-21ad14c291ca",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x318a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his roundhouse, leaning back with the front leg swung up to head height, as it is above his shorts; its standing leg (from row 54) turned 45 degrees back about the hip (29, 55) so it trails down behind him (rot.py), the ground shadow left out; the mask covers the hip and the trailing thigh's root under the shorts (x16-41, rows 52-70), sparing the shorts and the kicking thigh, the turned leg as the guide",
+          "note": "inpaint-source-jump-kick-high-96x96.png and inpaint-mask-jump-kick-high.png in candidates/adon/ap26/r1 (ap26_make_r1.py and ap26_air.py in the pack's candidates/adon/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer in a flying high kick in mid-air: under his dark purple-black shorts his rear bare tan muscular thigh comes out of the shorts at the hip and trails down and back behind him to the knee and shin, joined cleanly at the hip with a smooth dark brown outline; the bottom edge of the shorts runs straight across over the thigh. Empty space below the shorts in front of the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "4c6a5a92",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 97 pixels differ from the source, and the 61 pixels the inpainting drew off his palette were taken to his nearest pens"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:52:00Z",
+      "move": "rising jaguar",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "805bef93-0222-41e7-8e2e-2488c4864352",
+      "cost": 5,
+      "canvas": [
+        64,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x3244",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his rising pose, fists by his face and the rear leg hanging, as it is; its front thigh turned 60 degrees up about the hip (27, 48) and the folded calf, wrap and foot turned 40 degrees about the knee to hang under it (ap26_knee.py, rot.py); the rear calf's edge the old wrap covered given his outline by hand; the mask covers the hip, thigh and knee (x27-47, rows 32-49), sparing his shorts and the torso above row 33, the turned leg as the guide",
+          "note": "inpaint-source-rj-knee-64x96.png and inpaint-mask-rj-knee.png in candidates/adon/ap26/r1 (ap26_make_r1.py and ap26_air.py in the pack's candidates/adon/tools)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer springing straight up with a rising knee strike: his front bare tan muscular thigh comes out of the front of his dark purple-black shorts at the hip and drives up and forward to the knee at chest height, the shin folded down under the knee into his grey ankle wrap; joined cleanly at the hip and the knee with a smooth dark brown outline. Empty space between the thigh and his other leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "rj_knee",
+          "crc32": "25cd9b91",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 98 pixels differ from the source, and the 163 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "the old thigh's hem left under his shorts' front corner, three pixels hanging below it (x27-29, row 52), removed",
+            "a dark purple speck on the wrap's back edge (34,48) given the wrap's grey outline"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T17:19:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "42a451a8-4973-4968-99ff-f6e8b1436caf",
+      "cost": 5,
+      "canvas": [
+        80,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x3248",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump, 3 pixels right and 2 down in his stance's coordinates, with its rear leg kept exactly (the wrap and foot behind, left of the black line the front wrap draws over it, every ROM pixel in place, outside the mask) and only its front leg taken away (the horizontal thigh, the calf folded under it, the front wrap and foot)"
+        },
+        {
+          "candidate": "3605d103-1b06-4744-a8e2-fdfa6c44d497#0",
+          "usage": "the approved crouching kick's leg and hip (his low kick's leg, 0x31e4, turned 27 degrees up), laid where it is in the crouching kick, from the same front hip, as the shaded guide; its shin and foot past the knee outside the mask"
+        },
+        {
+          "rom": {
+            "code": "0x3244",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "its hanging rear calf (rows 58-76, x10-30, without its wrap), turned 40 degrees clockwise about the ankle with the ankle on the rear wrap's top, as the guide for the rear shin the front leg hid; the mask covers the whole hip and thigh (x20-46, rows 40-58) and the rear shin above its wrap (x8-29, rows 52-65), sparing his upper body, the shorts away from the hip and the rear wrap and foot",
+          "note": "inpaint-source-jump-kick-80x80.png and inpaint-mask-jump-kick.png in candidates/adon/ap26/r2 (ap26_make_r2.py). The maintainer's round-one reason (2026-11-07): \"It looks like it switches legs; the rear leg (from jump_top) becomes the front leg in jump_kick.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer in mid-air kicking straight forward: his front bare tan muscular thigh comes out of the front of his dark purple-black shorts at the hip and runs straight out into the outstretched shin and grey ankle wrap, joined cleanly at the hip with a smooth dark brown outline. His rear leg stays tucked behind it: under the kicking thigh the rear knee is bent and the rear shin runs down and back into the grey ankle wrap and bare foot hanging below him. Two legs only.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: it changed 44 pixels and put a dark red streak at the hip; the other seed's was clean."
+    },
+    {
+      "at": "2026-11-07T17:19:05Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "03dd2aa6-176f-4ab7-9220-0c72a703a0f2",
+      "cost": 5,
+      "canvas": [
+        80,
+        80
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996644",
+        "#cc8866",
+        "#ddaa88",
+        "#ccaa00",
+        "#aa7700",
+        "#443344",
+        "#550000",
+        "#990000",
+        "#cc4400",
+        "#555555",
+        "#777777",
+        "#bbbbbb",
+        "#ddccaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x3248",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the top of his jump, 3 pixels right and 2 down in his stance's coordinates, with its rear leg kept exactly (the wrap and foot behind, left of the black line the front wrap draws over it, every ROM pixel in place, outside the mask) and only its front leg taken away (the horizontal thigh, the calf folded under it, the front wrap and foot)"
+        },
+        {
+          "candidate": "3605d103-1b06-4744-a8e2-fdfa6c44d497#0",
+          "usage": "the approved crouching kick's leg and hip (his low kick's leg, 0x31e4, turned 27 degrees up), laid where it is in the crouching kick, from the same front hip, as the shaded guide; its shin and foot past the knee outside the mask"
+        },
+        {
+          "rom": {
+            "code": "0x3244",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "its hanging rear calf (rows 58-76, x10-30, without its wrap), turned 40 degrees clockwise about the ankle with the ankle on the rear wrap's top, as the guide for the rear shin the front leg hid; the mask covers the whole hip and thigh (x20-46, rows 40-58) and the rear shin above its wrap (x8-29, rows 52-65), sparing his upper body, the shorts away from the hip and the rear wrap and foot",
+          "note": "inpaint-source-jump-kick-80x80.png and inpaint-mask-jump-kick.png in candidates/adon/ap26/r2 (ap26_make_r2.py). The maintainer's round-one reason (2026-11-07): \"It looks like it switches legs; the rear leg (from jump_top) becomes the front leg in jump_kick.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Adon the Muay Thai kickboxer in mid-air kicking straight forward: his front bare tan muscular thigh comes out of the front of his dark purple-black shorts at the hip and runs straight out into the outstretched shin and grey ankle wrap, joined cleanly at the hip with a smooth dark brown outline. His rear leg stays tucked behind it: under the kicking thigh the rear knee is bent and the rear shin runs down and back into the grey ankle wrap and bare foot hanging below him. Two legs only.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "f96a24e1",
+          "touch_ups": [
+            "outside the mask every pixel is the source's (his ROM upper body, shorts, rear wrap and foot, and the crouching kick's shin and foot); inside, 6 pixels differ from the source, and the 81 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "2 stray pixels removed (a speck right of the belt's end)",
+            "the rear knee's front edge: four black pixels given his legs' dark brown outline (pen 1) and five skin pixels standing out past it removed (x24-26, rows 59-62)",
+            "the rear knee's underside, where it shows below the kicking thigh, closed with his dark brown outline (x27-32, row 59), and a grey speck in it (26, 56) given the same",
+            "a pale pixel at the shorts' front corner beside the belt (28, 42) given the shorts' black"
+          ],
+          "note": "Rejected by the maintainer in round two: \"shin/calf area on rear leg looks weird or lumpy.\" Its rear shin is redrawn by hand in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. It kept the guides almost as they were (6 pixels changed in the mask), as AP25's block waist did; the candidate is kept with its touch-ups."
+    }
+  ],
+  "derived": [
+    {
+      "pose": "crouching_block",
+      "crc32": "be561cc1",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "af2ef1ac"
+      },
+      "touch_ups": [
+        "his standing block's upper body (0x312c, rows 0-34, its lifted knee left out) laid on the crouch's belt and legs 1 pixel right and 5 down: no pixel is generated"
+      ],
+      "note": "Rejected by the maintainer in round one: \"same as the crouch\". Replaced in round two, on the round-two crouch."
+    },
+    {
+      "pose": "crouching_hit",
+      "crc32": "52204b10",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "af2ef1ac"
+      },
+      "touch_ups": [
+        "his standing hit's upper body (0x3180, rows 0-37, and its hanging front hand to row 44) laid on the crouch's belt and legs 1 pixel right and 2 down: its waist meets the belt with no join, so no pixel is generated"
+      ],
+      "note": "Rejected by the maintainer in round one: \"same as the crouch\". Replaced in round two, on the round-two crouch."
+    },
+    {
+      "pose": "crouching_punch",
+      "crc32": "55894eed",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "af2ef1ac"
+      },
+      "touch_ups": [
+        "his jab's upper body (0x30c4, rows 0-42) laid over the crouch's above its belt, as his stance's is: the jab's belt is his stance's 3 pixels right, so no pixel is generated"
+      ],
+      "note": "Rejected by the maintainer in round one: \"same as the crouch\". Replaced in round two, on the round-two crouch."
+    },
+    {
+      "pose": "crouching_block",
+      "crc32": "d4a6e9cc",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "a88b1bde"
+      },
+      "touch_ups": [
+        "his standing block's upper body (0x312c, rows 0-34, its lifted knee left out) laid on the round-two crouch's belt and legs 1 pixel right and 5 down, as in round one: no pixel is generated"
+      ]
+    },
+    {
+      "pose": "crouching_hit",
+      "crc32": "533cce9a",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "a88b1bde"
+      },
+      "touch_ups": [
+        "his standing hit's upper body (0x3180, rows 0-37, and its hanging front hand to row 44) laid on the round-two crouch's belt and legs 1 pixel right and 2 down, as in round one: no pixel is generated"
+      ]
+    },
+    {
+      "pose": "crouching_punch",
+      "crc32": "1a87f3e6",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "a88b1bde"
+      },
+      "touch_ups": [
+        "his jab's upper body (0x30c4, rows 0-42) laid over the round-two crouch's above its belt, as in round one: no pixel is generated"
+      ],
+      "note": "Rejected by the maintainer in round two: \"the top of his leg's outline seems to disappear compared to the crouch\". Replaced in round three."
+    },
+    {
+      "pose": "crouching_punch",
+      "crc32": "940ac376",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouch",
+        "crc32": "a88b1bde"
+      },
+      "touch_ups": [
+        "his jab's upper body (0x30c4, rows 0-42) laid over the round-two crouch's above its belt, as in round two",
+        "where the jab's torso and arm do not pass (rows 40-42, from x31 right), the crouch's 19 pixels put back: the end of the belt and the front thigh's top outline and highlight (make_round3.py); no pixel is generated"
+      ]
+    },
+    {
+      "pose": "jump_kick",
+      "crc32": "23d1d365",
+      "from": {
+        "fighter": "adon",
+        "pose": "crouching_kick",
+        "crc32": "f03c8989"
+      },
+      "touch_ups": [
+        "the top of his jump (0x3248), 3 pixels right and 2 down in his stance's coordinates, with its front thigh (rows 40-51) and its second wrap and foot (behind, x4-21, rows 61-76) taken away",
+        "the approved crouching kick's leg and inpainted hip (x >= 24 from row 40, without its shorts' pens left of x30 or its folded rear leg) laid where it is in the crouching kick, whose shorts are the tuck's at the same place; the tuck's folded calf, wrap and foot stay under the kicking thigh as the tucked rear leg (ap26_make_r1.py); no pixel is generated"
+      ],
+      "note": "Rejected by the maintainer in round one: \"It looks like it switches legs; the rear leg (from jump_top) becomes the front leg in jump_kick.\" Replaced in round two."
+    },
+    {
+      "pose": "jump_kick",
+      "crc32": "298481db",
+      "from": {
+        "fighter": "adon",
+        "pose": "jump_kick",
+        "crc32": "f96a24e1"
+      },
+      "touch_ups": [
+        "round two's kept pose, pixel for pixel, except the rear shin from under the kicking thigh to the top of its wrap (rows 55-63, x8-38): the turned rising-pose calf and the knee lump under the thigh taken away (119 pixels)",
+        "his stance's front calf (0x3060, rows 66-79, x35-46), a straight ROM calf outlined in his dark brown and lit on the right, laid in its place behind his shorts and the kicking thigh: its 14 rows taken down to the 9 visible rows by nearest sampling along the leg and sheared a pixel a row, so it runs down and back into the rear wrap's top, which stays the tuck's ROM pixels (ap26_make_r3.py); no pixel is generated"
+      ]
+    }
+  ]
+}

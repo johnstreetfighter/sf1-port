@@ -1,0 +1,265 @@
+{
+  "fighter": "geki",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x0e00", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His stance (move 1's header pose)."
+    },
+    {
+      "name": "crouch",
+      "rom": { "code": "0x0fc7", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-24, -64],
+      "note": "The pose his crouch holds (stream 0x0b0ae)."
+    },
+    {
+      "name": "standing_block",
+      "pack": { "crc32": "82bbd00e" },
+      "anchor": [-24, -92],
+      "note": "Generated on his stance, posed as Ryu's standing block (0x0288): his stance kept whole, his open front hand raised before his face. His ROM art has no block (moves 4 and 8 are his teleport); his standing-hit pose (0x0f00) would guard, but a block that looks like being hit would read wrong. His rear foot where his stance's is."
+    },
+    {
+      "name": "crouching_block",
+      "rom": { "code": "0x0fc4", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-24, -64],
+      "note": "The squat his jumps take off from (stream 0x0b148): crouched, his claw and his fist both raised on guard before him, as his crouching block. His ROM art has none."
+    },
+    {
+      "name": "jab_2",
+      "pack": { "crc32": "291f09a2" },
+      "anchor": [-24, -92],
+      "note": "His ROM stance with only his front arm and the chest behind its fist inpainted: his bare muscular arm driven straight out at shoulder height, the mesh armguard on his forearm, his fist clenched. Everything else is the stance, pixel for pixel. The second mask: the first, kept below his face, squeezed the arm thin. By hand: the inpainting's off-palette pixels to his nearest body pens."
+    },
+    {
+      "name": "light_kick_chamber",
+      "rom": { "code": "0x0f08", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "The chamber of his front kick (stream 0x0bb54): his front knee raised, his foot hanging."
+    },
+    {
+      "name": "light_kick",
+      "pack": { "crc32": "7fc3b4fe" },
+      "anchor": [-39, -92],
+      "note": "Generated whole on his stance and his own front kick's leg (0x0f60), posed as Ryu's light kick (0x02e0): leaning back on his standing leg into the kick, his leg straight out at chest height, below his ROM front kick's head-high strike, his stance's guard kept. His standing boot where his chamber's (0x0f08) is. The second round: the first, his leg inpainted on the chamber, showed its edit and kept his body still (user, 2026-11-04)."
+    },
+    {
+      "name": "crouching_kick",
+      "pack": { "crc32": "d7b0615f" },
+      "anchor": [-23, -64],
+      "note": "Generated whole on his crouch and his own front kick's leg (0x0f60), posed as Ryu's crouching kick (0x03a0): squatting on his rear boot, leaning back a little, his front leg straight out along the floor, his crouch's guard kept. His rear boot where his crouch's is. The second round: the first, his leg inpainted on the crouch, showed its edit and kept his body still (user, 2026-11-04)."
+    },
+    {
+      "name": "sweep",
+      "pack": { "crc32": "2732dd00" },
+      "anchor": [-36, -58],
+      "note": "Generated whole on his crouch, posed as Ryu's sweep at full reach (0x054b): facing us, down on his rear knee, a hand planted on the floor, his front leg swept straight out along the floor toward the opponent, nothing held. His rear foot where his crouch's is. The third pick: his diving claw's landing pose (0x0fca) was not a sweep and had a blade in his hand, and the same call's first pick (turned half away) did not read as one (user, 2026-11-04)."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x0ea0", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-28, -96],
+      "note": "The circle throw's grab: his claw thrust's wind-up (stream 0x0b968), stepped in with his clawed hand reaching forward to seize the opponent, placed as the thrust places it (x-offset 20)."
+    },
+    {
+      "name": "throw_fall",
+      "rom": { "code": "0x0eac", "large": true, "rows": 1, "cols": 1 },
+      "anchor": [-32, -64],
+      "note": "Falling back with a foot planted up in the opponent's stomach: his knock-out fall pose (0x0eac, streams 0x04c38-0x04e48), his leg kicked up high, set on the ground."
+    },
+    {
+      "name": "throw_roll_1",
+      "rom": { "code": "0x066a", "large": false, "rows": 2, "cols": 2 },
+      "anchor": [-24, -48],
+      "note": "Rolling back up: the tucked somersault of his forward and back jumps (streams 0x0b2a8, 0x0b3e8), upside down, on the ground."
+    },
+    {
+      "name": "throw_roll_2",
+      "rom": { "code": "0x0667", "large": false, "rows": 2, "cols": 2 },
+      "anchor": [-24, -46],
+      "note": "The same somersault's next tuck, coming over onto his feet, on the ground; then his crouch."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x0f00", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x04626), hunched, his fists before his chest."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x0eac", "large": true, "rows": 1, "cols": 1 }, "turn": 1 }],
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, lifted: his fall pose (0x0eac) turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x0eac", "large": true, "rows": 1, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -112],
+      "note": "His being-thrown set, over the top: the same fall pose turned upside down, higher still."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x0f66", "large": true, "rows": 0, "cols": 2 },
+      "anchor": [-48, -32],
+      "note": "The pose every knock-out stream of his ends on (streams 0x04bf0-0x04f20), centred on him as they place it, so the get-up rises where he lies."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x0f04", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-24, -96],
+      "note": "The half-crouch his crouch rises through into his stance (move 5's header pose), placed as his crouch places it (x-offset 8)."
+    },
+    {
+      "name": "jump_top",
+      "rom": { "code": "0x0fc4", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-24, -112],
+      "note": "The top of his straight jump and his hopping attacks (streams 0x0b148, 0x0be5c): tucked, his claw and fist raised. Shown 48 pixels up, a suggested height mid-jump; SF1+ moves him through his ROM arcs. His jumping attacks start and end on it."
+    },
+    {
+      "name": "jump_punch",
+      "pack": { "crc32": "395cba7f" },
+      "anchor": [-22, -112],
+      "note": "His ROM top-of-jump squat (0x0fc4) with only his front arm and the chest behind its fist inpainted: his arm driven straight out at head height, the mesh armguard on, his fist clenched. Everything else is the ROM squat, pixel for pixel, so his tucked legs do not change. By hand: the inpainting's off-palette pixels to his nearest body pens."
+    },
+    {
+      "name": "jump_kick",
+      "pack": { "crc32": "135f3149" },
+      "anchor": [-30, -112],
+      "note": "Generated whole on his top-of-jump squat and his own front kick's leg (0x0f60), posed as Ryu's jumping kick (0x058a): his rear knee tucked, his front leg kicked up and forward, the boot at head height, his claw and fist on guard. Lined up with the top-of-jump pose by the top of his hood."
+    },
+    {
+      "name": "jump_kick_high",
+      "pack": { "crc32": "65a009ba" },
+      "anchor": [-31, -114],
+      "note": "The same call's other candidate: his rear knee tucked, his front leg kicked up more steeply, the boot above his head. Lined up with the top-of-jump pose by the top of his hood. The heavy kick's own call gave a straight hanging leg with a blade in his hand, flying belt ends, or kicks lower than the jumping kick's."
+    },
+    {
+      "name": "jump_kick_down",
+      "pack": { "crc32": "4dca632c" },
+      "anchor": [-33, -117],
+      "note": "Generated whole on his top-of-jump squat and his own front kick's leg, posed as Ryu's diagonal jumping kick (0x03e0): his rear knee bent, his front leg driven down and forward. Lined up with the top-of-jump pose by the top of his hood."
+    },
+    {
+      "name": "teleport_smoke_1",
+      "rom": { "code": "0x11e6", "large": false, "rows": 5, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "The Teleport Strike (AP2), from his ROM teleport (moves 4 and 8, stream 0x0b6a8): his smoke cloud at its fullest."
+    },
+    {
+      "name": "teleport_smoke_2",
+      "rom": { "code": "0x1326", "large": false, "rows": 5, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "The cloud thinning."
+    },
+    {
+      "name": "teleport_smoke_3",
+      "rom": { "code": "0x1329", "large": false, "rows": 5, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "The cloud thinning further."
+    },
+    {
+      "name": "teleport_smoke_4",
+      "rom": { "code": "0x132d", "large": false, "rows": 5, "cols": 2 },
+      "anchor": [-24, -96],
+      "note": "The last wisps; he is gone."
+    },
+    {
+      "name": "claw_wind",
+      "rom": { "code": "0x0ea0", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-28, -96],
+      "note": "Reappearing out of his cloud: his claw thrust's wind-up (stream 0x0b968), placed as the thrust places it (x-offset 20)."
+    },
+    {
+      "name": "claw_thrust",
+      "rom": { "code": "0x0ea6", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-4, -96],
+      "note": "The strike: his claw thrust (stream 0x0b968), placed as it places it (x-offset 44)."
+    }
+  ],
+  "moves": [
+    {
+      "name": "standing block",
+      "poses": ["standing_block"],
+      "timing": [60],
+      "note": "Held while he blocks standing. One new pose, as Ryu's block is one."
+    },
+    {
+      "name": "crouching block",
+      "poses": ["crouching_block"],
+      "timing": [60],
+      "note": "Held while he blocks low, from his ROM art."
+    },
+    {
+      "name": "jab",
+      "poses": ["stance", "jab_2", "stance"],
+      "timing": [4, 10, 10],
+      "note": "His light punch, struck straight out from his stance. One new pose: its wind-up was dropped as not needed (user, 2026-11-04). His claw thrust (0x0b968) stays his heavier punch, a ROM stream."
+    },
+    {
+      "name": "light kick",
+      "poses": ["stance", "light_kick_chamber", "light_kick", "light_kick_chamber", "stance"],
+      "timing": [4, 5, 10, 5, 10],
+      "note": "His light kick: his front kick's chamber, then the leg out at waist height. Two poses, as his front kick (0x0bb54) has two new ones; his front kick stays his heavier kick, a ROM stream."
+    },
+    {
+      "name": "crouching kick",
+      "poses": ["crouch", "crouching_kick", "crouch"],
+      "timing": [6, 14, 14],
+      "note": "His light and medium crouching kick. One new pose, as Ryu's crouching kick strikes in one (0x03a0); a chamber was not needed for Retsu (user, 2026-11-03). His crouching claw (0x0ba38) stays his crouching punch, a ROM stream."
+    },
+    {
+      "name": "sweep",
+      "poses": ["crouch", "sweep", "crouch"],
+      "timing": [6, 16, 16],
+      "note": "His heavy crouching kick: a low spinning sweep at full reach. One new pose, as his crouching kick strikes in one."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_fall", "throw_roll_1", "throw_roll_2", "crouch"],
+      "timing": [8, 14, 8, 8, 10],
+      "note": "The circle throw (AP2): he grabs the opponent, falls back with a foot planted in his stomach and kicks him over his head, rolling back up. All from his ROM poses; then his stance. The opponent plays his being-thrown set."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on his back. All from his own ROM poses, as Ryu's is. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    },
+    {
+      "name": "get-up",
+      "poses": ["lying", "throw_roll_1", "crouch", "rising", "stance"],
+      "timing": [60, 10, 10, 6, 60],
+      "note": "From lying he rolls up over his shoulder in his somersault tuck into his crouch, and rises through his half-crouch into his stance, as his own crouch rises. All from his ROM poses."
+    },
+    {
+      "name": "jumping punch",
+      "poses": ["jump_top", "jump_punch", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Every strength, from the top of his jump. One new pose. His jumps, his diving claw (0x0bc24, 0x0be5c: his diagonal jumping attack) and his Shuriken (0x0bf98) stay his ROM streams and are not in the catalogue."
+    },
+    {
+      "name": "jumping kick",
+      "poses": ["jump_top", "jump_kick", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Light and medium, kicked up and forward, the boot at head height. One new pose."
+    },
+    {
+      "name": "jumping heavy kick",
+      "poses": ["jump_top", "jump_kick_high", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "Kicked up more steeply, the boot above his head. One new pose."
+    },
+    {
+      "name": "jumping diagonal kick",
+      "poses": ["jump_top", "jump_kick_down", "jump_top"],
+      "timing": [6, 14, 8],
+      "note": "For forward and back jumps, driven down and forward. One new pose."
+    },
+    {
+      "name": "teleport strike",
+      "poses": ["stance", "teleport_smoke_1", "teleport_smoke_2", "teleport_smoke_3", "teleport_smoke_4", "teleport_smoke_1", "claw_wind", "claw_thrust", "claw_wind", "stance"],
+      "timing": [4, 4, 4, 4, 4, 6, 4, 13, 4, 10],
+      "note": "Quarter-circle back and punch (AP2): his ROM teleport into his ROM claw thrust, as AP2 proposes, if the claw thrust reads well as the strike after it. He vanishes in his smoke, reappears in it beside the opponent (SF1+ moves him) and thrusts. All from his ROM poses."
+    }
+  ]
+}

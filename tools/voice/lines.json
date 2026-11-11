@@ -1,0 +1,30 @@
+{
+  "about": "The announcer's lines (EH9, #225): one recording each, named by its voice-pack file stem (sf_video::announcer::AnnouncerLine::file_stem). `text` is what he says; `prompt` is what the voice is sent, here the text in capitals for emphasis without a delivery tag. Editing a prompt re-voices that line alone on the next run. docs/reference/voice-pipeline.md.",
+  "takes": 3,
+  "combo_cap": 15,
+  "combo_cap_why": "Finished combos are called from five hits up to fifteen. A combo of more than fifteen hits has no line, so he says nothing rather than a wrong number (docs/reference/announcer.md). Raising the cap is one entry per count here and one run.",
+  "lines": [
+    {"stem": "super", "text": "Super!", "prompt": "SUPER!"},
+    {"stem": "perfect", "text": "Perfect!", "prompt": "PERFECT!"},
+    {"stem": "perfect_parry", "text": "Perfect parry!", "prompt": "PERFECT PARRY!"},
+    {"stem": "counter", "text": "Counter!", "prompt": "COUNTER!"},
+    {"stem": "punish_counter", "text": "Punish counter!", "prompt": "PUNISH COUNTER!"},
+    {"stem": "crush_counter", "text": "Crush counter!", "prompt": "CRUSH COUNTER!"},
+    {"stem": "alpha_counter", "text": "Alpha counter!", "prompt": "ALPHA COUNTER!"},
+    {"stem": "reversal", "text": "Reversal!", "prompt": "REVERSAL!"},
+    {"stem": "first_attack", "text": "First attack!", "prompt": "FIRST ATTACK!"},
+    {"stem": "burnout", "text": "Burnout!", "prompt": "BURNOUT!"},
+    {"stem": "custom_combo", "text": "Custom combo!", "prompt": "CUSTOM COMBO!"},
+    {"stem": "combo_5", "text": "Five hit combo!", "prompt": "FIVE HIT COMBO!"},
+    {"stem": "combo_6", "text": "Six hit combo!", "prompt": "SIX HIT COMBO!"},
+    {"stem": "combo_7", "text": "Seven hit combo!", "prompt": "SEVEN HIT COMBO!"},
+    {"stem": "combo_8", "text": "Eight hit combo!", "prompt": "EIGHT HIT COMBO!"},
+    {"stem": "combo_9", "text": "Nine hit combo!", "prompt": "NINE HIT COMBO!"},
+    {"stem": "combo_10", "text": "Ten hit combo!", "prompt": "TEN HIT COMBO!"},
+    {"stem": "combo_11", "text": "Eleven hit combo!", "prompt": "ELEVEN HIT COMBO!"},
+    {"stem": "combo_12", "text": "Twelve hit combo!", "prompt": "TWELVE HIT COMBO!"},
+    {"stem": "combo_13", "text": "Thirteen hit combo!", "prompt": "THIRTEEN HIT COMBO!"},
+    {"stem": "combo_14", "text": "Fourteen hit combo!", "prompt": "FOURTEEN HIT COMBO!"},
+    {"stem": "combo_15", "text": "Fifteen hit combo!", "prompt": "FIFTEEN HIT COMBO!"}
+  ]
+}

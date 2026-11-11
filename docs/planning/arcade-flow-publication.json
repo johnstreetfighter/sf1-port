@@ -1,0 +1,1143 @@
+{
+  "spec": {
+    "number": 1,
+    "url": null
+  },
+  "source": {
+    "number": 40,
+    "url": null
+  },
+  "approved": "2026-10-23",
+  "published": "all waves 0-16 (F1-F78)",
+  "tickets": [
+    {
+      "localId": 1,
+      "number": 41,
+      "url": null,
+      "title": "Power-on: reset, task spawning and the boot set-up frames",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 2,
+      "number": 42,
+      "url": null,
+      "title": "DIP switch settings in reference scenarios and the native inputs",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 3,
+      "number": 43,
+      "url": null,
+      "title": "Attract wall, title and INSERT COIN from the attract-entry fixture",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 4,
+      "number": 44,
+      "url": null,
+      "title": "Pre-fight screens of the fixed fight from country select's exit (1865–2389)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 5,
+      "number": 45,
+      "url": null,
+      "title": "CPU match win: lose quote, ranking check and continue countdown (5015–6100)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 6,
+      "number": 46,
+      "url": null,
+      "title": "Winning-script search through Japan into stage 1 (sf-win-02)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 7,
+      "number": 47,
+      "url": null,
+      "title": "Ken's attacks against an idle Ryu (versus fixture)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 8,
+      "number": 48,
+      "url": null,
+      "title": "Native-latch sound over every recorded fight",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 9,
+      "number": 49,
+      "url": null,
+      "title": "Listening kit for the fixed fight",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 10,
+      "number": 50,
+      "url": null,
+      "title": "Record a keyboard session and verify it against the reference",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 11,
+      "number": 51,
+      "url": null,
+      "title": "Translation coverage ledger from every pinned reference",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 12,
+      "number": 52,
+      "url": null,
+      "title": "Coins, service credits and 1P/2P start on the start screen",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 13,
+      "number": 53,
+      "url": null,
+      "title": "Ryu's Hadoken and Tatsumaki against Retsu",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 14,
+      "number": 54,
+      "url": null,
+      "title": "Crouching attacks, jump attacks and blocks against Retsu, and held inputs",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": 15,
+      "number": 55,
+      "url": null,
+      "title": "The warning screen from power-on, into the title (frames 0–1647)",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        3,
+        12
+      ],
+      "blockerNumbers": [
+        41,
+        43,
+        52
+      ]
+    },
+    {
+      "localId": 16,
+      "number": 56,
+      "url": null,
+      "title": "Attract ranking screen",
+      "label": "ready-for-agent",
+      "blockers": [
+        3
+      ],
+      "blockerNumbers": [
+        43
+      ]
+    },
+    {
+      "localId": 17,
+      "number": 57,
+      "url": null,
+      "title": "The boot DIP decode for every setting",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        2
+      ],
+      "blockerNumbers": [
+        41,
+        42
+      ]
+    },
+    {
+      "localId": 18,
+      "number": 58,
+      "url": null,
+      "title": "Flip screen on every layer",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 19,
+      "number": 59,
+      "url": null,
+      "title": "Difficulty, round-time and attract-music DIPs in the fixed fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 20,
+      "number": 60,
+      "url": null,
+      "title": "The Speed DIP's slow game",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 21,
+      "number": 61,
+      "url": null,
+      "title": "The Freeze DIP",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 22,
+      "number": 62,
+      "url": null,
+      "title": "Every FM effect and special command from the service sound test",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 23,
+      "number": 63,
+      "url": null,
+      "title": "Every tune through its loop point or its end, including the round tune's loop",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 24,
+      "number": 64,
+      "url": null,
+      "title": "Every ADPCM sample on both channels and every bank",
+      "label": "ready-for-agent",
+      "blockers": [
+        2
+      ],
+      "blockerNumbers": [
+        42
+      ]
+    },
+    {
+      "localId": 25,
+      "number": 65,
+      "url": null,
+      "title": "Game over and the return to the attract boundary (one-player and versus)",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        5
+      ],
+      "blockerNumbers": [
+        41,
+        45
+      ]
+    },
+    {
+      "localId": 26,
+      "number": 66,
+      "url": null,
+      "title": "A versus winner carries on against the CPU (one machine for every mode)",
+      "label": "ready-for-agent",
+      "blockers": [
+        4,
+        5
+      ],
+      "blockerNumbers": [
+        44,
+        45
+      ]
+    },
+    {
+      "localId": 27,
+      "number": 67,
+      "url": null,
+      "title": "Ryu beats Geki (0x16bfc)",
+      "label": "ready-for-agent",
+      "blockers": [
+        5,
+        6
+      ],
+      "blockerNumbers": [
+        45,
+        46
+      ]
+    },
+    {
+      "localId": 28,
+      "number": 68,
+      "url": null,
+      "title": "Ryu beats the first stage-1 opponent (0x1734c)",
+      "label": "ready-for-agent",
+      "blockers": [
+        6
+      ],
+      "blockerNumbers": [
+        46
+      ]
+    },
+    {
+      "localId": 29,
+      "number": 69,
+      "url": null,
+      "title": "Power/timing bonus after Japan (0x40d30)",
+      "label": "ready-for-agent",
+      "blockers": [
+        6
+      ],
+      "blockerNumbers": [
+        46
+      ]
+    },
+    {
+      "localId": 30,
+      "number": 70,
+      "url": null,
+      "title": "Listening review of the fixed fight (person)",
+      "label": "ready-for-human",
+      "blockers": [
+        9
+      ],
+      "blockerNumbers": [
+        49
+      ]
+    },
+    {
+      "localId": 31,
+      "number": 71,
+      "url": null,
+      "title": "A person's keyboard session of both fixtures (person)",
+      "label": "ready-for-human",
+      "blockers": [
+        10
+      ],
+      "blockerNumbers": [
+        50
+      ]
+    },
+    {
+      "localId": 32,
+      "number": 72,
+      "url": null,
+      "title": "One-player round 3 after a 1–1 split, a time-over and a draw",
+      "label": "ready-for-agent",
+      "blockers": [
+        5,
+        6
+      ],
+      "blockerNumbers": [
+        45,
+        46
+      ]
+    },
+    {
+      "localId": 33,
+      "number": 73,
+      "url": null,
+      "title": "A coin during the title opens the start screen",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        3,
+        12
+      ],
+      "blockerNumbers": [
+        41,
+        43,
+        52
+      ]
+    },
+    {
+      "localId": 34,
+      "number": 74,
+      "url": null,
+      "title": "Two-country select: timeout to Japan, stick and button to USA, and the opponent order",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        12
+      ],
+      "blockerNumbers": [
+        41,
+        52
+      ]
+    },
+    {
+      "localId": 35,
+      "number": 75,
+      "url": null,
+      "title": "Coinage DIP: coins at non-default rates",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        2,
+        12
+      ],
+      "blockerNumbers": [
+        41,
+        42,
+        52
+      ]
+    },
+    {
+      "localId": 36,
+      "number": 76,
+      "url": null,
+      "title": "Remappable keyboard bindings with persistence",
+      "label": "ready-for-agent",
+      "blockers": [
+        12
+      ],
+      "blockerNumbers": [
+        52
+      ]
+    },
+    {
+      "localId": 37,
+      "number": 77,
+      "url": null,
+      "title": "Demo Sounds and Attract Music DIPs over the attract",
+      "label": "ready-for-agent",
+      "blockers": [
+        2,
+        16
+      ],
+      "blockerNumbers": [
+        42,
+        56
+      ]
+    },
+    {
+      "localId": 38,
+      "number": 78,
+      "url": null,
+      "title": "Tune transitions: priorities, the saved tune and the stops",
+      "label": "ready-for-agent",
+      "blockers": [
+        23
+      ],
+      "blockerNumbers": [
+        63
+      ]
+    },
+    {
+      "localId": 39,
+      "number": 79,
+      "url": null,
+      "title": "Continue with a credit: the rematch against the same opponent",
+      "label": "ready-for-agent",
+      "blockers": [
+        1,
+        4,
+        5,
+        12
+      ],
+      "blockerNumbers": [
+        41,
+        44,
+        45,
+        52
+      ]
+    },
+    {
+      "localId": 40,
+      "number": 80,
+      "url": null,
+      "title": "P2 wins the versus and plays the CPU (game mode 4: Ken's one-player game)",
+      "label": "ready-for-agent",
+      "blockers": [
+        26
+      ],
+      "blockerNumbers": [
+        66
+      ]
+    },
+    {
+      "localId": 41,
+      "number": 81,
+      "url": null,
+      "title": "A challenger joins a one-player fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        12,
+        26
+      ],
+      "blockerNumbers": [
+        52,
+        66
+      ]
+    },
+    {
+      "localId": 42,
+      "number": 82,
+      "url": null,
+      "title": "Name entry for a ranking player",
+      "label": "ready-for-agent",
+      "blockers": [
+        25,
+        26
+      ],
+      "blockerNumbers": [
+        65,
+        66
+      ]
+    },
+    {
+      "localId": 43,
+      "number": 83,
+      "url": null,
+      "title": "Country to country: the first bonus to stage 1's first fight (the map)",
+      "label": "ready-for-agent",
+      "blockers": [
+        4,
+        25,
+        29
+      ],
+      "blockerNumbers": [
+        44,
+        65,
+        69
+      ]
+    },
+    {
+      "localId": 44,
+      "number": 84,
+      "url": null,
+      "title": "Ryu beats the second stage-1 opponent (0x170dc)",
+      "label": "ready-for-agent",
+      "blockers": [
+        27,
+        28
+      ],
+      "blockerNumbers": [
+        67,
+        68
+      ]
+    },
+    {
+      "localId": 45,
+      "number": 85,
+      "url": null,
+      "title": "Game over with a credit left returns to the start screen",
+      "label": "ready-for-agent",
+      "blockers": [
+        25,
+        33
+      ],
+      "blockerNumbers": [
+        65,
+        73
+      ]
+    },
+    {
+      "localId": 46,
+      "number": 86,
+      "url": null,
+      "title": "A fresh two-player start into the versus fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        4,
+        26,
+        34
+      ],
+      "blockerNumbers": [
+        44,
+        66,
+        74
+      ]
+    },
+    {
+      "localId": 47,
+      "number": 87,
+      "url": null,
+      "title": "Four-country select (DIP)",
+      "label": "ready-for-agent",
+      "blockers": [
+        2,
+        34
+      ],
+      "blockerNumbers": [
+        42,
+        74
+      ]
+    },
+    {
+      "localId": 48,
+      "number": 88,
+      "url": null,
+      "title": "Attract demo: setup through FIGHT!",
+      "label": "ready-for-agent",
+      "blockers": [
+        4,
+        16,
+        34
+      ],
+      "blockerNumbers": [
+        44,
+        56,
+        74
+      ]
+    },
+    {
+      "localId": 49,
+      "number": 89,
+      "url": null,
+      "title": "The fixed fight from power-on, with no fixture",
+      "label": "ready-for-agent",
+      "blockers": [
+        4,
+        15,
+        33,
+        34
+      ],
+      "blockerNumbers": [
+        44,
+        55,
+        73,
+        74
+      ]
+    },
+    {
+      "localId": 50,
+      "number": 122,
+      "url": null,
+      "title": "Ranking insertion and the new entry on the ranking screen",
+      "label": "ready-for-agent",
+      "blockers": [
+        16,
+        42
+      ],
+      "blockerNumbers": [
+        56,
+        82
+      ]
+    },
+    {
+      "localId": 51,
+      "number": 123,
+      "url": null,
+      "title": "Continuation and buy-in DIPs",
+      "label": "ready-for-agent",
+      "blockers": [
+        2,
+        25,
+        41
+      ],
+      "blockerNumbers": [
+        42,
+        65,
+        81
+      ]
+    },
+    {
+      "localId": 52,
+      "number": 124,
+      "url": null,
+      "title": "10-second bonus after stage 1 (0x41740)",
+      "label": "ready-for-agent",
+      "blockers": [
+        43,
+        44
+      ],
+      "blockerNumbers": [
+        83,
+        84
+      ]
+    },
+    {
+      "localId": 53,
+      "number": 125,
+      "url": null,
+      "title": "Ryu beats stage 2's first opponent (0x175bc)",
+      "label": "ready-for-agent",
+      "blockers": [
+        44
+      ],
+      "blockerNumbers": [
+        84
+      ]
+    },
+    {
+      "localId": 54,
+      "number": 126,
+      "url": null,
+      "title": "Listening review of every tune, effect and sample (person)",
+      "label": "ready-for-human",
+      "blockers": [
+        9,
+        22,
+        24,
+        38
+      ],
+      "blockerNumbers": [
+        49,
+        62,
+        64,
+        78
+      ]
+    },
+    {
+      "localId": 55,
+      "number": 127,
+      "url": null,
+      "title": "Attract demo to its round end, and the attract loop from power-on",
+      "label": "ready-for-agent",
+      "blockers": [
+        15,
+        48
+      ],
+      "blockerNumbers": [
+        55,
+        88
+      ]
+    },
+    {
+      "localId": 56,
+      "number": 128,
+      "url": null,
+      "title": "Name entry end to end from a won one-player fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        41,
+        50
+      ],
+      "blockerNumbers": [
+        81,
+        122
+      ]
+    },
+    {
+      "localId": 57,
+      "number": 129,
+      "url": null,
+      "title": "Ryu beats stage 2's second opponent (0x1782c)",
+      "label": "ready-for-agent",
+      "blockers": [
+        53
+      ],
+      "blockerNumbers": [
+        125
+      ]
+    },
+    {
+      "localId": 58,
+      "number": 130,
+      "url": null,
+      "title": "Power/timing bonus after stage 2 (0x41a02)",
+      "label": "ready-for-agent",
+      "blockers": [
+        29,
+        43,
+        57
+      ],
+      "blockerNumbers": [
+        69,
+        83,
+        129
+      ]
+    },
+    {
+      "localId": 59,
+      "number": 131,
+      "url": null,
+      "title": "Ryu beats stage 3's first opponent (0x17a9c)",
+      "label": "ready-for-agent",
+      "blockers": [
+        57
+      ],
+      "blockerNumbers": [
+        129
+      ]
+    },
+    {
+      "localId": 60,
+      "number": 132,
+      "url": null,
+      "title": "Ryu beats stage 3's second opponent (0x17d0c)",
+      "label": "ready-for-agent",
+      "blockers": [
+        59
+      ],
+      "blockerNumbers": [
+        131
+      ]
+    },
+    {
+      "localId": 61,
+      "number": 133,
+      "url": null,
+      "title": "10-second bonus after stage 3 (0x41fe6)",
+      "label": "ready-for-agent",
+      "blockers": [
+        52,
+        60
+      ],
+      "blockerNumbers": [
+        124,
+        132
+      ]
+    },
+    {
+      "localId": 62,
+      "number": 134,
+      "url": null,
+      "title": "Ryu beats Adon (0x17f7c)",
+      "label": "ready-for-agent",
+      "blockers": [
+        60
+      ],
+      "blockerNumbers": [
+        132
+      ]
+    },
+    {
+      "localId": 63,
+      "number": 135,
+      "url": null,
+      "title": "Ryu beats Sagat (0x181ec) and reaches the ending",
+      "label": "ready-for-agent",
+      "blockers": [
+        62
+      ],
+      "blockerNumbers": [
+        134
+      ]
+    },
+    {
+      "localId": 64,
+      "number": 136,
+      "url": null,
+      "title": "The ending (0x44a40)",
+      "label": "ready-for-agent",
+      "blockers": [
+        29,
+        34,
+        63
+      ],
+      "blockerNumbers": [
+        69,
+        74,
+        135
+      ]
+    },
+    {
+      "localId": 65,
+      "number": 137,
+      "url": null,
+      "title": "A complete one-player game from power-on",
+      "label": "ready-for-agent",
+      "blockers": [
+        49,
+        50,
+        58,
+        61,
+        64
+      ],
+      "blockerNumbers": [
+        89,
+        122,
+        130,
+        133,
+        136
+      ]
+    },
+    {
+      "localId": 66,
+      "number": 138,
+      "url": null,
+      "title": "A two-player session from power-on",
+      "label": "ready-for-agent",
+      "blockers": [
+        25,
+        39,
+        40,
+        41,
+        46,
+        49,
+        55
+      ],
+      "blockerNumbers": [
+        65,
+        79,
+        80,
+        81,
+        86,
+        89,
+        127
+      ]
+    },
+    {
+      "localId": 67,
+      "number": 139,
+      "url": null,
+      "title": "DIP settings from power-on: flip and the country count",
+      "label": "ready-for-agent",
+      "blockers": [
+        18,
+        47,
+        49
+      ],
+      "blockerNumbers": [
+        58,
+        87,
+        89
+      ]
+    },
+    {
+      "localId": 68,
+      "number": 140,
+      "url": null,
+      "title": "DIP settings from power-on: attract and demo",
+      "label": "ready-for-agent",
+      "blockers": [
+        33,
+        37,
+        55
+      ],
+      "blockerNumbers": [
+        73,
+        77,
+        127
+      ]
+    },
+    {
+      "localId": 69,
+      "number": 141,
+      "url": null,
+      "title": "DIP settings from power-on: the fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        19,
+        20,
+        21,
+        49
+      ],
+      "blockerNumbers": [
+        59,
+        60,
+        61,
+        89
+      ]
+    },
+    {
+      "localId": 70,
+      "number": 142,
+      "url": null,
+      "title": "DIP settings from power-on: coinage, continuation and buy-in",
+      "label": "ready-for-agent",
+      "blockers": [
+        35,
+        49,
+        51
+      ],
+      "blockerNumbers": [
+        75,
+        89,
+        123
+      ]
+    },
+    {
+      "localId": 71,
+      "number": 143,
+      "url": null,
+      "title": "Both sound programs over the complete game from the native latch",
+      "label": "ready-for-agent",
+      "blockers": [
+        8,
+        22,
+        23,
+        65,
+        66
+      ],
+      "blockerNumbers": [
+        48,
+        62,
+        63,
+        137,
+        138
+      ]
+    },
+    {
+      "localId": 72,
+      "number": 144,
+      "url": null,
+      "title": "Full-game completeness and fidelity audit",
+      "label": "ready-for-agent",
+      "blockers": [
+        7,
+        11,
+        13,
+        14,
+        17,
+        30,
+        31,
+        32,
+        36,
+        45,
+        54,
+        56,
+        67,
+        68,
+        69,
+        70,
+        71
+      ],
+      "blockerNumbers": [
+        47,
+        51,
+        53,
+        54,
+        57,
+        70,
+        71,
+        72,
+        76,
+        85,
+        126,
+        128,
+        139,
+        140,
+        141,
+        142,
+        143
+      ]
+    },
+    {
+      "localId": 73,
+      "number": 145,
+      "url": null,
+      "title": "Service mode from power-on: RAM test, input display and sound test",
+      "label": "ready-for-agent",
+      "blockers": [
+        72
+      ],
+      "blockerNumbers": [
+        144
+      ]
+    },
+    {
+      "localId": 74,
+      "number": 146,
+      "url": null,
+      "title": "Service menu and its first four screen tests",
+      "label": "ready-for-agent",
+      "blockers": [
+        73
+      ],
+      "blockerNumbers": [
+        145
+      ]
+    },
+    {
+      "localId": 75,
+      "number": 147,
+      "url": null,
+      "title": "Service sprite test and output cycle",
+      "label": "ready-for-agent",
+      "blockers": [
+        74
+      ],
+      "blockerNumbers": [
+        146
+      ]
+    },
+    {
+      "localId": 76,
+      "number": 148,
+      "url": null,
+      "title": "Service scroll test",
+      "label": "ready-for-agent",
+      "blockers": [
+        74
+      ],
+      "blockerNumbers": [
+        146
+      ]
+    },
+    {
+      "localId": 77,
+      "number": 149,
+      "url": null,
+      "title": "Append the test-mode result to the audit",
+      "label": "ready-for-agent",
+      "blockers": [
+        75,
+        76
+      ],
+      "blockerNumbers": [
+        147,
+        148
+      ]
+    },
+    {
+      "localId": 78,
+      "number": 90,
+      "url": null,
+      "title": "Re-check waves 3–16 and publish them",
+      "label": "ready-for-agent",
+      "blockers": [
+        15,
+        49
+      ],
+      "blockerNumbers": [
+        55,
+        89
+      ]
+    }
+  ],
+  "verified": "titles, labels, body sections and all 149 native blocked_by edges checked after publication"
+}

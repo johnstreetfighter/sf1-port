@@ -1,0 +1,23 @@
+{
+  "fighter": "ryu",
+  "note": "A dark charcoal gi with a black belt, brown hair, headband, gloves and shoes: his gi greys step down and his reds turn to browns, as his hair is in Street Fighter Alpha.",
+  "from": 0,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#00ddff",
+    "#888888",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#000000",
+    "#444444",
+    "#666666",
+    "#666666"
+  ]
+}

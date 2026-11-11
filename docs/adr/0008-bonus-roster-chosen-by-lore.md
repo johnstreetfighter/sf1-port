@@ -1,0 +1,5 @@
+# Bonus challengers are chosen by 1987 lore, not by community art
+
+The first bonus roster (13 fighters, 2026-10-28) was picked largely by which characters M.U.G.E.N creators had already drawn in a 1987 style. Once the art pipeline could make 1987 frames from the ROM's own art, that reason went away. We now admit only official Capcom or UDON characters who could have fought in 1987: alive and at least 18, or already dead, or ancient, or made before 1987 if artificial. The EX series and the films are never the only source. That is why Cammy, Sakura, Karin, Maki and Sheng Long are absent even though fan versions exist.
+
+The roster is capped at 40 (the 12 plus 28), set by what one select screen holds with portraits drawn for their tile size. It ships in three roster waves: fighters tied to the tournament, then fighters tied to the 12, then fighters who existed in 1987. Where more fighters qualify than fit, the ones with the most lore set near 1987 win, meaning the Alpha games and Final Fight. The roster itself is in [`docs/design/2026-11-03-bonus-roster-by-lore-design.md`](../design/2026-11-03-bonus-roster-by-lore-design.md).

@@ -1,0 +1,348 @@
+{
+  "spec": {
+    "number": 164,
+    "url": null
+  },
+  "approved": "2026-11-02",
+  "published": "AP1-AP26",
+  "tickets": [
+    {
+      "localId": "AP1",
+      "number": 165,
+      "url": null,
+      "title": "AP1: The extended sprite bank, empty (prefactor)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": "AP2",
+      "number": 166,
+      "url": null,
+      "title": "AP2: Describe every throw and special for approval",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": "AP3",
+      "number": 167,
+      "url": null,
+      "title": "AP3: Recipes and the pose catalogue, with Ryu's get-up as the first move",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP1"
+      ],
+      "blockerNumbers": [
+        165
+      ]
+    },
+    {
+      "localId": "AP4",
+      "number": 168,
+      "url": null,
+      "title": "AP4: The review page",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP3"
+      ],
+      "blockerNumbers": [
+        167
+      ]
+    },
+    {
+      "localId": "AP5",
+      "number": 169,
+      "url": null,
+      "title": "AP5: The art pack, with Sagat's crouch as the first generated pose",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP3"
+      ],
+      "blockerNumbers": [
+        167
+      ]
+    },
+    {
+      "localId": "AP6",
+      "number": 170,
+      "url": null,
+      "title": "AP6: Ryu and Ken: throws, thrown sets and get-ups",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP2",
+        "AP4",
+        "AP5"
+      ],
+      "blockerNumbers": [
+        166,
+        168,
+        169
+      ]
+    },
+    {
+      "localId": "AP7",
+      "number": 171,
+      "url": null,
+      "title": "AP7: Sagat: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP2",
+        "AP4",
+        "AP5"
+      ],
+      "blockerNumbers": [
+        166,
+        168,
+        169
+      ]
+    },
+    {
+      "localId": "AP8",
+      "number": 172,
+      "url": null,
+      "title": "AP8: Sagat: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP7"
+      ],
+      "blockerNumbers": [
+        171
+      ]
+    },
+    {
+      "localId": "AP9",
+      "number": 173,
+      "url": null,
+      "title": "AP9: Retsu: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP10",
+      "number": 174,
+      "url": null,
+      "title": "AP10: Retsu: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP11",
+      "number": 175,
+      "url": null,
+      "title": "AP11: Geki: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP12",
+      "number": 176,
+      "url": null,
+      "title": "AP12: Geki: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP13",
+      "number": 177,
+      "url": null,
+      "title": "AP13: Joe: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP14",
+      "number": 178,
+      "url": null,
+      "title": "AP14: Joe: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP15",
+      "number": 179,
+      "url": null,
+      "title": "AP15: Mike: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP16",
+      "number": 180,
+      "url": null,
+      "title": "AP16: Mike: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP17",
+      "number": 181,
+      "url": null,
+      "title": "AP17: Lee: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP18",
+      "number": 182,
+      "url": null,
+      "title": "AP18: Lee: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP19",
+      "number": 183,
+      "url": null,
+      "title": "AP19: Gen: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP20",
+      "number": 184,
+      "url": null,
+      "title": "AP20: Gen: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP21",
+      "number": 185,
+      "url": null,
+      "title": "AP21: Birdie: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP22",
+      "number": 186,
+      "url": null,
+      "title": "AP22: Birdie: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP23",
+      "number": 187,
+      "url": null,
+      "title": "AP23: Eagle: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP24",
+      "number": 188,
+      "url": null,
+      "title": "AP24: Eagle: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP25",
+      "number": 189,
+      "url": null,
+      "title": "AP25: Adon: ground set",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    },
+    {
+      "localId": "AP26",
+      "number": 190,
+      "url": null,
+      "title": "AP26: Adon: air set and specials",
+      "label": "ready-for-agent",
+      "blockers": [
+        "AP8"
+      ],
+      "blockerNumbers": [
+        172
+      ]
+    }
+  ]
+}

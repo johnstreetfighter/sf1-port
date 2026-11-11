@@ -1,0 +1,1657 @@
+{
+  "fighter": "gen",
+  "calls": [
+    {
+      "at": "2026-11-07T05:58:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae",
+      "cost": 5,
+      "canvas": [
+        64,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2064",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the squat his hit reactions recover through, with rows 72-79 across his thighs taken out (the recipe's crouch before its seam); the mask covers the band where the two halves meet (rows 68-76, over the figure and two pixels either side), sparing his head, hands and shoes",
+          "note": "inpaint-source-crouch-64x88.png and inpaint-mask-crouch.png in candidates/gen/round1; make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master squatting low: his baggy purple trousers over both bent thighs, knees wide apart, the hem of his long purple robe falling between them with its dark red trim running down diagonally and continuing the line above without a break; the thighs' dark outlines continuing smoothly from above to the knees below. One body, nothing cut off.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "9eb131e3",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 144 pixels differ from the source, and the 114 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "4 single pixels inside the mask set to the pen around them",
+            "his left thigh (x < 31) set back to the source's inside the mask: the inpainting had bulged it outward",
+            "his robe's red trim redrawn by hand inside the mask as one line bending over his knee (rows 68-76, x 39 to 45), each row's trim pixel and its dark-purple edges moved onto the line and the robe's colour filled in behind it; the inpainting had left it broken where the two halves of the cut meet"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07): technically good, but it read more like a hit than a crouch. Replaced in round two by his stance from the waist up on these legs."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:04:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "7fdd93ec-5303-4a07-a21f-5ab51538fecc",
+      "cost": 5,
+      "canvas": [
+        64,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x200c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block's raised forearm and fist (x40-53, y9-36), stood on the crouch's forward sleeve in place of its clawed hand; the mask covers the elbow, the sleeve's end and the old hand's place (x38-61, y44-67), sparing his head",
+          "note": "candidates/gen/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master squatting low in a crouching block: his near forearm raised straight up before him with the fist at head height, the elbow bent down at his side, the wide purple sleeve of his robe with its grey cuff joining his shoulder; his purple robe's chest and knee below the raised arm. Nothing else in the empty space right of the arm.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the space below the elbow, where his robe and knee should be, came back empty, so the robe looked cut off."
+    },
+    {
+      "at": "2026-11-07T06:04:05Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fc269754-392e-4adc-a44e-39113fd4fb48",
+      "cost": 5,
+      "canvas": [
+        84,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2126",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his straight punch's arm (x56-92, y11-31: sleeve, grey cuff and fist) laid from the crouch's forward shoulder in place of its clawed arm; the mask covers the shoulder join (x38-53, y42-65, sparing his head) and the space the old arm left (x52-65, y58-67)",
+          "note": "inpaint-source-crouching-punch-84x88.png and inpaint-mask-crouching-punch.png in candidates/gen/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master squatting low and punching straight forward: his near arm driven out from his shoulder at full reach in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly; his purple robe's side and chest under the arm, and the top of his bent purple knee below. Nothing else in the empty space under the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch",
+          "crc32": "2df6e407",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 95 pixels differ from the source, and the 72 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "7 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07) with the crouch it was built on. Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:04:10Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9a186246-695e-47e1-b944-fd4055dc5c92",
+      "cost": 5,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2309",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his flying kick's outstretched leg (x43-95, y37-63: purple trouser leg and red shoe, his hand above it left out) laid from the crouch's hip in place of its forward knee and shoe, the shoe on the floor; his black ground shadow carried on under it; the mask covers the hip and the space under the robe (x34-57, y60-79), sparing his forward hand",
+          "note": "inpaint-source-crouching-kick-96x88.png and inpaint-mask-crouching-kick.png in candidates/gen/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master squatting on his rear leg with his front leg kicked straight out low along the floor: the hem of his long purple robe over his hip, his baggy purple trouser leg running from under the robe into the outstretched leg, joined cleanly at the hip. Empty space under the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "aaa60f12",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 5 pixels differ from the source, and the 78 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "3 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Approved by the maintainer in round one (2026-11-07). Rebuilt the same way on the round-two crouch, so its upper body matches the crouch it starts and ends on, as the coordinator asked before the maintainer's second look; the rebuilt pose is reopened for review."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:04:15Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6f651011-8e31-4e39-991d-1e009ff3db83",
+      "cost": 5,
+      "canvas": [
+        64,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing hit's upper body (rows 8-57), laid on the crouch's thighs with its top at row 10; the mask covers the band where they meet (rows 56-71), sparing his hands",
+          "note": "candidates/gen/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master hit while crouching, his head knocked back: his long purple robe from his chest down over his waist, its dark red trim running on down the front, its skirt falling over his bent knees in baggy purple trousers; one body, the robe's sides joining the knees cleanly at the waist.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: laid so high, he stood 75 pixels tall against the crouch's 63."
+    },
+    {
+      "at": "2026-11-07T06:04:20Z",
+      "move": "low kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3ca907f3-588d-45f7-8f8e-67df2dcaf9da",
+      "cost": 5,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2180",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his front kick's strike, the picture inpainted: its high kicking leg taken away (everything right of x45 above row 50)",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2309",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his flying kick's outstretched leg (x43-95, y37-63, his hand above it left out) driven out from the hip at knee height; the mask covers the hip and the robe behind the old leg (x32-59, y32-59), sparing his fist",
+          "note": "inpaint-source-low-kick-96x96.png and inpaint-mask-low-kick.png in candidates/gen/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master standing on one leg, kicking straight out low at knee height: his baggy purple trouser leg driven out from his hip under his long purple robe, joined cleanly at the hip; the robe's back flap hanging behind his standing leg. Nothing else in the empty space above the leg.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "low_kick",
+          "crc32": "59055c75",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 72 pixels differ from the source, and the 51 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "4 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:09:30Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2164ace6-c91b-4734-92d6-1d0f9e7432fc",
+      "cost": 5,
+      "canvas": [
+        64,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x200c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block's whole raised arm (x32-51, y9-41: the sleeve from the shoulder, the grey cuff, forearm and fist) laid on the crouch's forward shoulder, the sleeve hanging over where the old arm was; the mask covers the shoulder join (x36-49, y42-51, sparing his head) and the band where the sleeve meets his knee (x38-62, y56-68)",
+          "note": "inpaint-source-crouching-block-64x88.png and inpaint-mask-crouching-block.png in candidates/gen/round1b (make_round1b.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master squatting low in a crouching block, his near forearm raised before his face: the wide purple sleeve of his robe hangs from his shoulder down to the elbow and joins his shoulder cleanly; below the sleeve, the top of his bent purple trouser knee, one body with no gaps.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "96e3e1b5",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 145 pixels differ from the source, and the 80 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "5 single pixels inside the mask set to the pen around them",
+            "5 skin pixels in a column under the raised arm's sleeve (x 40, rows 54-58), the edge of his other hand that the standing block's crop took in, set to the sleeve's dark purple around them"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07) with the crouch it was built on. Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:13:00Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "fd13227c-6b71-44ce-90d5-d122fb5d0750",
+      "cost": 5,
+      "canvas": [
+        64,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the picture inpainted is built on his finished crouch (the kept crouch candidate with its touch-ups, touched/crouch.png), so his ROM head, other hand, knees and shoes stay pixel for pixel",
+          "note": "make_crouch.py, make_ground.py, make_round1b.py and make_round1c.py in the pack's candidates/gen/tools build the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2060",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing hit's upper body (rows 8-55: head knocked back, hands drawn in, down to the waist) laid 6 pixels lower than the first try, over the tops of the crouch's thighs; the mask covers the band where they meet (rows 58-73), sparing his hands",
+          "note": "inpaint-source-crouching-hit-64x88.png and inpaint-mask-crouching-hit.png in candidates/gen/round1c (make_round1c.py)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master hit while crouching low, his head knocked back: his long purple robe from his chest down over his waist, its dark red trim running on down the front, its skirt falling over his bent knees in baggy purple trousers; one body, the robe's sides joining the knees cleanly at the waist, nothing cut off.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "3af06ff4",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 443 pixels differ from the source, and the 240 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "20 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T12:10:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "8a1d8eba-e19f-4970-9575-03a156181d85",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance from the head to the waist (rows 8-51), upright with both arms as they are, set 6 pixels right and 16 down on the legs (the maintainer's request, 2026-11-07)",
+          "note": "inpaint-source-crouch-72x88.png and inpaint-mask-crouch.png in candidates/gen/round2; make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the bent legs of round one's crouch (touched/crouch.png from row 62: thighs, the robe's hem between the knees, shoes and ground shadow; its forward hand left out); the mask covers the band where the stance's waist meets them (rows 60-75), sparing his stance's hand",
+          "note": "his hit-recovery squat (0x2064) lowered, with the trim redrawn by hand in round one"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, his upper body upright as in his fighting stance: below his waist his long purple robe is short, its skirt falling just over his bent knees, the front panel's dark red trim running down from his waist without a break to the hem between his knees; his baggy purple trousers bent wide at the knees below. One body, the robe joining the thighs cleanly, nothing cut off.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "bd21a7ee",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 250 pixels differ from the source, and the 86 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "9 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Rejected by the maintainer in round two (2026-11-07): the robe looked cut short above the knees instead of hanging or folding low toward the floor; the upright upper body was fine. Replaced in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T12:10:05Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5aed9525-0e22-4d08-b4e2-7772f82d62ff",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1988,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x2000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his stance from the head to the waist (rows 8-51), upright with both arms as they are, set 6 pixels right and 16 down on the legs (the maintainer's request, 2026-11-07)",
+          "note": "inpaint-source-crouch-72x88.png and inpaint-mask-crouch.png in candidates/gen/round2; make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "candidate": "5cb120f1-6881-4582-8cd4-a2ee8908d7ae#0",
+          "usage": "the bent legs of round one's crouch (touched/crouch.png from row 62: thighs, the robe's hem between the knees, shoes and ground shadow; its forward hand left out); the mask covers the band where the stance's waist meets them (rows 60-75), sparing his stance's hand",
+          "note": "his hit-recovery squat (0x2064) lowered, with the trim redrawn by hand in round one"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, his upper body upright as in his fighting stance: below his waist his long purple robe is short, its skirt falling just over his bent knees, the front panel's dark red trim running down from his waist without a break to the hem between his knees; his baggy purple trousers bent wide at the knees below. One body, the robe joining the thighs cleanly, nothing cut off.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: a dark line came back across his waist, like a seam; the other candidate (seed 1987) joined cleanly."
+    },
+    {
+      "at": "2026-11-07T12:25:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a7bd1f35-57b8-4f77-a1c4-baaa7563357a",
+      "cost": 5,
+      "canvas": [
+        88,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "the picture inpainted is built on his round-two crouch (the kept candidate with its touch-ups, touched2/crouch.png), so his ROM head, other arm and legs stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2126",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his straight punch's arm (x56-92, y11-31: sleeve, grey cuff and fist) driven out from the crouch's forward shoulder at chest height, in place of the arm his stance holds out (taken away: x47 and right, rows 52-66); the mask covers the shoulder join and the robe's side under the arm (x38-57, y40-68), sparing his head",
+          "note": "candidates/gen/round2."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright, punching straight forward: his front arm driven out from his shoulder at full reach in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly; under the arm, his purple robe's side running down to his bent knee. One body, nothing cut off.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the space under the arm, where the old arm had hung over his forward thigh, came back empty, the robe ending in a straight edge."
+    },
+    {
+      "at": "2026-11-07T12:25:05Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9cd2e6dd-4147-44aa-ac32-2b4d18ee85be",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "the picture inpainted is built on his round-two crouch (the kept candidate with its touch-ups, touched2/crouch.png), so his ROM head, other arm and legs stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x200c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block's raised arm (x33-51, y9-41: the sleeve from the shoulder, the grey cuff, forearm and fist; his other hand left out) on the crouch's forward shoulder, in place of the arm his stance holds out (taken away: x47 and right, rows 52-66); the mask covers the shoulder join (x38-51, y40-51, sparing his head) and the space below the sleeve (x40-63, y54-68)",
+          "note": "candidates/gen/round2."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low in a crouching block, upper body upright: his front forearm raised before his face, the wide purple sleeve of his robe hanging from his shoulder to the elbow and joining his shoulder cleanly; below the sleeve, his purple robe's side running down to the top of his bent knee, one body with no gaps.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: as the punch's, the space below the sleeve came back empty, the robe ending in a straight edge."
+    },
+    {
+      "at": "2026-11-07T12:40:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5cf70eb1-101f-4d4a-83ca-48c8c2b1a2a4",
+      "cost": 5,
+      "canvas": [
+        88,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "the picture inpainted is built on his round-two crouch (the kept candidate with its touch-ups, touched2/crouch.png), so his ROM head, other arm and legs stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2126",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his straight punch's arm (x56-92, y11-31: sleeve, grey cuff and fist) driven out from the crouch's forward shoulder at chest height, in place of the arm his stance holds out (taken away: x47 and right, rows 52-66); under the arm his forward thigh hinted in flat purple (its edge curving from x52 at row 60 to the knee at row 66); the mask covers the shoulder join, the robe's side and the hint (x38-60, y40-68), sparing his head",
+          "note": "inpaint-source-crouching-punch-88x88.png and inpaint-mask-crouching-punch.png in candidates/gen/round2b."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright, punching straight forward: his front arm driven out from his shoulder at full reach in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly; under the arm, his robe's side and his bent purple front thigh filling the space down to the knee, rounded, shaded like his other thigh. One body, nothing cut off, no straight edges.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch",
+          "crc32": "3b93f9c5",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 90 pixels differ from the source, and the 64 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "9 single pixels inside the mask set to the pen around them",
+            "5 transparent pixels between the sleeve's underside and the thigh (x 47-48 row 58, x 50-52 row 59), where the backdrop showed through, set to the dark purple of the sleeve's shadow"
+          ],
+          "note": "Rejected by the maintainer in round two (2026-11-07), the same robe-length problem as the crouch it was built on. Replaced in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T12:40:05Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "874a79b7-79b8-411c-a573-1ae7a3703118",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "the picture inpainted is built on his round-two crouch (the kept candidate with its touch-ups, touched2/crouch.png), so his ROM head, other arm and legs stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x200c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block's raised arm (x33-51, y9-41: the sleeve from the shoulder, the grey cuff, forearm and fist; his other hand left out) on the crouch's forward shoulder, in place of the arm his stance holds out (taken away: x47 and right, rows 52-66); below the sleeve his forward thigh hinted in flat purple, as the punch's; the mask covers the shoulder join (x38-51, y40-51, sparing his head) and the space below the sleeve with the hint (x40-63, y54-68)",
+          "note": "inpaint-source-crouching-block-72x88.png and inpaint-mask-crouching-block.png in candidates/gen/round2b."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low in a crouching block, upper body upright: his front forearm raised before his face, the wide purple sleeve of his robe hanging from his shoulder to the elbow and joining his shoulder cleanly; below the sleeve, his robe's side and his bent purple front thigh filling the space down to the knee, rounded, shaded like his other thigh. One body, no gaps, no straight edges.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "d35a0ebb",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 170 pixels differ from the source, and the 152 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "3 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Rejected by the maintainer in round two (2026-11-07), the same robe-length problem as the crouch it was built on. Replaced in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T13:05:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f28b3bbd-5be4-43b4-bd57-c49c898206c5",
+      "cost": 5,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "the picture inpainted is built on his round-two crouch (the kept candidate with its touch-ups, touched2/crouch.png), so his ROM head, other arm and legs stay pixel for pixel",
+          "note": "make_round2.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2309",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his flying kick's outstretched leg (x43-95, y37-63, his hand above it left out; round one's crop) laid from the round-two crouch's hip along the floor in place of its forward knee and shoe (taken away: x44-71, rows 66-87), his stance's forward hand kept above the thigh; his black ground shadow carried on under it; the mask covers the hip join (x34-57, y60-79), sparing the hand",
+          "note": "inpaint-source-crouching-kick-96x88.png and inpaint-mask-crouching-kick.png in candidates/gen/round2c (make_round2.py kick)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright, squatting on his rear leg with his front leg kicked straight out low along the floor: the short skirt of his purple robe over his hip, his baggy purple trouser leg running from under the robe into the outstretched leg, joined cleanly at the hip. Empty space under the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "7c74cdb8",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 51 pixels differ from the source, and the 91 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "2 single pixels inside the mask set to the pen around them",
+            "his robe's front panel just above its hem (x 34-43, rows 76-79, 40 pixels) set back to the source's: the inpainting had cleared it and left the hem hanging under empty space",
+            "2 black pixels inside the sleeve (x 45-46, row 61), the leg crop's top outline, set to the sleeve's dark purple"
+          ],
+          "note": "Rejected by the maintainer in round two (2026-11-07), the same robe-length problem as the crouch it was built on. Replaced in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T14:20:00Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "87059d51-3ee1-4779-93d3-4e63c0858c79",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "round two's crouch (upright upper body on bent legs), the picture inpainted; the mask covers only the waist band (x8-63, rows 60-71, sparing his forward hand) and the panel's edges where it falls past his knees (x22-27 and x38-45, rows 70-85), the panel's middle kept",
+          "note": "make_round3.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the lower part of his stance's front panel (x21-38, rows 62-85: the panel with its red trim down both edges and its red hem, his rear ankle left out) hung from the waist to the floor between the round-two crouch's knees, 3 pixels right to meet the trim at his waist, the hem just above his ground shadow",
+          "note": "the maintainer's round-two reason (2026-11-07): the robe looked cut short above the knees instead of hanging or folding low toward the floor."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright: his long purple robe hangs from his waist all the way down to the floor between and over his bent knees, its front panel falling straight down with the dark red trim along both edges and along the hem just above the floor; the robe folds over the tops of his baggy purple trouser knees. One body, nothing cut short.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: its panel's right trim stepped sideways and its hem broke in two; the other mask's candidate was cleaner."
+    },
+    {
+      "at": "2026-11-07T14:20:05Z",
+      "move": "crouch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9c6213f5-865c-40dc-b001-6253f9af523e",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "8a1d8eba-e19f-4970-9575-03a156181d85#0",
+          "usage": "round two's crouch (upright upper body on bent legs), the picture inpainted; the mask covers the whole robe below the waist between and over his knees (x16-50, rows 60-85), the panel there as the starting point, his shoes and forward hand kept",
+          "note": "make_round3.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2000",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the lower part of his stance's front panel (x21-38, rows 62-85: the panel with its red trim down both edges and its red hem, his rear ankle left out) hung from the waist to the floor between the round-two crouch's knees, 3 pixels right to meet the trim at his waist, the hem just above his ground shadow",
+          "note": "the maintainer's round-two reason (2026-11-07): the robe looked cut short above the knees instead of hanging or folding low toward the floor."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright: his long purple robe hangs from his waist all the way down to the floor between and over his bent knees, its front panel falling straight down with the dark red trim along both edges and along the hem just above the floor; the robe folds over the tops of his baggy purple trouser knees. One body, nothing cut short.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouch",
+          "crc32": "a026300c",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 121 pixels differ from the source, and the 162 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "7 single pixels inside the mask set to the pen around them",
+            "a corner of round two's short skirt left on his right knee beside the panel (x 42-48, rows 76-81, 38 pixels), outlined in red like a second hem, taken away so the panel's edge is clean"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T14:40:00Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4fd906fe-6cea-455c-b3ab-21ea2d65b573",
+      "cost": 5,
+      "canvas": [
+        88,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "9c6213f5-865c-40dc-b001-6253f9af523e#0",
+          "usage": "the picture inpainted is built on his round-three crouch (the kept candidate with its touch-ups, touched3/crouch.png), so his ROM head, other arm, robe and legs stay pixel for pixel",
+          "note": "make_round3.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2126",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his straight punch's arm (x56-92, y11-31) driven out from the forward shoulder at chest height in place of the arm his stance holds out, his forward thigh hinted under it, as round 2b; the mask covers the shoulder join, the robe's side and the hint (x38-60, y40-68), sparing his head",
+          "note": "candidates/gen/round3."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright, punching straight forward: his front arm driven out from his shoulder at full reach in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly; under the arm, his long robe hanging down and his bent purple front thigh filling the space down to the knee, rounded, shaded like his other thigh. One body, nothing cut off, no straight edges.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch",
+          "crc32": "ce7376ab",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 156 pixels differ from the source, and the 95 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "7 single pixels inside the mask set to the pen around them",
+            "7 transparent pixels between the sleeve's underside and the thigh (x 44-50, row 59), where the backdrop showed through, set to the dark purple of the sleeve's shadow"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T14:40:05Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0dad208b-ba77-49f1-98d0-6b31a0f1c234",
+      "cost": 5,
+      "canvas": [
+        72,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "9c6213f5-865c-40dc-b001-6253f9af523e#0",
+          "usage": "the picture inpainted is built on his round-three crouch (the kept candidate with its touch-ups, touched3/crouch.png), so his ROM head, other arm, robe and legs stay pixel for pixel",
+          "note": "make_round3.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x200c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his standing block's raised arm (x33-51, y9-41, his other hand left out) on the forward shoulder in place of the arm his stance holds out, his forward thigh hinted below the sleeve, as round 2b; the mask covers the shoulder join (x38-51, y40-51) and the space below the sleeve (x40-63, y54-68)",
+          "note": "candidates/gen/round3."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low in a crouching block, upper body upright: his front forearm raised before his face, the wide purple sleeve of his robe hanging from his shoulder to the elbow and joining his shoulder cleanly; below the sleeve, his long robe hanging down and his bent purple front thigh filling the space down to the knee, rounded, shaded like his other thigh. One body, no gaps, no straight edges.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "bdff7c1c",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 145 pixels differ from the source, and the 9 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "4 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T14:40:10Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5bdb7565-73bf-4ef3-9869-4c7c24ea0220",
+      "cost": 5,
+      "canvas": [
+        96,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "candidate": "9c6213f5-865c-40dc-b001-6253f9af523e#0",
+          "usage": "the picture inpainted is built on his round-three crouch (the kept candidate with its touch-ups, touched3/crouch.png), so his ROM head, other arm, robe and legs stay pixel for pixel",
+          "note": "make_round3.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2309",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his flying kick's outstretched leg (x43-95, y37-63, his hand and the crop's top outline left out) from the hip along the floor in place of the forward knee and shoe (taken away: x44-71, rows 66-87), his stance's forward hand kept; the mask covers the hip join (x34-57, y60-79)",
+          "note": "candidates/gen/round3."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master crouching low, upper body upright, squatting on his rear leg with his front leg kicked straight out low along the floor: his long purple robe hangs down to the floor in front of his rear knee, and his baggy purple trouser leg comes out from under the robe at the hip into the outstretched leg, joined cleanly. Empty space under the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "6704b3a6",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 36 pixels differ from the source, and the 63 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "1 single pixels inside the mask set to the pen around them",
+            "2 grey pixels beside the panel's red trim where the thigh meets it (x 41, rows 74-75) set to the dark purple around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:20:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0dda1d67-b7e9-4eba-b47a-1b4ca12654b8",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2126",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his straight punch's arm (x56-92, y11-31: sleeve, cuff and fist), whose head lies 8 pixels right of the tuck's, laid 8 left from the tuck's front shoulder at shoulder height; the mask covers the shoulder join (x38-57, y10-32), sparing his head, his rear hand and the fist",
+          "note": "inpaint-source-jump-punch-88x80.png and inpaint-mask-jump-punch.png in candidates/gen/ap20/r1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, punching straight forward: his front arm driven out from his shoulder at shoulder height in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly behind his other hand at his chest; his purple robe's side and chest under the arm. Nothing else in the empty space under the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "26caaa14",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 23 pixels differ from the source, and the 36 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "2 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T16:20:05Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1fee1e49-a9b2-4db0-8ec7-926aa3cefc2a",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the front arm of his arm flurry's wheeling strike (from x56, y40-76: sleeve, cuff and open hand reaching down and forward; his beard and the thigh under the sleeve left out), laid 8 left and 22 up so the sleeve leaves the tuck's front shoulder and the hand reaches down past his knees; the mask covers the shoulder join (x38-59, y10-39), sparing his head, his rear hand and the hand",
+          "note": "inpaint-source-jump-punch-down-88x80.png and inpaint-mask-jump-punch-down.png in candidates/gen/ap20/r1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: his front arm driven down from his shoulder toward the open hand past his knees, in the wide purple sleeve of his robe, the sleeve joining his shoulder cleanly behind his other hand at his chest; his purple robe's chest behind the arm. Nothing else in the empty space above the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "3c543735",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 37 pixels differ from the source, and the 68 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "3 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Rejected by the maintainer in round one (2026-11-07): \"Arm looks pasted on.\" Replaced in round two."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T17:05:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2ff6105c-60fe-44d8-871b-bef03fa12894",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the lower sleeve, cuff and open hand of his arm flurry's down-reaching arm (round one's arm from x60, y30 on), laid where round one laid it; the upper sleeve, the shoulder and the old sleeve's outline under his rear hand cleared, and a flat hint drawn in his purples: one sleeve from the shoulder to the kept lower sleeve (outlined in his darkest purple), his chest filled under the rear hand, and the robe in shadow under the armpit down to the knee. The mask covers the whole shoulder, upper sleeve and armpit (x34-63, y10-45), sparing his head, his rear hand and the kept sleeve end, cuff and hand",
+          "note": "inpaint-source-jump-punch-down-88x80.png and inpaint-mask-jump-punch-down.png in candidates/gen/ap20/r2 (ap20_make_r2.py). The maintainer's round-one reason (2026-11-07): \"Arm looks pasted on.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: his front arm grows out of his shoulder in the wide purple sleeve of his robe, one continuous sleeve from the shoulder down to the grey cuff and open hand past his knees; the sleeve's dark outline and its folds run unbroken from his shoulder and chest into the arm, the robe gathered in shadow under the armpit down to the top of his knee. One body, nothing pasted on, no straight edges.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: black specks broke the sleeve's top and bottom outlines; the other seed's outline was clean."
+    },
+    {
+      "at": "2026-11-07T17:05:05Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0cf86e6f-a547-4365-937e-6d0318f9f847",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the lower sleeve, cuff and open hand of his arm flurry's down-reaching arm (round one's arm from x60, y30 on), laid where round one laid it; the upper sleeve, the shoulder and the old sleeve's outline under his rear hand cleared, and a flat hint drawn in his purples: one sleeve from the shoulder to the kept lower sleeve (outlined in his darkest purple), his chest filled under the rear hand, and the robe in shadow under the armpit down to the knee. The mask covers the whole shoulder, upper sleeve and armpit (x34-63, y10-45), sparing his head, his rear hand and the kept sleeve end, cuff and hand",
+          "note": "inpaint-source-jump-punch-down-88x80.png and inpaint-mask-jump-punch-down.png in candidates/gen/ap20/r2 (ap20_make_r2.py). The maintainer's round-one reason (2026-11-07): \"Arm looks pasted on.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: his front arm grows out of his shoulder in the wide purple sleeve of his robe, one continuous sleeve from the shoulder down to the grey cuff and open hand past his knees; the sleeve's dark outline and its folds run unbroken from his shoulder and chest into the arm, the robe gathered in shadow under the armpit down to the top of his knee. One body, nothing pasted on, no straight edges.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "195ef45c",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 115 pixels differ from the source, and the 120 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "17 single pixels inside the mask set to the pen around them"
+          ],
+          "note": "Rejected by the maintainer in round two (2026-11-07): \"the robe/torso is extending too much to the right with the arm, doesn't look good at all.\" The hint and the shadow under the armpit widened his body toward the opponent. Replaced in round three."
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T17:40:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "69a4622d-cafc-41c3-8d70-17f2f838f70c",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the cuff and open hand of his arm flurry's down-reaching arm, where round one laid them; the tuck's torso, robe and its front edge left as the ROM has them, outside the mask. A slim sleeve hinted from the tuck's own upper sleeve at the shoulder, under his rear hand, down and forward to the cuff (upper outline (49,15)-(70,34), lower (46,26)-(65,44)), flat in his mid purple inside his darkest purple outline (inpaint-source-jump-punch-down-88x80.png). The mask covers only the shoulder join (x42-49, rows 14-29, sparing his rear hand and head) and the new sleeve with a one-pixel margin, never x < 42",
+          "note": "candidates/gen/ap20/r3 (ap20_make_r3.py). The maintainer's round-two reason (2026-11-07): \"the robe/torso is extending too much to the right with the arm, doesn't look good at all.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: a slim arm in the purple sleeve of his robe leaves his shoulder just below his other hand and runs straight down and forward to the grey cuff and open hand, its dark outline and a fold or two along it, joined cleanly at the shoulder. His body and robe stay as they are; only the arm reaches out. Nothing else in the empty space around the arm.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the sleeve came back almost as flat as the hint, without his sleeves' highlight and shade."
+    },
+    {
+      "at": "2026-11-07T17:40:05Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6ac95010-195a-44ff-909f-95f911955ff1",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the cuff and open hand of his arm flurry's down-reaching arm, where round one laid them; the tuck's torso, robe and its front edge left as the ROM has them, outside the mask. A slim sleeve hinted from the tuck's own upper sleeve at the shoulder, under his rear hand, down and forward to the cuff (upper outline (49,15)-(70,34), lower (46,26)-(65,44)), flat in his mid purple inside his darkest purple outline (inpaint-source-jump-punch-down-88x80.png). The mask covers only the shoulder join (x42-49, rows 14-29, sparing his rear hand and head) and the new sleeve with a one-pixel margin, never x < 42",
+          "note": "candidates/gen/ap20/r3 (ap20_make_r3.py). The maintainer's round-two reason (2026-11-07): \"the robe/torso is extending too much to the right with the arm, doesn't look good at all.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: a slim arm in the purple sleeve of his robe leaves his shoulder just below his other hand and runs straight down and forward to the grey cuff and open hand, its dark outline and a fold or two along it, joined cleanly at the shoulder. His body and robe stay as they are; only the arm reaches out. Nothing else in the empty space around the arm.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the sleeve came back flat, as the other seed's."
+    },
+    {
+      "at": "2026-11-07T17:46:00Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9e1fab7e-e044-4405-8ed2-e6b311906b6f",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the cuff and open hand of his arm flurry's down-reaching arm, where round one laid them; the tuck's torso, robe and its front edge left as the ROM has them, outside the mask. A slim sleeve hinted from the tuck's own upper sleeve at the shoulder, under his rear hand, down and forward to the cuff (upper outline (49,15)-(70,34), lower (46,26)-(65,44)), taken from the flurry arm's own shaded sleeve, each column squeezed to the slim sleeve's height by nearest sampling, so it keeps his ROM outline, highlight and shade bands (inpaint-source-jump-punch-down-shaded-88x80.png, the same mask). The mask covers only the shoulder join (x42-49, rows 14-29, sparing his rear hand and head) and the new sleeve with a one-pixel margin, never x < 42",
+          "note": "candidates/gen/ap20/r3 (ap20_make_r3.py). The maintainer's round-two reason (2026-11-07): \"the robe/torso is extending too much to the right with the arm, doesn't look good at all.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: a slim arm in the purple sleeve of his robe leaves his shoulder just below his other hand and runs straight down and forward to the grey cuff and open hand, lit along its top and shaded underneath like his other sleeves, its dark outline clean and unbroken, joined cleanly at the shoulder. His body and robe stay as they are; only the arm reaches out. Nothing else in the empty space around the arm.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: a heavy black outline along both edges of the sleeve, where his sleeves are outlined in dark purple."
+    },
+    {
+      "at": "2026-11-07T17:46:05Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "5f794b52-43d8-46c1-b036-7ae1a89dfbce",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 2026,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#880000",
+        "#660000",
+        "#bbbbbb",
+        "#888888",
+        "#555555",
+        "#442266",
+        "#552277",
+        "#772299",
+        "#8822aa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x22a6",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x22a6), its front cuff and clawed hand taken away (x48-63, y10-29), so his ROM head, rear hand at his chest, robe and tucked legs stay pixel for pixel",
+          "note": "ap20_make_air.py in the pack's candidates/gen/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x2246",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "only the cuff and open hand of his arm flurry's down-reaching arm, where round one laid them; the tuck's torso, robe and its front edge left as the ROM has them, outside the mask. A slim sleeve hinted from the tuck's own upper sleeve at the shoulder, under his rear hand, down and forward to the cuff (upper outline (49,15)-(70,34), lower (46,26)-(65,44)), taken from the flurry arm's own shaded sleeve, each column squeezed to the slim sleeve's height by nearest sampling, so it keeps his ROM outline, highlight and shade bands (inpaint-source-jump-punch-down-shaded-88x80.png, the same mask). The mask covers only the shoulder join (x42-49, rows 14-29, sparing his rear hand and head) and the new sleeve with a one-pixel margin, never x < 42",
+          "note": "candidates/gen/ap20/r3 (ap20_make_r3.py). The maintainer's round-two reason (2026-11-07): \"the robe/torso is extending too much to the right with the arm, doesn't look good at all.\""
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Gen the old kung fu master in mid-air with his knees tucked, striking down and forward: a slim arm in the purple sleeve of his robe leaves his shoulder just below his other hand and runs straight down and forward to the grey cuff and open hand, lit along its top and shaded underneath like his other sleeves, its dark outline clean and unbroken, joined cleanly at the shoulder. His body and robe stay as they are; only the arm reaches out. Nothing else in the empty space around the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "a62bf3e3",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 134 pixels differ from the source, and the 272 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "3 single pixels inside the mask set to the pen around them",
+            "a grey pixel on the sleeve's lower outline (x 50, row 30) and a one-pixel gap in that outline under the shoulder (x 47, row 28) set to the dark purple of the outline"
+          ],
+          "note": "Rejected by the maintainer in round three (2026-11-07), the third rejection, so the pose went to him: \"It's very close now, the only issue I have with it is that the arm should be slightly more set back in his torso.\" His call was that small fix, made by hand on this same candidate (the next entry)."
+        },
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "78676183",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 134 pixels differ from the source, and the 272 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "3 single pixels inside the mask set to the pen around them",
+            "a grey pixel on the sleeve's lower outline (x 50, row 30) and a one-pixel gap in that outline under the shoulder (x 47, row 28) set to the dark purple of the outline",
+            "the maintainer's call after round three (2026-11-07): the whole arm (the inpainted shoulder join and slim sleeve, and the flurry's cuff and open hand) moved 3 pixels back toward his back by hand, so the shoulder sits further inside his torso; where the arm was, the tuck shows, and his head and rear hand are laid back on top as the ROM tuck draws them (ap20_make_r4.py, dx -3, dy 0). His torso and robe below row 29, the robe's front edge and his knees are the ROM tuck's, pixel for pixel. No generation."
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    }
+  ]
+}

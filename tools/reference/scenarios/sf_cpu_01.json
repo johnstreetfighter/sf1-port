@@ -1,0 +1,106 @@
+{
+ "scenario_id": "sf-cpu-01",
+ "format_version": 1,
+ "description": "Bounded CPU-decision slice (ticket #12): 1P Ryu vs CPU Retsu, round 1, the same boot path as sf-fixed-fight-01 / sf-idle-scene-01 with no fight inputs (P1 idle). FIGHT! is erased at 2389; the fight loop starts at 2390, where the CPU opponent makes its first decision: from its AI tables and the random state it starts move 0x0a, a forward jump toward Ryu (jump sound 0xa6 on the latch at 2391), landing in its stance at 2433 (landing sound 0x19 at 2431); its second decision follows at 2434, outside the interval. The compared interval is 2389..=2433 with checkpoints every frame. See docs/reference/cpu-decision.md.",
+ "reference": {
+  "rom_set": "sf",
+  "mame_version": "0.289",
+  "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+ },
+ "machine": {
+  "set": "sf",
+  "mame_options": [
+   "-video",
+   "none",
+   "-sound",
+   "none",
+   "-nothrottle",
+   "-skip_gameinfo",
+   "-noreadconfig",
+   "-nowriteconfig"
+  ],
+  "dipswitches": "factory defaults; observed readback DSW1=0xdfff, DSW2=0xffff"
+ },
+ "controls": {
+  "coin1": {
+   "port": "IN0",
+   "bit": 0
+  },
+  "start1": {
+   "port": "SYSTEM",
+   "bit": 0
+  }
+ },
+ "duration_frames": 2440,
+ "inputs": [
+  {
+   "frame": 1450,
+   "press": "coin1",
+   "hold_frames": 12,
+   "comment": "insert coin; title screen is up from ~1375"
+  },
+  {
+   "frame": 1520,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "1P start; start sound observed ~1522"
+  },
+  {
+   "frame": 1900,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "confirm default country Japan at country select (visible by ~1860)"
+  }
+ ],
+ "observations": {
+  "screen_downsample_stride": 4,
+  "ram_crc_every_frames": 10,
+  "checkpoints": [
+   2389,
+   2390,
+   2391,
+   2392,
+   2393,
+   2394,
+   2395,
+   2396,
+   2397,
+   2398,
+   2399,
+   2400,
+   2401,
+   2402,
+   2403,
+   2404,
+   2405,
+   2406,
+   2407,
+   2408,
+   2409,
+   2410,
+   2411,
+   2412,
+   2413,
+   2414,
+   2415,
+   2416,
+   2417,
+   2418,
+   2419,
+   2420,
+   2421,
+   2422,
+   2423,
+   2424,
+   2425,
+   2426,
+   2427,
+   2428,
+   2429,
+   2430,
+   2431,
+   2432,
+   2433
+  ]
+ }
+}
