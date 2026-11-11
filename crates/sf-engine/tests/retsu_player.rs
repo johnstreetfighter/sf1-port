@@ -14,6 +14,9 @@
 //! against the drawings' pens. Local ROMs and the local art pack only; each
 //! test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -144,8 +147,8 @@ fn local_with(mut s: GameSession, p1: TournamentFighter) -> GameSession {
     for _ in 0..at % 6 {
         tap(&mut s, hold(&[RIGHT]));
     }
-    assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).transition, Some(Transition::Picked(p1)));
-    let out = s.step(with(|i| i.p2.buttons[0] = true));
+    assert_eq!(select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap).transition, Some(Transition::Picked(p1)));
+    let out = select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(p1, TournamentFighter::Ken)));
     s.step(idle());
     until(&mut s, "country select", 40);
@@ -242,7 +245,7 @@ impl Data<'_> {
 
     /// A move started from its header: the header's frames, then its stream.
     fn move_frames(&self, table: u32, id: u8) -> Vec<bool> {
-        let h = table + id as u32 * 0x30;
+        let h = sf_engine::data_bank::move_header(|address| self.l(address), table, id).expect("move header");
         let n = (self.b(h + 0xb) as usize + 1) * (self.b(h + 0xe) as usize + 1);
         let mut out = vec![self.b(h + 0xf) & 0x80 != 0; n];
         self.stream(self.l(h + 0x2c), &mut out);
@@ -856,8 +859,8 @@ fn training(l: &Local, tables: bool) -> GameSession {
     tap(&mut s, with(|i| i.menu.confirm = true)); // DUMMY
     tap(&mut s, hold(&[RIGHT]));
     tap(&mut s, hold(&[RIGHT]));
-    tap(&mut s, with(|i| i.menu.confirm = true)); // Retsu
-    s.step(with(|i| i.menu.confirm = true)); // the opponent under the cursor
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Retsu
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the opponent under the cursor
     while s.screen() != "country select" {
         s.step(idle());
     }

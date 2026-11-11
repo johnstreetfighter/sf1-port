@@ -1874,10 +1874,43 @@ impl PowerOnMachine {
         &self.program.toggle_state
     }
 
+    /// Pass the locked Style cards to the native round setup.
+    pub fn set_era_styles(&mut self, picks: [crate::era::StylePick; 2]) {
+        self.program.toggle_state.era.selections = picks;
+    }
+
+    /// Era state by displayed fight side, including the current Arcade CPU.
+    pub fn era_fighters(&self) -> &[crate::era_fight::EraFighterState; 2] {
+        &self.program.toggle_state.era.fighters
+    }
+
+    /// Fill Player 1's Training gauge, or restore the supplied meter amount.
+    pub fn training_super_meter(&mut self, value: Option<u8>) {
+        if self.program.match_config.roster.mode == crate::roster::PlayMode::Training {
+            self.program.toggle_state.era.fighters[0].set_super_meter(value);
+        }
+    }
+
+    /// Fight frames still frozen after a Super Combo starts.
+    pub fn era_super_freeze(&self) -> u8 {
+        self.program.toggle_state.era.freeze
+    }
+
+    /// Consume presentation events earned by the native fight's pad inputs.
+    pub fn take_era_super_events(&mut self) -> [Option<crate::roster::TournamentFighter>; 2] {
+        std::mem::take(&mut self.program.toggle_state.era.super_events)
+    }
+
     /// Take the stage tune command a stand-in fight fell back to when Ryu's
     /// extended theme was missing (SP15, `#267`).
     pub fn take_missing_ryu_theme(&mut self) -> Option<u16> {
         self.program.toggle_state.missing_ryu_theme.take()
+    }
+
+    /// The zero-based Arcade ladder step from the stage and fight counters.
+    pub(crate) fn arcade_ladder_step(&self) -> usize {
+        let work = &self.program.work;
+        usize::from(work[0x4003]) * 2 + usize::from(work[0x4004])
     }
 
     /// The opponent the Arcade ladder brings for the current stage and
@@ -1889,10 +1922,7 @@ impl PowerOnMachine {
         if base == 0 {
             return None;
         }
-        let d0 = (((self.program.work[0x4003] as usize) << 1)
-            .wrapping_add(self.program.work[0x4004] as usize))
-            << 2;
-        let ptr_addr = (base as usize).wrapping_add(d0);
+        let ptr_addr = (base as usize).wrapping_add(self.arcade_ladder_step() * 4);
         let table = u32::from_be_bytes(self.program.rom.get(ptr_addr..ptr_addr + 4)?.try_into().ok()?);
         let slot = crate::roster::TournamentFighter::from_move_table(table)?;
         let roster = self.program.match_config.roster;
@@ -1910,12 +1940,17 @@ impl PowerOnMachine {
 
     /// Replace the active [`crate::config::MatchConfig`] (`#94`, `O3`).
     pub fn set_match_config(&mut self, config: crate::config::MatchConfig) {
+        let previous_era = crate::era_fight::EraRules::from(self.program.match_config);
+        let next_era = crate::era_fight::EraRules::from(config);
         self.program.match_config = config;
         if !config.toggles.positive_edge_attacks {
             self.program.toggle_state.neg_edge_latch.fill(false);
         }
         if !config.toggles.recovery_input_buffer {
             self.program.toggle_state.recovery_buffer.fill(None);
+        }
+        if previous_era.enabled != next_era.enabled || previous_era.gauge_mode != next_era.gauge_mode {
+            self.program.bus(&mut self.state).era_reconfigure(previous_era.enabled);
         }
     }
 

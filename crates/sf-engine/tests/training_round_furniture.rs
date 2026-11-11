@@ -12,6 +12,9 @@
 //! renderer draws it, PLAYER1 / ENEMY included. The machine's work RAM and
 //! text layer are only read. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -108,8 +111,8 @@ fn fight(kind: Kind, preset: RulesetPreset) -> (GameSession, Assets) {
                 tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
             }
             tap(&mut s, with(|i| i.menu.confirm = true)); // CPU or DUMMY
-            tap(&mut s, with(|i| i.menu.confirm = true)); // P1 Ryu
-            s.step(with(|i| i.menu.confirm = true)); // the opponent under the cursor
+            select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // P1 Ryu
+            select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the opponent under the cursor
             if kind == Kind::TrainingDummy {
                 while s.screen() != "country select" {
                     s.step(idle());
@@ -121,8 +124,8 @@ fn fight(kind: Kind, preset: RulesetPreset) -> (GameSession, Assets) {
             tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
             tap(&mut s, with(|i| i.menu.confirm = true));
             tap(&mut s, with(|i| i.menu.confirm = true));
-            tap(&mut s, with(|i| i.p1.buttons[0] = true));
-            tap(&mut s, with(|i| i.p2.buttons[0] = true));
+            select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+            select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
             while s.screen() != "country select" {
                 s.step(idle());
             }

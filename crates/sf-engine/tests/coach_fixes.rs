@@ -16,6 +16,9 @@
 //! Set `SF_FIX_FRAMES` to a directory to have the rendered frames of each
 //! kind of miss written there as PNGs.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -99,8 +102,8 @@ fn training(preset: RulesetPreset, notation: InputNotation) -> GameSession {
     tap(&mut s, confirm()); // Training
     tap(&mut s, stick(DOWN));
     tap(&mut s, confirm()); // DUMMY
-    tap(&mut s, confirm()); // P1 (Ryu is the first on the select)
-    s.step(confirm()); // the opponent under the cursor
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 (Ryu is the first on the select)
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the opponent under the cursor
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -294,7 +297,7 @@ fn is_attack(mv: u8, entry: &MoveEntry) -> bool {
 fn play(base: &GameSession, preset: RulesetPreset, row: usize, frames: Vec<FrameInputs>, tail: usize) -> Run {
     let entry = REGISTRY[row];
     let toggles = MatchConfig::from_preset(preset).toggles;
-    let Recognizer::Tracker(tracker) = entry.recognizer;
+    let Recognizer::Tracker(tracker) = entry.recognizer else { panic!("expected a 1987 tracker") };
     let at = (P1_STRUCT + tracker.offset() - WORK_BASE) as usize;
     let latch = (P1_STRUCT - WORK_BASE) as usize;
     let stage_of = |s: &GameSession| {

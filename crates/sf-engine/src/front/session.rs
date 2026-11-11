@@ -36,6 +36,7 @@ use super::{sound, Transition};
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::data_bank::DataBank;
 use crate::dramatic::DramaticRules;
+use crate::era::{EraFamily, StylePick};
 use crate::jukebox::{Cues, Resolved, TrackCue};
 use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
@@ -49,11 +50,6 @@ use crate::canonical::{Canonical, CanonicalHasher};
 
 mod netplay;
 mod spectator;
-
-/// Arcade's ladder: the stage counter and the fight counter in it (work
-/// RAM; read, never written).
-const LADDER_STAGE: u32 = 0xffc003;
-const LADDER_FIGHT: u32 = 0xffc004;
 
 /// One player's logical inputs: directions (right, left, down, up) and the
 /// six attack buttons (LP, MP, HP, LK, MK, HK), as the machines take them.
@@ -275,6 +271,8 @@ pub struct GameSession {
     /// screen: Player 1 for the first match, then the loser of the last,
     /// and after a draw whoever picked last. Starts over at the menu.
     picker: usize,
+    /// Each side's last locked era, reused when a new Style card opens.
+    preferred_eras: [EraFamily; 2],
     /// The Jukebox's cue machine.
     track_cues: Cues,
     attract: PowerOnMachine,
@@ -360,6 +358,7 @@ impl GameSession {
             stage: None,
             chosen: None,
             picker: 0,
+            preferred_eras: [EraFamily::Sf1Plus; 2],
             track_cues: Cues::default(),
             attract,
             free_play,
@@ -850,7 +849,11 @@ impl GameSession {
             dsw1: FightDips::DSW1,
             dsw2: self.fight_dips().dsw2(),
         };
-        self.launch_fight(setup, flag);
+        let styles = match self.stack.last() {
+            Some(Screen::Select(screen)) => [screen.locked_style(0), screen.locked_style(1)],
+            _ => [None; 2],
+        };
+        self.launch_fight(setup, flag, styles);
     }
 
     pub(super) fn stamp_dramatic(
@@ -897,11 +900,11 @@ impl GameSession {
             dsw1: FightDips::DSW1,
             dsw2: dips.dsw2(),
         };
-        self.launch_fight(setup, Some(boot_flag(rules.stage)));
+        self.launch_fight(setup, Some(boot_flag(rules.stage)), [None; 2]);
         self.play.is_some()
     }
 
-    fn launch_fight(&mut self, setup: FightSetup, flag: Option<u8>) {
+    fn launch_fight(&mut self, setup: FightSetup, flag: Option<u8>, styles: [Option<StylePick>; 2]) {
         let overhaul = setup.config.preset != RulesetPreset::Faithful1987;
         let backgrounds = self.backgrounds.clone().filter(|_| overhaul);
         let data = overhaul.then(|| {
@@ -911,6 +914,7 @@ impl GameSession {
         });
         match Fight::start_banked(&self.assets.maincpu, setup, flag, backgrounds, data) {
             Ok(mut fight) => {
+                fight.set_selected_styles(styles);
                 if setup.config.dramatic.is_some() && self.net_setup.is_some() {
                     if let Some(connection) = &self.net_connection {
                         fight.seed_dramatic_cpu(connection.rules().seed);
@@ -1227,12 +1231,14 @@ impl GameSession {
                 ));
             }
         }
-        match kind {
+        let select = match kind {
             FightKind::Local => SelectScreen::local(&self.config, self.player_tables()),
-            FightKind::Arcade | FightKind::Dramatic { .. } => SelectScreen::arcade(&self.config, self.player_tables()),
+            FightKind::Arcade => SelectScreen::arcade(&self.config, self.player_tables()),
+            FightKind::Dramatic { .. } => SelectScreen::single(&self.config, self.player_tables(), 0),
             FightKind::TrainingCpu => SelectScreen::training(&self.config, true, self.player_tables()),
             FightKind::TrainingDummy => SelectScreen::training(&self.config, false, self.player_tables()),
-        }
+        };
+        select.with_preferred_eras(self.preferred_eras)
     }
 
     /// Arcade's game over returned the ROM to its attract: that machine
@@ -1333,10 +1339,10 @@ impl GameSession {
                 Some((name, theme))
             }
             None if setup.kind == FightKind::Arcade => {
-                let ram = self.play.as_ref()?.fight.machine().work_ram();
-                let byte = |address: u32| usize::from(ram[(address - 0xff8000) as usize]);
-                let country = byte(super::cabinet::COUNTRY);
-                let step = byte(LADDER_STAGE) * 2 + byte(LADDER_FIGHT);
+                let machine = self.play.as_ref()?.fight.machine();
+                let ram = machine.work_ram();
+                let country = usize::from(ram[(super::cabinet::COUNTRY - 0xff8000) as usize]);
+                let step = machine.arcade_ladder_step();
                 let name = sf_video::rom_stages::ladder_stage_name(&self.assets.maincpu, country, step).ok()?;
                 if let Some(bank) = self.backgrounds.as_deref() {
                     if let Some(index) = bank.stage_index(&name) {
@@ -1734,12 +1740,15 @@ impl GameSession {
                 }
             }
             let kind = match self.stack.last() {
-                Some(Screen::Select(s)) => s.kind(),
+                Some(Screen::Select(s)) => {
+                    self.preferred_eras = s.preferred_eras();
+                    s.kind()
+                }
                 _ => FightKind::Local,
             };
             match t {
                 Transition::CursorMoved => self.sounds.push_back(sound::CURSOR),
-                Transition::Picked(_) => self.sounds.push_back(sound::CONFIRM),
+                Transition::StyleOpened | Transition::Picked(_) => self.sounds.push_back(sound::CONFIRM),
                 Transition::Unpicked => {}
                 Transition::Fighters(p1, p2) => {
                     self.sounds.push_back(sound::CONFIRM);
@@ -2205,7 +2214,8 @@ fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel
     let facing_right = facing_right(machine.work_ram(), &machine.state.objectram, player);
     let fighter = fight.player_fighter(side);
     let player_table = machine.data_bank().is_some_and(|b| b.table(fighter).is_some());
-    MovesPanel::open_in_fight(fighter, setup.config.preset, player_table)
+    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, &machine.era_fighters()[side]);
+    MovesPanel::from_entries(fighter, entries)
         .with_inputs(notation, facing_right)
         .with_show(fight.training())
 }

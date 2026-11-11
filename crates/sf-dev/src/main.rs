@@ -18,6 +18,9 @@
 //!   cargo run -p sf-dev --release -- convert <session.tsv> <scenario.json> [scenario-id]
 //!   cargo run -p sf-dev --release -- verify <session.tsv> <scenario.json> <run-a> <run-b>
 //!   cargo run -p sf-dev --release -- replay <session.tsv> [takeover-frame]
+//!   cargo run -p sf-dev --release -- combo-sweep <replay.json>
+//!   cargo run -p sf-dev --release -- combo-replay <replay.json>
+//!   cargo run -p sf-dev --release -- combo-verify <replay.json>
 //!   cargo run -p sf-dev --release -- preset [name | set <key> <value>]
 //!   cargo run -p sf-dev --release -- rebind <input> <Key> [bindings.toml]
 //!
@@ -61,6 +64,7 @@
 //! (Debug builds render below 60 fps; the state machine itself is exact in
 //! either profile.)
 
+mod combo_sweep;
 mod session;
 
 use minifb::{Key, Window};
@@ -129,6 +133,9 @@ fn main() {
         Some("rebind") => std::process::exit(cmd_rebind(&args[2..])),
         Some("preset") => std::process::exit(cmd_preset(&args[2..])),
         Some("replay") => std::process::exit(cmd_replay(&args[2..])),
+        Some(command @ ("combo-sweep" | "combo-replay" | "combo-verify")) => {
+            std::process::exit(combo_sweep::run(command, &args[2..]))
+        }
         _ => run_versus(),
     }
 }

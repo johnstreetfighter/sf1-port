@@ -10,6 +10,9 @@
 //! (the live preset, `HOLD COMBO` and `FILL METERS`, ticket #245, TR7), and
 //! `RESET POSITIONS`. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::MatchConfig;
@@ -101,8 +104,8 @@ fn local_fight_with(a: Assets, settings: Settings) -> GameSession {
     tap(&mut s, down());
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -134,7 +137,7 @@ fn training_under(a: Assets, config: MatchConfig, dummy: bool, moves: usize, set
         tap(&mut s, down());
     }
     assert_eq!(tap(&mut s, confirm()).screen, "select");
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Picked(TournamentFighter::Ryu)));
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Picked(TournamentFighter::Ryu)));
     for _ in 0..moves {
         tap(&mut s, with(|i| i.p1.directions[0] = true));
     }
@@ -420,7 +423,7 @@ fn training_against_a_cpu_fights_the_chosen_opponent_and_runs_on_with_no_match_e
 fn a_training_dummy_never_moves_and_the_fight_runs_on_with_no_match_end() {
     let Some(a) = assets() else { return };
     let mut s = training(a, true, 0); // P1 Ryu, the dummy Ken (where its cursor starts)
-    let out = s.step(confirm());
+    let out = select::confirm_fighter(&mut s, confirm(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, TournamentFighter::Ken)));
     while s.screen() != "country select" {
         s.step(idle());
@@ -467,7 +470,7 @@ fn dummy_fight(a: Assets) -> GameSession {
 
 fn dummy_fight_with(a: Assets, settings: Settings) -> GameSession {
     let mut s = training_with(a, true, 0, settings);
-    s.step(confirm());
+    select::confirm_fighter(&mut s, confirm(), GameSession::step);
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -880,7 +883,7 @@ fn fill_meters_is_stamped_on_a_training_fight_from_the_saved_setting_and_means_n
     assert!(s.fight_machine().unwrap().match_config().fill_meters);
     assert!(s.fight().unwrap().setup().config.fill_meters);
     let mut s = training_with(load_assets(ROMS, MANIFEST).unwrap(), false, 0, on.clone());
-    s.step(confirm());
+    select::confirm_fighter(&mut s, confirm(), GameSession::step);
     to_fight_loop(&mut s);
     assert_eq!(s.fight_machine().unwrap().match_config().roster.mode, PlayMode::Training);
     assert!(s.fight_machine().unwrap().match_config().fill_meters);

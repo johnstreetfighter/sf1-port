@@ -143,6 +143,7 @@ impl Bus<'_> {
             if reacting || guarding || health >= full {
                 continue;
             }
+            self.era_refill_health(ps);
             self.wb(ps + 6, FULL_REMAINDER);
             self.wb(ps + 7, FULL_CELLS);
             let bar = 0x80_0000 + u32::from(self.rw(ps + 0xa));

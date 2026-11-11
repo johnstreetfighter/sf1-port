@@ -126,6 +126,10 @@ fn local_fight(s: &mut GameSession) {
         s.step(idle());
     }
     let mut tap = |i: FrameInputs| {
+        if s.screen() == "select" && s.match_config().era_select_enabled() {
+            s.step(i);
+            s.step(idle());
+        }
         s.step(i);
         s.step(idle());
     };

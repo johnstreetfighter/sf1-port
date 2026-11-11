@@ -3,7 +3,7 @@
 use super::{Link, RoomKind};
 use crate::config::{CoreToggles, MatchConfig, RulesetPreset, TourRules};
 use crate::dramatic::{DramaticRules, LifebarMode};
-use crate::era::{GaugeMode, Revision};
+use crate::era::{loadouts, GaugeMode, Loadout, Revision, StylePick};
 use crate::front::fight::FightDips;
 use crate::roster::{BanFormat, PlayMode, RosterSettings, StagePick, StartingCountry, TournamentFighter};
 use crate::session_io::ControlScheme;
@@ -39,7 +39,7 @@ fn valid_tag(tag: [u8; 12]) -> bool {
     tag_from_str(&tag_to_string(tag)) == Some(tag)
 }
 
-/// Authoritative current SF1/SF1+ configuration. Physical bindings, video,
+/// Authoritative match configuration. Physical bindings, video,
 /// audio and observer preferences have no fields here. Scheme selectors are
 /// currently inert in translated fights and are normalized to Classic on wire;
 /// TRD1 must synchronize/normalize their effects before activating them. The
@@ -49,6 +49,7 @@ fn valid_tag(tag: [u8; 12]) -> bool {
 pub struct SyncedMatchRules {
     pub config: MatchConfig,
     pub fighters: [TournamentFighter; 2],
+    pub styles: [Option<StylePick>; 2],
     pub dips: FightDips,
     pub stage: StagePick,
     pub seed: u64,
@@ -68,7 +69,7 @@ impl SyncedMatchRules {
         config.roster.stage = Some(stage);
         config.difficulty = dips.difficulty;
         config.round_time = dips.round_time;
-        Self { config, fighters, dips, stage, seed, bank_hash, art_pack_hash,
+        Self { config, fighters, styles: [None; 2], dips, stage, seed, bank_hash, art_pack_hash,
             protocol_hash: crate::version::protocol_version_hash() }
     }
 
@@ -99,8 +100,8 @@ impl SyncedMatchRules {
 
     /// Explicit, little-endian schema. Inert scheme choices are never written.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let Self { config, fighters, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash } = self;
-        let mut out = vec![if config.dramatic.is_some() { 2 } else { 1 }];
+        let Self { config, fighters, styles, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash } = self;
+        let mut out = vec![if config.dramatic.is_some() { 2 } else if *styles != [None; 2] { 3 } else { 1 }];
         write_config(config, &mut out);
         for fighter in fighters { write_fighter(*fighter, &mut out); }
         dips.difficulty.write(&mut out);
@@ -114,6 +115,9 @@ impl SyncedMatchRules {
         if let Some(rules) = config.dramatic {
             write_dramatic_rules(rules, &mut out);
         }
+        if out[0] == 3 {
+            for style in styles { write_style(*style, &mut out); }
+        }
         out
     }
 
@@ -125,7 +129,7 @@ impl SyncedMatchRules {
 
     fn read(read: &mut Reader<'_>) -> Option<Self> {
         let schema = read.u8()?;
-        if !matches!(schema, 1 | 2) { return None; }
+        if !matches!(schema, 1..=3) { return None; }
         let mut config = read_config(read)?;
         let fighters = [read_fighter(read)?, read_fighter(read)?];
         let dips = FightDips { difficulty: read.u8()?, round_time: read.u16()? };
@@ -143,7 +147,20 @@ impl SyncedMatchRules {
         if schema == 2 {
             config.dramatic = Some(read_dramatic_rules(read)?);
         }
-        Some(Self { config, fighters, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash })
+        let styles = if schema == 3 {
+            let picks = [read_style(read)?, read_style(read)?];
+            if picks == [None; 2] || !config.era_select_enabled()
+                || !fighters.into_iter().zip(picks).all(|(fighter, pick)| {
+                    pick.is_none_or(|pick| pick.available_for(fighter, config.roster.what_if_styles))
+                })
+            {
+                return None;
+            }
+            picks
+        } else {
+            [None; 2]
+        };
+        Some(Self { config, fighters, styles, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash })
     }
 }
 
@@ -207,6 +224,26 @@ enum_codec!(write_revision, read_revision, Revision, {
     Sf3TwoI => 12, Sf3ThreeS => 13, Sf4 => 14, Ssf4 => 15, Ae2012 => 16,
     Usf4 => 17, Sf5 => 18, Sf5Ae => 19, Sf5Ce => 20, Sf6 => 21,
 });
+enum_codec!(write_loadout, read_loadout, Loadout, {
+    Standard => 0, Old => 1, AIsm => 2, XIsm => 3, VIsm => 4,
+    Art1 => 5, Art2 => 6, Art3 => 7, Ultra1 => 8, Ultra2 => 9, UltraDouble => 10,
+    Skill1Trigger1 => 11, Skill1Trigger2 => 12, Skill2Trigger1 => 13, Skill2Trigger2 => 14,
+});
+
+fn write_style(style: Option<StylePick>, out: &mut Vec<u8>) {
+    style.is_some().write(out);
+    if let Some(style) = style {
+        write_revision(style.revision, out);
+        write_loadout(style.loadout, out);
+    }
+}
+
+fn read_style(read: &mut Reader<'_>) -> Option<Option<StylePick>> {
+    if !read.boolean()? { return Some(None); }
+    let revision = read_revision(read)?;
+    let loadout = read_loadout(read)?;
+    loadouts(revision).contains(&loadout).then(|| Some(StylePick::for_revision(revision, loadout)))
+}
 
 fn write_dramatic_rules(rules: DramaticRules, out: &mut Vec<u8>) {
     let DramaticRules { co_op, ally2, stage, lifebar, friendly_fire, styles, rivalry } = rules;
@@ -311,7 +348,7 @@ pub enum NetPacket {
     Welcome { request_id: u64, generation: u32, frame_base: u32, phase: LobbyPhase, picker: u8, accepted: bool, reason: RejectReason,
         config: SyncedMatchRules, seed: u64, assigned_delay: u8, max_rollback: u8, host_tag: [u8; 12] },
     LobbyPick { generation: u32, seq: u32, side: u8, fighter: TournamentFighter, stage: StagePick,
-        locked: bool, phase: LobbyPhase, random: bool },
+        locked: bool, phase: LobbyPhase, random: bool, style: Option<StylePick> },
     /// `current_frame` is the first unsimulated frame (`next_frame`), including
     /// stalled ticks, when an input at `current_frame + delay` can be sampled.
     Input { current_frame: u32, start_frame: u32, count: u8, bits: [u16; 9],
@@ -368,10 +405,11 @@ impl NetPacket {
                 write_phase(*phase, &mut bytes); picker.write(&mut bytes);
                 frame_base.write(&mut bytes);
             }
-            Self::LobbyPick { generation, seq, side, fighter, stage: StagePick::Bank(stage), locked, phase, random } => {
+            Self::LobbyPick { generation, seq, side, fighter, stage: StagePick::Bank(stage), locked, phase, random, style } => {
                 bytes.push(5); generation.write(&mut bytes); seq.write(&mut bytes); side.write(&mut bytes);
                 write_fighter(*fighter, &mut bytes); stage.write(&mut bytes); locked.write(&mut bytes);
                 write_phase(*phase, &mut bytes); random.write(&mut bytes);
+                if style.is_some() { write_style(*style, &mut bytes); }
             }
             Self::Input { current_frame, start_frame, count, bits, ack_frame, frame_advantage, checksum_frame, checksum } => {
                 bytes.push(6); current_frame.write(&mut bytes); start_frame.write(&mut bytes); count.write(&mut bytes);
@@ -446,7 +484,9 @@ impl NetPacket {
                 let phase = read_phase(&mut read)?;
                 let random = read.boolean()?;
                 if phase == LobbyPhase::Fighters && random { return None; }
-                Self::LobbyPick { generation, seq, side, fighter, stage, locked, phase, random }
+                let style = if read.done() { None } else { Some(read_style(&mut read)??) };
+                if style.is_some() && (phase != LobbyPhase::Fighters || !locked) { return None; }
+                Self::LobbyPick { generation, seq, side, fighter, stage, locked, phase, random, style }
             }
             6 => {
                 let current_frame = read.u32()?; let start_frame = read.u32()?; let count = read.u8()?;
@@ -536,6 +576,7 @@ impl HandshakePolicy {
         if reason == RejectReason::VersionMismatch {
             // A peer with the original rules decoder can still read this rejection.
             config.config.dramatic = None;
+            config.styles = [None; 2];
         }
         Some(NetPacket::Welcome {
             request_id: *request_id, generation: self.generation, frame_base: self.frame_base,

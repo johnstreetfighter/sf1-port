@@ -50,6 +50,55 @@ impl IndexedSprite {
     }
 }
 
+/// Blend each visible palette pen toward an RGB flash colour.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PaletteTint {
+    pub color: u32,
+    pub strength: u8,
+}
+
+impl PaletteTint {
+    pub fn apply(self, pixel: u32) -> u32 {
+        let alpha = u32::from(self.strength);
+        let channel = |shift: u32| {
+            let original = (pixel >> shift) & 0xffu32;
+            let tint = (self.color >> shift) & 0xffu32;
+            ((original * (255 - alpha) + tint * alpha + 127) / 255) << shift
+        };
+        0xff00_0000 | channel(16) | channel(8) | channel(0)
+    }
+}
+
+/// Three recent presented poses, newest first. The caller controls the
+/// sampling interval and clears the trail when the action ends.
+#[derive(Clone, Default)]
+pub struct AfterimageTrail {
+    poses: [Vec<IndexedSprite>; 3],
+}
+
+impl AfterimageTrail {
+    pub fn record(&mut self, sprites: &[IndexedSprite]) {
+        self.poses.rotate_right(1);
+        self.poses[0].clear();
+        self.poses[0].extend_from_slice(sprites);
+    }
+
+    pub fn clear(&mut self) {
+        self.poses.iter_mut().for_each(Vec::clear);
+    }
+
+    fn draw(&self, argb: &mut [u32]) {
+        for (pose, strength) in self.poses.iter().zip([144, 96, 48]).rev() {
+            for sprite in pose {
+                blit_sprite_with(argb, sprite, |color, behind| PaletteTint {
+                    color: callouts::grey(color),
+                    strength,
+                }.apply(behind));
+            }
+        }
+    }
+}
+
 /// Layers the overhaul presenter may add. Faithful play ignores the struct.
 #[derive(Clone)]
 pub struct OverhaulScene<'a> {
@@ -68,6 +117,8 @@ pub struct OverhaulScene<'a> {
     /// Each side's fighter drawn as overhaul sprites (P1, P2), over the
     /// dim; a greyed side's palette is drawn grey.
     pub fighters: [&'a [IndexedSprite]; 2],
+    pub fighter_tints: [Option<PaletteTint>; 2],
+    pub afterimages: [Option<&'a AfterimageTrail>; 2],
     /// The hardware pixels that are stage (the bg and fg layers), which the
     /// super dim darkens. `None` dims the whole hardware frame.
     pub stage: Option<&'a [bool]>,
@@ -87,6 +138,8 @@ impl OverhaulScene<'static> {
         font: None,
         callouts: CalloutFrame::NONE,
         fighters: [&[], &[]],
+        fighter_tints: [None; 2],
+        afterimages: [None; 2],
         stage: None,
         select_lines: &[],
         training: None,
@@ -110,13 +163,20 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
     for sprite in scene.sprites {
         blit_sprite(&mut argb, sprite);
     }
+    for trail in scene.afterimages.iter().flatten() {
+        trail.draw(&mut argb);
+    }
     for (side, fighter) in scene.fighters.iter().enumerate() {
         let greyed = scene.callouts.sides[side].greyed;
         for sprite in *fighter {
-            if greyed {
-                let mut grey = sprite.clone();
-                grey.palette = grey.palette.map(callouts::grey);
-                blit_sprite(&mut argb, &grey);
+            let tint = scene.fighter_tints[side];
+            if greyed || tint.is_some() {
+                let mut colored = sprite.clone();
+                colored.palette = colored.palette.map(|pen| {
+                    let pen = tint.map_or(pen, |tint| tint.apply(pen));
+                    if greyed { callouts::grey(pen) } else { pen }
+                });
+                blit_sprite(&mut argb, &colored);
             } else {
                 blit_sprite(&mut argb, sprite);
             }
@@ -132,6 +192,14 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
 }
 
 fn blit_sprite(argb: &mut [u32], sprite: &IndexedSprite) {
+    blit_sprite_with(argb, sprite, |color, _| color);
+}
+
+fn blit_sprite_with(
+    argb: &mut [u32],
+    sprite: &IndexedSprite,
+    shade: impl Fn(u32, u32) -> u32,
+) {
     for py in 0..16 {
         for px in 0..16 {
             let pen = sprite.pixels[py * 16 + px];
@@ -141,7 +209,8 @@ fn blit_sprite(argb: &mut [u32], sprite: &IndexedSprite) {
             let x = sprite.x + px as i32;
             let y = sprite.y + py as i32;
             if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
-                argb[y as usize * WIDTH + x as usize] = sprite.palette[pen as usize];
+                let pixel = &mut argb[y as usize * WIDTH + x as usize];
+                *pixel = shade(sprite.palette[pen as usize], *pixel);
             }
         }
     }
@@ -230,7 +299,9 @@ fn glyph(ch: char) -> [u8; 5] {
         '+' => [0b000, 0b010, 0b111, 0b010, 0b000],
         '-' => [0b000, 0b000, 0b111, 0b000, 0b000],
         '/' => [0b001, 0b001, 0b010, 0b100, 0b100],
+        '<' => [0b001, 0b010, 0b100, 0b010, 0b001],
         '>' => [0b100, 0b010, 0b001, 0b010, 0b100],
+        '\u{b7}' => [0b000, 0b000, 0b010, 0b000, 0b000],
         '.' => [0b000, 0b000, 0b000, 0b000, 0b010],
         ':' => [0b000, 0b010, 0b000, 0b010, 0b000],
         '\\' => [0b100, 0b100, 0b010, 0b001, 0b001],

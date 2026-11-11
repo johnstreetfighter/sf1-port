@@ -10,6 +10,9 @@
 //! the stick and buttons the machine took on Player 2's side. Local ROMs
 //! only (and the local art pack for Retsu); each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -147,7 +150,7 @@ fn cpu_fight(mut s: GameSession, p1: TournamentFighter, cpu: TournamentFighter) 
     for _ in 0..(at(p1) % 6) {
         tap(&mut s, stick(RIGHT));
     }
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Picked(p1)));
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Picked(p1)));
     // The opponent's cursor starts on Ken (row 0, col 1), the first fighter
     // after Ryu the fair CPU can play.
     let to = at(cpu);
@@ -164,7 +167,7 @@ fn cpu_fight(mut s: GameSession, p1: TournamentFighter, cpu: TournamentFighter) 
             tap(&mut s, stick(RIGHT));
         }
     }
-    let out = s.step(confirm());
+    let out = select::confirm_fighter(&mut s, confirm(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(p1, cpu)));
     s.step(idle());
     let mut f = 0;

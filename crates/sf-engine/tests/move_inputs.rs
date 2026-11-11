@@ -7,6 +7,9 @@
 //! for the way the fighter faces, and the setting changes the rows through
 //! the session. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -134,8 +137,8 @@ fn local_fight(s: &mut GameSession, to_multi: usize) {
     tap(s, stick(to_multi));
     tap(s, confirm()); // Multi Player
     tap(s, confirm()); // Local
-    tap(s, confirm()); // P1: Ryu
-    tap(s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(s, confirm(), tap); // P1: Ryu
+    select::confirm_fighter(s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

@@ -11,6 +11,9 @@
 //! Set `SF_TRY_FRAMES` to a directory to have the rendered frames of a Try
 //! written there as PNGs.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -105,8 +108,8 @@ fn training(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool) -> G
     for _ in 0..at % 6 {
         tap(&mut s, stick(RIGHT));
     }
-    tap(&mut s, confirm()); // P1
-    s.step(confirm()); // the opponent under the cursor
+    select::confirm_fighter(&mut s, confirm(), tap); // P1
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the opponent under the cursor
     if dummy {
         while s.screen() != "country select" {
             s.step(idle());
@@ -164,7 +167,7 @@ fn try_move(s: &mut GameSession, row: usize) {
 /// The tracker bytes of the registry entry at `row`, read straight from the
 /// work RAM: the steps the engine has counted.
 fn engine_stage(s: &GameSession, row: usize) -> usize {
-    let Recognizer::Tracker(t) = REGISTRY[row].recognizer;
+    let Recognizer::Tracker(t) = REGISTRY[row].recognizer else { panic!("expected a 1987 tracker") };
     let at = (P1_STRUCT + t.offset() - WORK_BASE) as usize;
     let w = s.fight_machine().unwrap().work_ram();
     let (stage, done) = (w[at], w[at + 2]);

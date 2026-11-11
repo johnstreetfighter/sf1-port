@@ -16,4 +16,5 @@ sf-compare = { path = "../sf-compare" }
 minifb = "0.28"
 sf-audio = { path = "../sf-audio" }
 sf-host = { path = "../sf-host", default-features = false }
+serde = { workspace = true }
 serde_json = { workspace = true }

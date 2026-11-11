@@ -3,7 +3,7 @@ use sf_engine::netplay::{Link, RoomKind};
 use sf_engine::netplay::bus::{PacketFault, VirtualNetBus, VirtualNetConfig};
 use sf_engine::netplay::transport::{NetTransportCommand as Command, NetTransportEvent as Event, RoomAnnouncement};
 use sf_engine::config::{MatchConfig, RulesetPreset};
-use sf_engine::era::GaugeMode;
+use sf_engine::era::{Costume, GaugeMode, Loadout, Revision, StylePick};
 use sf_engine::front::fight::FightDips;
 use sf_engine::roster::{BanFormat, PlayMode, StagePick, StartingCountry, TournamentFighter};
 use sf_engine::session_io::ControlScheme;
@@ -33,12 +33,38 @@ fn lobby_packets_distinguish_character_locks_and_random_stage_locks() {
     ] {
         let packet = NetPacket::LobbyPick {
             generation: 3, seq: 4, side: 0, fighter: TournamentFighter::Ryu,
-            stage: StagePick::Bank(3), locked: true, phase, random,
+            stage: StagePick::Bank(3), locked: true, phase, random, style: None,
         };
         let bytes = packet.to_bytes();
         assert_eq!(&bytes[bytes.len() - 2..], &suffix);
         assert_eq!(NetPacket::from_bytes(&bytes), Some(packet));
     }
+}
+
+#[test]
+fn style_lock_and_committed_rules_round_trip_and_reject_invalid_choices() {
+    let old = StylePick::sf2(Revision::St, Loadout::Old, Costume::Classic1987, 0);
+    let packet = NetPacket::LobbyPick {
+        generation: 3, seq: 4, side: 0, fighter: TournamentFighter::Ryu,
+        stage: StagePick::Bank(0), locked: true, phase: LobbyPhase::Fighters,
+        random: false, style: Some(old),
+    };
+    let wire = packet.to_bytes();
+    assert_eq!(NetPacket::from_bytes(&wire), Some(packet));
+    let mut invalid = wire.clone();
+    *invalid.last_mut().unwrap() = 14; // V-Skill II / V-Trigger II cannot be an ST loadout.
+    assert!(NetPacket::from_bytes(&invalid).is_none());
+    assert!(NetPacket::from_bytes(&wire[..wire.len() - 1]).is_none());
+
+    let mut rules = rules();
+    let default_hash = rules.config_hash();
+    rules.styles = [Some(old), Some(StylePick::default())];
+    assert_eq!(SyncedMatchRules::from_bytes(&rules.to_bytes()), Some(rules));
+    assert_ne!(rules.config_hash(), default_hash);
+    rules.fighters[0] = TournamentFighter::Joe;
+    rules.config.roster.p1 = TournamentFighter::Joe;
+    rules.config.roster.what_if_styles = false;
+    assert!(SyncedMatchRules::from_bytes(&rules.to_bytes()).is_none());
 }
 
 #[test]
@@ -120,7 +146,7 @@ fn packets() -> Vec<NetPacket> {
         NetPacket::Welcome { request_id: 9, generation: 3, frame_base: 0, phase: LobbyPhase::Fighters, picker: 0, accepted: true, reason: RejectReason::None,
             config: rules, seed: 42, assigned_delay: 2, max_rollback: 8, host_tag: tag },
         NetPacket::LobbyPick { generation: 3, seq: 4, side: 1, fighter: TournamentFighter::Sagat, stage: StagePick::Bank(9), locked: true,
-            phase: LobbyPhase::Fighters, random: false },
+            phase: LobbyPhase::Fighters, random: false, style: None },
         NetPacket::Input { current_frame: 0, start_frame: 4, count: 1,
             bits: [0x10, 0, 0, 0, 0, 0, 0, 0, 0], ack_frame: u32::MAX, frame_advantage: -2,
             checksum_frame: u32::MAX, checksum: 0 },

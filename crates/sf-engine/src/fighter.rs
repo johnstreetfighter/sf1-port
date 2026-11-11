@@ -415,6 +415,7 @@ impl Program {
             preset: self.match_config.preset,
             roster: self.match_config.roster,
             dramatic: self.match_config.dramatic,
+            era_rules: self.match_config.into(),
             toggle_state: &mut self.toggle_state,
             training: &mut self.training,
             backgrounds: self.backgrounds.as_deref(),
@@ -466,6 +467,7 @@ pub struct Bus<'a> {
     /// 12-fighter roster binding (`#98`, `O7`). Ignored while `full_cast` is false.
     pub roster: crate::roster::RosterSettings,
     pub dramatic: Option<crate::dramatic::DramaticRules>,
+    pub(crate) era_rules: crate::era_fight::EraRules,
     /// Per-session runtime state for Tier 1 core overhaul toggles (`#94`, `O3`).
     pub toggle_state: &'a mut crate::config::CoreToggleState,
     /// What Training's rules keep between frames (ADR-0013, `#243`).
@@ -801,7 +803,14 @@ impl Bus<'_> {
     /// position) or an x such as 0x1c0.
     pub fn start_move_at(&mut self, e: u16, ps: u32, mv: u8, mut d3: u16) {
         let table = self.rl(ps + 0x12);
-        let src = table.wrapping_add(mv as u32 * 0x30);
+        let era_slot = matches!(mv, crate::era_fight::SF2_EXTRA_SPECIAL | crate::era_fight::SF2_SUPER);
+        let src = match self.sf2_state(ps).and_then(|era| era.fighter) {
+            Some(fighter) if era_slot => self.data_bank.and_then(|bank| bank.move_header(fighter, mv)),
+            _ => crate::data_bank::move_header(|addr| self.rl(addr), table, mv),
+        };
+        let Some(src) = src else {
+            return;
+        };
         for i in 0..0x30u32 {
             let b = self.rb(src + i);
             self.set_eb(e, i, b);
@@ -845,6 +854,7 @@ impl Bus<'_> {
         if self.toggles.balanced_roster {
             self.apply_balanced_move_start(e, table, mv);
         }
+        self.era_move_started(e, ps, mv);
         if self.toggles.anytime_jump_attacks
             && self.toggles.fast_prejump_crouch
             && self.is_player_driven(ps)
@@ -972,6 +982,7 @@ impl Bus<'_> {
         if self.toggles.true_combos {
             self.combo_load_frame(e, a1);
         }
+        self.era_move_recovery(e, a1);
         let code = self.rw(a1 + 2);
         self.set_el(e, 0x2c, a1 + 0x20);
         let mirror = (self.eb(e, 0x37) & 4 != 0) ^ self.bank_throw_pose_faces_back(e, a1);
@@ -1320,9 +1331,9 @@ impl Bus<'_> {
                     self.queue_sound(sound as u16);
                 }
                 // Convert pose origins in the same tick as the next frame
-                // loads; the preceding pose must not display this offset.
+                // loads, including when a posture call comes before the frame.
                 self.shift_grid_y(me, self.rw(r + 2));
-                Some(Resume::Load)
+                Some(Resume::Control)
             }
             // As 0x4548c: the sound, then the projectile from the record's
             // template, spawned at the attack box (0x42e1e).
@@ -1430,7 +1441,9 @@ impl Bus<'_> {
     /// start it (an overhaul-only gate: no 1987 table is in the bank).
     fn move_in_table(&self, ps: u32, mv: u8) -> bool {
         let table = self.rl(ps + 0x12);
-        !crate::data_bank::in_bank(table) || self.rb(table.wrapping_add(mv as u32 * 0x30 + 8)) != 0
+        !crate::data_bank::in_bank(table)
+            || crate::data_bank::move_header(|addr| self.rl(addr), table, mv)
+                .is_some_and(|header| self.rb(header + 8) != 0)
     }
 
     /// Special slot `slot` of the table bound to `ps`: a boss's bank record,
@@ -2047,7 +2060,15 @@ impl Bus<'_> {
     /// a hit calls the frame's hit function (+0x28) with depth 1 (inside the
     /// tight box) or 2 (loose only).
     fn judge(&mut self, me: u16, other: u16) {
-        if self.eb(me, 0xf) & 0x80 == 0 || self.eb(other, 0xf) & 0x08 != 0 {
+        let owner = self.el(me, 0x38);
+        let move_id = self.eb(me, 0xa);
+        let sf2 = self.sf2_state(owner);
+        let hit_limit = sf2.map_or(1, |era| era.move_hit_limit(move_id));
+        let juggle = self.era_can_juggle(other, hit_limit);
+        if self.eb(me, 0xf) & 0x80 == 0
+            || ((self.eb(other, 0xf) & 0x08 != 0 || (sf2.is_some() && self.airborne_reaction(other)))
+                && !juggle)
+        {
             return;
         }
         let ax = sext8(self.eb(me, 0x24)).wrapping_add(self.center_x(me));
@@ -2060,18 +2081,24 @@ impl Bus<'_> {
             let d = p.wrapping_sub(q) as i16;
             (d.unsigned_abs() as i16) > reach as i16
         };
-        let dx_loose = dcx.wrapping_add(sext8(self.eb(other, 0x20)));
-        if apart(dx_loose, ax, aw.wrapping_add(self.eb(other, 0x21) as u16)) {
+        let body = self.era_juggle_body(other, juggle);
+        let dx_loose = body.map_or_else(|| dcx.wrapping_add(sext8(self.eb(other, 0x20))), |_| dcx);
+        let dy_loose = body.map_or_else(|| dcy.wrapping_sub(sext8(self.eb(other, 0x1e))), |_| dcy);
+        let (loose_w, loose_h) = body.unwrap_or_else(|| (u16::from(self.eb(other, 0x21)), u16::from(self.eb(other, 0x1f))));
+        if apart(dx_loose, ax, aw.wrapping_add(loose_w)) {
             return;
         }
-        let dy_loose = dcy.wrapping_sub(sext8(self.eb(other, 0x1e)));
-        if apart(dy_loose, ay, ah.wrapping_add(self.eb(other, 0x1f) as u16)) {
+        if apart(dy_loose, ay, ah.wrapping_add(loose_h)) {
             return;
         }
-        let dx_tight = dcx.wrapping_add(sext8(self.eb(other, 0x1c)));
-        let dy_tight = dcy.wrapping_sub(sext8(self.eb(other, 0x1a)));
-        let depth = if apart(dx_tight, ax, aw.wrapping_add(self.eb(other, 0x1d) as u16))
-            || apart(dy_tight, ay, ah.wrapping_add(self.eb(other, 0x1b) as u16))
+        let dx_tight = body.map_or_else(|| dcx.wrapping_add(sext8(self.eb(other, 0x1c))), |_| dcx);
+        let dy_tight = body.map_or_else(|| dcy.wrapping_sub(sext8(self.eb(other, 0x1a))), |_| dcy);
+        let (tight_w, tight_h) = body.map_or_else(
+            || (u16::from(self.eb(other, 0x1d)), u16::from(self.eb(other, 0x1b))),
+            |(w, h)| (w / 2, h / 2),
+        );
+        let depth = if apart(dx_tight, ax, aw.wrapping_add(tight_w))
+            || apart(dy_tight, ay, ah.wrapping_add(tight_h))
         {
             2
         } else {
@@ -2085,7 +2112,7 @@ impl Bus<'_> {
                 low,
             }) => self.hit_basic(me, other, depth, template, table, if low { 8 } else { 4 }),
             Some(HitFn::Shoryuken { template }) => {
-                if self.toggles.balanced_roster {
+                if self.toggles.balanced_roster && hit_limit == 1 {
                     let slot = self.player_slot_index(self.el(me, 0x38)).unwrap_or(1);
                     self.toggle_state.dp_connected[slot] = true;
                 }
@@ -2170,7 +2197,12 @@ impl Bus<'_> {
         // active frames no longer hit (`combo_load_frame`).
         if self.toggles.true_combos && self.eb(me, 0xf) & 0x80 == 0 {
             let s = self.combo_slot(me);
-            self.toggle_state.combo.connected[s] = true;
+            let move_hits = self.era_side(owner).filter(|_| hit_limit > 1).map(|side| {
+                let count = &mut self.toggle_state.era.fighters[side].move_hits;
+                *count = count.saturating_add(1);
+                *count
+            });
+            self.toggle_state.combo.connected[s] = move_hits.is_none_or(|hits| hits >= hit_limit);
         }
         // Cancels (SP18): a cancelable normal that connected, hit or
         // guarded, opens its cancel window.
@@ -2430,14 +2462,57 @@ impl Bus<'_> {
     /// the fighter alive, and nothing that follows only a knock-out runs.
     /// Training's hit record takes the full damage first
     /// ([`Self::training_hit`]).
-    fn damage_with_chip(&mut self, me: u16, mut dmg: u8, is_chip: bool) {
+    fn damage_with_chip(&mut self, me: u16, dmg: u8, is_chip: bool) {
+        self.damage_with_source(me, dmg, is_chip, None);
+    }
+
+    fn damage_with_source(&mut self, me: u16, mut dmg: u8, is_chip: bool, projectile: Option<u8>) {
+        let owner = self.el(me, 0x38);
         let ps = self.el(me, 0x3c);
         if self.toggles.true_combos && !is_chip {
             dmg = self.combo_scale(ps, dmg);
         }
-        self.training_hit(ps, dmg);
+        let sf2 = self.sf2_state(owner).copied();
+        let mut damage = u16::from(dmg) * crate::era_fight::SUB_HP_PER_POINT;
+        if let Some(era) = sf2 {
+            let move_id = projectile.unwrap_or_else(|| self.eb(me, 0xa));
+            let delta = crate::era_fight::RevisionDelta::of(era.style);
+            if !is_chip {
+                if move_id == crate::era_fight::SF2_SUPER {
+                    damage = if projectile.is_some() { 56 } else { 95 };
+                } else if projectile.is_some() && move_id == crate::era_fight::SF2_EXTRA_SPECIAL {
+                    damage = 110;
+                }
+            }
+            if let Some(delta) = delta {
+                damage = (u32::from(damage) * u32::from(delta.damage_percent) / 100) as u16;
+            }
+            if !is_chip {
+                let defender = self.rw(ps + 0x10);
+                if self.eb(defender, 9) & 3 == 1 {
+                    if let Some(side) = self.era_side(ps) {
+                        let juggle = &mut self.toggle_state.era.fighters[side].juggle_count;
+                        *juggle = juggle.saturating_add(1);
+                    }
+                }
+            }
+        }
+        let record = if sf2.is_some() {
+            damage.div_ceil(crate::era_fight::SUB_HP_PER_POINT).min(u16::from(u8::MAX)) as u8
+        } else {
+            dmg
+        };
+        self.training_hit(ps, record);
         if let Some(rules) = self.dramatic_rules() {
             self.damage_dramatic(me, ps, dmg, is_chip, rules.lifebar);
+            return;
+        }
+        let prevent_chip_ko = self.toggles.balanced_roster && is_chip && !self.toggles.chip_death;
+        if self.era_damage(
+            ps,
+            damage,
+            prevent_chip_ko || self.roster.mode == PlayMode::Training,
+        ) {
             return;
         }
         if self.toggles.balanced_roster && is_chip && !self.toggles.chip_death {
@@ -2453,6 +2528,36 @@ impl Bus<'_> {
             let cur_hp = (self.rb(ps + 7) as u16) * 4 + (self.rb(ps + 6) as u16);
             dmg = cur_hp.saturating_sub(TRAINING_HEALTH_FLOOR).min(dmg as u16) as u8;
         }
+        self.drain_native_health(ps, dmg);
+    }
+
+    fn era_can_juggle(&self, defender: u16, limit: u8) -> bool {
+        limit > 1
+            && self.airborne_reaction(defender)
+            && self.era_side(self.el(defender, 0x38))
+                .is_some_and(|side| self.toggle_state.era.fighters[side].juggle_count < limit)
+    }
+
+    fn airborne_reaction(&self, entity: u16) -> bool {
+        self.eb(entity, 8) == 2
+            && self.eb(entity, 9) & 3 == 1
+            && (0x30..=0x3f).contains(&self.eb(entity, 0xa))
+    }
+
+    /// Airborne 1987 reactions omit their boxes because only the newer
+    /// rules can hit during them. Bound the fallback by the current pose.
+    fn era_juggle_body(&self, entity: u16, juggle: bool) -> Option<(u16, u16)> {
+        if !juggle || [0x1b, 0x1d, 0x1f, 0x21].into_iter().any(|offset| self.eb(entity, offset) != 0) {
+            return None;
+        }
+        let big = self.is_big(entity);
+        Some((
+            Self::half_extent(self.eb(entity, 0xd), big).min(18),
+            Self::half_extent(self.eb(entity, 0xc), big).min(26),
+        ))
+    }
+
+    pub(crate) fn drain_native_health(&mut self, ps: u32, dmg: u8) {
         loop {
             if dmg <= self.rb(ps + 6) {
                 self.wb(ps + 6, self.rb(ps + 6) - dmg);
@@ -2522,7 +2627,7 @@ impl Bus<'_> {
         }
     }
 
-    fn draw_health(&mut self, ps: u32) {
+    pub(crate) fn draw_health(&mut self, ps: u32) {
         let tile = self.rw(0x3c0a6 + 2 * self.rb(ps + 6) as u32);
         let cells = self.rb(ps + 7) as u16;
         let mut a1 = 0x80_0000 + (cells * 2).wrapping_add(self.rw(ps + 0xa)) as u32;
@@ -2552,6 +2657,9 @@ impl Bus<'_> {
     /// [`Self::react`] for a hit landed by `src`, which the true-combo gate
     /// reads at the end ([`Self::combo_react`]).
     fn react_as(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
+        if src == HitSource::Melee {
+            self.era_normal_contact(me, false);
+        }
         self.react_one(me, other, entry, src);
         self.dramatic_shared_knockdown(me, other, entry, src);
     }
@@ -2792,6 +2900,11 @@ impl Bus<'_> {
         }
         self.set_el(s, 0x20, self.el(me, 0x38));
         self.set_el(s, 0x24, self.el(me, 0x3c));
+        if self.eb(s, 0xe) & 0x20 != 0 {
+            self.era_spawn_projectile(s, self.el(me, 0x38), self.eb(me, 0xa));
+        } else {
+            self.era_clear_projectile(s);
+        }
         if self.ew(me, 2) & 0x100 != 0 {
             self.set_ew(s, 6, self.ew(s, 6).wrapping_neg());
             self.set_eb(s, 0xb, self.eb(s, 0xb).wrapping_neg());
@@ -2827,6 +2940,7 @@ impl Bus<'_> {
         else {
             return;
         };
+        self.era_clear_projectile(s);
         for i in 0..0x20u32 {
             let b = self.rb(template + i);
             self.set_eb(s, i, b);
@@ -2855,7 +2969,11 @@ impl Bus<'_> {
         for k in 0..12u16 {
             let s = 0x100 + 0x40 * k;
             if self.eb(s, 8) != 0 {
+                self.era_projectile_frame(s);
                 self.run_effect(s);
+            }
+            if self.eb(s, 8) == 0 {
+                self.era_clear_projectile(s);
             }
         }
     }
@@ -3220,21 +3338,28 @@ impl Bus<'_> {
     }
 
     fn effect_overlaps_fighter(&self, s: u16, t: u16) -> bool {
-        if self.eb(s, 0xe) & 0x80 == 0 {
+        if self.eb(s, 0xe) & 0x80 == 0 || !self.era_projectile_can_hit(s) {
+            return false;
+        }
+        let era = self.era_projectile(s);
+        let limit = if era.crimson { 3 } else if era.move_id == crate::era_fight::SF2_SUPER { 5 } else { 1 };
+        let juggle = self.era_can_juggle(t, limit);
+        if (self.eb(t, 0xf) & 8 != 0 || (era.hits_remaining != 0 && self.airborne_reaction(t))) && !juggle {
             return false;
         }
         let (cx, cy) = self.effect_centre(s);
-        let ty = self
-            .center_y(t)
-            .wrapping_add(sext8(self.eb(t, 0x1e)).wrapping_neg());
-        if (self.eb(t, 0x1f) as u16) + (self.eb(s, 0xc) as u16) <= Self::borrow_abs(ty, cy) {
-            return false;
-        }
-        let tx = self.center_x(t).wrapping_add(sext8(self.eb(t, 0x20)));
-        if (self.eb(t, 0x21) as u16) + (self.eb(s, 0xd) as u16) <= Self::borrow_abs(tx, cx) {
-            return false;
-        }
-        self.eb(t, 0xf) & 8 == 0
+        let (tx, ty, w, h) = if let Some((w, h)) = self.era_juggle_body(t, juggle) {
+            (self.center_x(t), self.center_y(t), w, h)
+        } else {
+            (
+                self.center_x(t).wrapping_add(sext8(self.eb(t, 0x20))),
+                self.center_y(t).wrapping_sub(sext8(self.eb(t, 0x1e))),
+                u16::from(self.eb(t, 0x21)),
+                u16::from(self.eb(t, 0x1f)),
+            )
+        };
+        w + u16::from(self.eb(s, 0xd)) > Self::borrow_abs(tx, cx)
+            && h + u16::from(self.eb(s, 0xc)) > Self::borrow_abs(ty, cy)
     }
 
     /// 0x43144: the effect's box against the target's attack box (+0x22 /
@@ -3266,13 +3391,16 @@ impl Bus<'_> {
     /// whose box overlaps this one's (the half-sizes summed as bytes); a
     /// hit runs the handler at +0x1c.
     fn effect_vs_projectile(&mut self, s: u16) {
-        if self.eb(s, 0xe) & 0x20 == 0 {
+        if self.eb(s, 0xe) & 0x20 == 0 || !self.era_projectile_can_clash(s) {
             return;
         }
         let mut d2 = s.wrapping_add(0x40);
         let mut other = None;
         for _ in 0..11 {
             if self.eb(d2, 8) != 0 && self.eb(d2, 0xe) & 0x20 != 0
+                && self.era_projectile_can_clash(d2)
+                && ((self.era_projectile(s).hits_remaining == 0 && self.era_projectile(d2).hits_remaining == 0)
+                    || self.el(s, 0x20) != self.el(d2, 0x20))
                 && self.dramatic_rules().is_none_or(|rules| {
                     self.dramatic_hit_targets(self.el(s, 0x20), rules.friendly_fire)
                         .contains(&self.el(d2, 0x20))
@@ -3384,15 +3512,11 @@ impl Bus<'_> {
                 if crate::data_bank::in_bank(h)
                     && self.rb(h) == crate::data_bank::ROUTINE_EFFECT_VS_PROJECTILE =>
             {
-                self.transform_effect(s, self.rl(h + 4));
-                self.set_ew(o, 8, 0);
-                self.set_el(o, 4, 0);
+                self.resolve_projectile_clash(s, o, self.rl(h + 4));
             }
             (0x43476, Some(o)) => {
                 // Both projectiles end: this one explodes, the other is freed.
-                self.transform_effect(s, 0x186fc);
-                self.set_ew(o, 8, 0);
-                self.set_el(o, 4, 0);
+                self.resolve_projectile_clash(s, o, 0x186fc);
             }
             (0x43490, None) => {
                 // Against an attack box: nothing in 2P versus; otherwise the
@@ -3453,12 +3577,15 @@ impl Bus<'_> {
             // 0x436a8 (30 damage), applying damage (0x3c034) and reaction
             // (0x4451a).
             (0x43652, None) => {
-                self.transform_effect(s, 0x186fc);
+                let era = self.era_projectile(s);
+                if self.era_projectile_hit(s) {
+                    self.transform_effect(s, 0x186fc);
+                }
                 let (me, other) = self.player_entities(self.el(s, 0x20));
                 let is_blocked = self.eb(other, 9) & 0x20 != 0;
                 let entry = if is_blocked { 0x436b0 } else { 0x436a8 };
                 let dmg = self.effective_entry_damage(entry, is_blocked);
-                self.damage_with_chip(me, dmg, is_blocked);
+                self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era.move_id));
                 if !is_blocked {
                     let def_ps = self.el(me, 0x3c);
                     let def_ko = !self.defender_alive(def_ps);
@@ -3482,6 +3609,19 @@ impl Bus<'_> {
         }
     }
 
+    fn resolve_projectile_clash(&mut self, first: u16, second: u16, impact: u32) {
+        let first_ends = self.era_projectile_clash(first);
+        let second_ends = self.era_projectile_clash(second);
+        if first_ends {
+            self.transform_effect(first, impact);
+        }
+        if second_ends {
+            self.era_clear_projectile(second);
+            self.set_ew(second, 8, 0);
+            self.set_el(second, 4, 0);
+        }
+    }
+
     /// 0x433ba: the Hadoken hits the target: it becomes the explosion
     /// (0x186fc) and cuts the thrower's hold short (+0x33, +0xe). A blocking
     /// target (+9 bit 0x20) takes chip damage (entry 0x43466 in 2P versus,
@@ -3490,7 +3630,10 @@ impl Bus<'_> {
     /// event 9) and takes entry 0x4345e. Score, its redraw, the top-score
     /// check, damage and the reaction follow as for any landed hit.
     fn fireball_hits_fighter(&mut self, s: u16) {
-        self.transform_effect(s, 0x186fc);
+        let era = self.era_projectile(s);
+        if self.era_projectile_hit(s) {
+            self.transform_effect(s, 0x186fc);
+        }
         let owner_ps = self.el(s, 0x20);
         let (me, other) = self.player_entities(owner_ps);
         let is_blocked = self.eb(other, 9) & 0x20 != 0;
@@ -3518,7 +3661,7 @@ impl Bus<'_> {
         self.show_score(owner_ps);
         self.check_hiscore(me);
         let dmg = self.effective_entry_damage(entry, is_blocked);
-        self.damage_with_chip(me, dmg, is_blocked);
+        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era.move_id));
         if !is_blocked {
             let def_ps = self.el(me, 0x3c);
             let def_ko = !self.defender_alive(def_ps);
@@ -3544,6 +3687,7 @@ impl Bus<'_> {
     /// and dx negated), and its position offsets moved to the old effect's
     /// centre (less 0x10 for a big sprite, 8 otherwise).
     fn transform_effect(&mut self, s: u16, template: u32) {
+        self.era_clear_projectile(s);
         let (cx, cy) = self.effect_centre(s);
         let attr = self.ew(s, 2);
         for i in 0..0x20u32 {
@@ -4566,13 +4710,30 @@ impl Bus<'_> {
         let scripted_turn = mode == 0x40 || mode == 0xc0;
         if !scripted_turn {
             self.track_commands(ps, me, d0);
+            let relative = if self.eb(me, 0x37) & 4 == 0 {
+                d0
+            } else {
+                (d0 & !3) | ((d0 & 1) << 1) | ((d0 & 2) >> 1)
+            };
+            self.era_track_motion(ps, relative);
         }
         if self.toggles.positive_edge_attacks {
             self.filter_neg_edge_latches(ps, me, d0);
         }
         // Cancels (SP18): in a cancelable normal's window, a special's
         // command cancels the normal into the special.
-        if self.toggles.cancels && self.cancel_gate(ps, me, other, d0) {
+        let cancel_slot = self.combo_slot(me);
+        let era_cancel = !scripted_turn
+            && self.toggles.cancels
+            && self.toggle_state.cancel.window[cancel_slot] != 0
+            && self.toggle_state.cancel.move_id[cancel_slot] == self.eb(me, 0xa)
+            && self.eb(me, 9) & 0x80 != 0
+            && self.try_era_special(ps, me);
+        if era_cancel {
+            let count = &mut self.toggle_state.cancel.count[cancel_slot];
+            *count = count.wrapping_add(1);
+        }
+        if era_cancel || (self.toggles.cancels && self.cancel_gate(ps, me, other, d0)) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
@@ -4637,6 +4798,11 @@ impl Bus<'_> {
             self.filter_neg_edge_latches(ps, me, d0);
         }
         let dispatch_d0 = self.apply_recovery_buffer(ps, me, d0);
+        if !scripted_turn && self.try_era_special(ps, me) {
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
         if self.toggles.throws && self.try_throw(ps, me, other, dispatch_d0) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
@@ -4645,6 +4811,126 @@ impl Bus<'_> {
         self.dispatch_direction(ps, me, other, dispatch_d0, d0);
         self.clear_neg_edge_latches_for_player(ps);
         self.input_tail(me, ps);
+    }
+
+    fn era_special_command(&self, ps: u32, kick: bool) -> Option<u8> {
+        use crate::era_fight::{SF2_EXTRA_SPECIAL, SF2_SUPER};
+        use crate::roster::TournamentFighter::{Ryu, Sagat};
+
+        let era = self.sf2_state(ps)?;
+        let fighter = era.fighter?;
+        let super_button = kick == (fighter == Sagat);
+        let uppercut = fighter == Sagat && !kick && self.rb(self.tracker_base(ps) + 0x1b) != 0;
+        let red_fireball = fighter == Ryu && !kick && era.extra_ready();
+        let knee = fighter == Sagat && kick && era.extra_ready();
+        let move_id = if era.super_ready() && super_button {
+            SF2_SUPER
+        } else if uppercut || red_fireball {
+            SF2_EXTRA_SPECIAL
+        } else if knee {
+            0x19
+        } else {
+            return None;
+        };
+        if move_id == 0x19 {
+            crate::data_bank::move_header(|addr| self.rl(addr), self.rl(ps + 0x12), move_id)?;
+        } else {
+            self.data_bank?.move_header(fighter, move_id)?;
+        }
+        Some(move_id)
+    }
+
+    fn try_era_special(&mut self, ps: u32, entity: u16) -> bool {
+        use crate::era_fight::SF2_SUPER;
+
+        let punch = self.latch_fires(ps, false).then(|| self.era_special_command(ps, false)).flatten();
+        let kick = self.latch_fires(ps + 1, true).then(|| self.era_special_command(ps, true)).flatten();
+        let (move_id, latch, strength_table) = if let Some(mv) = kick.filter(|mv| *mv == SF2_SUPER || punch.is_none()) {
+            (mv, ps + 1, 0x405be)
+        } else if let Some(mv) = punch {
+            (mv, ps, 0x405b6)
+        } else {
+            return false;
+        };
+        if self.pick_by_strength(latch, strength_table, entity).is_none() {
+            return false;
+        }
+        self.ww(ps, 0);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.start_move(entity, ps, move_id);
+        if move_id == SF2_SUPER {
+            self.era_spend_super(ps);
+        } else {
+            self.era_use_extra_motion(ps);
+        }
+        true
+    }
+
+    fn era_move_started(&mut self, entity: u16, ps: u32, move_id: u8) {
+        use crate::era_fight::SF2_EXTRA_SPECIAL;
+        use crate::roster::TournamentFighter::{Ken, Ryu, Sagat};
+
+        let Some(era) = self.sf2_state(ps) else { return };
+        let Some(delta) = crate::era_fight::RevisionDelta::of(era.style) else { return };
+        // Super Turbo awards special meter once when the move starts, even on a whiff.
+        let meter = match (era.fighter, move_id) {
+            (Some(Ryu), 0x19) | (Some(Sagat), SF2_EXTRA_SPECIAL) => 7,
+            (Some(Ken), 0x19) => 8,
+            (Some(Ryu | Ken), 0x1a) | (Some(Ryu), SF2_EXTRA_SPECIAL) => 2,
+            (Some(Ryu | Ken), 0x1b) | (Some(Sagat), 0x19) => 6,
+            (Some(Sagat), 0x1a | 0x1b) => 3,
+            _ => 0,
+        };
+        if let Some(side) = self.era_side(ps) {
+            self.toggle_state.era.fighters[side].move_hits = 0;
+        }
+        if matches!(move_id, 0x0d..=SF2_EXTRA_SPECIAL | 0x20..=0x26) {
+            self.set_eb(entity, 0xe, self.eb(entity, 0xe).saturating_add_signed(delta.startup));
+        }
+        if meter != 0 {
+            self.era_meter_gain(ps, meter);
+        }
+    }
+
+    fn era_normal_contact(&mut self, entity: u16, guarded: bool) {
+        use crate::combo::{Class, class_of, level};
+
+        let owner = self.el(entity, 0x38);
+        let move_id = self.eb(entity, 0xa);
+        if self.sf2_state(owner).is_none()
+            || !Self::is_player_table(self.rl(owner + 0x12))
+            || !matches!(move_id, 0x0d..=0x18 | 0x1c..=0x1e | 0x20..=0x26)
+        {
+            return;
+        }
+        // Arcade ST's contact awards by button strength (hit, guard).
+        let (hit, guard) = match class_of(move_id, level(self.eb(entity, 0x34))) {
+            Class::Light | Class::Jump(1) => (2, 1),
+            Class::Medium | Class::Jump(2) => (4, 3),
+            Class::Heavy | Class::Sweep | Class::Jump(_) => (5, 4),
+            Class::Special => return,
+        };
+        self.era_meter_gain(owner, if guarded { guard } else { hit });
+    }
+
+    fn era_move_recovery(&mut self, entity: u16, frame: u32) {
+        let owner = self.el(entity, 0x38);
+        let Some(delta) = self.sf2_state(owner).and_then(|era| crate::era_fight::RevisionDelta::of(era.style)) else {
+            return;
+        };
+        let move_id = self.eb(entity, 0xa);
+        if !matches!(move_id, 0x0d..=crate::era_fight::SF2_EXTRA_SPECIAL | 0x20..=0x26)
+            || self.eb(entity, 0xf) & 0x80 != 0
+        {
+            return;
+        }
+        let next = frame + 0x20;
+        if self.rb(next) == 0xfd || (self.rb(next) == 0xff && self.rl(next + 2) == 0x45630) {
+            for byte in [0xe, 0x33] {
+                self.set_eb(entity, byte, self.eb(entity, byte).saturating_add_signed(delta.recovery));
+            }
+        }
     }
 
     /// 0x404cc: the posture dispatch on direction `dir` (the held one, or
@@ -5288,11 +5574,17 @@ impl Bus<'_> {
     }
 
     fn filter_neg_edge_latches(&mut self, ps: u32, me: u16, d0: u8) {
-        if self.is_neg_edge_latch(ps) && !self.punch_special_ready_for_dir(ps, me, d0) {
+        if self.is_neg_edge_latch(ps)
+            && !self.punch_special_ready_for_dir(ps, me, d0)
+            && self.era_special_command(ps, false).is_none()
+        {
             self.wb(ps, 0);
             self.set_neg_edge_latch(ps, false);
         }
-        if self.is_neg_edge_latch(ps + 1) && !self.kick_special_ready_for_dir(ps, me, d0) {
+        if self.is_neg_edge_latch(ps + 1)
+            && !self.kick_special_ready_for_dir(ps, me, d0)
+            && self.era_special_command(ps, true).is_none()
+        {
             self.wb(ps + 1, 0);
             self.set_neg_edge_latch(ps + 1, false);
         }
@@ -5597,7 +5889,10 @@ impl Bus<'_> {
         }
         let ps = self.el(me, 0x38);
         let table = self.rl(ps + 0x12);
-        let init_stream = self.rl(table.wrapping_add(mv as u32 * 0x30 + 0x2c));
+        let Some(header) = crate::data_bank::move_header(|addr| self.rl(addr), table, mv) else {
+            return false;
+        };
+        let init_stream = self.rl(header + 0x2c);
         self.el(me, 0x2c) != init_stream
     }
 
@@ -5745,10 +6040,18 @@ impl Bus<'_> {
         if let Resume::LoadAt(stream) = attack {
             if let Some(slot) = self.player_slot_index(ps) {
                 let (total_frames, stream_dy) = self.stream_air_frames_and_dy(stream);
-                if total_frames > 0 {
+                // Bank air attacks already reach the floor on the last fall
+                // frame. Keep the landing pose's offset in stream_dy, but
+                // finish applying the trajectory correction before that pose.
+                let airborne_frames = if crate::data_bank::in_bank(stream) {
+                    total_frames.saturating_sub(1)
+                } else {
+                    total_frames
+                };
+                if airborne_frames > 0 {
                     let net_adj = landing_cy - (cy_start + stream_dy);
-                    let n1 = total_frames / 2;
-                    let n2 = total_frames - n1;
+                    let n1 = airborne_frames / 2;
+                    let n2 = airborne_frames - n1;
                     let adj1 = if was_ascending {
                         net_adj - 24
                     } else {
@@ -5863,7 +6166,20 @@ impl Bus<'_> {
                 return s;
             }
         }
-        crate::combo::move_stun(fighter, mv, level)
+        let mut stun = crate::combo::move_stun(fighter, mv, level);
+        if let Some(delta) = self.sf2_state(self.el(me, 0x38))
+            .and_then(|era| crate::era_fight::RevisionDelta::of(era.style))
+        {
+            if mv == 0x0d && delta.hitstun == 2 {
+                stun.hit = 20; // World Warrior's close jab.
+            } else if mv == crate::era_fight::SF2_SUPER {
+                stun.hit = 22;
+                stun.block = 14;
+            } else {
+                stun.hit = stun.hit.saturating_add_signed(delta.hitstun);
+            }
+        }
+        stun
     }
 
     /// Once a fight frame, before the input handlers (`drive_fight_inputs`):
@@ -6001,7 +6317,12 @@ impl Bus<'_> {
     fn combo_react(&mut self, me: u16, other: u16, te: u32, src: HitSource) {
         let stun = match src {
             HitSource::Melee => self.move_stun_of(me).hit,
-            HitSource::Projectile => crate::combo::PROJECTILE.hit,
+            HitSource::Projectile => {
+                let delta = self.sf2_state(self.el(me, 0x38))
+                    .and_then(|era| crate::era_fight::RevisionDelta::of(era.style))
+                    .map_or(0, |delta| delta.hitstun);
+                crate::combo::PROJECTILE.hit.saturating_add_signed(delta)
+            }
             HitSource::Chip => 0,
         };
         let alive = self.eb(other, 8) == 2;
@@ -6018,6 +6339,7 @@ impl Bus<'_> {
     /// P1 or P2 structure; the 1987 CPU's guards are its own streams) takes
     /// the move's blockstun.
     fn combo_blocked(&mut self, me: u16, other: u16) {
+        self.era_normal_contact(me, true);
         if !self.toggles.true_combos || !self.is_player_driven(self.el(other, 0x38)) {
             return;
         }
@@ -6260,7 +6582,7 @@ impl Bus<'_> {
     /// direction and button, and `other` is throwable and within
     /// [`crate::combo::throw::RANGE`].
     pub(crate) fn try_throw(&mut self, ps: u32, me: u16, other: u16, dir: u8) -> bool {
-        if !matches!(dir, 1 | 2) {
+        if !matches!(dir, 1 | 2) || self.chosen_era(ps) == Some(crate::era::EraFamily::Sf1987) {
             return false;
         }
         let hp = self.rb(ps) == 0xfe;
@@ -6370,7 +6692,10 @@ impl Bus<'_> {
             self.toggle_state.throw.partners[other_slot] = ps;
             self.bind_dramatic_target(other_ps, ps);
         }
-        self.toggle_state.throw.tech_window[other_slot] = crate::combo::throw::TECH_WINDOW + 1;
+        let untechable = self.chosen_era(other_ps) == Some(crate::era::EraFamily::Sf1987)
+            || (self.sf2_state(ps).is_some() && self.era_rules.untechable_sf2_throws);
+        self.toggle_state.throw.tech_window[other_slot] =
+            if untechable { 0 } else { crate::combo::throw::TECH_WINDOW + 1 };
         self.toggle_state.throw.crosses[other_slot] = self.fighter_of_entity(me)
             .map_or(back_throw, |fighter| crate::combo::throw::crosses_original_side(fighter, back_throw));
     }
@@ -6397,7 +6722,13 @@ impl Bus<'_> {
             return false;
         }
         let heavy = self.rb(ps) == 0xfe || self.rb(ps + 1) == 0xfe;
-        if !matches!(d0, 1 | 2) || !heavy {
+        let sf2 = self.sf2_state(ps).is_some() || self.sf2_state(self.el(other, 0x38)).is_some();
+        let light = |at, table| {
+            let latch = self.rb(at) & 0xfe;
+            latch > self.rb(table) && latch < self.rb(table + 2)
+        };
+        let light_chord = sf2 && light(ps, 0x405b6) && light(ps + 1, 0x405be);
+        if !light_chord && (!matches!(d0, 1 | 2) || !heavy) {
             return false;
         }
         self.tech_throw(ps, me, other);
@@ -6890,6 +7221,7 @@ mod tests {
                 preset: crate::config::RulesetPreset::Faithful1987,
                 roster: crate::roster::RosterSettings::faithful(),
                 dramatic: None,
+                era_rules: crate::config::MatchConfig::faithful().into(),
                 toggle_state: &mut self.toggle_state,
                 training: &mut self.training,
                 backgrounds: None,
@@ -7050,17 +7382,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn the_last_effect_slot_keeps_the_original_probe_outside_era_state() {
+        let mut ram = Ram::new();
+        let mut bus = ram.bus();
+        bus.set_eb(0x3c0, 8, 2);
+        bus.set_eb(0x3c0, 0xe, 0x20);
+        // The translated scan begins one slot after the projectile, so the
+        // final slot can examine the first fighter's grid header.
+        bus.set_eb(0x400, 8, 2);
+        bus.set_eb(0x400, 0xe, 0x20);
+        bus.effect_vs_projectile(0x3c0);
+        assert_eq!(bus.eb(0x400, 8), 2);
+    }
+
     /// A bank table's bytes with the special slots `slots` present and
     /// their records.
     fn bank_table(slots: &[(u8, crate::data_bank::SpecialSlot)]) -> Vec<u8> {
-        use crate::data_bank::{SPECIALS, SPECIAL_SLOT_SIZE};
-        let mut bytes = vec![0u8; (SPECIALS + 3 * SPECIAL_SLOT_SIZE) as usize];
-        for &(slot, special) in slots {
-            bytes[slot as usize * 0x30 + 8] = 1;
-            let at = (SPECIALS + (slot - 0x19) as u32 * SPECIAL_SLOT_SIZE) as usize;
-            bytes[at..at + SPECIAL_SLOT_SIZE as usize].copy_from_slice(&special.bytes());
-        }
-        bytes
+        crate::data_bank::test_special_table(slots)
     }
 
     /// A bank table at the bank's base with all three special slots, which

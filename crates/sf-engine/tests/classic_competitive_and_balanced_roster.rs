@@ -14,6 +14,9 @@
 //! checks go through the headless game session (Local, inputs in; the fight
 //! reader out) and skip without the local ROM set.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{CoreToggles, MatchConfig, RulesetPreset};
@@ -531,8 +534,8 @@ fn local(a: Assets, config: MatchConfig) -> GameSession {
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

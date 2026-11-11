@@ -10,8 +10,8 @@
 //! right, P2's on the right facing left, the names and `VS` between them,
 //! and the twelve tiles in two rows of six below. Both players pick at
 //! once: P1's cursor is yellow, P2's blue; they may rest on one tile;
-//! confirm locks a side's fighter, back unlocks it, and the screen moves on
-//! the moment both are locked.
+//! confirm opens a side's Style card when era selection is active, then
+//! locks the pick; the screen moves on the moment both are locked.
 //!
 //! Tiles a side may not pick are skipped by its cursor and, when no side
 //! may pick them, drawn greyed: the bosses in Arcade, the ban list's
@@ -24,8 +24,10 @@ use sf_video::render::Frame;
 
 use super::draw::framed;
 use super::fight::{first_opponent_flag, FightKind};
+use super::style_card::{render_badge, StyleCard};
 use super::Transition;
 use crate::config::{MatchConfig, RulesetPreset};
+use crate::era::{EraFamily, StylePick};
 use crate::roster::{MenuInput, TournamentFighter};
 
 /// Where a mode's pieces sit, in pixels inside the gold frame (which spans
@@ -85,6 +87,10 @@ pub struct SelectScreen {
     caption: [&'static str; 12],
     cursors: [usize; 2],
     locked: [Option<TournamentFighter>; 2],
+    /// What-If availability when era selection is active.
+    styles: Option<bool>,
+    preferred_eras: [EraFamily; 2],
+    cards: [Option<StyleCard>; 2],
     /// The cursor that moved last (Arcade's large frame follows P1's).
     last_moved: usize,
 }
@@ -100,8 +106,25 @@ impl SelectScreen {
             caption,
             cursors: [first(0, 0), first(1, 1)],
             locked: [None, None],
+            styles: None,
+            preferred_eras: [EraFamily::Sf1Plus; 2],
+            cards: [None, None],
             last_moved: 0,
         }
+    }
+
+    fn with_style_cards(mut self, config: &MatchConfig) -> Self {
+        self.styles = config.era_select_enabled().then_some(config.roster.what_if_styles);
+        self
+    }
+
+    pub(super) fn with_preferred_eras(mut self, eras: [EraFamily; 2]) -> Self {
+        self.preferred_eras = eras;
+        self
+    }
+
+    pub(super) fn preferred_eras(&self) -> [EraFamily; 2] {
+        self.preferred_eras
     }
 
     /// Per side, what `config` and `player_tables` let that side pick: the
@@ -129,6 +152,7 @@ impl SelectScreen {
     /// Local: P1 and P2 pick at once.
     pub fn local(config: &MatchConfig, player_tables: &[TournamentFighter]) -> Self {
         Self::open(Picks::Two, Self::allowed(config, player_tables), [""; 12])
+            .with_style_cards(config)
     }
 
     /// Training: P1's fighter, then the opponent. Against the CPU under
@@ -157,13 +181,14 @@ impl SelectScreen {
             }
         }
         Self::open(Picks::Sequential { cpu }, allowed, caption)
+            .with_style_cards(config)
     }
 
     /// Arcade: under an overhaul preset with the art pack, every fighter
     /// [`Self::allowed`] opens for Player 1; without a boss's 1987 player
     /// table his tile is greyed with `SF1+`.
     pub fn arcade(config: &MatchConfig, player_tables: &[TournamentFighter]) -> Self {
-        Self::single(config, player_tables, 0)
+        Self::single(config, player_tables, 0).with_style_cards(config)
     }
 
     pub(super) fn single(config: &MatchConfig, player_tables: &[TournamentFighter], side: usize) -> Self {
@@ -260,13 +285,25 @@ impl SelectScreen {
         self.locked[side]
     }
 
+    /// The locked Style card pick. Presets without a card use their fixed style.
+    pub fn locked_style(&self, side: usize) -> Option<StylePick> {
+        self.locked(side)?;
+        self.cards[side].as_ref().map(StyleCard::pick)
+    }
+
     /// Apply a replicated cursor/lock only through the same eligibility table
     /// used by local input. The session checks the sender's assigned side.
-    pub(crate) fn set_remote_pick(&mut self, side: usize, fighter: TournamentFighter, locked: bool) -> Option<Transition> {
+    pub(crate) fn set_remote_pick(&mut self, side: usize, fighter: TournamentFighter, locked: bool, style: Option<StylePick>) -> Option<Transition> {
         let slot = TournamentFighter::ALL.iter().position(|candidate| *candidate == fighter)?;
         if side >= 2 || !self.may_pick(side, slot) { return None; }
+        let card = match (self.styles, locked, style) {
+            (Some(what_if), true, Some(pick)) => Some(StyleCard::from_pick(fighter, pick, what_if)?),
+            (None, _, None) | (_, false, None) => None,
+            _ => return None,
+        };
         self.cursors[side] = slot;
         self.locked[side] = locked.then_some(fighter);
+        self.cards[side] = card;
         self.last_moved = side;
         Some(match (self.locked[0], self.locked[1]) {
             (Some(p1), Some(p2)) => Transition::Fighters(p1, p2),
@@ -315,14 +352,13 @@ impl SelectScreen {
 
     /// One input from the merged menu cursor (Arcade and Training).
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
+        let side = self.active_side();
         if let Picks::Sequential { .. } = self.picks {
-            if self.locked[0].is_some() && input == MenuInput::Back {
-                self.locked[0] = None;
-                self.last_moved = 0;
-                return Some(Transition::Unpicked);
+            if side == 1 && self.cards[1].is_none() && input == MenuInput::Back {
+                return self.apply_side(0, input);
             }
         }
-        self.apply_side(self.active_side(), input)
+        self.apply_side(side, input)
     }
 
     /// One input for `side`. Up and down move between rows, left and right
@@ -335,9 +371,23 @@ impl SelectScreen {
         if self.locked[side].is_some() {
             return (input == MenuInput::Back).then(|| {
                 self.locked[side] = None;
+                self.cards[side] = None;
                 self.last_moved = side;
                 Transition::Unpicked
             });
+        }
+        if let Some(card) = &mut self.cards[side] {
+            return match input {
+                MenuInput::Confirm | MenuInput::Start => {
+                    self.preferred_eras[side] = card.pick().family;
+                    Some(self.lock(side))
+                }
+                MenuInput::Back => {
+                    self.cards[side] = None;
+                    Some(Transition::Unpicked)
+                }
+                _ => card.change(input).then_some(Transition::CursorMoved),
+            };
         }
         let next = match input {
             MenuInput::Left => self.next_live(side, -1, 0),
@@ -348,19 +398,14 @@ impl SelectScreen {
                 if !self.may_pick(side, self.cursors[side]) {
                     return None;
                 }
-                let fighter = self.fighter(side);
-                if self.picks == Picks::One {
-                    return Some(Transition::Fighter(fighter));
+                if let Some(what_if) = self.styles {
+                    self.cards[side] = Some(StyleCard::open(self.fighter(side), self.preferred_eras[side], what_if));
+                    return Some(Transition::StyleOpened);
                 }
-                self.locked[side] = Some(fighter);
-                self.last_moved = side;
-                return Some(match (self.locked[0], self.locked[1]) {
-                    (Some(p1), Some(p2)) => Transition::Fighters(p1, p2),
-                    _ => Transition::Picked(fighter),
-                });
+                return Some(self.lock(side));
             }
             MenuInput::Back => {
-                return (self.locked == [None, None]).then_some(Transition::Back);
+                return (self.locked == [None, None] && self.cards.iter().all(Option::is_none)).then_some(Transition::Back);
             }
             _ => None,
         };
@@ -369,6 +414,20 @@ impl SelectScreen {
             self.last_moved = side;
             Transition::CursorMoved
         })
+    }
+
+    fn lock(&mut self, side: usize) -> Transition {
+        let fighter = self.fighter(side);
+        if self.picks == Picks::One && self.cards[side].is_none() {
+            return Transition::Fighter(fighter);
+        }
+        self.locked[side] = Some(fighter);
+        self.last_moved = side;
+        match (self.picks, self.locked) {
+            (Picks::One, _) => Transition::Fighter(fighter),
+            (_, [Some(p1), Some(p2)]) => Transition::Fighters(p1, p2),
+            _ => Transition::Picked(fighter),
+        }
     }
 
     /// The select in the front end's framed style: `PLAYER SELECT` in the
@@ -412,6 +471,11 @@ impl SelectScreen {
                     font.text_px(argb, px + (pw - 8 * name.len()) / 2, py + ph / 2 - 4, &name, ink::BLUE);
                 }
             }
+            if !locked {
+                if let Some(card) = &self.cards[side] {
+                    card.render(argb, font, self.panel_rect(side), side_ink[side]);
+                }
+            }
         }
 
         // Who is on which fighter: under the frame in Arcade; between the
@@ -430,12 +494,19 @@ impl SelectScreen {
                 font.text_px(argb, centre(labels[side].len()), y, labels[side], side_ink[side]);
                 let color = if self.locked[side].is_some() { side_ink[side] } else { ink::BLUE };
                 font.text_px(argb, centre(name.len()), y + 12, &name, color);
+                if let Some(card) = &self.cards[side] {
+                    render_badge(argb, mid_l, y + 22, mid_r - mid_l, card.pick(), font.pen(side_ink[side], 0));
+                }
             }
-            font.header(argb, (mid_l + mid_r) / 16 - 2, 8, "VS", ink::BLUE);
+            let vs_row = if self.styles.is_some() { 9 } else { 8 };
+            font.header(argb, (mid_l + mid_r) / 16 - 2, vs_row, "VS", ink::BLUE);
         } else {
-            let (px, py, _, ph) = self.panel_rect(0);
+            let (px, py, pw, ph) = self.panel_rect(0);
             let name = self.fighter(0).name().to_ascii_uppercase();
             font.text_px(argb, px, py + ph + 12, &name, ink::BLUE);
+            if let Some(card) = &self.cards[0] {
+                render_badge(argb, px, py + ph + 24, pw, card.pick(), font.pen(side_ink[0], 0));
+            }
         }
 
         // The twelve tiles.

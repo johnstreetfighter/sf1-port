@@ -5,6 +5,9 @@
 //! for nothing. The lines play on the host's third chip (`sf-audio`'s
 //! announcer tests). Needs the local ROM set; skips without it.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -53,8 +56,8 @@ fn local_fight(preset: RulesetPreset) -> Option<GameSession> {
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
     tap(&mut s, with(|i| i.menu.confirm = true));
     tap(&mut s, with(|i| i.menu.confirm = true));
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

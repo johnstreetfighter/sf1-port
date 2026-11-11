@@ -7,7 +7,8 @@ use sf_video::asset_pack::{
     validate_pack, validate_tile, AdpcmClip, FmPatch, Rgba,
 };
 use sf_video::compositor::{
-    present, render_player_select, select_cell_origin, IndexedSprite, OverhaulScene, PresentMode, SelectPortrait,
+    present, render_player_select, select_cell_origin, AfterimageTrail, IndexedSprite, OverhaulScene,
+    PaletteTint, PresentMode, SelectPortrait,
     SELECT_BLUE, SELECT_GOLD, SELECT_YELLOW,
 };
 use sf_video::era_hud::{EraGauge, EraHud, Fill, GaugeRow};
@@ -75,6 +76,38 @@ fn overhaul_draws_more_than_sixty_four_sprites_and_sixteen_palettes() {
     assert!(sprites.len() > 64);
     assert!(colours.len() > 16, "saw {} palettes", colours.len());
     assert_eq!(presented.argb.len(), WIDTH * HEIGHT);
+}
+
+#[test]
+fn fighter_tints_leave_the_other_side_untouched_and_trails_keep_three_poses() {
+    let hardware = blank();
+    let mut trail = AfterimageTrail::default();
+    for x in 12..16 {
+        trail.record(&[IndexedSprite::solid(x, 20, 0xffcc6633)]);
+    }
+    let fighter = [IndexedSprite::solid(15, 20, 0xffcc6633)];
+    let opponent = [IndexedSprite::solid(16, 20, 0xff224488)];
+    let tint = PaletteTint { color: 0xffffffff, strength: 128 };
+    let scene = OverhaulScene {
+        fighters: [&fighter, &opponent],
+        fighter_tints: [Some(tint), None],
+        afterimages: [Some(&trail), None],
+        ..OverhaulScene::EMPTY
+    };
+    let offset = 20 * WIDTH;
+    let frame = present(PresentMode::Overhaul, &hardware, &scene);
+    assert_eq!(frame.argb[offset + 12], hardware.argb[offset + 12]);
+    assert_ne!(frame.argb[offset + 13], hardware.argb[offset + 13]);
+    assert_ne!(frame.argb[offset + 14], frame.argb[offset + 13]);
+    assert_eq!(frame.argb[offset + 15], tint.apply(0xffcc6633));
+    assert_eq!(frame.argb[offset + 16], 0xff224488);
+    assert_eq!(present(PresentMode::Faithful, &hardware, &scene).argb, hardware.argb);
+    trail.clear();
+    let frame = present(PresentMode::Overhaul, &hardware, &OverhaulScene {
+        afterimages: [Some(&trail), None],
+        ..OverhaulScene::EMPTY
+    });
+    assert_eq!(frame.argb, hardware.argb);
 }
 
 #[test]

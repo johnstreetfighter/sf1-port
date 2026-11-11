@@ -41,6 +41,7 @@ pub mod box_audit_report;
 pub mod arcade;
 pub mod dramatic;
 pub mod era;
+pub mod era_fight;
 pub mod era_preview;
 pub mod capture;
 mod canonical;

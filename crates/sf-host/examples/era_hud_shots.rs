@@ -121,7 +121,9 @@ fn training(a: sf_video::romset::Assets, bank: &sf_video::sprite_bank::SpriteBan
     tap(&mut s, confirm()); // DUMMY
     assert_eq!(s.screen(), "select");
     tap(&mut s, confirm()); // P1 Ryu
-    s.step(confirm()); // the dummy Ken
+    tap(&mut s, confirm()); // Ryu's default style
+    tap(&mut s, confirm()); // the dummy Ken
+    s.step(confirm()); // Ken's default style
     while s.screen() != "country select" {
         s.step(idle());
     }

@@ -14,16 +14,15 @@
 //! [`TournamentFighter::ALL`], his move table first, so a table address names
 //! its fighter ([`fighter_of_table`]).
 //!
-//! **What a table holds.** `0x1f` move headers of `0x30` bytes, as Ryu's at
-//! `0x1605c`: the move ids the 1987 input handler starts (its strength tables
-//! at `0x405b6..` name them), each header the first frame of the move and a
-//! pointer to the rest of its stream. Streams are 1987 streams: `0x20`-byte
+//! **What a table holds.** 64 big-endian pointers indexed by move ID. Each
+//! populated entry names a `0x30`-byte move header in the fighter's slot,
+//! holding its first frame and a pointer to the rest of its stream. The ROM
+//! tables still store their headers inline. Streams are 1987 streams: `0x20`-byte
 //! frame records (pose tiles, the step, the four boxes, flags, x-offset,
 //! hit function) and `0xff` / `0xfe` / `0xfd` control entries. A stream may
 //! run on into the ROM (a boss's own 1987 attack, kept with its ROM boxes).
-//! A slot whose header's first-frame byte (`+8`) is 0 is **absent**: the
-//! input handler does not start a special the fighter does not have
-//! ([`Bus::move_in_table`](crate::fighter::Bus)).
+//! A zero pointer is an empty slot. For a special, its header's first-frame
+//! byte (`+8`) also indicates whether the input handler can start it.
 //!
 //! **After the table**: the long naming its jump-apex record
 //! ([`APEX_POINTER`]), then the **special slots** ([`SPECIALS`], ticket
@@ -106,11 +105,16 @@ pub const DATA_BANK_BASE: u32 = 0x10_0000;
 pub const DATA_BANK_END: u32 = 0x1f_ffff;
 /// Each fighter's slot in the bank.
 pub const FIGHTER_SPAN: u32 = 0x1_0000;
-/// Moves in a Ryu-format table (`0x00..=0x1e`).
-pub const PLAYER_MOVES: u8 = 0x1f;
+/// Move slots in an extended bank table (`0x00..=0x3f`).
+pub const PLAYER_MOVES: u8 = 0x40;
+/// Ryu's Shakunetsu Hadoken or Sagat's Tiger Uppercut in the SF2 kit.
+pub const SF2_SPECIAL_SLOT: u8 = 0x1f;
+/// The fighter's Super Combo in the SF2 kit.
+pub const SF2_SUPER_SLOT: u8 = 0x29;
+const MOVE_HEADER_SIZE: u32 = 0x30;
 /// Where, from a bank table, the long naming its jump-apex record sits
 /// (just after the table), for the anytime jump attacks.
-pub const APEX_POINTER: u32 = PLAYER_MOVES as u32 * 0x30;
+pub const APEX_POINTER: u32 = PLAYER_MOVES as u32 * 4;
 /// Where, from a bank table, the special slots' records sit, one for each
 /// of `0x19`, `0x1a` and `0x1b` (see the module docs and [`SpecialSlot`]).
 pub const SPECIALS: u32 = APEX_POINTER + 4;
@@ -118,6 +122,7 @@ pub const SPECIALS: u32 = APEX_POINTER + 4;
 pub const SPECIAL_SLOT_SIZE: u32 = 8;
 /// The special slots, the move ids a command tracker starts.
 pub const SPECIAL_SLOTS: [u8; 3] = [0x19, 0x1a, 0x1b];
+const MOVE_HEADERS: u32 = SPECIALS + SPECIAL_SLOTS.len() as u32 * SPECIAL_SLOT_SIZE;
 /// A special slot's flag: it lands by its own hit function (melee).
 pub const SPECIAL_MELEE: u8 = 1;
 /// A special slot's flag: guarded crouching even in the air.
@@ -249,18 +254,19 @@ pub fn special_command(rb: impl Fn(u32) -> u8, table: u32, slot: u8) -> (u32, bo
     (s.tracker, s.kick)
 }
 
-/// Check the special slots of the table at the start of `bytes` (a
-/// fighter's slot as built): every present slot (its header's first-frame
-/// byte not 0) has a known command kind and known flags, and no two present
-/// slots share a tracker and button. The error names the slots.
-pub fn validate_specials(bytes: &[u8]) -> Result<(), String> {
-    let rb = |a: u32| bytes.get(a as usize).copied().unwrap_or(0);
+/// Check each present special's command kind, flags and tracker/button pair.
+fn validate_specials(region: &Region) -> Result<(), String> {
+    let rb = |addr: u32| region.bytes.get((addr - region.base) as usize).copied().unwrap_or(0);
+    let rl = |addr| u32::from_be_bytes(std::array::from_fn(|i| rb(addr + i as u32)));
     let mut taken: Vec<(u8, (u8, bool))> = Vec::new();
     for slot in SPECIAL_SLOTS {
-        if rb(slot as u32 * 0x30 + 8) == 0 {
+        let Some(header) = move_header(rl, region.base, slot) else {
+            continue;
+        };
+        if rb(header + 8) == 0 {
             continue;
         }
-        let a = SPECIALS + (slot - 0x19) as u32 * SPECIAL_SLOT_SIZE;
+        let a = region.base + SPECIALS + (slot - 0x19) as u32 * SPECIAL_SLOT_SIZE;
         let (command, flags) = (rb(a), rb(a + 1));
         if !TRACKERS.contains(&((command & 0x7f) as u32)) {
             return Err(format!("special {slot:#04x} has no command it knows (command byte {command:#04x})"));
@@ -285,6 +291,21 @@ pub fn validate_specials(bytes: &[u8]) -> Result<(), String> {
 pub const fn in_bank(addr: u32) -> bool {
     let a = addr & 0xff_ffff;
     a >= DATA_BANK_BASE && a <= DATA_BANK_END
+}
+
+/// Find a move's 1987-format header. ROM tables store headers inline.
+/// The bank stores pointers to headers within the fighter's own slot.
+pub fn move_header(read_long: impl Fn(u32) -> u32, table: u32, id: u8) -> Option<u32> {
+    if !in_bank(table) {
+        return Some(table.wrapping_add(u32::from(id) * MOVE_HEADER_SIZE));
+    }
+    if id >= PLAYER_MOVES {
+        return None;
+    }
+    let table = table & 0xff_ffff;
+    let header = read_long(table + u32::from(id) * 4);
+    let offset = header.checked_sub(table)?;
+    (MOVE_HEADERS..=FIGHTER_SPAN - MOVE_HEADER_SIZE).contains(&offset).then_some(header)
 }
 
 /// The fighter whose slot holds `table`, for a bank address.
@@ -356,6 +377,15 @@ impl DataBank {
         self.tables.contains(&fighter).then(|| table_address(fighter))
     }
 
+    /// Find an authored bank header, including era moves for Ryu and Ken.
+    pub fn move_header(&self, fighter: TournamentFighter, id: u8) -> Option<u32> {
+        move_header(
+            |addr| u32::from_be_bytes(std::array::from_fn(|i| self.rb(addr + i as u32))),
+            table_address(fighter),
+            id,
+        )
+    }
+
     /// `fighter`'s `"throw"` and `"thrown"` headers in the bank (SP19, `#263`).
     pub fn throw_entry(&self, fighter: TournamentFighter) -> Option<ThrowEntry> {
         let idx = TournamentFighter::ALL.iter().position(|&f| f == fighter)?;
@@ -395,15 +425,23 @@ impl DataBank {
             let slug = fighter.name().to_ascii_lowercase();
             let catalogue = catalogues.iter().find(|c| c.fighter == slug);
             let Some(builder) = fighter_builder(fighter) else {
-                let mut region = Region::new(table_address(fighter));
+                let mut region = new_slot(fighter);
+                if rom.len() >= 0x40000 {
+                    build_shoto_sf2_moves(rom, &mut region, fighter);
+                }
                 let entry = match catalogue {
                     Some(cat) => build_throws(rom, &mut region, fighter, cat).ok(),
                     None if rom.len() >= 0x40000 => Some(build_shoto_rom_throws(rom, &mut region, fighter)),
                     None => None,
                 };
-                if let Some(entry) = entry {
-                    put_slot(&mut bank, fighter, &region.bytes);
-                    bank.throws[idx] = Some(entry);
+                if rom.len() >= 0x40000 || entry.is_some() {
+                    match fits(region) {
+                        Ok(region) => {
+                            put_slot(&mut bank, fighter, &region.bytes);
+                            bank.throws[idx] = entry;
+                        }
+                        Err(why) => bank.notes.push(format!("{} has no extended moves: {why}", fighter.name())),
+                    }
                 }
                 continue;
             };
@@ -412,8 +450,11 @@ impl DataBank {
                 continue;
             };
             let built = builder(rom, catalogue)
-                .and_then(|region| validate_specials(&region.bytes).map(|()| region))
-                .and_then(|mut region| build_throws(rom, &mut region, fighter, catalogue).map(|entry| (region, entry)));
+                .and_then(|region| validate_specials(&region).map(|()| region))
+                .and_then(|mut region| {
+                    let entry = build_throws(rom, &mut region, fighter, catalogue)?;
+                    fits(region).map(|region| (region, entry))
+                });
             match built {
                 Ok((region, entry)) => {
                     put_slot(&mut bank, fighter, &region.bytes);
@@ -686,6 +727,12 @@ fn pose_origin_record(region: &mut Region, dy: i32, sound: u8) -> u32 {
     region.put(&[ROUTINE_POSE_ORIGIN, sound, hi, lo])
 }
 
+/// Keep the same height above the standing line when changing sprite grids.
+fn ground_origin_record(region: &mut Region, from: PoseGeom, to: PoseGeom) -> (u32, i32) {
+    let dy = (to.top_on_ground() + to.half().1) - (from.top_on_ground() + from.half().1);
+    (pose_origin_record(region, dy, 0), dy)
+}
+
 impl<'r> Stream<'r> {
     fn new(region: &'r mut Region, pose: PoseGeom, top: i32) -> Self {
         Stream { region, top, pose }
@@ -768,8 +815,12 @@ impl<'r> Stream<'r> {
 
 /// The routines of the 1987 program the bank's streams call.
 mod routine {
+    /// The posture bits at a jump's launch (`0x45a7a`).
+    pub const RISING: u32 = 0x45a7a;
     /// The posture bits past a jump's apex (`0x45ab2`).
     pub const FALLING: u32 = 0x45ab2;
+    /// The posture bits when a jump returns to the ground (`0x45a96`).
+    pub const TOUCHDOWN: u32 = 0x45a96;
     /// The landing sound (header `+0x12`).
     pub const LANDING: u32 = 0x454ee;
     /// The sound in the entry's second byte.
@@ -940,9 +991,16 @@ fn still(pose: PoseGeom, frames: u8, boxes: [u8; 16]) -> Rec {
     Rec { hold: 0, dur: frames - 1, pose, dy: 0, dx: 0, boxes, flags: 0, x_offset: pose.x_offset(), hit: 0 }
 }
 
-/// Write move `id`'s header into the table at `base`.
+const fn bank_header_offset(id: u8) -> u32 {
+    MOVE_HEADERS + id as u32 * MOVE_HEADER_SIZE
+}
+
+/// Write a move header and bind its slot in the table.
 fn put_header(region: &mut Region, base: u32, id: u8, h: &[u8]) {
-    region.patch(base + id as u32 * 0x30, h);
+    assert!(id < PLAYER_MOVES);
+    let address = base + bank_header_offset(id);
+    region.patch(base + u32::from(id) * 4, &address.to_be_bytes());
+    region.patch(address, h);
 }
 
 /// Copy move `id`'s ROM header from `rom_table` into the table at `base`.
@@ -1335,7 +1393,7 @@ fn apex_and_jumps(
     for &(id, stream, apex) in jumps {
         let copy = copy_rom_stream(region, rom, stream, CopyHow { apex: Some((apex, apex_routine)), ..CopyHow::default() });
         keep_rom_header(region, rom, rom_table, base, id);
-        let h = id as usize * 0x30;
+        let h = bank_header_offset(id) as usize;
         // CPU headers can carry the walking/standing bit and diagonal-walk
         // bit (0x82 / 0x92). Player input must hold the takeoff busy as 0x80,
         // as Ryu's jump header does; otherwise held Up restarts it each frame.
@@ -1344,17 +1402,157 @@ fn apex_and_jumps(
         if region.bytes[h + 0x10..h + 0x13] == [0, 0, 0] {
             region.bytes[h + 0x10..h + 0x13].copy_from_slice(&jump_snd);
         }
-        region.patch(base + id as u32 * 0x30 + 0x2c, &copy.to_be_bytes());
+        region.patch(base + bank_header_offset(id) + 0x2c, &copy.to_be_bytes());
     }
+}
+
+/// Extend Ryu and Ken using ROM poses and the native effects. Their
+/// ordinary moves keep using the ROM table bound by the 1987 engine.
+fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+    let base = region.base;
+    let rom_table = fighter.move_table();
+    for id in 0..SF2_SPECIAL_SLOT {
+        keep_rom_header(region, rom, rom_table, base, id);
+    }
+    for slot in SPECIAL_SLOTS {
+        set_special(region, base, slot, SpecialSlot::ryu(slot));
+    }
+    match fighter {
+        TournamentFighter::Ryu => {
+            // The wind-up, thrust and settle in Ryu's Hadoken (0x1362).
+            // Keep the original spawn routine so the engine attributes
+            // projectile durability, tint and hits to the active move.
+            for (id, windup, chamber) in [(SF2_SPECIAL_SLOT, 4, 3), (SF2_SUPER_SLOT, 2, 1)] {
+                let source = rom_table + 0x1a * MOVE_HEADER_SIZE;
+                let mut h: [u8; MOVE_HEADER_SIZE as usize] =
+                    std::array::from_fn(|i| rom_b(rom, source + i as u32));
+                let mut gather = rom_record(rom, 0x1362);
+                gather[1] = chamber - 1;
+                let stream = region.put(&gather);
+                region.put(&rom_record(rom, 0x1382));
+                region.call(0x4548c, 0);
+                let mut thrust = rom_record(rom, 0x13a8);
+                thrust[1] = 23;
+                region.put(&thrust);
+                region.put(&rom_record(rom, 0x13c8));
+                region.end();
+                h[0xa] = id;
+                h[0xe] = windup - 1;
+                h[0x2c..0x30].copy_from_slice(&stream.to_be_bytes());
+                put_header(region, base, id, &h);
+            }
+        }
+        TournamentFighter::Ken => write_shoryureppa(rom, rom_table, region),
+        _ => unreachable!("only Ryu and Ken have ROM player tables"),
+    }
+}
+
+fn write_shoryureppa(rom: &[u8], rom_table: u32, region: &mut Region) {
+    let source = rom_table + 0x19 * MOVE_HEADER_SIZE;
+    let (crouch, crouch_boxes) = header_pose(rom, source);
+    let sounds = std::array::from_fn(|i| rom_b(rom, source + 0x10 + i as u32));
+    let strike = 0x32de;
+    let extended = 0x331e;
+    let retract = 0x339e;
+    let launch = rom_pose(rom, strike);
+    let (launch_origin, launch_dy) = ground_origin_record(region, crouch, launch);
+    let (extend_origin, extend_dy) = ground_origin_record(region, launch, rom_pose(rom, extended));
+    let base = region.base;
+    let stream = region.here();
+    let mut s = Stream::new(region, crouch, crouch.top_on_ground());
+
+    let advance = |s: &mut Stream<'_>, frame, duration, step, hit| {
+        let flags = if hit == 0 { 0 } else { rom_b(rom, frame + 0x1a) };
+        s.strike(rom_pose(rom, frame), duration, step, rom_boxes(rom, frame), flags, hit);
+    };
+
+    // A low jab Shoryuken leads into a much higher fierce Shoryuken in ST.
+    // Use Ken's close punch reaction on the opener to keep the target in reach.
+    let opening_hit = 0x45c16;
+    s.change_origin(launch_origin, launch_dy);
+    s.call(routine::RISING, 0);
+    advance(&mut s, strike, 2, (-7, 6), opening_hit);
+    s.change_origin(extend_origin, extend_dy);
+    advance(&mut s, extended, 6, (-4, 3), opening_hit);
+    s.call(routine::FALLING, 0);
+    advance(&mut s, retract, 4, (2, 2), 0);
+    advance(&mut s, retract, 6, (5, 2), 0);
+    s.call(routine::TOUCHDOWN, 0);
+    s.hold(crouch, crouch.top_on_ground(), 3, crouch_boxes, 0, 0);
+
+    let finishing_hit = 0x45f04;
+    s.change_origin(launch_origin, launch_dy);
+    s.call(routine::RISING, 0);
+    advance(&mut s, strike, 2, (-7, 6), finishing_hit);
+    s.change_origin(extend_origin, extend_dy);
+    advance(&mut s, 0x32fe, 2, (-7, 5), finishing_hit);
+    advance(&mut s, extended, 9, (-5, 3), finishing_hit);
+    advance(&mut s, extended, 6, (-2, 1), 0);
+    s.call(routine::FALLING, 0);
+    advance(&mut s, extended, 4, (1, 0), 0);
+    advance(&mut s, retract, 9, (2, 0), 0);
+    advance(&mut s, retract, 11, (3, 0), 0);
+    advance(&mut s, retract, 6, (5, 0), 0);
+    s.call(routine::TOUCHDOWN, 0);
+    s.hold(crouch, crouch.top_on_ground(), 4, crouch_boxes, 0, 0);
+    s.call(routine::LANDING, 0);
+    s.hold(crouch, crouch.top_on_ground(), 11, crouch_boxes, 0, 0);
+    s.end();
+
+    let first = still(crouch, 4, crouch_boxes);
+    let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, SF2_SUPER_SLOT, sounds, stream);
+    put_header(region, base, SF2_SUPER_SLOT, &h);
+}
+
+/// Write one or more short rising arcs using two 1987 attack poses per
+/// arc. Two active records let the native hit code register each contact.
+#[allow(clippy::too_many_arguments)]
+fn write_rising_special(
+    rom: &[u8],
+    region: &mut Region,
+    id: u8,
+    startup: u8,
+    (crouch, crouch_boxes): (PoseGeom, [u8; 16]),
+    (fall, fall_boxes): (PoseGeom, [u8; 16]),
+    arcs: &[[(u32, i32); 2]],
+    sounds: [u8; 3],
+) {
+    let base = region.base;
+    let stream = region.here();
+    let mut s = Stream::new(region, crouch, crouch.top_on_ground());
+    for (index, arc) in arcs.iter().enumerate() {
+        s.call(routine::RISING, 0);
+        for ((frame, forward), (duration, dy)) in arc.iter().copied().zip([(3, -5), (4, -4)]) {
+            s.strike(
+                rom_pose(rom, frame),
+                duration,
+                (dy, forward),
+                rom_boxes(rom, frame),
+                rom_b(rom, frame + 0x1a),
+                rom_l(rom, frame + 0x1c),
+            );
+        }
+        s.call(routine::FALLING, 0);
+        let fall_top = s.top + s.pose.half().1 - fall.half().1;
+        s.travel(fall, fall_top, 7, (4, 1), fall_boxes, 0, 0);
+        s.call(routine::TOUCHDOWN, 0);
+        s.hold(crouch, crouch.top_on_ground(), 3, crouch_boxes, 0, 0);
+        s.call(routine::LANDING, 0);
+        // A native stream call loads a frame next, even between the arcs.
+        let landing = if index + 1 == arcs.len() { 8 } else { 1 };
+        s.hold(crouch, crouch.top_on_ground(), landing, crouch_boxes, 0, 0);
+    }
+    s.end();
+    let first = still(crouch, startup, crouch_boxes);
+    let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, id, sounds, stream);
+    put_header(region, base, id, &h);
 }
 
 /// A fighter's slot with room for his table, the apex pointer and the
 /// special slots' records (patched by [`set_special`]).
 fn new_slot(fighter: TournamentFighter) -> Region {
     let mut region = Region::new(table_address(fighter));
-    region.put(&[0u8; PLAYER_MOVES as usize * 0x30]);
-    region.put_l(0); // the apex record, patched later
-    region.put(&[0u8; SPECIAL_SLOTS.len() * SPECIAL_SLOT_SIZE as usize]);
+    region.put(&[0; (MOVE_HEADERS + PLAYER_MOVES as u32 * MOVE_HEADER_SIZE) as usize]);
     region
 }
 
@@ -3064,7 +3262,7 @@ mod lee {
             ],
         );
         let neutral_top = (neutral_pose.top_on_ground() + neutral_origin) as u16;
-        region.patch(base + 9 * 0x30 + 4, &neutral_top.to_be_bytes());
+        region.patch(base + bank_header_offset(9) + 4, &neutral_top.to_be_bytes());
         fits(region)
     }
 
@@ -5267,6 +5465,24 @@ mod sagat {
         let h = header(&low_first.bytes(), crouch.top_on_ground(), 0xc4, 0x1b, [0, 0, 0], low_shot_stream);
         put_header(&mut region, base, 0x1b, &h);
 
+        // Tiger Uppercut uses Sagat's own lunging punch (0x2d00) on a
+        // rising arc. Tiger Genocide leads with his forward-leaping knee.
+        let punch = LOW_STEP_PUNCH + 0x20 + 6;
+        let ready = (rom_pose(rom, RISING_FRAME), rom_boxes(rom, RISING_FRAME));
+        let fall = (rom_pose(rom, JUMP_LIFT_FRAME), rom_boxes(rom, JUMP_LIFT_FRAME));
+        let uppercut = [(punch, 4), (punch, 8)];
+        write_rising_special(rom, &mut region, SF2_SPECIAL_SLOT, 3, ready, fall, &[uppercut], [0xa2, 0, 0]);
+        write_rising_special(
+            rom,
+            &mut region,
+            SF2_SUPER_SLOT,
+            4,
+            ready,
+            fall,
+            &[[(JUMP_KNEE_FRAME, 4), (JUMP_KNEE_FRAME, 8)], uppercut],
+            [0xa2, 0, 0],
+        );
+
         // The Tiger Knee (`0x19`, dragon punch and kick; see [`tiger_knee`]):
         // his 1987 forward-leaping knee and kick (`0x140e0` / `0x14242`)
         // re-timed to ST / USF4 Tiger Knee startup and recovery so it connects
@@ -5514,6 +5730,20 @@ mod sagat {
     }
 }
 
+/// Build a sparse table for the native special command tests.
+#[cfg(test)]
+pub(crate) fn test_special_table(slots: &[(u8, SpecialSlot)]) -> Vec<u8> {
+    let mut region = new_slot(TournamentFighter::Ryu);
+    let base = region.base;
+    let mut header = [0; MOVE_HEADER_SIZE as usize];
+    header[8] = 1;
+    for &(id, special) in slots {
+        put_header(&mut region, base, id, &header);
+        set_special(&mut region, base, id, special);
+    }
+    region.bytes
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -5537,14 +5767,42 @@ mod tests {
     use super::*;
 
     /// A table with the three special slots present and their records.
-    fn table(slots: [[u8; SPECIAL_SLOT_SIZE as usize]; 3]) -> Vec<u8> {
-        let mut bytes = vec![0u8; (SPECIALS + 3 * SPECIAL_SLOT_SIZE) as usize];
-        for (i, slot) in SPECIAL_SLOTS.into_iter().enumerate() {
-            bytes[slot as usize * 0x30 + 8] = 1;
-            let at = (SPECIALS + i as u32 * SPECIAL_SLOT_SIZE) as usize;
-            bytes[at..at + SPECIAL_SLOT_SIZE as usize].copy_from_slice(&slots[i]);
+    fn table(slots: [[u8; SPECIAL_SLOT_SIZE as usize]; 3]) -> Region {
+        let mut region = new_slot(TournamentFighter::Ryu);
+        let base = region.base;
+        let mut header = [0; MOVE_HEADER_SIZE as usize];
+        header[8] = 1;
+        for (id, record) in SPECIAL_SLOTS.into_iter().zip(slots) {
+            put_header(&mut region, base, id, &header);
+            region.patch(base + SPECIALS + (id - 0x19) as u32 * SPECIAL_SLOT_SIZE, &record);
         }
-        bytes
+        region
+    }
+
+    #[test]
+    fn move_pointers_reach_slot_3f_without_overlapping_apex_or_specials() {
+        let mut region = new_slot(TournamentFighter::Sagat);
+        let base = region.base;
+        let mut header = [0; MOVE_HEADER_SIZE as usize];
+        header[8] = 1;
+        header[0xa] = 0x3f;
+        put_header(&mut region, base, 0x3f, &header);
+        let apex = region.put(&[ROUTINE_JUMP_APEX]);
+        region.patch(base + APEX_POINTER, &apex.to_be_bytes());
+        let rb = |addr: u32| region.bytes[(addr - base) as usize];
+        let rl = |addr| u32::from_be_bytes(std::array::from_fn(|i| rb(addr + i as u32)));
+
+        assert_eq!(APEX_POINTER, 0x100);
+        assert_eq!(SPECIALS, 0x104);
+        let address = move_header(rl, base, 0x3f).expect("last slot's header");
+        assert_eq!(address, rl(base + 0xfc));
+        assert_eq!(rb(address + 0xa), 0x3f);
+        assert_eq!(rl(base + APEX_POINTER), apex);
+        assert_eq!(move_header(rl, base, 0x3e), None, "empty slot");
+        assert_eq!(move_header(rl, base, 0x40), None, "no slot past the table");
+        assert_eq!(move_header(|_| u32::MAX, base, 0x29), None, "unmapped bank bytes");
+        assert_eq!(move_header(|_| base + FIGHTER_SPAN, base, 0x29), None, "cross-fighter pointer");
+        assert_eq!(move_header(|_| panic!("ROM is inline"), 0x1605c, 0x1a), Some(0x1653c));
     }
 
     #[test]
@@ -5572,18 +5830,18 @@ mod tests {
         slots[0][1] = 0x80;
         assert!(validate_specials(&table(slots)).unwrap_err().contains("flags"));
         // An absent slot's record is not checked.
-        let mut bytes = table([[0; 8]; 3]);
+        let mut region = table([[0; 8]; 3]);
         for slot in SPECIAL_SLOTS {
-            bytes[slot as usize * 0x30 + 8] = 0;
+            region.bytes[bank_header_offset(slot) as usize + 8] = 0;
         }
-        assert_eq!(validate_specials(&bytes), Ok(()));
+        assert_eq!(validate_specials(&region), Ok(()));
     }
 
     #[test]
     fn a_slot_record_reads_back_and_a_rom_table_has_the_1987_three() {
         let geki = SpecialSlot { tracker: 0x16, kick: false, melee: true, low_in_air: false, score: 0x46012 };
-        let bytes = table([SpecialSlot::ryu(0x19).bytes(), SpecialSlot::ryu(0x1a).bytes(), geki.bytes()]);
-        let rb = |a: u32| bytes.get((a - DATA_BANK_BASE) as usize).copied().unwrap_or(0);
+        let region = table([SpecialSlot::ryu(0x19).bytes(), SpecialSlot::ryu(0x1a).bytes(), geki.bytes()]);
+        let rb = |a: u32| region.bytes.get((a - region.base) as usize).copied().unwrap_or(0);
         assert_eq!(special_slot(rb, DATA_BANK_BASE, 0x1b), geki);
         assert_eq!(special_command(rb, DATA_BANK_BASE, 0x1b), (0x16, false));
         for slot in SPECIAL_SLOTS {

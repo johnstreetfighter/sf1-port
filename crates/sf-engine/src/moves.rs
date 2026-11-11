@@ -484,7 +484,11 @@ impl RecognizerState {
     /// button branch clears the tracker when the move starts), so it has
     /// counted none: the attempt is over.
     pub const fn counted(&self) -> u8 {
-        if self.stage == 3 && !self.done {
+        self.counted_for(3)
+    }
+
+    pub(crate) const fn counted_for(&self, length: u8) -> u8 {
+        if self.stage == length && !self.done {
             0
         } else {
             self.stage
@@ -563,6 +567,8 @@ pub struct RecognizerView {
 pub enum Recognizer {
     /// One of the 1987 trackers, in the player structure.
     Tracker(Tracker1987),
+    /// A separate native era command tracked outside 1987 work RAM.
+    EraMotion { super_move: bool },
 }
 
 impl Recognizer {
@@ -578,6 +584,7 @@ impl Recognizer {
                     done: work[at + 2] != 0,
                 }
             }
+            Recognizer::EraMotion { .. } => RecognizerState { stage: 0, frames: 0, done: false },
         }
     }
 
@@ -592,7 +599,9 @@ impl Recognizer {
     pub fn view(&self, machine: MachineRead<'_>, player_struct: u32, toggles: &CoreToggles) -> RecognizerView {
         let state = self.read(machine.work, player_struct);
         let counted = state.counted();
-        let Recognizer::Tracker(tracker) = self;
+        let Recognizer::Tracker(tracker) = self else {
+            return recognizer_view(machine, player_struct, toggles, state, 0, [None; 2], 32);
+        };
         let pattern = |stage: u8| {
             machine.rom.get(tracker.pattern_address() + usize::from(stage)).and_then(|&code| Dir::from_pattern(code))
         };
@@ -619,18 +628,31 @@ impl Recognizer {
         };
         // The window runs from the first direction until the command is let go.
         let time_left = if counted > 0 { tracker_window(toggles).saturating_sub(state.frames) } else { 0 };
-        let entity = entity_of(machine.work, player_struct);
-        let current_move = machine.obj.get(entity + 0xa).copied().unwrap_or(0);
-        RecognizerView {
-            state,
-            time_left,
-            awaiting,
-            accepts,
-            gate_free: input_gate_free(machine, player_struct, toggles),
-            current_move,
-            window: tracker_window(toggles),
-            latched: [machine.byte(player_struct) != 0, machine.byte(player_struct + 1) != 0],
-        }
+        let mut view = recognizer_view(machine, player_struct, toggles, state, time_left, accepts, tracker_window(toggles));
+        view.awaiting = awaiting;
+        view
+    }
+}
+
+fn recognizer_view(
+    machine: MachineRead<'_>,
+    player_struct: u32,
+    toggles: &CoreToggles,
+    state: RecognizerState,
+    time_left: u8,
+    accepts: [Option<Dir>; 2],
+    window: u8,
+) -> RecognizerView {
+    let entity = entity_of(machine.work, player_struct);
+    RecognizerView {
+        state,
+        time_left,
+        awaiting: accepts[0],
+        accepts,
+        gate_free: input_gate_free(machine, player_struct, toggles),
+        current_move: machine.obj.get(entity + 0xa).copied().unwrap_or(0),
+        window,
+        latched: [machine.byte(player_struct) != 0, machine.byte(player_struct + 1) != 0],
     }
 }
 
@@ -749,6 +771,28 @@ pub struct MoveEntry {
     /// The word a success call-out shows (Try, ML5): the name and a bang.
     pub call_out: &'static str,
     pub available: Availability,
+}
+
+impl MoveEntry {
+    pub(crate) fn live_recognizer(
+        &self,
+        machine: MachineRead<'_>,
+        player_struct: u32,
+        toggles: &CoreToggles,
+        era: &crate::era_fight::EraFighterState,
+    ) -> RecognizerView {
+        let Recognizer::EraMotion { super_move } = self.recognizer else {
+            return self.recognizer.view(machine, player_struct, toggles);
+        };
+        let (stage, remaining) = era.command_progress(super_move);
+        let state = RecognizerState {
+            stage,
+            frames: if stage == 0 { 0 } else { 32u8.saturating_sub(remaining) },
+            done: usize::from(stage) == self.input.motion.len(),
+        };
+        let next = self.input.motion.get(usize::from(stage)).copied();
+        recognizer_view(machine, player_struct, toggles, state, remaining, [next, None], 32)
+    }
 }
 
 const SHOTOS: &[TournamentFighter] = &[TournamentFighter::Ryu, TournamentFighter::Ken];
@@ -1090,6 +1134,85 @@ pub const REGISTRY: &[MoveEntry] = &[
 /// entries available to both, in registry order.
 pub fn move_list(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<&'static MoveEntry> {
     REGISTRY.iter().filter(|e| e.available.includes(fighter, preset)).collect()
+}
+
+const DOUBLE_QCF: &[Dir] = &[
+    Dir::Down, Dir::DownForward, Dir::Forward, Dir::Down, Dir::DownForward, Dir::Forward,
+];
+const HALF_CIRCLE_FORWARD: &[Dir] = &[
+    Dir::Back, Dir::DownBack, Dir::Down, Dir::DownForward, Dir::Forward,
+];
+const TIGER_KNEE: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::UpForward];
+const UPPERCUT: &[Dir] = &[Dir::Forward, Dir::Down, Dir::DownForward];
+
+pub(crate) fn live_move_list(
+    fighter: TournamentFighter,
+    preset: RulesetPreset,
+    player_table: bool,
+    era: &crate::era_fight::EraFighterState,
+) -> Vec<MoveEntry> {
+    use crate::data_bank::{SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
+    use crate::era::Revision;
+    use TournamentFighter::{Ken, Ryu, Sagat};
+
+    let mut entries: Vec<_> = move_list(fighter, preset).into_iter()
+        .filter(|entry| player_table || !entry.available.player_table).copied().collect();
+    if !era.is_sf2() || era.fighter != Some(fighter) {
+        return entries;
+    }
+    let fighters = match fighter {
+        Ryu => &[Ryu][..],
+        Ken => &[Ken][..],
+        Sagat => SAGAT,
+        _ => return entries,
+    };
+    let available = Availability { fighters, presets: OVERHAUL_PRESETS, player_table: fighter == Sagat };
+    if fighter == Ryu && matches!(era.style.revision, Revision::Super | Revision::St) {
+        entries.push(MoveEntry {
+            name: "SHAKUNETSU HADOKEN",
+            kind: MoveKind::Special,
+            input: MoveInput { motion: HALF_CIRCLE_FORWARD, button: ButtonClass::Punch },
+            recognizer: Recognizer::EraMotion { super_move: false },
+            produces: SF2_SPECIAL_SLOT,
+            call_out: "SHAKUNETSU!",
+            available,
+        });
+    }
+    if fighter == Sagat && player_table {
+        if let Some(knee) = entries.iter_mut().find(|entry| entry.name == "TIGER KNEE") {
+            knee.input.motion = TIGER_KNEE;
+            knee.recognizer = Recognizer::EraMotion { super_move: false };
+        }
+        entries.push(MoveEntry {
+            name: "TIGER UPPERCUT",
+            kind: MoveKind::Special,
+            input: MoveInput { motion: UPPERCUT, button: ButtonClass::Punch },
+            recognizer: Recognizer::Tracker(Tracker1987::Shoryuken),
+            produces: SF2_SPECIAL_SLOT,
+            call_out: "TIGER UPPERCUT!",
+            available,
+        });
+    }
+    if era.style.revision == Revision::St && era.style.loadout == crate::era::Loadout::Standard
+        && era.gauge().is_some() && (fighter != Sagat || player_table)
+    {
+        let (name, call_out, button) = match fighter {
+            Ryu => ("SHINKU HADOKEN", "SHINKU HADOKEN!", ButtonClass::Punch),
+            Ken => ("SHORYUREPPA", "SHORYUREPPA!", ButtonClass::Punch),
+            Sagat => ("TIGER GENOCIDE", "TIGER GENOCIDE!", ButtonClass::Kick),
+            _ => unreachable!(),
+        };
+        entries.push(MoveEntry {
+            name,
+            kind: MoveKind::Super,
+            input: MoveInput { motion: DOUBLE_QCF, button },
+            recognizer: Recognizer::EraMotion { super_move: true },
+            produces: SF2_SUPER_SLOT,
+            call_out,
+            available,
+        });
+    }
+    entries
 }
 
 /// The six normals and the three postures, as the list's one compact line:
@@ -1513,7 +1636,7 @@ mod tests {
         assert_eq!((Dir::from_pattern(1), Dir::from_pattern(0), Dir::from_pattern(0xc)), (None, None, None));
         let rom_patterns = [(Tracker1987::Hadoken, [5u8, 6, 2]), (Tracker1987::Shoryuken, [2, 5, 6]), (Tracker1987::Tatsumaki, [5, 7, 3])];
         for entry in REGISTRY {
-            let Recognizer::Tracker(t) = entry.recognizer;
+            let Recognizer::Tracker(t) = entry.recognizer else { panic!("expected a 1987 tracker") };
             let (_, pattern) = rom_patterns.iter().find(|(r, _)| *r == t).unwrap();
             let motion: Vec<_> = pattern.iter().map(|&c| Dir::from_pattern(c).unwrap()).collect();
             assert_eq!(motion, entry.input.motion, "{}", entry.name);

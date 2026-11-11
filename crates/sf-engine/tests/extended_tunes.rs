@@ -101,8 +101,11 @@ fn local_fight(a: Assets, preset: RulesetPreset) -> Vec<u8> {
         with(|i| i.p1.buttons[0] = true),
         with(|i| i.p2.buttons[0] = true),
     ] {
-        step(&mut s, tap);
-        step(&mut s, idle());
+        let presses = 1 + usize::from(s.screen() == "select" && s.match_config().era_select_enabled());
+        for _ in 0..presses {
+            step(&mut s, tap);
+            step(&mut s, idle());
+        }
     }
     while s.screen() != "country select" {
         step(&mut s, idle());

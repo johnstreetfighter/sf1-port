@@ -285,10 +285,10 @@ impl crate::canonical::Canonical for CoreToggleState {
         let Self {
             neg_edge_latch, recovery_buffer, tracker_release_age, dp_connected,
             human_attack_frames, air_adj_frames_1, air_adj_rem_1,
-            air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic,
+            air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic, era,
             missing_ryu_theme: _,
         } = self;
-        out.tag("CoreToggleState.v2");
+        out.tag("CoreToggleState.v3");
         neg_edge_latch.encode(out);
         recovery_buffer.encode(out);
         tracker_release_age.encode(out);
@@ -302,6 +302,7 @@ impl crate::canonical::Canonical for CoreToggleState {
         cancel.encode(out);
         throw.encode(out);
         dramatic.encode(out);
+        era.encode(out);
         // A pending music-pack fallback log note is local diagnostic state.
     }
 }
@@ -518,6 +519,12 @@ pub fn default_match_config_path() -> PathBuf {
 }
 
 impl MatchConfig {
+    /// Whether Character Select offers the era, revision, and loadout choices.
+    pub const fn era_select_enabled(&self) -> bool {
+        matches!(self.preset, RulesetPreset::DefinitiveOverhaul)
+            || (matches!(self.preset, RulesetPreset::Custom) && self.toggles.balanced_roster)
+    }
+
     /// Construct a [`MatchConfig`] from one of the five [`RulesetPreset`]s.
     pub const fn from_preset(preset: RulesetPreset) -> Self {
         Self {
@@ -1510,6 +1517,8 @@ pub struct CoreToggleState {
     pub throw: crate::combo::throw::ThrowState,
     /// Native three-fighter health and boss input state.
     pub dramatic: crate::dramatic::DramaticState,
+    /// Native style picks, health, commands, and meters, by fight side.
+    pub era: crate::era_fight::EraCombatState,
     /// Stage tune command a stand-in fight fell back to when Ryu's theme
     /// (`RYU_THEME`, `0x41`) was not in the playable extended tunes
     /// (SP15, `#267`).

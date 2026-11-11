@@ -61,10 +61,12 @@ fn main() {
         tap(&mut s, stick(d));
     }
     tap(&mut s, confirm());
+    tap(&mut s, confirm()); // P1's default style
     tap(&mut s, with(|i| i.p2.directions[RIGHT] = true));
     let select = tap(&mut s, with(|i| i.p2.directions[RIGHT] = true));
     write_png(&out.join("player-select.png"), &settle(&mut s, select).frame);
-    s.step(with(|i| i.p2.buttons[0] = true));
+    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    s.step(with(|i| i.p2.buttons[0] = true)); // P2's default style
     s.step(idle());
     until(&mut s, "stage select", 60);
     tap(&mut s, confirm());

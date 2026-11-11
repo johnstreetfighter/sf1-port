@@ -15,9 +15,9 @@ use std::sync::Arc;
 use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
-use sf_video::compositor::{present, EraHud, OverhaulScene, PresentMode, RomFont};
+use sf_video::compositor::{present, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
 use sf_video::era_hud::GaugeArt;
-use sf_video::render::{render_frame_edited, render_frame_staged, Frame, TextEdits, TextSpan};
+use sf_video::render::{render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan};
 use sf_video::scene::SceneState;
 use sf_video::romset::Assets;
 
@@ -32,6 +32,7 @@ use super::sound;
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::canonical::{canonical_enum, canonical_struct, Canonical, CanonicalHasher};
 use crate::data_bank::DataBank;
+use crate::era::StylePick;
 use crate::fight_reader::{ComboCounter, FightRead, FightReader, FighterRead, RoundMoments};
 use crate::fight_reader::FIGHTER_SLOTS;
 use crate::fighter::{CPU_STRUCT, GAME_MODE, P1_STRUCT, P2_STRUCT};
@@ -329,6 +330,9 @@ pub struct FightFrame {
 pub struct Fight {
     machine: PowerOnMachine,
     setup: FightSetup,
+    /// Locked Style card picks, immutable for this fight. The machine owns
+    /// the corresponding authoritative round state.
+    selected_styles: [StylePick; 2],
     /// The flag, once the country select has been left.
     country: Option<u8>,
     black: u32,
@@ -362,8 +366,7 @@ pub struct Fight {
     moments: RoundMoments,
     /// Training's `HOLD COMBO`: the last count stays up until the next.
     hold_combo: bool,
-    /// The era gauges to draw (spec #216). Real fights carry no era state
-    /// yet, so this stays empty until project 4 sets it.
+    /// The preview gauges supplied through the renderer's test hook.
     era_hud: EraHud,
     /// Training's Show of a move (ticket #230): its input stands in for the
     /// player's pad until the move ends.
@@ -372,6 +375,8 @@ pub struct Fight {
     /// player's fighter attempt it, from a show's end or the move's row,
     /// until the pause box opens or another move is picked.
     coach: Option<Coach>,
+    /// P1's saved stock while Training supplies meter for Show and Try.
+    practice_super: Option<u8>,
     /// How the coach's fixes write a direction (the Settings value `MOVE
     /// INPUTS`, ticket #232, ML6): a player's own choice, set by the session
     /// when a Show or Try starts.
@@ -411,6 +416,7 @@ pub struct FightSnapshot {
     /// Training-only input driver and observer; both None in Local.
     pub show: Option<Show>,
     pub coach: Option<Coach>,
+    pub practice_super: Option<u8>,
 }
 
 impl Fight {
@@ -429,7 +435,7 @@ impl Fight {
             last_flow, show, read, fed_reads,
             sounds: _, overlay: _, gauge_art: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
-            era_hud: _, coach: _, notation: _,
+            era_hud: _, coach: _, notation: _, selected_styles: _, practice_super,
         } = self;
         let mut out = CanonicalHasher::new();
         out.tag("sf1-port/fight-gameplay/v1");
@@ -440,6 +446,7 @@ impl Fight {
         over.encode(&mut out);
         continuing.encode(&mut out);
         last_flow.encode(&mut out);
+        practice_super.encode(&mut out);
         match round_start {
             None => 0u8.encode(&mut out),
             Some(start) => {
@@ -467,9 +474,9 @@ impl Fight {
         // Exhaustive destructuring makes new wrapper fields require an audit.
         let Self {
             machine, setup, country, black, sounds, over, continuing,
-            overlay: _, gauge_art: _, round_start, last_flow, callouts,
+            overlay: _, gauge_art: _, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
-            combo, moments, hold_combo, era_hud, show, coach, notation: _,
+            combo, moments, hold_combo, era_hud, show, coach, practice_super, notation: _,
         } = self;
         FightSnapshot {
             frame: net_frame,
@@ -494,6 +501,7 @@ impl Fight {
             era_hud: *era_hud,
             show: show.clone(),
             coach: coach.clone(),
+            practice_super: *practice_super,
         }
     }
 
@@ -506,7 +514,7 @@ impl Fight {
             frame: _, machine, setup, country, black, sounds, over, continuing,
             round_start, last_flow, callouts, pending_callouts, pending_combos,
             reader, read, fed_reads, combo, moments, hold_combo, era_hud,
-            show, coach,
+            show, coach, practice_super,
         } = snap;
         self.machine.restore_snapshot(machine);
         self.setup = *setup;
@@ -529,6 +537,7 @@ impl Fight {
         self.era_hud = *era_hud;
         self.show.clone_from(show);
         self.coach.clone_from(coach);
+        self.practice_super = *practice_super;
     }
 
     /// Whether the wrapper stopped after a match end or untranslated path.
@@ -591,6 +600,7 @@ impl Fight {
             country: flag,
             machine,
             setup,
+            selected_styles: [StylePick::for_preset(setup.config.preset); 2],
             black: DRIVE_BLACK_FRAMES,
             sounds,
             over: false,
@@ -611,6 +621,7 @@ impl Fight {
             era_hud: EraHud::NONE,
             show: None,
             coach: None,
+            practice_super: None,
             notation: InputNotation::default(),
         })
     }
@@ -660,6 +671,26 @@ impl Fight {
 
     pub fn setup(&self) -> &FightSetup {
         &self.setup
+    }
+
+    pub(super) fn set_selected_styles(&mut self, styles: [Option<StylePick>; 2]) {
+        let fixed = StylePick::for_preset(self.setup.config.preset);
+        self.selected_styles = styles.map(|pick| pick.unwrap_or(fixed));
+        self.machine.set_era_styles(self.selected_styles);
+    }
+
+    /// The selected style for a side. Arcade's second side follows the current
+    /// ladder opponent and is absent before a country is picked.
+    pub fn fighter_style(&self, side: usize) -> Option<StylePick> {
+        if side == 1 && self.setup.kind == FightKind::Arcade {
+            let opponent = self.machine.arcade_opponent()?;
+            return Some(self.selected_styles[0].arcade_opponent(
+                opponent,
+                self.setup.config.roster.what_if_styles,
+                self.machine.arcade_ladder_step(),
+            ));
+        }
+        self.selected_styles.get(side).copied()
     }
 
     /// Fighters assigned to the two local or network pads.
@@ -755,6 +786,7 @@ impl Fight {
         self.pending_callouts.clear();
         self.show = None;
         self.coach = None;
+        self.practice_super = None;
         true
     }
 
@@ -799,10 +831,18 @@ impl Fight {
         flow_position(&self.machine) == CONTINUE_LOOP
     }
 
-    /// Sets the era gauges drawn in the bottom corners, which sit above the
-    /// Training frame meter while it is on.
+    /// Sets preview gauges for screenshots and renderer tests.
     pub fn set_era_hud(&mut self, hud: EraHud) {
         self.era_hud = hud;
+    }
+
+    /// Era gauges driven by the current native fighter state.
+    pub fn era_hud(&self) -> EraHud {
+        if self.era_hud != EraHud::NONE {
+            return self.era_hud;
+        }
+        let [p1, p2] = self.machine.era_fighters();
+        EraHud { p1: p1.gauge(), p2: p2.gauge() }
     }
 
     /// Call-out events that arrive with the next stepped frame. They change
@@ -825,6 +865,7 @@ impl Fight {
     /// does nothing. A show already running is replaced.
     pub fn show(&mut self, entry: MoveEntry) {
         if self.training() {
+            self.begin_super_practice(&entry);
             self.show = Some(Show::new(entry));
             self.coach = None;
         }
@@ -836,6 +877,7 @@ impl Fight {
     /// move that finishes starts it too. Outside Training it does nothing.
     pub fn try_move(&mut self, entry: MoveEntry) {
         if self.training() {
+            self.begin_super_practice(&entry);
             self.coach = Some(Coach::new(entry));
             self.show = None;
         }
@@ -849,7 +891,23 @@ impl Fight {
 
     /// Stop the Try (the pause box opened).
     pub fn stop_try(&mut self) {
-        self.coach = None;
+        if self.coach.take().is_some() {
+            self.end_super_practice();
+        }
+    }
+
+    fn begin_super_practice(&mut self, entry: &MoveEntry) {
+        self.end_super_practice();
+        if entry.kind == crate::moves::MoveKind::Super && !self.setup.config.fill_meters {
+            self.practice_super = Some(self.machine.era_fighters()[0].super_meter);
+            self.machine.training_super_meter(None);
+        }
+    }
+
+    fn end_super_practice(&mut self) {
+        if let Some(saved) = self.practice_super.take() {
+            self.machine.training_super_meter(Some(saved));
+        }
     }
 
     /// The coach, while a Try runs.
@@ -1108,10 +1166,43 @@ impl Fight {
         }
     }
 
+    fn era_sprite_tints(&self, scene: &SceneState) -> Vec<SpriteTint> {
+        const OBJECT_STRIDE: usize = 0x40;
+        let mut tints = Vec::new();
+        let freeze = self.machine.era_super_freeze();
+        if freeze != 0 {
+            let telemetry = self.machine.diagnostic_telemetry();
+            for fighter in [telemetry.p1, telemetry.p2] {
+                if !fighter.active || fighter.move_id != crate::data_bank::SF2_SUPER_SLOT {
+                    continue;
+                }
+                let start = usize::from(fighter.entity_offset);
+                let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
+                let cells = ((usize::from(grid[0]) + 1) * (usize::from(grid[1]) + 1)).min(24);
+                tints.push(SpriteTint {
+                    entries: start..start + cells * OBJECT_STRIDE,
+                    tint: PaletteTint { color: 0xffffe9a6, strength: if freeze & 4 == 0 { 144 } else { 76 } },
+                });
+            }
+        }
+        for (index, effect) in self.machine.toggle_state().era.projectiles().iter().enumerate() {
+            if effect.crimson && effect.hits_remaining > 0 {
+                let start = 0x100 + index * OBJECT_STRIDE;
+                tints.push(SpriteTint {
+                    entries: start..start + OBJECT_STRIDE,
+                    tint: PaletteTint { color: 0xffff351b, strength: 144 },
+                });
+            }
+        }
+        tints
+    }
+
     fn render_scene(&self, assets: &Assets) -> Frame {
         let scene = self.machine.state.scene();
         let layout = self.layout(&scene);
         let callouts = self.callouts.frame();
+        let era_hud = self.era_hud();
+        let tints = self.era_sprite_tints(&scene);
         let (boxes, meter) = self.overlay.parts();
         let telemetry = || self.machine.diagnostic_telemetry();
         let base = match &layout {
@@ -1119,9 +1210,9 @@ impl Fight {
             // path, as every Faithful 1987 frame.
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
-                    && (!callouts.is_empty() || self.era_hud != EraHud::NONE) =>
+                    && (!callouts.is_empty() || era_hud != EraHud::NONE || !tints.is_empty()) =>
             {
-                let (mut hardware, stage) = render_frame_staged(assets, &scene, edits);
+                let (mut hardware, stage) = render_frame_staged_with_tints(assets, &scene, edits, &tints);
                 if boxes {
                     hardware = render_diagnostic_overlay_parts(&hardware, &telemetry(), true, false);
                 }
@@ -1131,7 +1222,7 @@ impl Fight {
                     &hardware,
                     &OverhaulScene {
                         callouts,
-                        hud: self.era_hud,
+                        hud: era_hud,
                         gauge_art: self.gauge_art,
                         hud_lift: gauge_lift(meter),
                         stage: Some(&stage),
@@ -1191,6 +1282,9 @@ impl Fight {
                 Some(None) => {
                     // A show that ran its course goes on as a Try of the same move.
                     let finished = self.show.take().filter(Show::completed);
+                    if finished.is_none() {
+                        self.end_super_practice();
+                    }
                     self.coach = finished.map(|show| Coach::new(*show.entry()));
                     p1
                 }
@@ -1205,6 +1299,9 @@ impl Fight {
             if let Some(coach) = &mut self.coach {
                 coach.input(p1, p1_facing_right(&self.machine));
             }
+            if self.practice_super.is_some() && self.read.fighters[0].move_id != crate::data_bank::SF2_SUPER_SLOT {
+                self.machine.training_super_meter(None);
+            }
             let m = &mut self.machine;
             let [r, l, d, u] = p1.directions;
             m.set_p1_direction(r, l, d, u);
@@ -1214,6 +1311,12 @@ impl Fight {
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
             m.step();
+            for (side, fighter) in Side::BOTH.into_iter().zip(m.take_era_super_events()) {
+                if let Some(fighter) = fighter {
+                    let name = crate::era::super_label(fighter);
+                    self.pending_callouts.push(CalloutEvent::new(side, CalloutKind::Super { name }));
+                }
+            }
             let flow = flow_position(m);
             if self.country.is_none() && flow == STAGE_START {
                 self.country = Some(chosen_country(m));
@@ -1251,7 +1354,7 @@ impl Fight {
             if let Some(coach) = &mut self.coach {
                 let machine = MachineRead { rom: self.machine.program_rom(), work: self.machine.work_ram(), obj: &self.machine.state.objectram, bank: self.machine.data_bank() };
                 let toggles = &self.setup.config.toggles;
-                let view = coach.entry().recognizer.view(machine, P1_STRUCT, toggles);
+                let view = coach.entry().live_recognizer(machine, P1_STRUCT, toggles, &self.machine.era_fighters()[0]);
                 // The recovery input buffer can bring the move out a few
                 // frames after the tracker is gone: a miss is held that long.
                 let settle = if toggles.recovery_input_buffer { u32::from(toggles.recovery_buffer_window) + 1 } else { 0 };

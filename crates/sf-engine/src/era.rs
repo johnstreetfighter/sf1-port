@@ -23,6 +23,10 @@ pub enum EraFamily {
     Sf6,
 }
 
+crate::canonical::canonical_enum!(EraFamily, "EraFamily.v1";
+    Sf1987 => 0, Sf1Plus => 1, Sf2 => 2, SfZ => 3, Sf3 => 4, Sf4 => 5, Sf5 => 6, Sf6 => 7,
+);
+
 impl EraFamily {
     pub const fn name(self) -> &'static str {
         match self {
@@ -135,6 +139,12 @@ pub enum Loadout {
     Skill2Trigger2,
 }
 
+crate::canonical::canonical_enum!(Loadout, "EraLoadout.v1";
+    Standard => 0, Old => 1, AIsm => 2, VIsm => 3, XIsm => 4,
+    Art1 => 5, Art2 => 6, Art3 => 7, Ultra1 => 8, Ultra2 => 9, UltraDouble => 10,
+    Skill1Trigger1 => 11, Skill1Trigger2 => 12, Skill2Trigger1 => 13, Skill2Trigger2 => 14,
+);
+
 impl Loadout {
     pub const fn name(self) -> &'static str {
         match self {
@@ -166,6 +176,10 @@ pub enum Costume {
     Sf5,
     Sf6,
 }
+
+crate::canonical::canonical_enum!(Costume, "EraCostume.v1";
+    Classic1987 => 0, Sf2 => 1, Alpha => 2, Sf5 => 3, Sf6 => 4,
+);
 
 impl Costume {
     pub const fn name(self) -> &'static str {
@@ -239,6 +253,10 @@ pub struct StylePick {
     pub palette: u8,
 }
 
+crate::canonical::canonical_struct!(StylePick, "StylePick.v1", {
+    family, revision, loadout, costume, palette,
+});
+
 impl Default for StylePick {
     fn default() -> Self {
         Self {
@@ -252,6 +270,35 @@ impl Default for StylePick {
 }
 
 impl StylePick {
+    pub(crate) fn available_for(self, fighter: TournamentFighter, what_if: bool) -> bool {
+        self == Self::for_revision(self.revision, self.loadout)
+            && listed_revisions(fighter, self.family, what_if).contains(&self.revision)
+            && loadouts(self.revision).contains(&self.loadout)
+    }
+
+    pub(crate) fn for_revision(revision: Revision, loadout: Loadout) -> Self {
+        Self { family: revision.family(), revision, loadout, ..Self::default() }
+    }
+
+    pub(crate) fn for_preset(preset: RulesetPreset) -> Self {
+        match preset {
+            RulesetPreset::Faithful1987 => Self::for_revision(Revision::Arcade1987, Loadout::Standard),
+            _ => Self::default(),
+        }
+    }
+
+    /// Resolve the style for a zero-based Arcade ladder step.
+    pub fn arcade_opponent(self, fighter: TournamentFighter, what_if: bool, step: usize) -> Self {
+        let revisions = listed_revisions(fighter, self.family, what_if);
+        let Some(&flagship) = revisions.last() else {
+            return Self::default();
+        };
+        let revision = if revisions.contains(&self.revision) { self.revision } else { flagship };
+        let choices = loadouts(revision);
+        let index = step.saturating_sub(6) % choices.len();
+        Self::for_revision(revision, choices[index])
+    }
+
     pub fn sf2(revision: Revision, loadout: Loadout, costume: Costume, palette: u8) -> Self {
         Self {
             family: EraFamily::Sf2,
@@ -331,6 +378,7 @@ pub fn listed_families(fighter: TournamentFighter, what_if: bool) -> Vec<EraFami
     out
 }
 
+/// Revisions in release order, with the flagship last when the era is available.
 pub fn listed_revisions(fighter: TournamentFighter, family: EraFamily, what_if: bool) -> Vec<Revision> {
     if what_if && !families(fighter).contains(&family) {
         return match family {
@@ -511,7 +559,7 @@ pub struct MoveStat {
     pub super_move: bool,
 }
 
-const STOCK_AT: u8 = 48;
+pub(crate) const STOCK_AT: u8 = 48;
 
 #[derive(Debug, Clone)]
 pub struct Sf2Session {
@@ -765,7 +813,7 @@ impl Sf2Session {
     }
 }
 
-fn super_label(fighter: TournamentFighter) -> &'static str {
+pub(crate) fn super_label(fighter: TournamentFighter) -> &'static str {
     match fighter {
         TournamentFighter::Ken => "Shoryureppa",
         TournamentFighter::Sagat => "Tiger Genocide",

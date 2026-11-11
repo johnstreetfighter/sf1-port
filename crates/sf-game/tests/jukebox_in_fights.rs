@@ -185,7 +185,9 @@ fn fight(a: Assets, scratch: &Scratch, jukebox: Jukebox) -> Run {
     tap(&mut session, &mut run, with(|i| i.menu.confirm = true));
     tap(&mut session, &mut run, with(|i| i.menu.confirm = true));
     tap(&mut session, &mut run, with(|i| i.menu.confirm = true));
-    step(&mut session, &mut run, with(|i| i.p2.buttons[0] = true));
+    tap(&mut session, &mut run, with(|i| i.menu.confirm = true)); // Ryu's Style card
+    tap(&mut session, &mut run, with(|i| i.p2.buttons[0] = true)); // Ken's portrait
+    step(&mut session, &mut run, with(|i| i.p2.buttons[0] = true)); // Ken's Style card
     step(&mut session, &mut run, idle());
     assert_eq!(session.screen(), "stage select");
     // Joe's stage is under the cursor.

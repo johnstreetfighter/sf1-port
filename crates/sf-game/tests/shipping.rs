@@ -19,6 +19,24 @@ use sf_host::roms;
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
 
+#[cfg(windows)]
+#[test]
+fn windows_game_launches_as_a_gui_and_version_output_can_be_captured() {
+    let executable = env!("CARGO_BIN_EXE_sf-game");
+    let bytes = std::fs::read(executable).unwrap();
+    let pe = u32::from_le_bytes(bytes[0x3c..0x40].try_into().unwrap()) as usize;
+    assert_eq!(&bytes[pe..pe + 4], b"PE\0\0");
+    let subsystem = pe + 4 + 20 + 68;
+    assert_eq!(
+        u16::from_le_bytes(bytes[subsystem..subsystem + 2].try_into().unwrap()),
+        2, // IMAGE_SUBSYSTEM_WINDOWS_GUI
+    );
+
+    let output = std::process::Command::new(executable).arg("--version").output().unwrap();
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), sf_engine::version::full_banner());
+}
+
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("sf1-port-shipping-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

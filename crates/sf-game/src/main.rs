@@ -10,6 +10,7 @@
 //! the `shaders` folder beside the executable.
 //!
 //!   cargo run -p sf-game --release [-- --roms <folder>] [--stage <name>]
+//!   cargo run -p sf-game --release -- --console  # live diagnostic log
 //!   cargo run -p sf-game --release -- --version
 //!   cargo run -p sf-game --release -- smoke [--roms <folder>]   # the host smoke check
 //!
@@ -22,6 +23,8 @@
 //! ROM-missing screen offers `RETRY` and `EXIT`. The three settings files
 //! and `sf-game.log` live in `%APPDATA%\sf1-port`. Esc is back on every
 //! screen; the Exit item and the window's close button quit.
+
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -108,13 +111,38 @@ fn read_looks(app_dir: &Path, before: Option<&Catalogue>, log: &mut Log) -> Cata
     catalogue
 }
 
+#[cfg(windows)]
+fn open_diagnostic_console(create: bool) {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn AttachConsole(process_id: u32) -> i32;
+        fn AllocConsole() -> i32;
+    }
+
+    // SAFETY: These Win32 calls take no pointers. u32::MAX denotes the
+    // launching process's console. Windows preserves redirected stdio handles.
+    unsafe {
+        if AttachConsole(u32::MAX) == 0 && create {
+            AllocConsole();
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if matches!(args.get(1).map(String::as_str), Some("--version" | "-V")) {
+    let command = args.get(1).map(String::as_str);
+    #[cfg(windows)]
+    {
+        let live_log = args.iter().any(|arg| arg == "--console");
+        if live_log || matches!(command, Some("--version" | "-V" | "smoke")) {
+            open_diagnostic_console(live_log);
+        }
+    }
+    if matches!(command, Some("--version" | "-V")) {
         println!("{}", sf_engine::version::full_banner());
         return;
     }
-    if args.get(1).map(String::as_str) == Some("smoke") {
+    if command == Some("smoke") {
         std::process::exit(smoke(&args));
     }
     let app_dir = files::app_dir();

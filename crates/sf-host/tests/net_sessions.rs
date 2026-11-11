@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use sf_engine::config::MatchConfig;
+use sf_engine::era::{Costume, Loadout, Revision, StylePick};
 use sf_engine::front::{FrameInputs, GameSession, TypedKey};
 use sf_engine::netplay::{
     Link, NetPacket, NetTransportCommand as Command, NetTransportEvent as Event,
@@ -130,12 +131,15 @@ fn two_real_game_sessions_adopt_host_rules_and_run_a_matching_fight_over_udp() {
         assert_eq!(peer.match_config().toggles.recovery_buffer_window, 7);
     }
 
-    // Each player's physical P1 controller locks its assigned online side.
+    // Each player's physical P1 controller opens and locks its assigned Style card.
+    pulse(&mut peers[1], MenuInput::Confirm);
     pulse(&mut peers[1], MenuInput::Confirm);
     transport(&mut peers[1], &mut drivers[1]);
     for _ in 0..5 {
         step_pair(&mut peers, &mut drivers, [FrameInputs::default(); 2]);
     }
+    pulse(&mut peers[0], MenuInput::Confirm);
+    pulse(&mut peers[0], MenuInput::Right); // SF2 ST New
     pulse(&mut peers[0], MenuInput::Confirm);
     transport(&mut peers[0], &mut drivers[0]);
     let until = Instant::now() + Duration::from_secs(2);
@@ -175,6 +179,12 @@ fn two_real_game_sessions_adopt_host_rules_and_run_a_matching_fight_over_udp() {
     let initial = peers
         .each_ref()
         .map(|peer| peer.fight_machine().unwrap().state.frame);
+    let st = StylePick::sf2(Revision::St, Loadout::Standard, Costume::Classic1987, 0);
+    for peer in &peers {
+        let fight = peer.fight().unwrap();
+        assert_eq!(fight.fighter_style(0), Some(st));
+        assert_eq!(fight.fighter_style(1), Some(StylePick::default()));
+    }
     let mut claims: [std::collections::BTreeMap<u32, u64>; 2] =
         std::array::from_fn(|_| Default::default());
     for frame in 0..120 {

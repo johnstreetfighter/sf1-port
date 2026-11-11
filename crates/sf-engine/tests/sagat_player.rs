@@ -23,6 +23,9 @@
 //! their ROM boxes. Local ROMs and the local art pack only; each test skips
 //! without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -190,10 +193,10 @@ fn local_with(mut s: GameSession, p1: TournamentFighter) -> GameSession {
         tap(&mut s, hold(&[RIGHT]));
     }
     assert_eq!(
-        tap(&mut s, with(|i| i.menu.confirm = true)).transition,
+        select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap).transition,
         Some(Transition::Picked(p1))
     );
-    let out = s.step(with(|i| i.p2.buttons[0] = true));
+    let out = select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), GameSession::step);
     assert_eq!(
         out.transition,
         Some(Transition::Fighters(p1, TournamentFighter::Ken))
@@ -346,7 +349,7 @@ impl Data<'_> {
     /// flag (`+0xf` bit 7) on each frame it runs, as the engine's
     /// `run_fighter` / `animate` steps through it when nothing connects.
     fn move_frames(&self, table: u32, id: u8) -> Vec<bool> {
-        let h = table + id as u32 * 0x30;
+        let h = sf_engine::data_bank::move_header(|address| self.l(address), table, id).expect("move header");
         assert_eq!(self.b(h + 8), 1, "move {id:#04x} present");
         let mut out = Vec::new();
         let ticks = (self.b(h + 0xb) as usize + 1) * (self.b(h + 0xe) as usize + 1);
@@ -555,6 +558,12 @@ fn sagat_plays_on_his_bank_table_and_the_other_bosses_keep_theirs() {
         s.data_bank().unwrap().fighters(),
         [TournamentFighter::Sagat]
     );
+    let bank = s.data_bank().unwrap();
+    for slot in [sf_engine::data_bank::SF2_SPECIAL_SLOT, sf_engine::data_bank::SF2_SUPER_SLOT] {
+        let header = bank.move_header(TournamentFighter::Sagat, slot).expect("Sagat's authored SF2 move");
+        assert_eq!(bank.rb(header + 8), 1);
+        assert_eq!(bank.rb(header + 0xa), slot);
+    }
     let log = s.take_log();
     assert!(
         log.iter()
@@ -1765,8 +1774,8 @@ fn training(l: &Local, tables: bool) -> GameSession {
     for _ in 0..5 {
         tap(&mut s, hold(&[RIGHT])); // column 5 (Sagat)
     }
-    tap(&mut s, with(|i| i.menu.confirm = true)); // Sagat
-    s.step(with(|i| i.menu.confirm = true)); // the opponent under the cursor
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Sagat
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the opponent under the cursor
     while s.screen() != "country select" {
         s.step(idle());
     }

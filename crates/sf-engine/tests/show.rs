@@ -9,9 +9,15 @@
 //! opponent) is untouched by Show, which is bit for bit what a pad giving
 //! the same inputs would do. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
+use sf_engine::data_bank::SF2_SUPER_SLOT;
+use sf_engine::era::Loadout;
+use sf_engine::era_fight::SUPER_FREEZE_FRAMES;
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::moves::Choice;
 use sf_engine::front::pause::PauseBox;
@@ -87,6 +93,10 @@ fn to_fight_loop(s: &mut GameSession) {
 /// `preset`, with `fighter` as P1, stopped at the first fight loop and then
 /// run through the round's intro to where the fighters take control.
 fn training(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool) -> GameSession {
+    training_with_style(preset, fighter, dummy, None)
+}
+
+fn training_with_style(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool, st: Option<Loadout>) -> GameSession {
     let a = assets().expect("local ROMs");
     let mut s = GameSession::new(a, MatchConfig::from_preset(preset));
     for _ in 0..200 {
@@ -104,8 +114,18 @@ fn training(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool) -> G
     for _ in 0..at % 6 {
         tap(&mut s, stick(RIGHT));
     }
-    tap(&mut s, confirm()); // P1
-    s.step(confirm()); // the opponent under the cursor
+    if let Some(loadout) = st {
+        assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::StyleOpened));
+        tap(&mut s, stick(RIGHT)); // SF2, ST by default.
+        if loadout == Loadout::Old {
+            tap(&mut s, stick(UP)); // LOAD.
+            tap(&mut s, stick(RIGHT));
+        }
+        tap(&mut s, confirm());
+    } else {
+        select::confirm_fighter(&mut s, confirm(), tap); // P1
+    }
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the opponent under the cursor
     if dummy {
         while s.screen() != "country select" {
             s.step(idle());
@@ -156,6 +176,55 @@ fn show_move(s: &mut GameSession, row: usize) {
     assert!(s.move_list().is_none(), "Show closes the panel");
 }
 
+#[test]
+fn st_new_shows_and_coaches_the_native_super_and_old_hides_it() {
+    if assets().is_none() {
+        return;
+    }
+    let preset = RulesetPreset::DefinitiveOverhaul;
+    let mut session = training_with_style(preset, TournamentFighter::Ryu, true, Some(Loadout::Standard));
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
+    assert!(session.fight().unwrap().era_hud().p1.is_some());
+    open_list_at(&mut session, 4);
+    assert_eq!(session.move_list().unwrap().selected().unwrap().name, "SHINKU HADOKEN");
+    choose_show(&mut session);
+    let mut announced = false;
+    let mut freeze = 0;
+    let mut moves = std::collections::BTreeSet::new();
+    for _ in 0..400 {
+        let output = session.step(idle());
+        announced |= output.announcements.contains(&sf_video::announcer::AnnouncerLine::Super);
+        freeze = freeze.max(session.fight_machine().unwrap().era_super_freeze());
+        moves.insert(p1_move(&session));
+        if session.coach().is_some() {
+            break;
+        }
+    }
+    assert!(announced && moves.contains(&SF2_SUPER_SLOT) && freeze == SUPER_FREEZE_FRAMES - 1,
+        "Show ran and announced the native Super: moves={moves:x?}, freeze={freeze}, announced={announced}");
+    let entry = *session.coach().expect("completed Show enters Try").entry();
+    assert_eq!(entry.produces, SF2_SUPER_SLOT);
+    session.step(idle());
+    assert!(session.fight_machine().unwrap().era_fighters()[0].super_meter > 0);
+    open_list_at(&mut session, 4);
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0,
+        "pausing the Try restores the meter from before the Show");
+    tap(&mut session, confirm());
+    tap(&mut session, stick(RIGHT));
+    assert_eq!(session.move_list().unwrap().choosing(), Some(Choice::Try));
+    tap(&mut session, confirm());
+    assert!(session.fight_machine().unwrap().era_fighters()[0].super_meter > 0);
+    for input in entry.input.frames(true, Strength::Medium) {
+        session.step(with(|frame| frame.p1 = input));
+    }
+    assert_eq!(session.coach().unwrap().successes(), 1, "Try saw the native double motion succeed");
+
+    let mut old = training_with_style(preset, TournamentFighter::Ryu, true, Some(Loadout::Old));
+    assert!(old.fight().unwrap().era_hud().p1.is_none());
+    open_list_at(&mut old, 0);
+    assert!(!old.move_list().unwrap().text().iter().any(|line| line.contains("SHINKU HADOKEN")));
+}
+
 /// Step the session until `done`, at most `limit` frames, collecting the
 /// strip each frame.
 fn run(s: &mut GameSession, limit: usize, mut done: impl FnMut(&GameSession) -> bool) -> Vec<Option<Strip>> {
@@ -203,8 +272,8 @@ fn confirm_on_a_move_offers_show_and_try_in_training_only() {
     tap(&mut s, stick(DOWN));
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p2.buttons[LP] = true));
+    select::confirm_fighter(&mut s, confirm(), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[LP] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

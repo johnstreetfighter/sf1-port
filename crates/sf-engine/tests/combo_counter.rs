@@ -12,6 +12,9 @@
 //! shows no count, and the machine's RAM is the same as a bare machine's
 //! given the same inputs. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -84,8 +87,8 @@ fn local_fight(a: Assets, preset: RulesetPreset, settings: Settings) -> GameSess
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -106,8 +109,8 @@ fn training_dummy(a: Assets, settings: Settings) -> GameSession {
     assert_eq!(tap(&mut s, confirm()).screen, "training");
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
     assert_eq!(tap(&mut s, confirm()).screen, "select");
-    tap(&mut s, confirm()); // Ryu
-    s.step(confirm()); // the dummy
+    select::confirm_fighter(&mut s, confirm(), tap); // Ryu
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the dummy
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -125,7 +128,7 @@ fn arcade(a: Assets) -> GameSession {
     tap(&mut s, start());
     assert_eq!(tap(&mut s, confirm()).screen, "single player");
     assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::Arcade)));
-    tap(&mut s, confirm()); // Ryu
+    select::confirm_fighter(&mut s, confirm(), tap); // Ryu
     while s.screen() != "country select" {
         s.step(idle());
     }

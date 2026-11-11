@@ -14,6 +14,9 @@
 //! goldens). Local ROMs only (Retsu: and the local art pack); each test
 //! skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::combo::move_stun;
@@ -191,7 +194,7 @@ fn local(mut s: GameSession, p1: TournamentFighter, p2: TournamentFighter) -> Ga
         tap(&mut s, with(|i| i.p1.directions[RIGHT] = true));
     }
     assert_eq!(
-        tap(&mut s, with(|i| i.menu.confirm = true)).transition,
+        select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap).transition,
         Some(Transition::Picked(p1))
     );
     // P2's cursor starts on Ken (row 0, col 1).
@@ -209,7 +212,7 @@ fn local(mut s: GameSession, p1: TournamentFighter, p2: TournamentFighter) -> Ga
     for _ in 1..col2 {
         tap(&mut s, with(|i| i.p2.directions[RIGHT] = true));
     }
-    let out = s.step(with(|i| i.p2.buttons[0] = true));
+    let out = select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(p1, p2)));
     s.step(idle());
     until(&mut s, "country select", 40);

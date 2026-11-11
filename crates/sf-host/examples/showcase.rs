@@ -317,12 +317,14 @@ fn local_fight(kit: &Kit, rec: &mut Recorder) {
     tap(&mut s, rec, stick(DOWN)); // P1 to Lee
     idle_for(&mut s, rec, 20);
     tap(&mut s, rec, confirm());
+    tap(&mut s, rec, confirm()); // P1's default style
     for _ in 0..4 {
         idle_for(&mut s, rec, 10);
         tap(&mut s, rec, with(|i| i.p2.directions[RIGHT] = true)); // P2 from Ken to Mike
     }
     idle_for(&mut s, rec, 20);
-    s.step(rec, with(|i| i.p2.buttons[LP] = true));
+    tap(&mut s, rec, with(|i| i.p2.buttons[LP] = true));
+    s.step(rec, with(|i| i.p2.buttons[LP] = true)); // P2's default style
     let mut f = 0;
     while s.session.screen() != "stage select" {
         s.step(rec, idle());
@@ -429,7 +431,9 @@ fn training(kit: &Kit, rec: &mut Recorder) {
     tap(&mut s, rec, confirm()); // DUMMY
     assert_eq!(s.session.screen(), "select");
     tap(&mut s, rec, confirm()); // P1 Ryu
-    s.step(rec, confirm()); // the dummy Ken
+    tap(&mut s, rec, confirm()); // Ryu's default style
+    tap(&mut s, rec, confirm()); // the dummy Ken
+    s.step(rec, confirm()); // Ken's default style
     let mut f = 0;
     while s.session.fight_machine().map(flow_position) != Some(FIGHT_LOOP) {
         match s.session.screen() {

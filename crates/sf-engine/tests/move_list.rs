@@ -12,6 +12,9 @@
 //! leaves the machine as it was. Local ROMs only; each test skips without
 //! them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -158,11 +161,11 @@ fn fight_vs(mode: Mode, preset: RulesetPreset, fighter: TournamentFighter, p2_st
             tap(&mut s, confirm()); // Multi Player
             tap(&mut s, confirm()); // Local
             pick(&mut s);
-            tap(&mut s, confirm());
+            select::confirm_fighter(&mut s, confirm(), tap);
             for &d in p2_steps {
                 tap(&mut s, with(|i| i.p2.directions[d] = true));
             }
-            tap(&mut s, with(|i| i.p2.buttons[0] = true));
+            select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
             while s.screen() != "country select" {
                 s.step(idle());
             }
@@ -177,8 +180,8 @@ fn fight_vs(mode: Mode, preset: RulesetPreset, fighter: TournamentFighter, p2_st
             }
             tap(&mut s, confirm()); // CPU or DUMMY
             pick(&mut s);
-            tap(&mut s, confirm()); // P1
-            s.step(confirm()); // the opponent under the cursor
+            select::confirm_fighter(&mut s, confirm(), tap); // P1
+            select::confirm_fighter(&mut s, confirm(), GameSession::step); // the opponent under the cursor
             if mode == Mode::Dummy {
                 while s.screen() != "country select" {
                     s.step(idle());
@@ -190,7 +193,7 @@ fn fight_vs(mode: Mode, preset: RulesetPreset, fighter: TournamentFighter, p2_st
             tap(&mut s, confirm()); // Single Player
             tap(&mut s, confirm()); // Arcade
             pick(&mut s);
-            tap(&mut s, confirm());
+            select::confirm_fighter(&mut s, confirm(), tap);
             while s.screen() != "country select" {
                 s.step(idle());
             }
@@ -544,7 +547,7 @@ fn every_listed_move_comes_out_through_shows_input_path_under_every_preset() {
                 assert_eq!(s.move_list().unwrap().selected().map(|e| e.name), Some(entry.name));
                 let out = s.step(confirm());
                 assert_eq!(out.transition, Some(Transition::Choose(MenuItem::Resume)), "SHOW resumes the fight");
-                let Recognizer::Tracker(own_tracker) = entry.recognizer;
+                let Recognizer::Tracker(own_tracker) = entry.recognizer else { panic!("expected a 1987 tracker") };
                 let reached = |m: &sf_engine::run::PowerOnMachine, t: Tracker1987| {
                     let st = Recognizer::Tracker(t).read(m.work_ram(), P1_STRUCT);
                     st.stage >= 3 || st.done

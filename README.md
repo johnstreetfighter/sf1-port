@@ -21,6 +21,8 @@ No copyrighted ROM binaries are included in this repository. To play, you need y
 
 Extract the entire Windows ZIP and follow `QUICKSTART.txt`. Keep the included `shaders` folder beside `sf-game.exe`. The release page includes a SHA-256 checksum for the package.
 
+Double-click `sf-game.exe` to open the game window. The log is saved in `%APPDATA%\sf1-port\sf-game.log`. Run `sf-game.exe --console` to see the log live.
+
 ## Screenshots
 
 | Title Screen | 4-Country Select |
@@ -41,7 +43,9 @@ Extract the entire Windows ZIP and follow `QUICKSTART.txt`. Keep the included `s
 
 ### The era HUD
 
-One 1987 style for every later game's gauges, call-outs and combo count (Spec #216). The game draws these stills, from a Training fight of Ryu against the dummy Ken, with `cargo run -p sf-host --release --example era_hud_shots`. Real fights don't carry era state until the era styles move onto the 1987 fighters, so the gauges, call-outs and combo count here are staged through the session's test hooks. The layout, with TIME under the health bars and no scores, is what every overhaul fight shows today.
+The Style card carries each fighter's era, revision, and loadout into the fight. Ryu, Ken, and Sagat use native SF2 rules from World Warrior through Super Turbo. Super Turbo's New loadout adds a live Super gauge, move list entries, and Training Show and Try support. Online matches synchronize both Style picks.
+
+The stills below show the later-era gauges and call-outs using preview fixtures. They come from a Training fight of Ryu against the dummy Ken with `cargo run -p sf-host --release --example era_hud_shots`.
 
 | A Counter-Hit Combo That Was the First Attack | A Super Against a Perfect Parry |
 | :---: | :---: |
@@ -233,7 +237,6 @@ cargo run -p sf-dev --release -- rebind <input> <Key>
 `sf-engine` also holds models of the overhaul's later-era, World Tour and bonus-roster systems, each built and tested on its own. These systems are scheduled for future integration into native fights. Presets are *Faithful 1987*, *Classic Competitive*, *Pure Footsies*, and *Definitive Overhaul*. *Classic Competitive* was called *SF1++ Competitive*, and older settings files still load. Individual core toggles and the three modern rules already act in SF1+ fights; later projects extend that same native engine.
 
 - **Portrait select model.** `sf-dev select` draws the twelve fighters in three columns, with the chosen fighter in the large frame on the left. The game's own select is in `sf-game` (above).
-- **SF2.** Ryu, Ken, and Sagat pick World Warrior, Champion Edition, Hyper Fighting, Super, or Super Turbo, then Standard or Old, and one of eight palettes. World Warrior stand LP hitstun is 20. Champion Edition Ken *Shoryuken* hits twice. Hyper Fighting shortens *Hadoken* startup and adds an air *Tatsumaki* on Hyper Fighting, Super, and Super Turbo. Super adds *Shakunetsu Hadoken* and a heavier Ryu *Shoryuken*. Old Super Turbo hits harder. One super stock fills from hits (specials +32, normals +16, stock at 48) and spends on *Shinku Hadoken*, *Shoryureppa*, and *Tiger Genocide*. Era Default stocks only Super Turbo. Unified stocks the earlier SF2 revisions too. No Gauges never fills. *Pure Footsies* forces No Gauges.
 - **Alpha.** Ryu, Ken, Adon, Sagat, Birdie, and Gen pick SFZ1, SFZ2, SFZ2 Alpha, and SFZ3. Eagle is SFZ3 only. SFZ3 loadouts are A-ISM, V-ISM, and X-ISM. The gauge holds three stocks. Level 1, 2, and 3 supers spend that many. X-ISM has only level 3, at half again the damage. V-ISM has no level supers. Alpha Counter spends one stock out of blockstun. Custom Combos run on SFZ2, SFZ2 Alpha, and V-ISM. Gen switches Mantis (PPP) and Crane (KKK).
 - **Street Fighter III.** Ryu and Ken pick New Generation, 2nd Impact, or 3rd Strike, then Super Art I, II, or III. Forward parries highs and mids within 10 frames, or 6 against a fireball. Down parries lows. An air parry covers either height. Red Parry is the forward tap during blockstun. EX specials cost one stock and start in 2nd Impact. Art I is a 120-point bar and one stock (*Shinku Hadoken*, *Shoryureppa*). Art II is 80 points and two stocks (*Shin Shoryuken*, *Shinryuken*). Art III is 40 points and three stocks (chargeable unblockable *Denjin Hadoken*, and *Shippu Jinraikyaku* at 1-frame startup). Ryu has *Joudan Sokutogeri*. Both have the universal overhead (MP+MK) and a stand MP into stand HP target combo.
 - **Street Fighter IV.** Ryu, Ken, and Sagat pick SF4, Super, Arcade Edition 2012, or Ultra. Adon and Gen start at Super. The bar holds four stocks: one for an EX special, two for a Focus dash cancel, four for a Super Combo. Focus level 2 and 3 crumple. Level 3 is unblockable. One hit of armor, or three on a Red Focus in Ultra. Revenge fills from damage taken. Ultras are *Metsu Hadoken* / *Metsu Shoryuken*, *Shinryuken* / *Guren Senpukyaku*, *Tiger Destruction* / *Tiger Cannon* (Sagat can *Angry Charge* first), *Jaguar Revolver* / *Jaguar Avalanche*, and Gen's *Zetsuei* / *Ryukoha* or *Teiga* / *Kouga*. Ultra Combo Double is Ultra only, and its damage is scaled unless `disable_comeback_scaling` is on. Delayed wakeup is two buttons during knockdown, Ultra only.
@@ -247,7 +250,7 @@ cargo run -p sf-dev --release -- rebind <input> <Key>
 
 ### Next: the rest of the Definitive Overhaul ([Spec #1](https://github.com/johnstreetfighter/sf1-port/issues/1))
 
-**SF1+ and baseline netplay are implemented:** all twelve tournament fighters play on the real engine, including the bosses' moves, modern rules, Balanced roster, online 1v1 and live spectating. Ryu's approved theme is integrated (SP15 #267). [Haute42 hardware QA #70](https://github.com/johnstreetfighter/sf1-port/issues/70) still awaits physical verification.
+**SF1+ and baseline netplay are implemented:** all twelve tournament fighters play on the real engine, including the bosses' moves, modern rules, Balanced roster, online 1v1 and live spectating. Ryu's approved theme is integrated (SP15 #267). Haute42 S16 DirectInput Up and Down passed in the Main Menu and Training. The Charge check is pending a playable charge move. [Haute42 hardware QA #70](https://github.com/johnstreetfighter/sf1-port/issues/70)
 
 Next, in this order:
 

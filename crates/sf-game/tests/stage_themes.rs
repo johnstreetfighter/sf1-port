@@ -245,8 +245,11 @@ fn fight(r: &Roms, bank: sf_video::background_bank::BackgroundBank, stage: &str,
         with(|i| i.p1.buttons[0] = true),
         with(|i| i.p2.buttons[0] = true),
     ] {
-        f.step(tap);
-        f.step(idle());
+        let presses = 1 + usize::from(f.session.screen() == "select" && f.session.match_config().era_select_enabled());
+        for _ in 0..presses {
+            f.step(tap);
+            f.step(idle());
+        }
     }
     while f.session.screen() != "country select" {
         f.step(idle());

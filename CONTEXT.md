@@ -48,6 +48,22 @@ _Avoid_: fidelity fix, hack
 A per-fighter selectable package representing a specific Street Fighter entry or revision (`SF1`, `SF1+`, `SF2 WW`, `SF2 ST`, `SFZ3`, `SF3 3S`, `USF4`, `SF5 CE`, `SF6`, etc.), bundling that entry's moveset and era gauge. `SF1` is the 1987 game's own Ryu and Ken, as Faithful 1987 plays them; `SF1+` is the style all twelve tournament fighters play under the overhaul presets, each with Ryu's kind of kit.
 _Avoid_: groove, ISM, edition, variation
 
+**Style card**:
+The three-row spinner (`ERA`, `REV`, `LOAD`) inside a fighter's portrait on Character Select under Definitive Overhaul or Custom with Balanced roster on. It starts on the era's flagship revision and first loadout. Confirm or Start locks all three choices.
+_Avoid_: groove menu, edition popup, style drawer
+
+**Sub-HP**:
+The overhaul's 960-point internal health scale, with twenty sub-points for each of the 1987 game's 48 health points. Era vitality scales this value. The original life bar rounds remaining health up to the next whole point so a living fighter always has visible life.
+_Avoid_: float HP, 1000 HP, secondary life bar
+
+**Revision delta**:
+The adjustments to startup, recovery, damage, stun, and system switches that a revision applies to its era's shared move table.
+_Avoid_: balance patch, cloned move table
+
+**Afterimage trail**:
+The three monochrome silhouettes of a fighter's recent poses drawn behind them during a Custom Combo, Speed Super Art, Focus Attack Dash Cancel, or Drive Rush.
+_Avoid_: motion blur, ghost sprite, clone
+
 **Classic rules**:
 How an SF1+ fight plays by 1987's rules: a fighter can't be hit during his hit reaction, so there are no combos, and there are no cancels and no throws.
 _Avoid_: classic level, 1987 mode

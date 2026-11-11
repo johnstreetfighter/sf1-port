@@ -17,6 +17,9 @@
 //! the game session into Training against the dummy; local ROMs only, and
 //! each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -109,8 +112,8 @@ fn training_dummy(a: Assets, preset: RulesetPreset, settings: Settings) -> GameS
     tap(&mut s, confirm()); // Training
     tap(&mut s, down());
     tap(&mut s, confirm()); // DUMMY
-    tap(&mut s, confirm()); // P1 Ryu
-    let out = s.step(confirm());
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 Ryu
+    let out = select::confirm_fighter(&mut s, confirm(), GameSession::step);
     assert!(matches!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, _))), "{:?}", out.transition);
     while s.screen() != "country select" {
         s.step(idle());
@@ -133,8 +136,8 @@ fn local(a: Assets, preset: RulesetPreset) -> GameSession {
     tap(&mut s, down());
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -209,6 +212,8 @@ impl Shadow {
                 let ps = (player_struct(&self.m, side) - 0xff8000) as usize;
                 snap.work[ps + 6] = 4;
                 snap.work[ps + 7] = 0xb;
+                let health = &mut snap.toggle_state.era.fighters[side.index()];
+                health.sub_hp = health.max_sub_hp;
             }
             self.m.restore_snapshot(&snap);
             // The reader's last frame is the topped-up one.

@@ -8,6 +8,9 @@
 //! fight, the after-match box, a rematch and the way back to the attract.
 //! Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::MatchConfig;
@@ -272,10 +275,10 @@ fn local_walk_sagat_against_gen_rematch_and_back_to_the_attract() {
     for d in [DOWN, RIGHT, RIGHT, RIGHT, RIGHT, RIGHT] {
         assert_eq!(tap(&mut s, stick(d)).transition, Some(Transition::CursorMoved));
     }
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Picked(TournamentFighter::Sagat)));
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Picked(TournamentFighter::Sagat)));
     // P2 picks with P2's own stick and LP: from Ken down to Gen.
     tap(&mut s, p2_stick(DOWN));
-    let out = s.step(p2_lp());
+    let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step);
     assert_eq!(
         out.transition,
         Some(Transition::Fighters(TournamentFighter::Sagat, TournamentFighter::Gen))
@@ -338,8 +341,8 @@ fn reselect_returns_to_the_select_and_the_attract_stays_as_it_was() {
     let Some(a) = assets() else { return };
     let mut s = to_local_select(a);
     let attract = s.attract_machine().save_snapshot();
-    tap(&mut s, confirm()); // P1 Ryu
-    tap(&mut s, p2_lp()); // P2 Ken, where P2's cursor starts
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 Ryu
+    select::confirm_fighter(&mut s, p2_lp(), tap); // P2 Ken, where P2's cursor starts
     until(&mut s, "country select", 40, |_| idle());
     tap(&mut s, with(|i| i.p1.buttons[0] = true));
     until(&mut s, "after match", 20_000, p1_attacks);
@@ -358,8 +361,8 @@ fn local_fights_use_the_configured_difficulty_and_round_time() {
     let Some(a) = assets() else { return };
     let mut s = to_local_select(a);
     s.set_fight_dips(FightDips { difficulty: 4, round_time: 150 });
-    tap(&mut s, confirm());
-    tap(&mut s, p2_lp());
+    select::confirm_fighter(&mut s, confirm(), tap);
+    select::confirm_fighter(&mut s, p2_lp(), tap);
     until(&mut s, "country select", 40, |_| idle());
     let m = s.fight_machine().unwrap();
     // Boot decodes DSW2 (0x3c132..0x3c152): difficulty 4 (Very Difficult)
@@ -379,8 +382,8 @@ fn an_untranslated_branch_shows_the_notice_returns_to_the_menu_and_logs() {
     let broken = a.maincpu[0x1743c..0x1746c].to_vec();
     a.maincpu[0x1614c..0x1617c].copy_from_slice(&broken);
     let mut s = to_local_select(a);
-    tap(&mut s, confirm()); // P1 Ryu
-    tap(&mut s, p2_lp()); // P2 Ken
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 Ryu
+    select::confirm_fighter(&mut s, p2_lp(), tap); // P2 Ken
     until(&mut s, "country select", 40, |_| idle());
     tap(&mut s, with(|i| i.p1.buttons[0] = true));
     until(&mut s, "fight", 30, |_| idle());

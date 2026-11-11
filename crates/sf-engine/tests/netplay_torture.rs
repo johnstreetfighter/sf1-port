@@ -217,6 +217,7 @@ fn next_round_boundary(initial: &Fight, assets: &Assets) -> Fight {
     let health = (P2_STRUCT + 6 - 0xff8000) as usize;
     saved.machine.work[health] = 1;
     saved.machine.work[health + 1] = 0;
+    saved.machine.toggle_state.era.fighters[1].sub_hp = sf_engine::era_fight::SUB_HP_PER_POINT;
     saved.read.fighters[1].health = 1;
     saved.reader = FightReader::new();
     fight.restore_netplay_snapshot(&saved);

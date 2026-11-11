@@ -43,7 +43,7 @@ Four key realizations from our codebase and art audit shaped this project:
 - **All 12 fighters across canonical and What-If eras:**
   - Every canonical appearance (Ryu, Ken, Sagat, Birdie, Adon, Gen, Eagle) is always selectable in `Definitive Overhaul`.
   - Every What-If era design (Retsu, Geki, Joe, Mike, Lee across `SF2`–`SF6`, plus Birdie/Adon/Gen/Eagle in `SF2`/`SF3`/`SF6` as applicable) is selectable whenever `WHAT-IF STYLES` is `ON` (default `ON` in `Definitive Overhaul`).
-- **One unified `960` sub-HP health scale** (`48 × 20` sub-HP per 1987 health point) synchronized every frame to the 1987 work-RAM health byte (`+0x22`), giving `~0.1%` precision for multi-hit Supers, `V-ISM`, Burnout chip, damage scaling, and per-era vitality modifiers (`90%` Gen, `95%` Adon, `105%` Birdie/Sagat).
+- **One unified `960` sub-HP health scale** (`48 × 20` sub-HP per 1987 health point) synchronized every frame to the player's native work-RAM life remainder and cells (`+0x06` and `+0x07`), giving `~0.1%` precision for multi-hit Supers, `V-ISM`, Burnout chip, damage scaling, and per-era vitality modifiers (`90%` Gen, `95%` Adon, `105%` Birdie/Sagat).
 - **Character Select Option B Spinner Card (`ERA`, `REV`, `LOAD`)** inside the player's portrait panel under `Definitive Overhaul`, with flagship revisions and Loadout I pre-selected so locking a fighter's default style takes a single press.
 - **Arcade Ladder CPU Era Matching:** Under `Definitive Overhaul`, CPU opponents match the player's chosen era (falling back to that era's flagship revision if the player chose an early sub-revision the opponent didn't appear in, or to `SF1+` if `WHAT-IF STYLES` is `OFF` and the opponent has no canonical style in that era).
 - **Real-fight integration with Era HUD, Call-Out Banners, 4 kHz Announcer, Training `FILL METERS`, and era-filtered Move List / Coach.**
@@ -57,7 +57,7 @@ Four key realizations from our codebase and art audit shaped this project:
 ### Anti-Goals
 - **Running `CombatSession` in parallel with `fight.rs` during real matches:** We will not maintain two combat engines or shadow-step `CombatSession` alongside the 1987 work-RAM fighter structs.
 - **Showing the Era/Revision/Loadout selector in `Classic Competitive` or `Pure Footsies`:** Those two presets are dedicated `SF1+` tournament rulesets where confirming a portrait locks `SF1+` immediately with zero sub-menus.
-- **Changing the 1987 HUD life bar's 48-pixel visual width or breaking `0x00`..`0x30` work-RAM invariants:** `+0x22` must always remain in `0..=48` (`1..=48` while `sub_hp > 0`, `0` on KO).
+- **Changing the 1987 HUD life bar's 48-pixel visual width or breaking `0x00`..`0x30` work-RAM invariants:** the native life fields together must represent `0..=48` (`1..=48` while `sub_hp > 0`, `0` on KO).
 
 ---
 
@@ -159,7 +159,7 @@ When P1 and P2 pick different eras (e.g. `SF3 3S` Ryu vs `SF6` Sagat, or `SF1` R
   - **Throw teching:** Defender-driven by default—any defender in `SF1+` or `SF2`–`SF6` can tech throws (`LP + LK` within `7f` of throw capture), unless `config.sf1plus.untechable_sf2_throws` is turned `ON` in Settings (in which case throws initiated by an `SF2` attacker cannot be teched, matching 1991 `SF2`). An `SF1` (`1987`) defender never techs throws.
 
 #### Unified `960` Sub-HP Scale (`48 × 20`)
-Every era in Street Fighter history uses a slightly different internal life bar (1987 uses `48`, `SF2`/`Alpha` use `144`, `SF3` uses `160`, `SF4`/`SF5` use `900`–`1100`, `SF6` uses `10,000`). To reconcile all 8 eras cleanly with the 1987 work-RAM health byte (`+0x22`, `0x00..=0x30` / `0..=48`):
+Every era in Street Fighter history uses a slightly different internal life bar (1987 uses `48`, `SF2`/`Alpha` use `144`, `SF3` uses `160`, `SF4`/`SF5` use `900`–`1100`, `SF6` uses `10,000`). The original work-RAM life fields together represent `0..=48` points.
 - **Internal tracking:** `EraFighterState` tracks `sub_hp: u16` and `max_sub_hp: u16` with a standard baseline of **`960` sub-HP** (`48 × 20`).
 - **Exact `× 20` mapping for `SF1` and `SF1+`:** Every `1` point of 1987 / Project 3 damage equals exactly `20` sub-HP (`14` HP Fierce = `280` sub-HP; `20` HP Hadoken = `400` sub-HP).
 - **Per-era vitality modifiers:** Applied to `max_sub_hp` at round start for eras with character-specific stamina (`SF3`, `SF4`, `SF5`, `SF6`):
@@ -168,9 +168,9 @@ Every era in Street Fighter history uses a slightly different internal life bar 
   - Low-vitality technical/speed fighters (`Adon`, `Geki`): `95%` = **`912`** `max_sub_hp`.
   - Glass-cannon masters (`Gen`): `90%` = **`864`** `max_sub_hp`.
 - **Every-frame Work-RAM sync invariant:**
-  - While `sub_hp > 0`, `+0x22` is updated every frame to:
+  - While `sub_hp > 0`, the native life fields together represent
     `work_hp = ((u32::from(sub_hp) * 48).div_ceil(u32::from(max_sub_hp))) as u8` (guaranteed in `1..=48` so a fighter at `1..19` sub-HP still shows 1 pixel of life and does not trigger premature 1987 KO).
-  - When `sub_hp == 0`, `+0x22` is set to `0`, triggering the standard 1987 KO sequence, slow-motion knockdown, and round-end announcer flow.
+  - When `sub_hp == 0`, native life reaches `0`, triggering the standard 1987 KO sequence, slow-motion knockdown, and round-end announcer flow.
 
 ### 5.3 Character Select (`Option B` Spinner Card) & Arcade CPU Era Matching
 
@@ -252,7 +252,7 @@ During `fight.rs`'s per-frame step (`step_fighting`), each player's `EraFighterS
    - Applies era damage scaling (combo hit count scaling `100% → 90% → 80% ...` down to era floor; `50%` on `SF6` Perfect Parry; `50%` on `V-ISM` Custom Combo; `75%` on `USF4` `UltraDouble`; `1.12×` damage / `1.15×` incoming damage on `SFZ3` `X-ISM`).
    - Resolves airborne juggle hits when `attacker_era >= EraFamily::Sf2` using `defender.juggle_count < move.juggle_limit`.
    - Resolves armor absorption (`SF4` Focus 1 hit, `SF5` V-Trigger armored specials, `SF6` Drive Impact 2 hits) with grey/recoverable sub-HP or armor-break interaction.
-   - Updates `sub_hp`, syncs `+0x22`, feeds meter gains (`ST` Super, `Alpha` Super/Guard, `SF3` Super Art, `SF4` Super + Revenge on damage taken, `SF5` EX + V-Gauge on damage/White Life/V-Skill, `SF6` Drive + Super Art), and emits `CalloutEvent` + `VoiceClip` triggers.
+   - Updates `sub_hp`, syncs native life, feeds meter gains (`ST` Super, `Alpha` Super/Guard, `SF3` Super Art, `SF4` Super + Revenge on damage taken, `SF5` EX + V-Gauge on damage/White Life/V-Skill, `SF6` Drive + Super Art), and emits `CalloutEvent` + `VoiceClip` triggers.
 4. **Revision Delta Table (`RevisionDelta`):**
    - Instead of duplicating move streams for sub-revisions (`Ww` vs `Ce` vs `Hf` vs `Super` vs `St`, or `Sf4` vs `Ssf4` vs `Ae2012` vs `Usf4`), a compact `RevisionDelta` lookup adjusts startup/recovery frames (`±1..3f`), projectile cooldown, damage/stun multipliers, invulnerability windows, and system toggles (e.g. `Ae2012` vs `Usf4` Red Focus & Delayed Wakeup) on top of the era's base move table.
 
@@ -309,7 +309,7 @@ Both tickets live inside Project 4, explicitly tagged as blocked on the November
 - **Exact slot indices within `0x1f..=0x3f` per fighter:** The builder may organize each character's extra `data_bank.rs` slots in whatever order is cleanest, provided the Move List metadata and `step_era_specials` decoder read from one shared per-fighter era move table.
 - **Order of retirement for `CombatSession` modules:** Keep the pure data tables (`RevisionSpec`, `WhatIfKit`, `FlagshipKit`, move frame/damage constants) or move them into `crates/sf-engine/src/era/`, and delete the duplicate `CombatSession` stepping code only after real-engine integration tests (`crates/sf-engine/tests/`) cover all 8 eras and all 12 fighters.
 - **Invariants to preserve:**
-  - `+0x22` work-RAM health must always be in `1..=48` while `sub_hp > 0` and `0` when `sub_hp == 0`.
+  - Native work-RAM life must represent `1..=48` while `sub_hp > 0` and `0` when `sub_hp == 0`.
   - `era_hud.rs`, `callouts.rs`, and `announcer.rs` (`Spec #216`) are used as built without changing their screen regions or `CalloutKind` variants.
   - `Faithful 1987`, `Classic Competitive`, and `Pure Footsies (1987+)` must remain frame-for-frame identical to Project 3 behavior and must never show the Character Select Era/Revision/Loadout spinner card.
 

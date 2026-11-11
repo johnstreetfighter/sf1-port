@@ -17,6 +17,9 @@
 //! The expected pixels come from this file's own reading of the ROM tables,
 //! not from the builder. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -299,9 +302,9 @@ fn local(s: &mut GameSession, p1: usize, p2: usize) {
     tap(s, with(|i| i.menu.confirm = true));
     assert_eq!(tap(s, with(|i| i.menu.confirm = true)), "select");
     walk(s, false, 0, p1);
-    tap(s, with(|i| i.p1.buttons[0] = true));
+    select::confirm_fighter(s, with(|i| i.p1.buttons[0] = true), tap);
     walk(s, true, 1, p2);
-    tap(s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(s, with(|i| i.p2.buttons[0] = true), tap);
     country(s);
 }
 
@@ -364,7 +367,7 @@ fn arcade(s: &mut GameSession, fighter: TournamentFighter, country: u8) {
     for d in std::iter::repeat_n(DOWN_DIR, slot / 3).chain(std::iter::repeat_n(RIGHT_DIR, slot % 3)) {
         tap(s, with(|i| i.p1.directions[d] = true));
     }
-    tap(s, with(|i| i.menu.confirm = true));
+    select::confirm_fighter(s, with(|i| i.menu.confirm = true), tap);
     let mut f = 0;
     while s.screen() != "country select" {
         s.step(idle());
@@ -518,9 +521,9 @@ fn training_against_a_dummy_shows_the_picked_pair() {
     tap(&mut s, with(|i| i.p1.directions[DOWN_DIR] = true));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)), "select");
     walk(&mut s, false, 0, 11);
-    tap(&mut s, with(|i| i.menu.confirm = true)); // Sagat
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Sagat
     tap(&mut s, with(|i| i.p1.directions[DOWN_DIR] = true));
-    s.step(with(|i| i.menu.confirm = true)); // the dummy
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the dummy
     country(&mut s);
     let roster = s.fight_machine().unwrap().match_config().roster;
     assert_eq!(roster.mode, PlayMode::Training);

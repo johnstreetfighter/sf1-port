@@ -17,6 +17,9 @@
 //! stand in for a style that reads those states. Local ROMs only; each test
 //! skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -91,8 +94,8 @@ fn local_fight(a: Assets, preset: RulesetPreset) -> GameSession {
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }
@@ -110,7 +113,7 @@ fn arcade(a: Assets) -> GameSession {
     tap(&mut s, start());
     assert_eq!(tap(&mut s, confirm()).screen, "single player");
     assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::Arcade)));
-    tap(&mut s, confirm()); // Ryu
+    select::confirm_fighter(&mut s, confirm(), tap); // Ryu
     while s.screen() != "country select" {
         s.step(idle());
     }

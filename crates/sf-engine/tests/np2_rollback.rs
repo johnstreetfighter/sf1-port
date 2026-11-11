@@ -685,6 +685,7 @@ fn final_round_with_one_health(initial: &Fight, assets: &Assets) -> Fight {
     saved.machine.work[p1 + 8] = 1; // A real next KO wins the match.
     saved.machine.work[p2 + 6] = 1;
     saved.machine.work[p2 + 7] = 0;
+    saved.machine.toggle_state.era.fighters[1].sub_hp = sf_engine::era_fight::SUB_HP_PER_POINT;
     saved.reader = FightReader::new();
     saved.read.fighters[1].health = 1;
     fight.restore_netplay_snapshot(&saved);

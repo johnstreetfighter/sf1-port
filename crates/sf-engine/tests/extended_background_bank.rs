@@ -172,8 +172,11 @@ fn local_fight(s: &mut GameSession) -> Vec<u8> {
         with(|i| i.p1.buttons[0] = true),
         with(|i| i.p2.buttons[0] = true),
     ] {
-        step(s, tap);
-        step(s, idle());
+        let presses = 1 + usize::from(s.screen() == "select" && s.match_config().era_select_enabled());
+        for _ in 0..presses {
+            step(s, tap);
+            step(s, idle());
+        }
     }
     while s.screen() != "country select" {
         step(s, idle());
@@ -244,8 +247,11 @@ fn only_a_fight_under_an_overhaul_preset_asks_for_the_tune_table() {
     for (s, asked) in [(&mut overhaul, &mut over), (&mut faithful, &mut faith)] {
         let mut frames = 0;
         for tap in [with(|i| i.menu.start = true), with(|i| i.p1.directions[2] = true), with(|i| i.menu.confirm = true), with(|i| i.menu.confirm = true), with(|i| i.p1.buttons[0] = true), with(|i| i.p2.buttons[0] = true)] {
-            asked.push(s.step(tap).tune_table);
-            asked.push(s.step(idle()).tune_table);
+            let presses = 1 + usize::from(s.screen() == "select" && s.match_config().era_select_enabled());
+            for _ in 0..presses {
+                asked.push(s.step(tap).tune_table);
+                asked.push(s.step(idle()).tune_table);
+            }
         }
         while s.screen() != "country select" {
             asked.push(s.step(idle()).tune_table);

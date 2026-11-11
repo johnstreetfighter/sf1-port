@@ -3475,7 +3475,7 @@ pub fn round_timer(bus: &mut Bus) {
         for i in 0..3 {
             bus.wb(TIME_DIGITS + i, bus.rb(table + i));
         }
-    } else if time_word(bus) != 0 && bus.roster.mode != PlayMode::Training {
+    } else if time_word(bus) != 0 && bus.roster.mode != PlayMode::Training && !bus.era_frozen() {
         let limit = if bus.toggles.real_second_timer_and_draws {
             59
         } else {
@@ -6231,7 +6231,11 @@ fn time_over_judge(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut F
     } else {
         let this = bus.rl(0xffe438);
         let other = bus.rl(0xffe43c);
-        (this, other, u32::from(health_points(bus, this)), u32::from(health_points(bus, other)))
+        let (this_hp, other_hp) = match (bus.era_health(this), bus.era_health(other)) {
+            (Some((a, a_max)), Some((b, b_max))) => (a * b_max, b * a_max),
+            _ => (u32::from(health_points(bus, this)), u32::from(health_points(bus, other))),
+        };
+        (this, other, this_hp, other_hp)
     };
     if d2 < d0 {
         return record_win(scheduler, bus, io, at, other);
@@ -6539,6 +6543,7 @@ fn round_hud(bus: &mut Bus) -> bool {
         bus.toggle_state.dramatic.reset_round();
     }
     bus.bind_roster_tables();
+    bus.era_begin_round();
     for (ps, place) in [(layout.a, layout.a_place), (layout.b, layout.b_place)] {
         let (x, facing) = bus.roster_walk_in(ps).map_or(place, |(x, f)| (x, Some(f)));
         bus.wb(ps + 6, 4);
@@ -7383,8 +7388,14 @@ fn opponent_intro_start(bus: &mut Bus, io: &Io, at: &mut Screen) -> Yield {
 /// so it always sleeps (disclosed; modelling overruns needs the 68000's
 /// cycle timing).
 fn fight_frame(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
+    if bus.era_freeze_tick() {
+        return Yield::Sleep(1);
+    }
     bus.wb(FRAME_PENDING, 0xff);
     bus.drive_fight_inputs();
+    if bus.era_freeze_tick() {
+        return Yield::Sleep(1);
+    }
     if bus.rb(SCENE_MODE) == 0x10 {
         // 0x3eac4 -> 0x423b8..0x423d8: stop music (0x3f), play challenger
         // fanfare (0x3e), draw A NEW CHALLENger ENTERS THE RING! (0x15ba2),
@@ -7402,6 +7413,7 @@ fn fight_frame(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
     // Training's refill (ticket #243), once a fight frame for both
     // fighters, after this frame's hits and blocks; nothing outside Training.
     bus.training_refill();
+    bus.era_sync_frame();
     draw_time_digits(bus);
     if io.dsw1 & 0x1000 != 0 && bus.rb(SLOW_MOTION) == 0 {
         Yield::Sleep(1)

@@ -86,11 +86,7 @@ impl Sf3Session {
     }
 
     pub fn max_stocks(&self) -> u8 {
-        match self.art {
-            Loadout::Art1 => 1,
-            Loadout::Art2 => 2,
-            _ => 3,
-        }
+        super_art_stock_limit(self.art)
     }
 
     /// Meter required to gain one stock. Art I is the long bar.
@@ -244,15 +240,7 @@ impl Sf3Session {
     }
 
     pub fn super_name(&self) -> Option<&'static str> {
-        match (self.fighter, self.art) {
-            (TournamentFighter::Ryu, Loadout::Art1) => Some("Shinku Hadoken"),
-            (TournamentFighter::Ryu, Loadout::Art2) => Some("Shin Shoryuken"),
-            (TournamentFighter::Ryu, Loadout::Art3) => Some("Denjin Hadoken"),
-            (TournamentFighter::Ken, Loadout::Art1) => Some("Shoryureppa"),
-            (TournamentFighter::Ken, Loadout::Art2) => Some("Shinryuken"),
-            (TournamentFighter::Ken, Loadout::Art3) => Some("Shippu Jinraikyaku"),
-            _ => None,
-        }
+        super_art_name(self.fighter, self.art)
     }
 
     /// The Super Art bar: the stock count beside it, filling from the meter
@@ -266,5 +254,25 @@ impl Sf3Session {
         let row = GaugeRow::level(self.stocks, self.max_stocks(), fill)
             .with_length(Fill::of(self.bar_length(), LONGEST_BAR));
         Some(EraGauge::one(row))
+    }
+}
+
+pub(crate) fn super_art_name(fighter: TournamentFighter, art: Loadout) -> Option<&'static str> {
+    match (fighter, art) {
+        (TournamentFighter::Ryu, Loadout::Art1) => Some("Shinku Hadoken"),
+        (TournamentFighter::Ryu, Loadout::Art2) => Some("Shin Shoryuken"),
+        (TournamentFighter::Ryu, Loadout::Art3) => Some("Denjin Hadoken"),
+        (TournamentFighter::Ken, Loadout::Art1) => Some("Shoryureppa"),
+        (TournamentFighter::Ken, Loadout::Art2) => Some("Shinryuken"),
+        (TournamentFighter::Ken, Loadout::Art3) => Some("Shippu Jinraikyaku"),
+        _ => None,
+    }
+}
+
+pub(crate) fn super_art_stock_limit(art: Loadout) -> u8 {
+    match art {
+        Loadout::Art1 => 1,
+        Loadout::Art2 => 2,
+        _ => 3,
     }
 }

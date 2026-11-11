@@ -185,7 +185,9 @@ fn fight(kit: &Kit, p1: TournamentFighter, p2: TournamentFighter, stage: usize) 
         tap(&mut s, with(|i| i.p2.directions[dir] = true));
     }
     tap(&mut s, confirm());
-    s.step(with(|i| i.p2.buttons[0] = true));
+    tap(&mut s, confirm()); // P1's default style
+    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    s.step(with(|i| i.p2.buttons[0] = true)); // P2's default style
     s.step(idle());
     until(&mut s, |s| s.screen() == "stage select", "the stage select");
     for _ in 0..stage {

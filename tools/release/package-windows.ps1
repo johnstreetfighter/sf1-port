@@ -214,7 +214,8 @@ $npQuickStart = @(
     '',
     'Optional packs go beside roms\sf as roms\sf1-port-art and roms\sf1-port-voice.',
     'These packs and the ROMs are separate from this download. SF1+ fighters need their approved art/player tables.',
-    'Settings and sf-game.log are saved in %APPDATA%\sf1-port. See README.md for controls and features.',
+    'Settings and sf-game.log are saved in %APPDATA%\sf1-port. Run sf-game.exe --console to see the log live.',
+    'See README.md for controls and features.',
     '',
     'BUILD.txt records the exact source commit and executable checksum. licenses and THIRD_PARTY_NOTICES.md retain dependency notices.',
     'Verify the release SHA-256 against the downloaded archive.'

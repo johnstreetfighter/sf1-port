@@ -10,6 +10,9 @@
 //! first fight is the full one-player scenario's (`full_1p.rs`). Local ROMs
 //! only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::MatchConfig;
@@ -151,7 +154,7 @@ fn the_arcade_select_offers_ryu_and_ken_and_greys_the_bosses() {
         assert_eq!(out.transition, None, "greyed tiles are skipped");
     }
     assert_eq!(tap(&mut s, stick(LEFT)).transition, Some(Transition::CursorMoved));
-    let out = tap(&mut s, confirm());
+    let out = select::confirm_fighter(&mut s, confirm(), tap);
     assert_eq!(out.transition, Some(Transition::Fighter(TournamentFighter::Ryu)));
     assert_eq!(out.screen, "drive");
 }
@@ -171,7 +174,7 @@ fn arcade_reaches_the_first_fight_from_each_country_as_ryu_and_ken() {
             for _ in 0..moves {
                 tap(&mut s, stick(RIGHT));
             }
-            assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Fighter(fighter)));
+            assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Fighter(fighter)));
             until(&mut s, "country select", 40, |_| idle());
             assert_eq!(rb(s.fight_machine().unwrap(), GAME_MODE), 2, "one-player game");
             pick_flag(&mut s, &rom, country);
@@ -205,7 +208,7 @@ fn arcade_run_win_name_entry_free_continue_expiry_and_back_to_the_menu() {
     let Some(a) = assets() else { return };
     let mut s = to_arcade_select(a);
     let factory_ranking = bytes(s.attract_machine(), RANKING, 160);
-    tap(&mut s, confirm()); // Ryu
+    select::confirm_fighter(&mut s, confirm(), tap); // Ryu
     until(&mut s, "country select", 40, |_| idle());
     tap(&mut s, lp()); // Japan, the default flag
     until(&mut s, "fight", 60, |_| idle());
@@ -360,7 +363,7 @@ fn with_the_art_pack_arcade_opens_all_twelve_and_ryu_stands_in_for_the_players_o
     // on Lee. Confirm Lee and pick China (country 1).
     assert_eq!(tap(&mut s, stick(DOWN)).transition, Some(Transition::CursorMoved));
     assert_eq!(tap(&mut s, stick(DOWN)).transition, Some(Transition::CursorMoved));
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Fighter(TournamentFighter::Lee)));
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Fighter(TournamentFighter::Lee)));
     until(&mut s, "country select", 40, |_| idle());
     pick_flag(&mut s, &rom, 1);
     until(&mut s, "fight", 60, |_| idle());
@@ -420,6 +423,10 @@ fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_
             }
             out.screen
         };
+        if s.match_config().era_select_enabled() {
+            step(&mut s, confirm());
+            step(&mut s, idle());
+        }
         step(&mut s, confirm());
         step(&mut s, idle());
         for _ in 0..40 {

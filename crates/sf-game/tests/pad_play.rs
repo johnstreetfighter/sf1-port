@@ -130,9 +130,13 @@ fn two_pads_drive_the_menus_and_a_fight_and_a_pulled_pad_pauses_it() {
     tap(&mut s, &rig, rig.pad1(&[DpadDown]));
     assert_eq!(tap(&mut s, &rig, rig.pad2(&[Cross])).screen, "multi player", "either pad's Cross confirms");
     assert_eq!(tap(&mut s, &rig, rig.pad1(&[Cross])).screen, "select");
-    // Each pad drives its own cursor; Cross picks though it is also LK.
+    // Cross confirms the portrait and Style card on each pad.
+    let out = tap(&mut s, &rig, rig.pad1(&[Cross]));
+    assert_eq!(out.transition, Some(Transition::StyleOpened));
     let out = tap(&mut s, &rig, rig.pad1(&[Cross]));
     assert_eq!(out.transition, Some(Transition::Picked(TournamentFighter::Ryu)));
+    let out = tap(&mut s, &rig, rig.pad2(&[Cross]));
+    assert_eq!(out.transition, Some(Transition::StyleOpened));
     let out = tap(&mut s, &rig, rig.pad2(&[Cross]));
     assert!(matches!(out.transition, Some(Transition::Fighters(..))), "{:?}", out.transition);
     while s.screen() != "country select" {

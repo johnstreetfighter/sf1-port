@@ -1,9 +1,14 @@
 //! Real-session regressions for the 2026-11-10 pose-placement audit.
 //! Menus and pad inputs reach every scene; observations never write RAM.
+#[path = "support/select.rs"]
+mod select;
+
 use sf_engine::{
     config::{MatchConfig, RulesetPreset},
     fighter::{P1_STRUCT, P2_STRUCT},
-    front::{cabinet::flow_position, FrameInputs, GameSession, Transition},
+    data_bank::{SF2_SPECIAL_SLOT, SF2_SUPER_SLOT},
+    era::Revision,
+    front::{cabinet::flow_position, settings::Settings, FrameInputs, GameSession, Transition},
     moves::{facing_right, move_list, Strength},
     roster::TournamentFighter,
 };
@@ -138,10 +143,15 @@ fn facing(s: &GameSession, side: usize) -> bool {
     facing_right(m.work_ram(), &m.state.objectram, player(side))
 }
 fn at_control(l: &Local, fighter: TournamentFighter, side: usize) -> GameSession {
-    at_control_seed(l.seed.clone(), fighter, side)
+    at_control_seed(l.seed.clone(), fighter, side, false)
 }
-fn at_control_seed(mut s: GameSession, fighter: TournamentFighter, side: usize) -> GameSession {
-    let peer = if fighter == TournamentFighter::Ken {
+fn at_control_seed(
+    mut s: GameSession,
+    fighter: TournamentFighter,
+    side: usize,
+    st_training: bool,
+) -> GameSession {
+    let peer = if fighter == TournamentFighter::Ken && !st_training {
         TournamentFighter::Ryu
     } else {
         TournamentFighter::Ken
@@ -155,9 +165,18 @@ fn at_control_seed(mut s: GameSession, fighter: TournamentFighter, side: usize) 
         s.step(idle());
     }
     tap(&mut s, menu(|i| i.menu.start = true));
-    tap(&mut s, input(0, &[DOWN], None));
-    tap(&mut s, menu(|i| i.menu.confirm = true));
-    tap(&mut s, menu(|i| i.menu.confirm = true));
+    let confirm = menu(|i| i.menu.confirm = true);
+    if st_training {
+        tap(&mut s, confirm); // Single Player
+        tap(&mut s, input(0, &[DOWN], None));
+        tap(&mut s, confirm); // Training
+        tap(&mut s, input(0, &[DOWN], None));
+        tap(&mut s, confirm); // Dummy
+    } else {
+        tap(&mut s, input(0, &[DOWN], None));
+        tap(&mut s, confirm); // Multi Player
+        tap(&mut s, confirm); // Local
+    }
     for (pick, f, start) in [(0, p1, 0usize), (1, p2, 1usize)] {
         let at = TournamentFighter::ALL.iter().position(|&x| x == f).unwrap();
         if at >= 6 {
@@ -173,14 +192,21 @@ fn at_control_seed(mut s: GameSession, fighter: TournamentFighter, side: usize) 
                 tap(&mut s, input(pick, &[RIGHT], None));
             }
         }
-        let got = tap(
-            &mut s,
-            if pick == 0 {
-                menu(|i| i.menu.confirm = true)
-            } else {
-                input(1, &[], Some(0))
-            },
-        );
+        let pad = if pick == 0 || st_training {
+            confirm
+        } else {
+            input(1, &[], Some(0))
+        };
+        let got = if st_training && pick == 0 {
+            assert_eq!(tap(&mut s, pad), Some(Transition::StyleOpened));
+            assert_eq!(
+                tap(&mut s, input(0, &[RIGHT], None)),
+                Some(Transition::CursorMoved)
+            );
+            tap(&mut s, pad)
+        } else {
+            select::confirm_fighter(&mut s, pad, tap)
+        };
         assert_eq!(
             got,
             Some(if pick == 0 {
@@ -230,7 +256,7 @@ fn opaque_bottom(l: &Local, s: &GameSession, side: usize) -> i32 {
         let a = e + k * 0x40;
         let code = w(a);
         let attr = w(a + 2);
-        let y = i32::from(w(a + 4));
+        let y = i32::from(w(a + 4) as i16);
         let big = attr & 0x400 != 0;
         let fx = attr & 0x100 != 0;
         let fy = attr & 0x200 != 0;
@@ -285,6 +311,68 @@ fn trace(
 }
 
 #[test]
+fn sf2_rising_specials_keep_both_fighters_above_the_floor() {
+    let Some(l) = local() else { return };
+    let super_motion = &[2, 3, 6, 2, 3, 6][..];
+    let uppercut_motion = &[6, 2, 3][..];
+    let mut errors = Vec::new();
+    for (fighter, moves) in [
+        (
+            TournamentFighter::Ken,
+            &[("Shoryureppa", super_motion, 0, SF2_SUPER_SLOT)][..],
+        ),
+        (
+            TournamentFighter::Sagat,
+            &[
+                ("Tiger Uppercut", uppercut_motion, 0, SF2_SPECIAL_SLOT),
+                ("Tiger Genocide", super_motion, 3, SF2_SUPER_SLOT),
+            ][..],
+        ),
+    ] {
+        let seed = l.seed.clone().with_settings(Settings {
+            fill_meters: true,
+            ..Settings::default()
+        });
+        let mut base = at_control_seed(seed, fighter, 0, true);
+        for _ in 0..180 {
+            if center_x(&base, 1) - center_x(&base, 0) <= 48 {
+                break;
+            }
+            base.step(input(0, &[RIGHT], None));
+        }
+        for _ in 0..4 {
+            base.step(idle());
+        }
+        assert_eq!(
+            base.fight_machine().unwrap().era_fighters()[0].style.revision,
+            Revision::St
+        );
+        for &(name, directions, button, expected_move) in moves {
+            let mut script = Vec::new();
+            for (index, &direction) in directions.iter().enumerate() {
+                let dirs: &[_] = match direction {
+                    2 => &[DOWN],
+                    3 => &[DOWN, RIGHT],
+                    6 => &[RIGHT],
+                    _ => unreachable!(),
+                };
+                let press = (index + 1 == directions.len()).then_some(button);
+                script.extend([input(0, dirs, press); 3]);
+            }
+            script.extend([idle(); 160]);
+            let observed = trace(l, base.clone(), 0, &script, name, &mut errors);
+            assert!(observed.contains(&expected_move), "{name} starts");
+            let opponent = trace(l, base.clone(), 1, &script, name, &mut errors);
+            assert!(
+                opponent.iter().any(|m| (0x30..=0x3f).contains(m)),
+                "{name} lands"
+            );
+        }
+    }
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
+}
+
+#[test]
 fn lee_jump_startup_and_grounded_lunges_do_not_sink() {
     let Some(l) = local() else { return };
     let mut errors = Vec::new();
@@ -306,6 +394,15 @@ fn lee_jump_startup_and_grounded_lunges_do_not_sink() {
                     &mut errors,
                 );
                 assert!(observed.contains(&9), "Lee's neutral jump actually starts");
+                for button in 0..6 {
+                    let mut script = vec![input(side, &[UP], None); 2];
+                    script.extend([idle(); 10]);
+                    script.extend([input(side, &[], Some(button)); 2]);
+                    script.extend([idle(); 65]);
+                    let label = format!("Lee neutral jump attack button {button}");
+                    let observed = trace(l, base.clone(), side, &script, &label, &mut errors);
+                    assert!(observed.iter().any(|m| (0x20..=0x26).contains(m)), "{label} starts");
+                }
             }
             let entry = move_list(fighter, RulesetPreset::DefinitiveOverhaul)
                 .into_iter()

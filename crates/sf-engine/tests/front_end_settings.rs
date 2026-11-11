@@ -457,7 +457,9 @@ fn the_tab_pair_cycles_six_tabs_and_greyed_rows_are_skipped() {
     assert_eq!(s.tab(), Tab::Netplay, "the pair goes both ways through all six tabs");
     let mut s = at(1, 2); // BAN LIST
     assert_eq!(s.apply(MenuInput::Down), Some(Transition::CursorMoved));
-    assert_eq!(s.row(), Row::ResetTab, "the three greyed rows are skipped");
+    assert_eq!(s.label(s.row()), "WHAT-IF STYLES");
+    assert_eq!(s.apply(MenuInput::Down), Some(Transition::CursorMoved));
+    assert_eq!(s.row(), Row::ResetTab, "the two greyed rows are skipped");
 }
 
 // ---- persistence ------------------------------------------------------------
@@ -714,6 +716,9 @@ fn leaving_settings_saves_and_difficulty_and_round_time_reach_every_fight() {
     for (name, steps) in walks {
         let mut t = s.clone();
         for step in steps {
+            if t.screen() == "select" && t.match_config().era_select_enabled() {
+                assert_eq!(tap(&mut t, *step).transition, Some(Transition::StyleOpened));
+            }
             tap(&mut t, *step);
         }
         let mut f = 0;

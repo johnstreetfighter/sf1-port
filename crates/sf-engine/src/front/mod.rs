@@ -28,6 +28,7 @@ pub mod rom_missing;
 pub mod select;
 pub mod session;
 pub mod show;
+mod style_card;
 pub mod settings;
 pub mod stage_select;
 pub mod tune;
@@ -52,6 +53,8 @@ pub enum Transition {
     OpenMainMenu,
     /// The select locked P1's fighter.
     Picked(TournamentFighter),
+    /// A fighter tile opened its Style card.
+    StyleOpened,
     /// The select unlocked P1's fighter.
     Unpicked,
     /// The select is done: P1's and P2's fighters.

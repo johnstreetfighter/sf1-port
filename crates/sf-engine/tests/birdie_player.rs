@@ -19,6 +19,9 @@
 //! ROM attacks keep their ROM boxes. Local ROMs and the local art pack only;
 //! each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -343,7 +346,7 @@ impl Data<'_> {
     /// flag (`+0xf` bit 7) on each frame it runs, as the engine's
     /// `run_fighter` / `animate` steps through it when nothing connects.
     fn move_frames(&self, table: u32, id: u8) -> Vec<bool> {
-        let h = table + id as u32 * 0x30;
+        let h = sf_engine::data_bank::move_header(|address| self.l(address), table, id).expect("move header");
         assert_eq!(self.b(h + 8), 1, "move {id:#04x} present");
         let mut out = Vec::new();
         let ticks = (self.b(h + 0xb) as usize + 1) * (self.b(h + 0xe) as usize + 1);
@@ -1621,8 +1624,8 @@ fn training(l: &Local, tables: bool) -> GameSession {
     tap(&mut s, hold(&[DOWN])); // second row
     tap(&mut s, hold(&[RIGHT]));
     tap(&mut s, hold(&[RIGHT])); // column 2 (Birdie)
-    tap(&mut s, with(|i| i.menu.confirm = true)); // Birdie
-    s.step(with(|i| i.menu.confirm = true)); // the opponent under the cursor
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Birdie
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the opponent under the cursor
     while s.screen() != "country select" {
         s.step(idle());
     }

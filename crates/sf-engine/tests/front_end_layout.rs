@@ -16,6 +16,9 @@
 //! each test skips without them. The Lee/Mike fixtures also need their
 //! approved local art pack, as the player select does (SP13).
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -100,8 +103,8 @@ fn fight(mode: Mode, preset: RulesetPreset) -> (GameSession, Assets) {
             tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
             tap(&mut s, with(|i| i.menu.confirm = true));
             tap(&mut s, with(|i| i.menu.confirm = true));
-            tap(&mut s, with(|i| i.p1.buttons[0] = true));
-            tap(&mut s, with(|i| i.p2.buttons[0] = true));
+            select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+            select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
             while s.screen() != "country select" {
                 s.step(idle());
             }
@@ -110,7 +113,7 @@ fn fight(mode: Mode, preset: RulesetPreset) -> (GameSession, Assets) {
         Mode::Arcade => {
             tap(&mut s, with(|i| i.menu.confirm = true)); // Single Player
             tap(&mut s, with(|i| i.menu.confirm = true)); // Arcade
-            tap(&mut s, with(|i| i.menu.confirm = true)); // Ryu
+            select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Ryu
             while s.screen() != "country select" {
                 s.step(idle());
             }
@@ -431,11 +434,11 @@ fn lee_against_mike() -> (GameSession, Assets) {
     tap(&mut s, with(|i| i.menu.confirm = true));
     tap(&mut s, with(|i| i.menu.confirm = true));
     tap(&mut s, with(|i| i.p1.directions[DOWN] = true)); // Lee
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
     // Only Lee and Mike's boss tables are loaded: Mike is the next
     // selectable tile to Ken's right, skipping the unavailable bosses.
     tap(&mut s, with(|i| i.p2.directions[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

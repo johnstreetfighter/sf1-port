@@ -448,7 +448,8 @@ impl Coach {
     /// one). Returns how an attempt ended on this frame, if one did.
     pub fn observe(&mut self, view: &RecognizerView, read: &FightRead, in_fight: bool, settle: u32) -> Option<Outcome> {
         let [me, foe] = read.fighters;
-        let stage = view.state.counted();
+        let complete = self.entry.input.motion.len() as u8;
+        let stage = view.state.counted_for(complete);
         if !in_fight || !me.present {
             // Between rounds, or before a fighter stands: nothing is
             // attempted, and the tracker's old progress is not a new one.
@@ -538,7 +539,7 @@ impl Coach {
                 attempt.reached = stage;
                 (attempt.awaited, attempt.accepted) = (view.awaiting, view.accepts);
             }
-            if stage == 3 && !view.gate_free {
+            if stage == complete && !view.gate_free {
                 attempt.done_gate_closed += 1;
             }
             attempt.other = attempt.other.or(other);
@@ -634,7 +635,8 @@ impl Coach {
         let until = span.fall + self.window;
         let frames: Vec<Frame> = self.history.iter().filter(|f| f.no >= span.first && f.no <= until).copied().collect();
         let to_fall = |f: &&Frame| f.no <= span.fall;
-        let first_done = frames.iter().find(|f| f.counted == 3).map_or(u64::MAX, |f| f.no);
+        let complete = self.entry.input.motion.len() as u8;
+        let first_done = frames.iter().find(|f| f.counted == complete).map_or(u64::MAX, |f| f.no);
         // A button, of either class, the engine took before the motion was done
         // (a little before its first direction counts): its attack took the
         // fighter, or cleared the tracker.
@@ -642,13 +644,13 @@ impl Coach {
             let lead = self.history.iter().filter(|f| f.no < span.first && f.no + EARLY_LOOKBACK >= span.first);
             lead.chain(frames.iter()).filter(|f| f.no <= span.fall && f.no < first_done).any(Frame::took_any)
         };
-        let kind = if miss.stage >= 3 {
+        let kind = if miss.stage >= complete {
             // The motion was done: what the engine took, and the gate, say why
             // the move never came out.
             // The frames of the command's done window, the one the tracker was
             // cleared on (a button taken then clears it) included.
             let window: Vec<&Frame> = frames.iter().filter(to_fall).filter(|f| f.no >= first_done).collect();
-            let done: Vec<&Frame> = window.iter().copied().filter(|f| f.counted == 3).collect();
+            let done: Vec<&Frame> = window.iter().copied().filter(|f| f.counted == complete).collect();
             let held = window.iter().any(|f| (f.took(class) || f.pressed(class)) && !f.gate_open);
             let wrong = window.iter().any(|f| f.took(class.other()));
             Some(if taken_early {

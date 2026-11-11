@@ -11,6 +11,9 @@
 //! 8, which only a blocked attack queues) on a guarding fighter, the bar
 //! from video RAM. Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -118,8 +121,8 @@ fn training(a: Assets, preset: RulesetPreset, dummy: bool) -> GameSession {
         tap(&mut s, down());
     }
     tap(&mut s, confirm()); // CPU or DUMMY
-    tap(&mut s, confirm()); // P1 Ryu
-    let out = s.step(confirm());
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 Ryu
+    let out = select::confirm_fighter(&mut s, confirm(), GameSession::step);
     assert!(matches!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, _))), "{:?}", out.transition);
     if dummy {
         while s.screen() != "country select" {
@@ -144,8 +147,8 @@ fn local(a: Assets, preset: RulesetPreset) -> GameSession {
     tap(&mut s, down());
     tap(&mut s, confirm());
     tap(&mut s, confirm());
-    tap(&mut s, with(|i| i.p1.buttons[0] = true));
-    tap(&mut s, with(|i| i.p2.buttons[0] = true));
+    select::confirm_fighter(&mut s, with(|i| i.p1.buttons[0] = true), tap);
+    select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {
         s.step(idle());
     }

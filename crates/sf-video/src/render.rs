@@ -14,6 +14,7 @@
 
 use crate::background_bank::PAGE_BYTES;
 use crate::decode::{decode_char_tile, decode_sprite_tile};
+use crate::compositor::PaletteTint;
 use crate::palette::Palette;
 use crate::romset::Assets;
 use crate::scene::SceneState;
@@ -81,7 +82,7 @@ pub fn render_frame(assets: &Assets, scene: &SceneState) -> Frame {
 /// `render_frame` with the text layer's `edits` applied to the presented
 /// frame only.
 pub fn render_frame_edited(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Frame {
-    let pens = compose_pens(assets, scene, edits);
+    let pens = compose_pens(assets, scene, edits, &[]);
     frame_from_pens(scene, &pens)
 }
 
@@ -89,12 +90,46 @@ pub fn render_frame_edited(assets: &Assets, scene: &SceneState, edits: &TextEdit
 /// or fg layer, not a sprite or the text layer. The overhaul presenter's
 /// super dim darkens only those.
 pub fn render_frame_staged(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> (Frame, Vec<bool>) {
-    let pens = compose_pens(assets, scene, edits);
-    let stage = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
-    (frame_from_pens(scene, &pens), stage)
+    render_frame_staged_with_tints(assets, scene, edits, &[])
 }
 
-fn compose_pens(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Vec<u16> {
+/// A tint applied to the sprite entries in an object RAM byte range.
+pub struct SpriteTint {
+    pub entries: std::ops::Range<usize>,
+    pub tint: PaletteTint,
+}
+
+// Native pens occupy the low bits. Reserve the high nibble for an optional
+// sprite tint index while retaining the original sprite and text draw order.
+const TINT_SHIFT: usize = 12;
+const PEN_MASK: u16 = (1 << TINT_SHIFT) - 1;
+
+pub fn render_frame_staged_with_tints(
+    assets: &Assets,
+    scene: &SceneState,
+    edits: &TextEdits,
+    tints: &[SpriteTint],
+) -> (Frame, Vec<bool>) {
+    let tints = &tints[..tints.len().min(15)];
+    let pens = compose_pens(assets, scene, edits, tints);
+    let stage = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
+    let frame = if tints.is_empty() {
+        frame_from_pens(scene, &pens)
+    } else {
+        let palette = Palette::from_ram(&scene.paletteram);
+        let argb = pens.iter().map(|&pen| {
+            let pixel = palette.argb(usize::from(pen & PEN_MASK));
+            match usize::from(pen >> TINT_SHIFT) {
+                0 => pixel,
+                tag => tints[tag - 1].tint.apply(pixel),
+            }
+        }).collect();
+        Frame { argb }
+    };
+    (frame, stage)
+}
+
+fn compose_pens(assets: &Assets, scene: &SceneState, edits: &TextEdits, tints: &[SpriteTint]) -> Vec<u16> {
     let mut pens = vec![0u16; WIDTH * HEIGHT];
 
     if scene.active & 0x20 != 0 {
@@ -104,7 +139,7 @@ fn compose_pens(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Vec<u
         draw_tile_layer(&mut pens, assets, scene, Layer::Fg);
     }
     if scene.active & 0x80 != 0 {
-        draw_sprites(&mut pens, assets, scene);
+        draw_sprites(&mut pens, assets, scene, tints);
     }
     if scene.active & 0x08 != 0 {
         draw_text_layer(&mut pens, assets, scene, edits);
@@ -296,7 +331,7 @@ pub(crate) fn invert(code: u16) -> u16 {
     code ^ DELTA[((code >> 3) & 3) as usize]
 }
 
-fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState) {
+fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState, tints: &[SpriteTint]) {
     // Object RAM as big-endian u16 words; entries of 0x20 words each,
     // iterated from the top of the list downward (draw order matters).
     let word = |i: usize| -> u16 {
@@ -308,7 +343,9 @@ fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState) {
         let attr = word(offs + 1);
         let sy = word(offs + 2) as i32;
         let sx = word(offs + 3) as i32;
-        let color = (attr & 0x000f) as usize;
+        let tint_tag = tints.iter().position(|tint| tint.entries.contains(&(2 * offs)))
+            .map_or(0, |index| (index + 1) << TINT_SHIFT);
+        let palette_base = (GFX3_PALETTE_BASE + usize::from(attr & 0x000f) * 16) | tint_tag;
         let mut flipx = attr & 0x0100 != 0;
         let mut flipy = attr & 0x0200 != 0;
 
@@ -337,7 +374,7 @@ fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState) {
                     pens,
                     assets,
                     invert(*c),
-                    color,
+                    palette_base,
                     (flipx, flipy),
                     (sx + dx, sy + dy),
                 );
@@ -350,7 +387,7 @@ fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState) {
                 flipx = !flipx;
                 flipy = !flipy;
             }
-            draw_sprite_tile(pens, assets, invert(code), color, (flipx, flipy), (sx, sy));
+            draw_sprite_tile(pens, assets, invert(code), palette_base, (flipx, flipy), (sx, sy));
         }
         if offs == 0 {
             break;
@@ -363,7 +400,7 @@ fn draw_sprite_tile(
     pens: &mut [u16],
     assets: &Assets,
     code: u16,
-    color: usize,
+    palette_base: usize,
     flip: (bool, bool),
     pos: (i32, i32),
 ) {
@@ -389,7 +426,7 @@ fn draw_sprite_tile(
             );
             if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
                 pens[y as usize * WIDTH + x as usize] =
-                    (GFX3_PALETTE_BASE + color * 16 + pen as usize) as u16;
+                    (palette_base + usize::from(pen)) as u16;
             }
         }
     }

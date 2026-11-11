@@ -18,6 +18,9 @@
 //! the drawings' pens, and his ROM attacks keep their ROM boxes. Local ROMs
 //! and the local art pack only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -357,7 +360,7 @@ impl Data<'_> {
 
     /// A move started from its header: the header's frames, then its stream.
     fn move_frames(&self, table: u32, id: u8) -> Vec<bool> {
-        let h = table + id as u32 * 0x30;
+        let h = sf_engine::data_bank::move_header(|address| self.l(address), table, id).expect("move header");
         let n = (self.b(h + 0xb) as usize + 1) * (self.b(h + 0xe) as usize + 1);
         let mut out = vec![self.b(h + 0xf) & 0x80 != 0; n];
         self.stream(self.l(h + 0x2c), &mut out);
@@ -1692,8 +1695,8 @@ fn training(l: &Local, tables: bool) -> GameSession {
     for _ in 0..4 {
         tap(&mut s, hold(&[RIGHT]));
     }
-    tap(&mut s, with(|i| i.menu.confirm = true)); // Joe
-    s.step(with(|i| i.menu.confirm = true)); // the opponent under the cursor
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap); // Joe
+    select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step); // the opponent under the cursor
     while s.screen() != "country select" {
         s.step(idle());
     }

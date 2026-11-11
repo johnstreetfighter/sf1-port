@@ -41,3 +41,6 @@ symphonia = { version = "0.6.1", default-features = false, features = ["ogg", "v
 
 [dev-dependencies]
 png = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+gilrs-core = "0.6"

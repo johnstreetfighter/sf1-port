@@ -2,6 +2,9 @@
 //! tap does. Actual Local and Arcade GameSessions reached through the
 //! front-end flow; no fight-state writes, forced poses or replacement engine.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -120,7 +123,7 @@ fn local(mut s: GameSession, p1: Fighter, p2: Fighter) -> GameSession {
         } else {
             Transition::Fighters(p1, p2)
         };
-        assert_eq!(tap(&mut s, i).transition, Some(expected));
+        assert_eq!(select::confirm_fighter(&mut s, i, tap).transition, Some(expected));
     }
     for _ in 0..3500 {
         if s.fight_machine().map(flow_position) == Some(0x3eafa) {
@@ -355,7 +358,7 @@ fn arcade_lee(mut s: GameSession) -> GameSession {
     tap(&mut s, confirm); // Arcade
     assert_eq!(s.screen(), "select");
     assert_eq!(
-        tap(&mut s, confirm).transition,
+        select::confirm_fighter(&mut s, confirm, tap).transition,
         Some(Transition::Fighter(Fighter::Ryu))
     );
     for _ in 0..60 {

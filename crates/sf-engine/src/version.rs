@@ -49,10 +49,11 @@ pub fn full_banner() -> String {
     format!("{EDITION_NAME} v{VERSION} ({GIT_SHA})")
 }
 
-/// FNV-1a over the release version followed by its source revision.
-/// Peers and saved replays must agree on both to share an engine identity.
+/// Netplay compatibility includes the release, source revision, and the
+/// synchronized rules layout. Keep the packet envelope readable by older peers.
 pub const fn protocol_version_hash() -> u32 {
-    identity_hash(VERSION, GIT_SHA)
+    const STYLE_RULES: u32 = 1;
+    (identity_hash(VERSION, GIT_SHA) ^ STYLE_RULES).wrapping_mul(0x0100_0193)
 }
 
 const fn identity_hash(version: &str, sha: &str) -> u32 {
@@ -123,7 +124,7 @@ mod tests {
             identity_hash("1.1.0", "87654321")
         );
         const HASH: u32 = protocol_version_hash();
-        assert_eq!(HASH, identity_hash(VERSION, GIT_SHA));
+        assert_ne!(HASH, identity_hash(VERSION, GIT_SHA));
         assert_eq!(HASH, protocol_version_hash());
     }
 }

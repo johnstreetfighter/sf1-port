@@ -872,6 +872,14 @@ impl MemView<'_> {
         (self.rw(a) as u32) << 16 | (self.rw(a + 2) as u32)
     }
 
+    fn move_header(&self, player: u32, id: u8) -> Option<u32> {
+        let table = self.rl(player + 0x12);
+        if !readable(table) {
+            return None;
+        }
+        crate::data_bank::move_header(|address| self.rl(address), table, id)
+    }
+
     fn eb(&self, e: u16, off: u32) -> u8 {
         self.rb(OBJ_BASE + e as u32 + off)
     }
@@ -944,11 +952,9 @@ fn move_started_this_frame(
         return false;
     }
     let mv = mem.eb(e, 0x0a);
-    let table = mem.rl(ps + 0x12);
-    if !readable(table) {
+    let Some(hdr) = mem.move_header(ps, mv) else {
         return false;
-    }
-    let hdr = table.wrapping_add(mv as u32 * 0x30);
+    };
     let at_header = mem.el(e, 0x2c) == mem.rl(hdr + 0x2c)
         && mem.eb(e, 0x33) == mem.rb(hdr + 0x0e)
         && mem.eb(e, 0x0b) == mem.rb(hdr + 0x0b);
@@ -1089,12 +1095,7 @@ fn did_attack_connect_this_frame(
     // Case 1: first frame of a move (`0x42ad0` branch `eb(me, 8) == 1` -> `judge`).
     if started_this_frame {
         let mv = mem.eb(e, 0x0a);
-        let table = mem.rl(ps + 0x12);
-        if readable(table) {
-            let hdr = table.wrapping_add(mv as u32 * 0x30);
-            return mem.rb(hdr + 0x0f) & 0x80 != 0;
-        }
-        return false;
+        return mem.move_header(ps, mv).is_some_and(|hdr| mem.rb(hdr + 0x0f) & 0x80 != 0);
     }
 
     let cur_stream = mem.el(e, 0x2c);

@@ -20,6 +20,9 @@
 //! until SP13), so his mirror is checked on the machine itself. Local ROMs
 //! only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -154,7 +157,7 @@ fn local_fight(a: Assets, p1: TournamentFighter, p2: TournamentFighter) -> GameS
     for d in std::iter::repeat(DOWN).take(row).chain(std::iter::repeat(RIGHT).take(col)) {
         assert_eq!(tap(&mut s, with(|i| i.p1.directions[d] = true)).transition, Some(Transition::CursorMoved));
     }
-    assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).transition, Some(Transition::Picked(p1)));
+    assert_eq!(select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap).transition, Some(Transition::Picked(p1)));
     let (row, col) = (tile(p2) / 6, tile(p2) % 6);
     let mut moves: Vec<usize> = std::iter::repeat(DOWN).take(row).collect();
     if col >= 1 {
@@ -165,7 +168,7 @@ fn local_fight(a: Assets, p1: TournamentFighter, p2: TournamentFighter) -> GameS
     for d in moves {
         assert_eq!(tap(&mut s, with(|i| i.p2.directions[d] = true)).transition, Some(Transition::CursorMoved));
     }
-    let out = s.step(with(|i| i.p2.buttons[0] = true));
+    let out = select::confirm_fighter(&mut s, with(|i| i.p2.buttons[0] = true), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(p1, p2)));
     s.step(idle());
     until(&mut s, "country select", 30);
@@ -546,11 +549,11 @@ fn training_fight(a: Assets, dummy: bool, p1: TournamentFighter, p1_moves: usize
     for _ in 0..p1_moves {
         tap(&mut s, with(|i| i.p1.directions[RIGHT] = true));
     }
-    assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).transition, Some(Transition::Picked(p1)));
+    assert_eq!(select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), tap).transition, Some(Transition::Picked(p1)));
     for &d in opp_moves {
         tap(&mut s, with(|i| i.p1.directions[d] = true));
     }
-    let out = s.step(with(|i| i.menu.confirm = true));
+    let out = select::confirm_fighter(&mut s, with(|i| i.menu.confirm = true), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(p1, opponent)));
     if dummy {
         until(&mut s, "country select", 60);

@@ -32,6 +32,65 @@ cargo run -p sf-dev --release -- rebind <input> <Key> [bindings.toml]
 Debug builds render below 60 fps; the state machine is exact in either
 profile.
 
+## Ryu's SF1+ combo sweep
+
+Run these commands from the repository root with the local SF1 ROM set
+installed. The sweep prints its report to the terminal and saves one route
+replay to the path you supply. The directory in this example is ignored by Git.
+
+```text
+cargo run -p sf-dev --release -- combo-sweep tools/reference/local/ryu-clk-hadoken.json
+cargo run -p sf-dev --release -- combo-replay tools/reference/local/ryu-clk-hadoken.json
+cargo run -p sf-dev --release -- combo-verify tools/reference/local/ryu-clk-hadoken.json
+```
+
+The sweep enters a Local match under Definitive Overhaul and walks Ryu
+into close range against standing Ken in Japan. It moves a single
+light-punch input through the fixed quarter-circle motion, beginning on
+the frame after the kick input and ending on the last frame of the opener's
+hitstun. Reported windows are inclusive and relative to the crouching
+light kick's contact. The Hadoken's projectile must hit during that stun.
+
+Both replay commands use the saved inputs from power-on and verify the
+recorded fight setup, Hadoken startup, cancel and both hit frames. They require
+the same build revision and ROM assets as the sweep. `combo-replay` shows
+the route in the developer window. Press Esc to exit playback early.
+
+## SF1+ fighter coverage
+
+Give the sweep a fighter, an output directory and one or more signature
+moves. Names are case-insensitive. Quote names with spaces or use hyphens
+between the words.
+
+```text
+cargo run -p sf-dev --release -- combo-sweep Ryu tools/reference/local/combo-ryu Hadoken Shoryuken
+cargo run -p sf-dev --release -- combo-sweep Retsu tools/reference/local/combo-retsu "Kiai Shot"
+```
+
+Ryu and Ken use their ROM player tables. Tournament fighters with extended
+tables require the current `sf1-port-art` pack beside the SF1 ROM folder.
+The sweep verifies the active player table before measuring any inputs.
+
+Each sweep tries the six buttons while standing, crouching and jumping,
+including the directional jump attacks and distinct diagonal crouch punches.
+For jumps it selects a repeatable input on descent. Ken stands or holds
+Down throughout each route. The built-in signature motion stays fixed as
+the sweep moves its button pulse, including the release edge, one frame
+at a time. Results apply to the recorded spacing, opener and command.
+
+The output directory contains `coverage.json` and a verified replay for
+each successful pair and stance. In the report, `no_success` means the
+move could be tested in this setup. `unsupported` records a move or
+strength the tool could not execute. `fixed_inputs` lists consecutive
+runs of identical pad inputs. Each pad uses bits 0–9 for Right, Left,
+Down, Up, LP, MP, HP, LK, MK and HK. Successful offsets are relative to
+the opener's first clean hit. Each success records whether the signature
+started with a cancel or linked after recovery.
+
+Pass any replay filename from the report to `combo-replay` or
+`combo-verify`. Both use the exact recorded inputs and verify the build,
+assets, setup, player table, opener hits and the signature's combo hit.
+
 ## Remappable keyboard bindings (ticket #76, F36)
 
 `crates/sf-host/src/bindings.rs` maps all 25 logical inputs of the cabinet's

@@ -7,6 +7,9 @@
 //! cabinet and back, and Exit, with no untranslated branch anywhere.
 //! Local ROMs only; it skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -160,7 +163,7 @@ fn the_front_end_from_power_on_to_exit() {
     // second loss whose countdown runs out, the Main Menu.
     assert_eq!(choose(&mut s, MenuItem::SinglePlayer).screen, "single player");
     assert_eq!(choose(&mut s, MenuItem::Arcade).screen, "select");
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Fighter(TournamentFighter::Ryu)));
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Fighter(TournamentFighter::Ryu)));
     until(&mut s, "country select", 60, |_| idle());
     tap(&mut s, lp(0));
     to_fight_loop(&mut s);
@@ -180,8 +183,8 @@ fn the_front_end_from_power_on_to_exit() {
     assert_eq!(s.menu_item(), Some(MenuItem::SinglePlayer), "the menu opens where it was left");
     assert_eq!(choose(&mut s, MenuItem::MultiPlayer).screen, "multi player");
     assert_eq!(choose(&mut s, MenuItem::Local).screen, "select");
-    tap(&mut s, lp(0));
-    tap(&mut s, lp(1));
+    select::confirm_fighter(&mut s, lp(0), tap);
+    select::confirm_fighter(&mut s, lp(1), tap);
     until(&mut s, "country select", 60, |_| idle());
     tap(&mut s, lp(0));
     to_fight_loop(&mut s);
@@ -200,8 +203,8 @@ fn the_front_end_from_power_on_to_exit() {
     assert_eq!(s.menu_item(), Some(MenuItem::Arcade), "Single Player left on ARCADE MODE");
     assert_eq!(choose(&mut s, MenuItem::Training).screen, "training");
     assert_eq!(choose(&mut s, MenuItem::TrainingCpu).screen, "select");
-    tap(&mut s, confirm()); // Ryu
-    assert!(matches!(tap(&mut s, confirm()).transition, Some(Transition::Fighters(..))));
+    select::confirm_fighter(&mut s, confirm(), tap); // Ryu
+    assert!(matches!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Fighters(..))));
     to_fight_loop(&mut s);
     assert_eq!(pause_row(&mut s, 0).transition, Some(Transition::Choose(MenuItem::Resume)));
     assert_eq!(s.screen(), "fight");
@@ -233,8 +236,8 @@ fn the_front_end_from_power_on_to_exit() {
     choose(&mut s, MenuItem::SinglePlayer);
     choose(&mut s, MenuItem::Training);
     assert_eq!(choose(&mut s, MenuItem::TrainingDummy).screen, "select");
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Picked(TournamentFighter::Ryu)));
-    s.step(confirm()); // the dummy's fighter
+    assert_eq!(select::confirm_fighter(&mut s, confirm(), tap).transition, Some(Transition::Picked(TournamentFighter::Ryu)));
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the dummy's fighter
     until(&mut s, "country select", 60, |_| idle());
     tap(&mut s, lp(0));
     to_fight_loop(&mut s);

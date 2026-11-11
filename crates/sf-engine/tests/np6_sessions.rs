@@ -2,6 +2,7 @@
 
 use sf_engine::config::MatchConfig;
 use sf_engine::dramatic::LifebarMode;
+use sf_engine::era::{Costume, Loadout, Revision, StylePick};
 use sf_engine::front::{FrameInputs, GameSession, MenuItem, MenuKeys, Transition, TypedKey};
 use sf_engine::front::fight::FightSnapshot;
 use sf_engine::netplay::bus::{PacketFault, VirtualNetBus, VirtualNetConfig};
@@ -188,6 +189,12 @@ impl RoomTest {
         self.tick();
     }
 
+    fn lock_fighter(&mut self, id: usize) {
+        assert_eq!(self.peers[id].screen(), "select");
+        self.press(id, MenuInput::Confirm);
+        self.press(id, MenuInput::Confirm);
+    }
+
     fn spectate(&mut self, id: usize) {
         let peer = &mut self.peers[id];
         online(peer);
@@ -333,9 +340,9 @@ fn a_spectator_mirrors_both_fighter_locks_and_the_stage_picker() {
     room.challenge(1);
     for _ in 0..60 { room.tick(); }
     assert!(room.peers.iter().all(|peer| peer.screen() == "select"));
-    room.press(1, MenuInput::Confirm);
+    room.lock_fighter(1);
     for _ in 0..4 { room.tick(); }
-    room.press(0, MenuInput::Confirm);
+    room.lock_fighter(0);
     for _ in 0..60 { room.tick(); }
     assert!(room.peers.iter().all(|peer| peer.screen() == "stage select"),
         "spectators must mirror both assigned fighter locks: {:?}",
@@ -348,9 +355,9 @@ fn spectators_acknowledge_a_confirmed_stream_from_frame_zero_without_sending_inp
     room.spectate(2);
     room.challenge(1);
     for _ in 0..60 { room.tick(); }
-    room.press(1, MenuInput::Confirm);
+    room.lock_fighter(1);
     for _ in 0..4 { room.tick(); }
-    room.press(0, MenuInput::Confirm);
+    room.lock_fighter(0);
     for _ in 0..60 { room.tick(); }
     assert!(room.peers.iter().all(|peer| peer.screen() == "stage select"));
     room.press(0, MenuInput::Confirm);
@@ -394,8 +401,12 @@ fn pre_match_and_mid_match_spectators_replay_the_same_confirmed_native_frame_200
     room.spectate_code(2);
     room.challenge(1);
     for _ in 0..60 { room.tick(); }
-    room.press(1, MenuInput::Confirm);
+    room.lock_fighter(1);
     for _ in 0..4 { room.tick(); }
+    room.press(0, MenuInput::Confirm);
+    room.press(0, MenuInput::Right); // SF2 ST.
+    room.press(0, MenuInput::Up); // Loadout row.
+    room.press(0, MenuInput::Right); // Old.
     room.press(0, MenuInput::Confirm);
     for _ in 0..60 { room.tick(); }
     assert!(room.peers[..3].iter().all(|peer| peer.screen() == "stage select"));
@@ -437,6 +448,9 @@ fn pre_match_and_mid_match_spectators_replay_the_same_confirmed_native_frame_200
     assert_eq!(*captured_hash, confirmed_hash, "the captured native reference was confirmed without correction");
     for id in [2, 3] {
         let fight = room.peers[id].fight().unwrap();
+        assert_eq!(fight.fighter_style(0), Some(StylePick::sf2(
+            Revision::St, Loadout::Old, Costume::Classic1987, 0,
+        )));
         let actual = fight.save_netplay_snapshot(200);
         assert!(actual.machine == reference.machine, "observer{id} matches the confirmed native registers, RAM, scheduler and inputs");
         assert_eq!(fight.state_checksum(), confirmed_hash, "observer{id} matches the host's full canonical gameplay identity");
@@ -450,9 +464,9 @@ fn spectator_loss_duplicates_reordering_and_disconnect_do_not_change_combatant_p
     room.spectate(2);
     room.challenge(1);
     for _ in 0..60 { room.tick(); }
-    room.press(1, MenuInput::Confirm);
+    room.lock_fighter(1);
     for _ in 0..4 { room.tick(); }
-    room.press(0, MenuInput::Confirm);
+    room.lock_fighter(0);
     for _ in 0..60 { room.tick(); }
     room.press(0, MenuInput::Confirm);
     for _ in 0..20 { room.tick(); }
@@ -487,9 +501,9 @@ fn spectator_pause_keeps_playback_live_and_has_no_restart_or_fighter_forfeit() {
     room.spectate(2);
     room.challenge(1);
     for _ in 0..60 { room.tick(); }
-    room.press(1, MenuInput::Confirm);
+    room.lock_fighter(1);
     for _ in 0..4 { room.tick(); }
-    room.press(0, MenuInput::Confirm);
+    room.lock_fighter(0);
     for _ in 0..60 { room.tick(); }
     room.press(0, MenuInput::Confirm);
     for _ in 0..200 {

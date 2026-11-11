@@ -116,6 +116,8 @@ Sagat's air set and specials: a jump arc (he has none), five jumping normals, lo
 - When both halves (air and specials and ground) are approved, Sagat's new poses load in overhaul sessions; until then he stays on his ROM moves.
 - The pilot's real generation rate is reported (generations per approved pose and per move), with a revised timeline for the other nine bosses, before any of them begins.
 
+**SF2 art follow-up.** Give Sagat a dedicated rising-fist pose in his 1987 style for Tiger Uppercut and the second rise of Tiger Genocide. Review both moves in-game using the existing art-pack workflow. Keep the lunging punch available as the fallback pose.
+
 ## AP9: Retsu: ground set (#173)
 
 Blocked by: #172

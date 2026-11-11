@@ -153,6 +153,35 @@ pub struct PadFrame {
     pub pressed: Option<PadButton>,
 }
 
+/// The KADE SDL mapping's `righty:a5` aliases the first hat's vertical
+/// axis on GP2040-CE DirectInput devices that expose four analog axes to WGI.
+/// Compare the underlying code so a real right stick is left alone.
+#[cfg(windows)]
+fn is_kade_vertical_hat(vendor: Option<u16>, product: Option<u16>, code: u32) -> bool {
+    vendor == Some(0x10c4)
+        && product == Some(0x82c0)
+        && code == gilrs_core::native_ev_codes::AXIS_DPADY.into_u32()
+}
+
+#[cfg(any(windows, test))]
+fn vertical_hat_button(value: f32) -> Option<PadButton> {
+    if value > 0.5 {
+        Some(PadButton::DpadUp)
+    } else if value < -0.5 {
+        Some(PadButton::DpadDown)
+    } else {
+        None
+    }
+}
+
+#[cfg(any(windows, test))]
+fn record_hat_edge(pressed: &mut Option<PadButton>, previous: &mut Option<PadButton>, value: f32) {
+    let next = vertical_hat_button(value);
+    if std::mem::replace(previous, next) != next && pressed.is_none() {
+        *pressed = next;
+    }
+}
+
 /// Which pad holds each number.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Slots {
@@ -200,6 +229,8 @@ pub struct PadReader {
     handles: Vec<GamepadId>,
     slots: Slots,
     notes: Vec<String>,
+    #[cfg(windows)]
+    hat: [Option<PadButton>; 2],
 }
 
 impl PadReader {
@@ -211,6 +242,8 @@ impl PadReader {
             handles: Vec::new(),
             slots: Slots::default(),
             notes: Vec::new(),
+            #[cfg(windows)]
+            hat: [None; 2],
         };
         match Gilrs::new() {
             Ok(mut gilrs) => {
@@ -289,10 +322,23 @@ impl PadReader {
                     if let Some(n) = self.slots.disconnect(id) {
                         frame.lost[n] = true;
                         self.notes.push(format!("PAD {} lost", n + 1));
+                        #[cfg(windows)]
+                        {
+                            self.hat[n] = None;
+                        }
                     }
                 }
                 EventType::ButtonPressed(button, _) if self.slots.number(id).is_some() && frame.pressed.is_none() => {
                     frame.pressed = PadButton::from_gilrs(button);
+                }
+                #[cfg(windows)]
+                EventType::AxisChanged(Axis::RightStickY, value, code) => {
+                    let pad = self.gilrs.as_ref().and_then(|g| g.connected_gamepad(handle));
+                    if let (Some(n), Some(pad)) = (self.slots.number(id), pad) {
+                        if is_kade_vertical_hat(pad.vendor_id(), pad.product_id(), code.into_u32()) {
+                            record_hat_edge(&mut frame.pressed, &mut self.hat[n], value);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -307,6 +353,14 @@ impl PadReader {
                 .into_iter()
                 .filter(|b| pad.is_pressed(b.gilrs()))
                 .fold(0, |held, b| held | b.bit());
+            #[cfg(windows)]
+            let held = {
+                self.hat[n] = pad
+                    .axis_code(Axis::RightStickY)
+                    .filter(|code| is_kade_vertical_hat(pad.vendor_id(), pad.product_id(), code.into_u32()))
+                    .and_then(|_| vertical_hat_button(pad.value(Axis::RightStickY)));
+                held | self.hat[n].map_or(0, PadButton::bit)
+            };
             let (x, y) = (pad.value(Axis::LeftStickX), pad.value(Axis::LeftStickY));
             frame.pads[n] = Some(PadState {
                 held,
@@ -315,5 +369,51 @@ impl PadReader {
         }
         frame.seen = self.slots.seen();
         frame
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PadButton, record_hat_edge, vertical_hat_button};
+
+    #[test]
+    fn directinput_hat_supplies_vertical_hold_and_rebind_edge() {
+        let mut previous = None;
+        for (value, expected, edge) in [
+            (1.0, Some(PadButton::DpadUp), Some(PadButton::DpadUp)),
+            (1.0, Some(PadButton::DpadUp), None),
+            (-1.0, Some(PadButton::DpadDown), Some(PadButton::DpadDown)),
+            (0.0, None, None),
+            (1.0, Some(PadButton::DpadUp), Some(PadButton::DpadUp)),
+        ] {
+            let mut pressed = None;
+            record_hat_edge(&mut pressed, &mut previous, value);
+            assert_eq!(vertical_hat_button(value), expected);
+            assert_eq!(pressed, edge);
+        }
+    }
+
+    #[test]
+    fn directinput_hat_preserves_first_press_during_a_tap() {
+        let mut previous = None;
+        let mut pressed = None;
+        record_hat_edge(&mut pressed, &mut previous, -1.0);
+        record_hat_edge(&mut pressed, &mut previous, 0.0);
+        assert_eq!(pressed, Some(PadButton::DpadDown));
+        assert_eq!(previous, None);
+
+        pressed = Some(PadButton::Square);
+        record_hat_edge(&mut pressed, &mut previous, 1.0);
+        assert_eq!(pressed, Some(PadButton::Square));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn directinput_correction_uses_kade_hat_code_only() {
+        use gilrs_core::native_ev_codes::{AXIS_DPADY, AXIS_RSTICKY};
+
+        assert!(super::is_kade_vertical_hat(Some(0x10c4), Some(0x82c0), AXIS_DPADY.into_u32()));
+        assert!(!super::is_kade_vertical_hat(Some(0x10c4), Some(0x82c0), AXIS_RSTICKY.into_u32()));
+        assert!(!super::is_kade_vertical_hat(Some(0x045e), Some(0x028e), AXIS_DPADY.into_u32()));
     }
 }

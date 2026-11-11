@@ -118,15 +118,21 @@ impl Rec {
         screen
     }
 
+    fn confirm_fighter(&mut self, input: FrameInputs) {
+        if self.s.match_config().era_select_enabled() {
+            self.tap(input);
+        }
+        self.tap(input);
+    }
+
     /// The Main Menu to Local's select, with Ryu and Ken locked.
     fn to_locked_fighters(&mut self) {
         self.tap(with(|i| i.menu.start = true));
         self.tap(down());
         self.tap(confirm());
         assert_eq!(self.tap(confirm()), "select");
-        self.tap(confirm());
-        self.step(p2_confirm());
-        self.step(idle());
+        self.confirm_fighter(confirm());
+        self.confirm_fighter(p2_confirm());
     }
 
     /// The Main Menu to Training's select, against a dummy or the CPU.
@@ -143,9 +149,8 @@ impl Rec {
 
     /// Training's select to its stage screen with Ryu and the opponent locked.
     fn lock_training(&mut self) {
-        self.tap(confirm());
-        self.step(confirm());
-        self.step(idle());
+        self.confirm_fighter(confirm());
+        self.confirm_fighter(confirm());
         assert_eq!(self.s.screen(), "stage select");
     }
 
@@ -154,7 +159,7 @@ impl Rec {
         self.tap(with(|i| i.menu.start = true));
         assert_eq!(self.tap(confirm()), "single player");
         assert_eq!(self.tap(confirm()), "select");
-        self.tap(confirm()); // Ryu
+        self.confirm_fighter(confirm()); // Ryu
         for _ in 0..40 {
             if self.step(idle()) == "country select" {
                 break;
@@ -224,9 +229,8 @@ impl Rec {
         self.tap(with(|i| i.p1.directions[3] = true));
         self.tap(confirm());
         assert_eq!(self.tap(confirm()), "select");
-        self.tap(confirm());
-        self.step(p2_confirm());
-        self.step(idle());
+        self.confirm_fighter(confirm());
+        self.confirm_fighter(p2_confirm());
         assert_eq!(self.s.screen(), "stage select");
     }
 
@@ -619,10 +623,7 @@ fn training_plays_the_picker_s_character_then_the_stage_track() {
         }),
     );
     r.to_training_select(false);
-    r.tap(confirm());
-    r.step(confirm());
-    r.step(idle());
-    assert_eq!(r.s.screen(), "stage select");
+    r.lock_training();
     assert_eq!(r.tap(confirm()), "drive");
     r.to_fight_loop(60);
     assert_eq!(first_play(&r), file("joe.ogg", TrackSource::Stage("joe".into())));

@@ -9,6 +9,9 @@
 //! two-country screen as Ryu against Ken. Local ROMs only; each test skips
 //! without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -280,14 +283,14 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
     assert!(panel_shows(&out.frame, &l, 0, &bust(TournamentFighter::Gen).mirrored()));
     tap(&mut s, p1(LEFT)); // P1 to Lee
     // P1 locks Lee: P1's stick no longer moves; back unlocks it.
-    assert_eq!(tap(&mut s, p1_lp()).transition, Some(Transition::Picked(TournamentFighter::Lee)));
+    assert_eq!(select::confirm_fighter(&mut s, p1_lp(), tap).transition, Some(Transition::Picked(TournamentFighter::Lee)));
     assert_eq!(tap(&mut s, p1(RIGHT)).transition, None);
     assert_eq!(border(&s.step(idle()).frame, &l, 6), c.p1);
     assert_eq!(tap(&mut s, p1_lk()).transition, Some(Transition::Unpicked));
     assert_eq!(tap(&mut s, p1(UP)).transition, Some(Transition::CursorMoved)); // to Ryu
     // P2 locks Gen, then P1 locks Ryu: the screen moves on at once.
-    assert_eq!(tap(&mut s, p2_lp()).transition, Some(Transition::Picked(TournamentFighter::Gen)));
-    let out = s.step(p1_lp());
+    assert_eq!(select::confirm_fighter(&mut s, p2_lp(), tap).transition, Some(Transition::Picked(TournamentFighter::Gen)));
+    let out = select::confirm_fighter(&mut s, p1_lp(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, TournamentFighter::Gen)));
     assert_eq!(out.screen, "drive");
 }
@@ -384,19 +387,19 @@ fn a_mirror_match_is_offered_only_where_the_ladder_report_found_it_clean() {
     for _ in 0..4 {
         tap(&mut s, p1(RIGHT));
     }
-    assert_eq!(tap(&mut s, p1_lp()).transition, Some(Transition::Picked(TournamentFighter::Joe)));
+    assert_eq!(select::confirm_fighter(&mut s, p1_lp(), tap).transition, Some(Transition::Picked(TournamentFighter::Joe)));
     tap(&mut s, p2(RIGHT)); // Retsu
     tap(&mut s, p2(RIGHT)); // Geki
     let out = tap(&mut s, p2(RIGHT)); // onto Joe
     assert_eq!(out.transition, Some(Transition::CursorMoved));
     assert_eq!((border(&out.frame, &l, 4), inner_border(&out.frame, &l, 4)), (c.p1, c.p2));
-    let out = s.step(p2_lp());
+    let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Joe, TournamentFighter::Joe)));
     // Ryu's mirror is clean too: both may lock Ryu.
     let (mut s, _) = to_select(load_assets(ROMS, MANIFEST).unwrap(), MatchConfig::default(), true);
-    tap(&mut s, p1_lp());
+    select::confirm_fighter(&mut s, p1_lp(), tap);
     tap(&mut s, p2(LEFT));
-    let out = s.step(p2_lp());
+    let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, TournamentFighter::Ryu)));
 }
 
@@ -429,8 +432,8 @@ fn without_the_art_pack_the_ten_bosses_are_greyed_out_on_every_select_with_a_log
         "log explains why the bosses are greyed out: {log:?}"
     );
     assert_eq!(tap(&mut s, p1(DOWN)).transition, None, "second row skipped");
-    tap(&mut s, p1_lp()); // P1 Ryu
-    let out = s.step(p2_lp()); // P2 Ken
+    select::confirm_fighter(&mut s, p1_lp(), tap); // P1 Ryu
+    let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step); // P2 Ken
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Ryu, TournamentFighter::Ken)));
     while s.screen() != "country select" {
         s.step(idle());

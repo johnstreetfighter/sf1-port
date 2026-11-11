@@ -164,7 +164,7 @@ impl GameSession {
         let previous = connection.rules();
         let stage = self.chosen.unwrap_or(previous.stage);
         let config = play.fight.setup().config;
-        let rules = SyncedMatchRules::new(
+        let mut rules = SyncedMatchRules::new(
             config,
             [config.roster.p1, config.roster.p2],
             previous.dips,
@@ -173,6 +173,9 @@ impl GameSession {
             previous.bank_hash,
             previous.art_pack_hash,
         );
+        if config.dramatic.is_none() && config.era_select_enabled() {
+            rules.styles = [play.fight.fighter_style(0), play.fight.fighter_style(1)];
+        }
         connection.set_rules(rules);
         connection.set_lobby_phase(LobbyPhase::Stage, self.picker as u8);
         connection.set_in_match(true);
@@ -304,6 +307,9 @@ impl GameSession {
         let Some(connection) = self.net_connection.as_ref() else { return };
         let mut rules = *connection.rules();
         rules.seed = rules.seed.wrapping_add(1);
+        if phase == LobbyPhase::Fighters {
+            rules.styles = [None; 2];
+        }
         self.net_commit_epoch(rules, phase);
     }
 
@@ -389,6 +395,7 @@ impl GameSession {
             locked: false,
             phase: LobbyPhase::Fighters,
             random: false,
+            style: None,
         };
         flow.local_picks[0] = Some(packet.clone());
         flow.last_lobby_sent = self.frames;
@@ -505,7 +512,10 @@ impl GameSession {
         let mut select = self.select_for(FightKind::Local);
         if phase == LobbyPhase::Stage {
             for side in 0..2 {
-                select.set_remote_pick(side, rules.fighters[side], true);
+                if select.set_remote_pick(side, rules.fighters[side], true, rules.styles[side]).is_none() {
+                    self.net_return_online("MATCH STYLE IS UNAVAILABLE");
+                    return;
+                }
             }
         }
         self.stack.push(Screen::Select(select));
@@ -616,13 +626,14 @@ impl GameSession {
             .as_ref()
             .map(|connection| connection.rules().stage)
             .unwrap_or(StagePick::Bank(0));
-        let (fighter, stage, locked, phase, random) = match self.stack.last() {
+        let (fighter, stage, locked, phase, random, style) = match self.stack.last() {
             Some(Screen::Select(screen)) => (
                 screen.fighter(side),
                 stage,
                 screen.locked(side).is_some(),
                 LobbyPhase::Fighters,
                 false,
+                screen.locked_style(side),
             ),
             Some(Screen::Stage(screen)) => {
                 let (_, p1, p2) = screen.fight();
@@ -636,6 +647,7 @@ impl GameSession {
                     stage_locked,
                     LobbyPhase::Stage,
                     screen.on_random(),
+                    None,
                 )
             }
             _ => return,
@@ -654,6 +666,7 @@ impl GameSession {
             locked,
             phase,
             random,
+            style,
         };
         flow.local_picks[phase_index(phase)] = Some(packet.clone());
         flow.last_lobby_sent = self.frames;
@@ -685,6 +698,9 @@ impl GameSession {
                 _ => None,
             };
             let Some(applied) = applied else { continue };
+            if let Some(Screen::Select(screen)) = self.stack.last() {
+                self.preferred_eras[side] = screen.preferred_eras()[side];
+            }
             if applied == Transition::Back && matches!(self.stack.last(), Some(Screen::Stage(_))) {
                 self.net_stage_back();
                 return Some(Transition::Back);
@@ -701,7 +717,8 @@ impl GameSession {
             }
             match applied {
                 Transition::CursorMoved => self.sounds.push_back(sound::CURSOR),
-                Transition::Picked(_)
+                Transition::StyleOpened
+                | Transition::Picked(_)
                 | Transition::Fighters(_, _)
                 | Transition::Stage(_)
                 | Transition::RandomStage => self.sounds.push_back(sound::CONFIRM),
@@ -847,13 +864,14 @@ impl GameSession {
             stage,
             locked,
             random,
+            style,
             ..
         } = packet else {
             return None;
         };
         match (phase, self.stack.last_mut()) {
             (LobbyPhase::Fighters, Some(Screen::Select(screen))) => {
-                screen.set_remote_pick(usize::from(*side), *fighter, *locked)
+                screen.set_remote_pick(usize::from(*side), *fighter, *locked, *style)
             }
             (LobbyPhase::Stage, Some(Screen::Stage(screen)))
                 if screen.picker() == usize::from(*side) =>

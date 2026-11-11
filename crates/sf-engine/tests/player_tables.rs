@@ -11,7 +11,8 @@
 use std::path::Path;
 
 use sf_engine::config::RulesetPreset;
-use sf_engine::data_bank::{special_slot, DataBank, SPECIAL_SLOTS};
+use sf_engine::data_bank::{in_bank, special_slot, DataBank, SF2_SPECIAL_SLOT, SF2_SUPER_SLOT, SPECIAL_SLOTS};
+use sf_engine::roster::TournamentFighter;
 use sf_engine::moves::{move_list, ButtonClass, Recognizer};
 use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
@@ -51,14 +52,18 @@ fn every_bank_fighters_special_slots_are_the_registrys_entries_on_the_same_comma
     for &fighter in bank.fighters() {
         let table = bank.table(fighter).unwrap();
         let rb = |addr: u32| bank.rb(addr);
-        let present: Vec<u8> = SPECIAL_SLOTS.into_iter().filter(|&s| rb(table + s as u32 * 0x30 + 8) != 0).collect();
+        let present: Vec<u8> = SPECIAL_SLOTS.into_iter()
+            .filter(|&slot| bank.move_header(fighter, slot).is_some_and(|header| rb(header + 8) != 0))
+            .collect();
         for preset in [RulesetPreset::ClassicCompetitive, RulesetPreset::DefinitiveOverhaul, RulesetPreset::PureFootsies1987Plus] {
             let entries: Vec<_> = move_list(fighter, preset).into_iter().filter(|e| e.available.player_table).collect();
             for &slot in &present {
                 let listed: Vec<_> = entries.iter().filter(|e| e.produces == slot).collect();
                 assert_eq!(listed.len(), 1, "{fighter:?} {preset:?}: special {slot:#04x} is listed once: {listed:?}");
                 let s = special_slot(rb, table, slot);
-                let Recognizer::Tracker(tracker) = listed[0].recognizer;
+                let Recognizer::Tracker(tracker) = listed[0].recognizer else {
+                    panic!("{fighter:?}: legacy special {slot:#04x} uses a 1987 tracker");
+                };
                 assert_eq!(
                     (tracker.offset(), listed[0].input.button == ButtonClass::Kick),
                     (s.tracker, s.kick),
@@ -71,4 +76,27 @@ fn every_bank_fighters_special_slots_are_the_registrys_entries_on_the_same_comma
             }
         }
     }
+}
+
+#[test]
+fn shoto_sf2_slots_use_rom_poses_without_replacing_the_rom_binding() {
+    if !Path::new(ROMS).is_dir() {
+        eprintln!("skipping: local ROM set not present");
+        return;
+    }
+    use TournamentFighter::{Ken, Ryu};
+    let assets = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+    let bank = DataBank::build(&assets.maincpu, &[]);
+    for fighter in [Ryu, Ken] {
+        assert_eq!(bank.table(fighter), None, "the legacy fighter remains ROM-bound");
+        assert!(bank.throw_entry(fighter).is_some(), "ROM throw fallback remains available");
+    }
+    for (fighter, slot) in [(Ryu, SF2_SPECIAL_SLOT), (Ryu, SF2_SUPER_SLOT), (Ken, SF2_SUPER_SLOT)] {
+        let header = bank.move_header(fighter, slot).expect("the SF2 move has an authored header");
+        assert_eq!(bank.rb(header + 8), 1);
+        assert_eq!(bank.rb(header + 0xa), slot);
+        let stream = u32::from_be_bytes(std::array::from_fn(|i| bank.rb(header + 0x2c + i as u32)));
+        assert!(in_bank(stream), "{fighter:?} move {slot:#04x} starts a native bank stream");
+    }
+    assert_eq!(bank.move_header(Ken, SF2_SPECIAL_SLOT), None);
 }

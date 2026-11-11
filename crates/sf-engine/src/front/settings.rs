@@ -18,7 +18,7 @@ use crate::config::{MatchConfig, RulesetPreset};
 use crate::jukebox::{Jukebox, Section as JukeboxSection};
 use crate::moves::InputNotation;
 use crate::netplay::protocol::{tag_from_str, PLAYER_TAG_CHARS};
-use crate::roster::{BanFormat, MenuInput};
+use crate::roster::{BanFormat, MenuInput, RosterSettings};
 
 /// The settings file's contents.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -800,6 +800,7 @@ pub enum Row {
     FullCast,
     FourCountries,
     BanList,
+    WhatIfStyles,
     /// `WINDOW SCALE`.
     Scale,
     /// `MODE`: fullscreen or windowed.
@@ -855,7 +856,7 @@ pub fn rows(tab: Tab) -> Vec<Row> {
             Row::FullCast,
             Row::FourCountries,
             Row::BanList,
-            Row::Greyed("WHAT-IF STYLES"),
+            Row::WhatIfStyles,
             Row::Greyed("BONUS CHALLENGERS"),
             Row::Greyed("SECRET RIVALS"),
         ],
@@ -1034,6 +1035,7 @@ impl SettingsScreen {
         match row {
             Row::TuneLook => !self.tune_enabled(),
             Row::FrameDelay => frame_delay_cap(self.look()) == 0,
+            Row::WhatIfStyles => !self.config.era_select_enabled(),
             _ => false,
         }
     }
@@ -1077,6 +1079,7 @@ impl SettingsScreen {
             Row::FullCast => "FULL CAST",
             Row::FourCountries => "FOUR COUNTRIES",
             Row::BanList => "BAN LIST",
+            Row::WhatIfStyles => "WHAT-IF STYLES",
             Row::Scale => "WINDOW SCALE",
             Row::Fullscreen => "MODE",
             Row::Aspect => "ASPECT",
@@ -1138,6 +1141,7 @@ impl SettingsScreen {
             Row::RoundTime => self.config.round_time.to_string(),
             Row::FullCast => on(self.config.roster.full_cast),
             Row::FourCountries => on(self.config.roster.four_country),
+            Row::WhatIfStyles => on(self.config.roster.what_if_styles),
             Row::BanList => match self.config.roster.ban {
                 BanFormat::Unrestricted => "UNRESTRICTED",
                 BanFormat::StandardTournament => "STANDARD TOURNAMENT",
@@ -1205,6 +1209,7 @@ impl SettingsScreen {
             }
             Row::FullCast => self.config.roster.full_cast = !self.config.roster.full_cast,
             Row::FourCountries => self.config.roster.four_country = !self.config.roster.four_country,
+            Row::WhatIfStyles => self.config.roster.what_if_styles = !self.config.roster.what_if_styles,
             Row::BanList => {
                 let all = [BanFormat::Unrestricted, BanFormat::StandardTournament, BanFormat::LowTierNoShoto];
                 let at = all.iter().position(|&b| b == self.config.roster.ban).unwrap_or(0) as i32;
@@ -1287,6 +1292,8 @@ impl SettingsScreen {
                 let (p1, p2) = (self.config.roster.p1, self.config.roster.p2);
                 self.config.roster.full_cast = defaults.roster.full_cast;
                 self.config.roster.four_country = defaults.roster.four_country;
+                self.config.roster.what_if_styles =
+                    RosterSettings::for_preset(self.config.preset).what_if_styles;
                 self.config.roster.ban = defaults.roster.ban;
                 self.config.roster.p1 = p1;
                 self.config.roster.p2 = p2;
@@ -1489,7 +1496,7 @@ impl SettingsScreen {
                     self.reset_tab();
                     Some(Transition::ValueChanged)
                 }
-                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) => {
+                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
                     if let Row::Toggle(i) = row {
                         if TOGGLES[i].frames.is_some() {
                             return None;

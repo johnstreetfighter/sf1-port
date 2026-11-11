@@ -30,6 +30,9 @@
 //!
 //! Local ROMs only; each test skips without them.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::Path;
 use std::sync::Arc;
 
@@ -202,14 +205,14 @@ fn open_select(s: &mut GameSession, mode: Mode) {
 fn lock_fighters(s: &mut GameSession, mode: Mode) -> Option<Transition> {
     match mode {
         Mode::Local => {
-            tap(s, confirm());
-            s.step(with(|i| i.p2.buttons[0] = true)).transition
+            select::confirm_fighter(s, confirm(), tap);
+            select::confirm_fighter(s, with(|i| i.p2.buttons[0] = true), GameSession::step).transition
         }
         Mode::Dummy | Mode::Cpu => {
-            tap(s, confirm());
-            s.step(confirm()).transition
+            select::confirm_fighter(s, confirm(), tap);
+            select::confirm_fighter(s, confirm(), GameSession::step).transition
         }
-        Mode::Arcade => s.step(confirm()).transition,
+        Mode::Arcade => select::confirm_fighter(s, confirm(), GameSession::step).transition,
     }
 }
 
@@ -896,10 +899,10 @@ fn the_cursor_starts_on_the_home_stage_of_player_2s_fighter() {
     let mut s = session(RulesetPreset::DefinitiveOverhaul, true);
     open_select(&mut s, Mode::Local);
     tap(&mut s, with(|i| i.p2.directions[LEFT] = true));
-    s.step(p2_confirm());
+    select::confirm_fighter(&mut s, p2_confirm(), GameSession::step);
     s.step(idle());
     tap(&mut s, with(|i| i.p1.directions[RIGHT] = true));
-    let t = s.step(confirm()).transition;
+    let t = select::confirm_fighter(&mut s, confirm(), GameSession::step).transition;
     assert_eq!(t, Some(Transition::Fighters(TournamentFighter::Ken, TournamentFighter::Ryu)));
     s.step(idle());
     assert_eq!(s.screen(), "stage select");
@@ -918,11 +921,11 @@ fn training_against_the_cpu_starts_on_the_opponents_home_stage_and_any_stage_pic
     for (moves, cpu) in [(0, TournamentFighter::Ken), (1, TournamentFighter::Ryu)] {
         let mut s = session(RulesetPreset::DefinitiveOverhaul, true);
         open_select(&mut s, Mode::Cpu);
-        tap(&mut s, confirm()); // Ryu
+        select::confirm_fighter(&mut s, confirm(), tap); // Ryu
         for _ in 0..moves {
             tap(&mut s, with(|i| i.p1.directions[LEFT] = true));
         }
-        let Some(Transition::Fighters(_, p2)) = s.step(confirm()).transition else { panic!("the CPU select, {cpu:?}") };
+        let Some(Transition::Fighters(_, p2)) = select::confirm_fighter(&mut s, confirm(), GameSession::step).transition else { panic!("the CPU select, {cpu:?}") };
         assert_eq!(p2, cpu);
         s.step(idle());
         assert_eq!(s.screen(), "stage select");

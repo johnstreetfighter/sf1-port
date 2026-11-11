@@ -8,6 +8,9 @@
 //! local ROM set and skip without it. `SF_BLESS_GOLDENS=1` rewrites them
 //! from the current drawing; look at them before committing.
 
+#[path = "support/select.rs"]
+mod select;
+
 use std::path::{Path, PathBuf};
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
@@ -84,8 +87,8 @@ fn training(a: Assets) -> GameSession {
     tap(&mut s, down());
     tap(&mut s, confirm()); // DUMMY
     assert_eq!(s.screen(), "select");
-    tap(&mut s, confirm()); // P1 Ryu
-    s.step(confirm()); // the dummy Ken
+    select::confirm_fighter(&mut s, confirm(), tap); // P1 Ryu
+    select::confirm_fighter(&mut s, confirm(), GameSession::step); // the dummy Ken
     while s.screen() != "country select" {
         s.step(idle());
     }
