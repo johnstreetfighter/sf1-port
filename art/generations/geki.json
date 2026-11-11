@@ -1,0 +1,1058 @@
+{
+  "fighter": "geki",
+  "calls": [
+    {
+      "at": "2026-11-04T01:05:00Z",
+      "move": "jab",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "200e4903-8922-4012-befd-2b40c689877d",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM stance, padded to 128x96 at (0, 0); the mask covers his front arm and the chest behind its fist (x33-127, y23-42) and his shoulder (x52-63, y12-22)",
+          "note": "inpaint-source-stance-128x96.png and inpaint-mask-jab.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a quick jab: from his shoulder his bare muscular arm drives straight out to the right at head height, fully extended, the black-and-grey mesh armguard on his forearm, ending in his clenched bare fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the arm drove out at head height, but thin, its forearm narrow and its fist small; the mask's top edge, kept below his face, left it too little room. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:05:00Z",
+      "move": "light kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f39a4dda-5467-4452-9c9a-0dc970d7b841",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0f08",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his front kick's ROM knee-up pose, padded to 128x96 at (0, 0); the mask covers his raised shin and boot and the space ahead (x42-127, y56-88)",
+          "note": "inpaint-source-kick-knee-128x96.png and inpaint-mask-light-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front leg in a low front kick: from his raised knee his shin kicks straight out forward to the right at knee height, the knee locked, the black-and-grey mesh wrap on his shin, his blue boot flexed at the end, sole facing right. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: the shin came back a stub with a cut flap at the knee; the mask had to take in the raised thigh as well. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:05:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "9d46139a-6f0a-455b-a3da-26fa895833ce",
+      "cost": 5,
+      "canvas": [
+        96,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc7",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM crouch, padded to 96x64 at (0, 0); the mask covers his front leg from the hip and the floor ahead, not his arms or rear leg (x28-95, y38-63; x35-95, y33-37)",
+          "note": "inpaint-source-crouch-96x64.png and inpaint-mask-crouching-kick.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front leg in a low crouching kick: from his hip, squatting on his other foot, his front leg kicks straight out forward to the right just above the floor, the knee locked, his loose blue trouser leg, the black-and-grey mesh wrap on his shin, his blue boot at the end, sole facing right. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "cfbf1188",
+          "touch_ups": [
+            "his front leg inpainted from the hip (x28-95, y38-63 and x35-95, y33-37), kicked straight out forward just above the floor, squatting on his rear foot; the rest is his crouch (0x0fc7), pixel for pixel; 217 pixels the inpainting drew off his palette set to his nearest body pens",
+            "ground shadow in black (58 pixels; row 62 x21-50, row 63 x0-62): run on under the kicking leg, as under his ROM kicks"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-04): the edit showed, and his body should move into the kick. Now crouching_kick is 1ca8a84a's, generated whole."
+        }
+      ],
+      "note": "Kept: squatting on his rear foot, his front leg straight out along the floor, his boot at the end; outside the mask his ROM crouch, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:05:00Z",
+      "move": "standing block",
+      "tool": "PixelLab create_image_pro",
+      "job": "ac8642f1-c1a5-4631-9128-572cd716c508",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his hooded masked face, claw, mesh guards, gi, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0288",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "posing guide only (another fighter): a standing block, the forearm raised upright before the face",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Standing block: in his fighting stance, his knees bent and his feet planted as in the pose base, he raises both forearms upright before his face to block, the clawed hand high, his body turned a little away, as the posing guide blocks. Exactly the size of his stance reference: about 56 pixels wide and 92 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "standing_block",
+          "crc32": "82bbd00e",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 0: his stance kept whole (legs, hood, claw, size 92), his open front hand raised before his face. 1 crossed his forearms but drifted, bulkier with a different belt; 2 raised his arms over his head; 3 stood 108 tall. The palette was sent as his 14 distinct colours (pens 6 and 14 share one)."
+    },
+    {
+      "at": "2026-11-04T01:12:00Z",
+      "move": "light kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "8b36790b-3de5-4cba-a7a3-b9b1505fc8a8",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0f08",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his front kick's ROM knee-up pose, padded to 128x96 at (0, 0); the mask covers his raised leg from the hip and the space ahead, not his standing leg (x38-127, y42-88)",
+          "note": "inpaint-source-kick-knee-128x96.png and inpaint-mask-light-kick-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front leg in a low front kick, drawn whole from the hip: his thigh in its loose blue trouser leg comes forward from under his belt and his leg kicks straight out forward to the right at knee height, the knee locked, the black-and-grey mesh wrap on his shin, his blue boot at the end, sole facing right, as thick as his other leg. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: much the same kick as seed 42's, the boot less clear. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:12:00Z",
+      "move": "light kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4a318662-65d0-4b12-8284-8fbdaf1b95c8",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0f08",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his front kick's ROM knee-up pose, padded to 128x96 at (0, 0); the mask covers his raised leg from the hip and the space ahead, not his standing leg (x38-127, y42-88)",
+          "note": "inpaint-source-kick-knee-128x96.png and inpaint-mask-light-kick-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front leg in a low front kick, drawn whole from the hip: his thigh in its loose blue trouser leg comes forward from under his belt and his leg kicks straight out forward to the right at knee height, the knee locked, the black-and-grey mesh wrap on his shin, his blue boot at the end, sole facing right, as thick as his other leg. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "light_kick",
+          "crc32": "81505d60",
+          "touch_ups": [
+            "his raised leg inpainted from the hip (x38-127, y42-88), kicked straight out forward at waist height; the rest is his front kick's knee-up pose (0x0f08), pixel for pixel; 158 pixels the inpainting drew off his palette set to his nearest body pens",
+            "stray specks floating off his body cleared (1 pixels in groups of fewer than 6)"
+          ],
+          "note": "Replaced: the user rejected it (2026-11-04): the edit showed, and his body should move into the kick. Now light_kick is 7c21fffb's, generated whole."
+        }
+      ],
+      "note": "Kept: his whole leg kicked straight out from the hip, at waist height rather than the knee height asked for, the boot clear; outside the mask his ROM knee-up pose, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:12:00Z",
+      "move": "jab",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "33f532e8-c820-4238-a862-98474065aca1",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM stance, padded to 128x96 at (0, 0); the mask covers his front arm and the chest behind its fist (x33-127, y23-42) and his shoulder (x52-63, y12-22)",
+          "note": "inpaint-source-stance-128x96.png and inpaint-mask-jab.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a quick jab: from his broad shoulder his bare muscular arm, as thick as his other arm, drives straight out to the right at head height, fully extended, a wide black-and-grey mesh armguard on his forearm, ending in his clenched bare fist as big as his other fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: as thin as seed 1987's; the mask, not the prompt, was what squeezed the arm. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:17:00Z",
+      "move": "jab",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "1e868ac3-d1ea-4aa1-b8d7-2d1124c50eef",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM stance, padded to 128x96 at (0, 0); the mask covers his front arm and the chest behind its fist (x33-127, y23-42) and the space right of his hood (x52-127, y8-22)",
+          "note": "inpaint-source-stance-128x96.png and inpaint-mask-jab-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a quick jab: from his broad shoulder his bare muscular arm, about 8 pixels thick and as thick as his other arm, drives straight out to the right at shoulder height, fully extended, a wide black-and-grey mesh armguard on his forearm, ending in his clenched bare fist as big as his other fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jab_2",
+          "crc32": "291f09a2",
+          "touch_ups": [
+            "his front arm and the chest behind its fist inpainted (x33-127, y23-42, and right of his hood x52-127, y8-22), driven straight out at shoulder height, the fist clenched; the rest is his stance (0x0e00), pixel for pixel; 330 pixels the inpainting drew off his palette set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "Kept: his full muscular arm at shoulder height, a wide mesh armguard and a proper fist; outside the mask his ROM stance, pixel for pixel. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:17:00Z",
+      "move": "jab",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "f47ff498-dbf4-408b-a8d5-74a81a13dce1",
+      "cost": 6,
+      "canvas": [
+        128,
+        96
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted: his ROM stance, padded to 128x96 at (0, 0); the mask covers his front arm and the chest behind its fist (x33-127, y23-42) and the space right of his hood (x52-127, y8-22)",
+          "note": "inpaint-source-stance-128x96.png and inpaint-mask-jab-2.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a quick jab: from his broad shoulder his bare muscular arm, about 8 pixels thick and as thick as his other arm, drives straight out to the right at shoulder height, fully extended, a wide black-and-grey mesh armguard on his forearm, ending in his clenched bare fist as big as his other fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: a small dark tab under the armguard. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T01:30:00Z",
+      "move": "light kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "7c21fffb-9036-48fa-8a2f-27f896a6cfd0",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and identity: his stance, his hooded masked face, claw, mesh guards, gi, build and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his kicking leg, trouser, mesh shin wrap and boot are drawn, and how he leans back",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x02e0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a light front kick, leaning back on the standing leg",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Light front kick: standing on his straight rear leg, his body leaning back a little into the kick, he kicks his front leg straight out forward at waist height, the knee locked, his blue boot flexed at the end, sole facing right; his clawed rear hand raised by his head and his front fist guarding his chest, as the posing guide kicks but lower. The same scale as the pose base: about 85 pixels wide and 92 pixels tall, his head the same size.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "light_kick",
+          "crc32": "7fc3b4fe",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 2: leaning back on his standing leg into the kick, at chest height rather than the waist height asked for, still below his ROM front kick's head height (0x0f60); his stance's guard. 0 kicked at waist height but stood upright; 1 kicked head-high with a blade in his hand; 3 bent both knees."
+    },
+    {
+      "at": "2026-11-04T01:30:00Z",
+      "move": "crouching kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "1ca8a84a-fcef-483e-8422-50309eba44ff",
+      "cost": 10,
+      "canvas": [
+        120,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc7",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base and identity: his crouch, his hooded masked face, claw, mesh guards, gi, exact pixel scale and hip level",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his kicking leg, trouser, mesh shin wrap and boot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03a0",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a crouching kick, squatting on the bent rear leg, the front leg straight out low along the floor",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Crouching kick: squatting low on his deeply bent rear leg with that boot flat on the floor, his body leaning back a little, he kicks his front leg straight out forward low along the floor, the knee locked and the boot at floor level, sole facing right; his clawed rear hand raised by his head and his front fist guarding his chest as in his crouch, as the posing guide kicks. The same scale as the pose base: about 90 pixels wide and 62 pixels tall, his head the same size as in his crouch.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "d7b0615f",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 0: squatting on his rear boot, leaning back a little, his leg out along the floor, his crouch's guard. 3 was close, his fist dropped to his knee; 1 lunged with the claw thrown back; 2 raised an arm high."
+    },
+    {
+      "at": "2026-11-04T01:30:00Z",
+      "move": "sweep",
+      "tool": "PixelLab create_image_pro",
+      "job": "72895f6f-d51a-4621-8084-bb4cb5833a5b",
+      "cost": 10,
+      "canvas": [
+        120,
+        88
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc7",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base and identity: his crouch, his hooded masked face, claw, mesh guards, gi, exact pixel scale and hip level",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his kicking leg, trouser, mesh shin wrap and boot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x054b",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a sweep at full reach, turned, a hand on the floor, the leg straight out along the floor",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Low spinning sweep at full reach: crouched very low, turned so his back is half toward us, one hand planted on the floor, he sweeps his front leg straight out forward along the floor at ankle height, the knee locked and his boot at the end, sole facing right; nothing held in his hands, the claw on his rear hand, as the posing guide sweeps. The same scale as the pose base: about 95 pixels wide and 55 pixels tall, his head the same size as in his crouch.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "sweep",
+          "crc32": "2732dd00",
+          "touch_ups": []
+        }
+      ],
+      "note": "Candidate 1 (turned half away, claw flung back) was packed as 527ea918; the user rejected it as not reading as a sweep and asked for another candidate (2026-11-04). Kept 2: facing us, down on his rear knee, a hand planted, his front leg swept straight out along the floor toward the opponent, nothing held. 3 swept backwards, away from the opponent; 0 was the smallest."
+    },
+    {
+      "at": "2026-11-04T03:47:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "3df80656-2b0d-412c-a274-6637b80add93",
+      "cost": 6,
+      "canvas": [
+        128,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc4",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump squat, padded to 128x64 at (0, 0); the mask covers his front arm and the chest behind its fist (x24-127, y15-30) and right of his hood (x38-127, y4-14)",
+          "note": "inpaint-source-jump-128x64.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a jumping punch: from his broad shoulder his bare muscular arm, about 8 pixels thick and as thick as his other arm, drives straight out to the right at head height, fully extended, a wide black-and-grey mesh armguard on his forearm, ending in his clenched bare fist as big as his other fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "395cba7f",
+          "touch_ups": [
+            "his front arm and the chest behind its fist inpainted (x24-127, y15-30, and right of his hood x38-127, y4-14), driven straight out at head height, the fist clenched; the rest is his ROM top-of-jump squat (0x0fc4), pixel for pixel; 274 pixels the inpainting drew off his palette set to his nearest body pens"
+          ]
+        }
+      ],
+      "note": "Kept: his arm driven straight out at head height, as thick as his other arm, the mesh armguard on, the fist clenched. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T03:47:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4a78ae1b-039b-4e56-a5c0-106584b50a1f",
+      "cost": 6,
+      "canvas": [
+        128,
+        64
+      ],
+      "seed": 42,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599",
+        "#6666bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc4",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "the picture inpainted: his ROM top-of-jump squat, padded to 128x64 at (0, 0); the mask covers his front arm and the chest behind its fist (x24-127, y15-30) and right of his hood (x38-127, y4-14)",
+          "note": "inpaint-source-jump-128x64.png and inpaint-mask-jump-punch.png in the pack's candidates."
+        }
+      ],
+      "prompt": "1987 Capcom arcade pixel art, flat simple shading, dark navy outline, exactly the colours and the drawing of the rest of the sprite. Geki the ninja's front arm in a jumping punch: from his broad shoulder his bare muscular arm, about 8 pixels thick and as thick as his other arm, drives straight out to the right at head height, fully extended, a wide black-and-grey mesh armguard on his forearm, ending in his clenched bare fist as big as his other fist; his blue gi drawn over his chest behind it. Nothing else in the empty space.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Not kept: much the same arm as seed 1987's. Inpainting takes no palette: these are the pens its pixels were reduced to afterwards (his body pens, every opaque pen but his smoke's, 6)."
+    },
+    {
+      "at": "2026-11-04T03:47:00Z",
+      "move": "jumping kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "71afdcf4-7a10-43cf-82e1-c3017fb3986c",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc4",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his hooded masked face, claw, mesh guards, gi, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his kicking leg, trouser, mesh shin wrap and boot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a jumping kick, the rear knee tucked and the front leg kicked straight out",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Jumping kick, in the air: his rear knee tucked up under him as in the pose base, he kicks his front leg straight out forward at waist height, the knee locked, his blue boot flexed at the end, sole facing right; his clawed rear hand raised by his head and his front fist guarding his chest as in the pose base, as the posing guide kicks. The same scale as the pose base: about 80 pixels wide and 64 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 1,
+          "pose": "jump_kick",
+          "crc32": "135f3149",
+          "touch_ups": []
+        },
+        {
+          "candidate": 0,
+          "pose": "jump_kick_high",
+          "crc32": "65a009ba",
+          "touch_ups": []
+        }
+      ],
+      "note": "All four kicked higher than asked. Kept 1 as the jumping kick (his front leg kicked up and forward, the boot at head height) and 0 as the heavy jumping kick (kicked up more steeply, the boot above his head). 2 had a flying headband and the claw on his front hand; 3 drifted from his look (a brown vest)."
+    },
+    {
+      "at": "2026-11-04T03:47:00Z",
+      "move": "jumping heavy kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "9e0211ca-71c4-4bc8-b80f-66da584cad8d",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc4",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his hooded masked face, claw, mesh guards, gi, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his high kicking leg, trouser, mesh shin wrap and boot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x058a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "posing guide only (another fighter): a jumping kick, the rear knee tucked and the front leg kicked out",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Heavy jumping kick, in the air: his rear knee tucked up under him as in the pose base, he kicks his front leg up and forward to the right at the opponent, the knee locked and his blue boot at head height, sole facing right; his clawed rear hand raised by his head and his front fist guarding his chest as in the pose base, as the posing guide kicks but higher. The same scale as the pose base: about 80 pixels wide and 72 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [],
+      "note": "Not kept: 0 had a straight hanging leg and a blade in his hand; 2 had flying belt ends; 1 and 3 kicked lower than the jumping kick's call. The heavy jumping kick is 71afdcf4's candidate 0."
+    },
+    {
+      "at": "2026-11-04T03:47:00Z",
+      "move": "jumping diagonal kick",
+      "tool": "PixelLab create_image_pro",
+      "job": "5e473d30-e2e1-46ac-bae7-0c97eac65302",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#6666bb",
+        "#7788dd",
+        "#555555",
+        "#777777",
+        "#999999",
+        "#000055",
+        "#444477",
+        "#555599"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0fc4",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "pose base and identity: his tucked top-of-jump pose, his hooded masked face, claw, mesh guards, gi, tucked legs and exact pixel scale",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x0f60",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his own front kick: how his kicking leg, trouser, mesh shin wrap and boot are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        },
+        {
+          "rom": {
+            "code": "0x03e0",
+            "large": false,
+            "rows": 3,
+            "cols": 4
+          },
+          "usage": "posing guide only (another fighter): a diagonal jumping kick, the rear knee tucked and the front leg driven down and forward",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure.",
+          "fighter": "ryu"
+        },
+        {
+          "rom": {
+            "code": "0x0e00",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15, cropped to the figure."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: flat simple shading, dark navy outline, no soft gradients. Geki: a lean, muscular ninja in a blue-violet gi with a hood and a mask covering his head and face except his eyes, bare muscular arms, black-and-grey mesh armguards on his forearms and mesh wraps on his shins, a three-bladed steel claw on his rear hand, a black belt, blue boots. Facing right. Diagonal jumping kick, in the air: his rear knee tucked up under him as in the pose base, he drives his front leg straight down and forward at a steep angle toward the floor in front of him, the knee locked, his blue boot at the end; his clawed rear hand raised by his head and his front fist guarding his chest as in the pose base, as the posing guide kicks. The same scale as the pose base: about 75 pixels wide and 72 pixels tall, his head the same size. No floor and no shadow under him.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick_down",
+          "crc32": "4dca632c",
+          "touch_ups": []
+        }
+      ],
+      "note": "Kept 0: his rear knee bent under him, his front leg driven down and forward. 1 was smaller, its kick short; 2 and 3 were much the same as 0 but with a large belt knot (3 also a headband tail)."
+    }
+  ]
+}

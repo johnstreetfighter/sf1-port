@@ -1,0 +1,102 @@
+{
+  "fighter": "ken",
+  "calls": [],
+  "derived": [
+    {
+      "pose": "throw_turn",
+      "crc32": "8ae7a3bb",
+      "from": {
+        "fighter": "ryu",
+        "pose": "throw_turn",
+        "crc32": "cc3890e5"
+      },
+      "touch_ups": [
+        "the headband across the back of his head painted out as hair, and its knot by the ear as hair, ear and cheek (15 pixels)",
+        "his hair's dark streaks brown, pen 8 to 1, as in his ROM art (29 pixels)",
+        "his hair's outline and strand lines brown, pen 0 to 1 wherever the black touches no skin, as in his ROM art (34 pixels)",
+        "barefoot: Ryu's red shoes made skin, pens 8, 9, 10 to 1, 2, 3 or 4 (127 pixels)"
+      ],
+      "note": "Rejected on the review page (user, 2026-11-03): his hands were not bare (Ryu's gold covered the back of the raised fist; Ken's bands sit on his wrists only), his hair was Ryu's cut, and his feet were flat. Replaced by the second try. Ken's poses are Ryu's recoloured, with Ken's differences fixed by hand, as the approved throw description says (docs/planning/art-pipeline-moves.md). Ken's pens line up with Ryu's, so Ryu's file drawn in Ken's colours gives Ken's red gi and gold wristbands. The fixes were measured against Ken's ROM stance, grab and turned-away walk (0x0863, 0x0c2a, 0x0700) and made by a script kept with the pack's candidates (candidates/ken/throw-from-ryu.py). No PixelLab call."
+    },
+    {
+      "pose": "throw_heave",
+      "crc32": "e60e30e3",
+      "from": {
+        "fighter": "ryu",
+        "pose": "throw_heave",
+        "crc32": "51452992"
+      },
+      "touch_ups": [
+        "the headband across his bowed forehead and its tail painted out as hair, the gap between the tail and his hair filled, and a white point under his eyes made his lightest skin (10 pixels)",
+        "his hair's dark streaks brown, pen 8 to 1, as in his ROM art (13 pixels)",
+        "his hair's outline and strand lines brown, pen 0 to 1 wherever the black touches no skin, as in his ROM art (43 pixels)",
+        "barefoot: Ryu's red shoes made skin, pens 8, 9, 10 to 1, 2, 3 or 4 (144 pixels)"
+      ],
+      "note": "Rejected on the review page (user, 2026-11-03): his hair was Ryu's cut and his feet were flat. Replaced by the second try. Ken's poses are Ryu's recoloured, with Ken's differences fixed by hand, as the approved throw description says (docs/planning/art-pipeline-moves.md). Ken's pens line up with Ryu's, so Ryu's file drawn in Ken's colours gives Ken's red gi and gold wristbands. The fixes were measured against Ken's ROM stance, grab and turned-away walk (0x0863, 0x0c2a, 0x0700) and made by a script kept with the pack's candidates (candidates/ken/throw-from-ryu.py). No PixelLab call."
+    },
+    {
+      "pose": "throw_turn",
+      "crc32": "f8f81325",
+      "from": {
+        "fighter": "ryu",
+        "pose": "throw_turn",
+        "crc32": "cc3890e5"
+      },
+      "touch_ups": [
+        "the headband across the back of his head painted out as hair, and its knot by the ear as hair, ear and cheek (15 pixels)",
+        "his hair's dark streaks brown, pen 8 to 1, as in his ROM art (29 pixels)",
+        "his hair's outline and strand lines brown, pen 0 to 1 wherever the black touches no skin, as in his ROM art (34 pixels)",
+        "barefoot: Ryu's red shoes made skin, pens 8, 9, 10 to 1, 2, 3 or 4 (127 pixels)",
+        "his hair over his ear, as his ROM hair falls (14 pixels)",
+        "his hair lightened to his ROM heads' mix: a mid gold pixel touching no line made light gold, pen 9 to 10 (9 pixels)",
+        "his raised hand bare: the gold over the back of it made skin, pens 8, 9, 10 to 1, 3, 4, his band left on the wrist, and the arm's black outline brown (26 pixels)",
+        "his flat foot redrawn as his ROM grab's front foot (0x0c2a, rows 81-88), mirrored, toes to the left (88 pixels)",
+        "his rear heel, seen from behind, shaded in his skin colours where Ryu's dark sole was (41 pixels)",
+        "the ground shadow joined across his feet again (0 pixels)"
+      ],
+      "note": "The second try, after the user's notes on the first (hands, hair, feet). Ken's hair, hands and feet measured against his ROM stance (0x0863), grab (0x0c2a) and his back in the Tatsumaki (0x0da0); his flat foot is the grab's front foot itself, mirrored. Made by candidates/ken/throw-from-ryu.py in the pack, from Ryu's file and sf-art reference ken 0x0c2a large 2 2. No PixelLab call."
+    },
+    {
+      "pose": "throw_heave",
+      "crc32": "d65884be",
+      "from": {
+        "fighter": "ryu",
+        "pose": "throw_heave",
+        "crc32": "51452992"
+      },
+      "touch_ups": [
+        "the headband across his bowed forehead and its tail painted out as hair, the gap between the tail and his hair filled, and a white point under his eyes made his lightest skin (10 pixels)",
+        "his hair's dark streaks brown, pen 8 to 1, as in his ROM art (16 pixels)",
+        "his hair's outline and strand lines brown, pen 0 to 1 wherever the black touches no skin, as in his ROM art (44 pixels)",
+        "barefoot: Ryu's red shoes made skin, pens 8, 9, 10 to 1, 2, 3 or 4 (144 pixels)",
+        "his hair over his ear, as his ROM hair falls (5 pixels)",
+        "his hair lightened to his ROM heads' mix: a mid gold pixel touching no line made light gold, pen 9 to 10 (17 pixels)",
+        "his flat foot redrawn as his ROM grab's front foot (0x0c2a, rows 81-88), mirrored, toes to the left (88 pixels)",
+        "his rear heel, seen from behind, shaded in his skin colours where Ryu's dark sole was (37 pixels)",
+        "the ground shadow joined across his feet again (5 pixels)"
+      ],
+      "note": "Rejected on the review page (user, 2026-11-03): his rear foot faces the player, so it should show his toes, not a heel. Replaced by the third try. The second try, after the user's notes on the first (hands, hair, feet). Ken's hair, hands and feet measured against his ROM stance (0x0863), grab (0x0c2a) and his back in the Tatsumaki (0x0da0); his flat foot is the grab's front foot itself, mirrored. Made by candidates/ken/throw-from-ryu.py in the pack, from Ryu's file and sf-art reference ken 0x0c2a large 2 2. No PixelLab call."
+    },
+    {
+      "pose": "throw_heave",
+      "crc32": "02e632d1",
+      "from": {
+        "fighter": "ryu",
+        "pose": "throw_heave",
+        "crc32": "51452992"
+      },
+      "touch_ups": [
+        "the headband across his bowed forehead and its tail painted out as hair, the gap between the tail and his hair filled, and a white point under his eyes made his lightest skin (10 pixels)",
+        "his hair's dark streaks brown, pen 8 to 1, as in his ROM art (16 pixels)",
+        "his hair's outline and strand lines brown, pen 0 to 1 wherever the black touches no skin, as in his ROM art (44 pixels)",
+        "barefoot: Ryu's red shoes made skin, pens 8, 9, 10 to 1, 2, 3 or 4 (144 pixels)",
+        "his hair over his ear, as his ROM hair falls (5 pixels)",
+        "his hair lightened to his ROM heads' mix: a mid gold pixel touching no line made light gold, pen 9 to 10 (17 pixels)",
+        "his flat foot redrawn as his ROM grab's front foot (0x0c2a, rows 81-88), mirrored, toes to the left (88 pixels)",
+        "his rear foot, which faces us, redrawn as his ROM stance's rear foot (0x0863, rows 86-91), mirrored, his toes toward us (57 pixels)",
+        "the ground shadow joined across his feet again (5 pixels)"
+      ],
+      "note": "The third try: the second with its rear foot, which faces us, redrawn as his ROM stance's rear foot (0x0863), toes toward us, in place of the shaded heel. Made by candidates/ken/throw-from-ryu.py in the pack, from Ryu's file and sf-art reference ken 0x0c2a large 2 2 and 0x0863 large 2 1. No PixelLab call."
+    }
+  ]
+}

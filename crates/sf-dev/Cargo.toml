@@ -1,0 +1,19 @@
+[package]
+name = "sf-dev"
+version.workspace = true
+edition.workspace = true
+description = "Development launcher: native scenes in a window with keyboard input and sound"
+
+[features]
+# Tracker modules in the Jukebox through libopenmpt (sf-host's `tracker`).
+default = ["tracker"]
+tracker = ["sf-host/tracker"]
+
+[dependencies]
+sf-engine = { path = "../sf-engine" }
+sf-video = { path = "../sf-video" }
+sf-compare = { path = "../sf-compare" }
+minifb = "0.28"
+sf-audio = { path = "../sf-audio" }
+sf-host = { path = "../sf-host", default-features = false }
+serde_json = { workspace = true }

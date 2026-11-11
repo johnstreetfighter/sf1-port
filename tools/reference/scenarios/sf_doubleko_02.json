@@ -1,0 +1,1420 @@
+{
+  "scenario_id": "sf-doubleko-02",
+  "format_version": 1,
+  "description": "Game over and return to the attract boundary (ticket #65, F25): the exact sf-doubleko-01 input schedule and factory-default DIPs through 6,000 frames (duration_frames=6001), with a full checkpoint at fixture 2450 and every frame 5560..=6000. Equals sf-doubleko-01 through 5800.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": "defaults"
+  },
+  "controls": {
+    "coin1": {
+      "port": "IN0",
+      "bit": 0
+    },
+    "coin2": {
+      "port": "IN0",
+      "bit": 1
+    },
+    "start1": {
+      "port": "SYSTEM",
+      "bit": 0
+    },
+    "start2": {
+      "port": "SYSTEM",
+      "bit": 1
+    },
+    "p1_right": {
+      "port": "IN1",
+      "bit": 0
+    },
+    "p1_left": {
+      "port": "IN1",
+      "bit": 1
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    },
+    "p1_lp": {
+      "port": "IN1",
+      "bit": 4
+    },
+    "p1_mp": {
+      "port": "IN1",
+      "bit": 5
+    },
+    "p1_hp": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_lk": {
+      "port": "IN1",
+      "bit": 6
+    },
+    "p1_mk": {
+      "port": "IN1",
+      "bit": 7
+    },
+    "p1_hk": {
+      "port": "IN0",
+      "bit": 2
+    },
+    "p2_right": {
+      "port": "IN1",
+      "bit": 8
+    },
+    "p2_left": {
+      "port": "IN1",
+      "bit": 9
+    },
+    "p2_down": {
+      "port": "IN1",
+      "bit": 10
+    },
+    "p2_up": {
+      "port": "IN1",
+      "bit": 11
+    },
+    "p2_lp": {
+      "port": "IN1",
+      "bit": 12
+    },
+    "p2_mp": {
+      "port": "IN1",
+      "bit": 13
+    },
+    "p2_hp": {
+      "port": "IN0",
+      "bit": 10
+    },
+    "p2_lk": {
+      "port": "IN1",
+      "bit": 14
+    },
+    "p2_mk": {
+      "port": "IN1",
+      "bit": 15
+    },
+    "p2_hk": {
+      "port": "IN0",
+      "bit": 8
+    }
+  },
+  "duration_frames": 6001,
+  "inputs": [
+    {
+      "frame": 1450,
+      "press": "coin1",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1480,
+      "press": "coin2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1560,
+      "press": "start2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1900,
+      "press": "start1",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 2000,
+      "press": "start2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 2460,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (0)"
+    },
+    {
+      "frame": 2460,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (0)"
+    },
+    {
+      "frame": 2500,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (0): D"
+    },
+    {
+      "frame": 2502,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (0): DF, F"
+    },
+    {
+      "frame": 2506,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (0): button"
+    },
+    {
+      "frame": 2500,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (0): D"
+    },
+    {
+      "frame": 2502,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (0): DF, F"
+    },
+    {
+      "frame": 2506,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (0): button"
+    },
+    {
+      "frame": 2660,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (1)"
+    },
+    {
+      "frame": 2660,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (1)"
+    },
+    {
+      "frame": 2700,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (1): D"
+    },
+    {
+      "frame": 2702,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (1): DF, F"
+    },
+    {
+      "frame": 2706,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (1): button"
+    },
+    {
+      "frame": 2700,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (1): D"
+    },
+    {
+      "frame": 2702,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (1): DF, F"
+    },
+    {
+      "frame": 2706,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (1): button"
+    },
+    {
+      "frame": 2860,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (2)"
+    },
+    {
+      "frame": 2860,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (2)"
+    },
+    {
+      "frame": 2900,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (2): D"
+    },
+    {
+      "frame": 2902,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (2): DF, F"
+    },
+    {
+      "frame": 2906,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (2): button"
+    },
+    {
+      "frame": 2900,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (2): D"
+    },
+    {
+      "frame": 2902,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (2): DF, F"
+    },
+    {
+      "frame": 2906,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (2): button"
+    },
+    {
+      "frame": 3060,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (3)"
+    },
+    {
+      "frame": 3060,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (3)"
+    },
+    {
+      "frame": 3100,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (3): D"
+    },
+    {
+      "frame": 3102,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (3): DF, F"
+    },
+    {
+      "frame": 3106,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (3): button"
+    },
+    {
+      "frame": 3100,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (3): D"
+    },
+    {
+      "frame": 3102,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (3): DF, F"
+    },
+    {
+      "frame": 3106,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (3): button"
+    },
+    {
+      "frame": 3260,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (4)"
+    },
+    {
+      "frame": 3260,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (4)"
+    },
+    {
+      "frame": 3300,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (4): D"
+    },
+    {
+      "frame": 3302,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (4): DF, F"
+    },
+    {
+      "frame": 3306,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (4): button"
+    },
+    {
+      "frame": 3300,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (4): D"
+    },
+    {
+      "frame": 3302,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (4): DF, F"
+    },
+    {
+      "frame": 3306,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (4): button"
+    },
+    {
+      "frame": 3460,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (5)"
+    },
+    {
+      "frame": 3460,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (5)"
+    },
+    {
+      "frame": 3500,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (5): D"
+    },
+    {
+      "frame": 3502,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (5): DF, F"
+    },
+    {
+      "frame": 3506,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (5): button"
+    },
+    {
+      "frame": 3500,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (5): D"
+    },
+    {
+      "frame": 3502,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (5): DF, F"
+    },
+    {
+      "frame": 3506,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (5): button"
+    },
+    {
+      "frame": 3660,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (6)"
+    },
+    {
+      "frame": 3660,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (6)"
+    },
+    {
+      "frame": 3700,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (6): D"
+    },
+    {
+      "frame": 3702,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (6): DF, F"
+    },
+    {
+      "frame": 3706,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (6): button"
+    },
+    {
+      "frame": 3700,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (6): D"
+    },
+    {
+      "frame": 3702,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (6): DF, F"
+    },
+    {
+      "frame": 3706,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (6): button"
+    },
+    {
+      "frame": 3860,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (7)"
+    },
+    {
+      "frame": 3860,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (7)"
+    },
+    {
+      "frame": 3900,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (7): D"
+    },
+    {
+      "frame": 3902,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (7): DF, F"
+    },
+    {
+      "frame": 3906,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (7): button"
+    },
+    {
+      "frame": 3900,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (7): D"
+    },
+    {
+      "frame": 3902,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (7): DF, F"
+    },
+    {
+      "frame": 3906,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (7): button"
+    },
+    {
+      "frame": 4060,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (8)"
+    },
+    {
+      "frame": 4060,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (8)"
+    },
+    {
+      "frame": 4100,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (8): D"
+    },
+    {
+      "frame": 4102,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (8): DF, F"
+    },
+    {
+      "frame": 4106,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (8): button"
+    },
+    {
+      "frame": 4100,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (8): D"
+    },
+    {
+      "frame": 4102,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (8): DF, F"
+    },
+    {
+      "frame": 4106,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (8): button"
+    },
+    {
+      "frame": 4260,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (9)"
+    },
+    {
+      "frame": 4260,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (9)"
+    },
+    {
+      "frame": 4300,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (9): D"
+    },
+    {
+      "frame": 4302,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (9): DF, F"
+    },
+    {
+      "frame": 4306,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (9): button"
+    },
+    {
+      "frame": 4300,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (9): D"
+    },
+    {
+      "frame": 4302,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (9): DF, F"
+    },
+    {
+      "frame": 4306,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (9): button"
+    },
+    {
+      "frame": 4460,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (10)"
+    },
+    {
+      "frame": 4460,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (10)"
+    },
+    {
+      "frame": 4500,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (10): D"
+    },
+    {
+      "frame": 4502,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (10): DF, F"
+    },
+    {
+      "frame": 4506,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (10): button"
+    },
+    {
+      "frame": 4500,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (10): D"
+    },
+    {
+      "frame": 4502,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (10): DF, F"
+    },
+    {
+      "frame": 4506,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (10): button"
+    },
+    {
+      "frame": 4660,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (11)"
+    },
+    {
+      "frame": 4660,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (11)"
+    },
+    {
+      "frame": 4700,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (11): D"
+    },
+    {
+      "frame": 4702,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (11): DF, F"
+    },
+    {
+      "frame": 4706,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (11): button"
+    },
+    {
+      "frame": 4700,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (11): D"
+    },
+    {
+      "frame": 4702,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (11): DF, F"
+    },
+    {
+      "frame": 4706,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (11): button"
+    },
+    {
+      "frame": 4860,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (12)"
+    },
+    {
+      "frame": 4860,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (12)"
+    },
+    {
+      "frame": 4900,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (12): D"
+    },
+    {
+      "frame": 4902,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (12): DF, F"
+    },
+    {
+      "frame": 4906,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (12): button"
+    },
+    {
+      "frame": 4900,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (12): D"
+    },
+    {
+      "frame": 4902,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (12): DF, F"
+    },
+    {
+      "frame": 4906,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (12): button"
+    },
+    {
+      "frame": 5060,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (13)"
+    },
+    {
+      "frame": 5060,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (13)"
+    },
+    {
+      "frame": 5100,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (13): D"
+    },
+    {
+      "frame": 5102,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (13): DF, F"
+    },
+    {
+      "frame": 5106,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (13): button"
+    },
+    {
+      "frame": 5100,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (13): D"
+    },
+    {
+      "frame": 5102,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (13): DF, F"
+    },
+    {
+      "frame": 5106,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (13): button"
+    },
+    {
+      "frame": 5260,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (14)"
+    },
+    {
+      "frame": 5260,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (14)"
+    },
+    {
+      "frame": 5300,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (14): D"
+    },
+    {
+      "frame": 5302,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (14): DF, F"
+    },
+    {
+      "frame": 5306,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (14): button"
+    },
+    {
+      "frame": 5300,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (14): D"
+    },
+    {
+      "frame": 5302,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (14): DF, F"
+    },
+    {
+      "frame": 5306,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (14): button"
+    },
+    {
+      "frame": 5460,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (15)"
+    },
+    {
+      "frame": 5460,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (15)"
+    },
+    {
+      "frame": 5500,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (15): D"
+    },
+    {
+      "frame": 5502,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (15): DF, F"
+    },
+    {
+      "frame": 5506,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (15): button"
+    },
+    {
+      "frame": 5500,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (15): D"
+    },
+    {
+      "frame": 5502,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (15): DF, F"
+    },
+    {
+      "frame": 5506,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (15): button"
+    },
+    {
+      "frame": 5660,
+      "press": "p1_right",
+      "hold_frames": 40,
+      "comment": "walk in (16)"
+    },
+    {
+      "frame": 5660,
+      "press": "p2_left",
+      "hold_frames": 40,
+      "comment": "walk in (16)"
+    },
+    {
+      "frame": 5700,
+      "press": "p1_down",
+      "hold_frames": 3,
+      "comment": "Ryu Hadoken (16): D"
+    },
+    {
+      "frame": 5702,
+      "press": "p1_right",
+      "hold_frames": 20,
+      "comment": "Ryu Hadoken (16): DF, F"
+    },
+    {
+      "frame": 5706,
+      "press": "p1_lp",
+      "hold_frames": 4,
+      "comment": "Ryu Hadoken (16): button"
+    },
+    {
+      "frame": 5700,
+      "press": "p2_down",
+      "hold_frames": 3,
+      "comment": "Ken Hadoken (16): D"
+    },
+    {
+      "frame": 5702,
+      "press": "p2_left",
+      "hold_frames": 20,
+      "comment": "Ken Hadoken (16): DF, F"
+    },
+    {
+      "frame": 5706,
+      "press": "p2_lp",
+      "hold_frames": 4,
+      "comment": "Ken Hadoken (16): button"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [
+      2450,
+      5560,
+      5561,
+      5562,
+      5563,
+      5564,
+      5565,
+      5566,
+      5567,
+      5568,
+      5569,
+      5570,
+      5571,
+      5572,
+      5573,
+      5574,
+      5575,
+      5576,
+      5577,
+      5578,
+      5579,
+      5580,
+      5581,
+      5582,
+      5583,
+      5584,
+      5585,
+      5586,
+      5587,
+      5588,
+      5589,
+      5590,
+      5591,
+      5592,
+      5593,
+      5594,
+      5595,
+      5596,
+      5597,
+      5598,
+      5599,
+      5600,
+      5601,
+      5602,
+      5603,
+      5604,
+      5605,
+      5606,
+      5607,
+      5608,
+      5609,
+      5610,
+      5611,
+      5612,
+      5613,
+      5614,
+      5615,
+      5616,
+      5617,
+      5618,
+      5619,
+      5620,
+      5621,
+      5622,
+      5623,
+      5624,
+      5625,
+      5626,
+      5627,
+      5628,
+      5629,
+      5630,
+      5631,
+      5632,
+      5633,
+      5634,
+      5635,
+      5636,
+      5637,
+      5638,
+      5639,
+      5640,
+      5641,
+      5642,
+      5643,
+      5644,
+      5645,
+      5646,
+      5647,
+      5648,
+      5649,
+      5650,
+      5651,
+      5652,
+      5653,
+      5654,
+      5655,
+      5656,
+      5657,
+      5658,
+      5659,
+      5660,
+      5661,
+      5662,
+      5663,
+      5664,
+      5665,
+      5666,
+      5667,
+      5668,
+      5669,
+      5670,
+      5671,
+      5672,
+      5673,
+      5674,
+      5675,
+      5676,
+      5677,
+      5678,
+      5679,
+      5680,
+      5681,
+      5682,
+      5683,
+      5684,
+      5685,
+      5686,
+      5687,
+      5688,
+      5689,
+      5690,
+      5691,
+      5692,
+      5693,
+      5694,
+      5695,
+      5696,
+      5697,
+      5698,
+      5699,
+      5700,
+      5701,
+      5702,
+      5703,
+      5704,
+      5705,
+      5706,
+      5707,
+      5708,
+      5709,
+      5710,
+      5711,
+      5712,
+      5713,
+      5714,
+      5715,
+      5716,
+      5717,
+      5718,
+      5719,
+      5720,
+      5721,
+      5722,
+      5723,
+      5724,
+      5725,
+      5726,
+      5727,
+      5728,
+      5729,
+      5730,
+      5731,
+      5732,
+      5733,
+      5734,
+      5735,
+      5736,
+      5737,
+      5738,
+      5739,
+      5740,
+      5741,
+      5742,
+      5743,
+      5744,
+      5745,
+      5746,
+      5747,
+      5748,
+      5749,
+      5750,
+      5751,
+      5752,
+      5753,
+      5754,
+      5755,
+      5756,
+      5757,
+      5758,
+      5759,
+      5760,
+      5761,
+      5762,
+      5763,
+      5764,
+      5765,
+      5766,
+      5767,
+      5768,
+      5769,
+      5770,
+      5771,
+      5772,
+      5773,
+      5774,
+      5775,
+      5776,
+      5777,
+      5778,
+      5779,
+      5780,
+      5781,
+      5782,
+      5783,
+      5784,
+      5785,
+      5786,
+      5787,
+      5788,
+      5789,
+      5790,
+      5791,
+      5792,
+      5793,
+      5794,
+      5795,
+      5796,
+      5797,
+      5798,
+      5799,
+      5800,
+      5801,
+      5802,
+      5803,
+      5804,
+      5805,
+      5806,
+      5807,
+      5808,
+      5809,
+      5810,
+      5811,
+      5812,
+      5813,
+      5814,
+      5815,
+      5816,
+      5817,
+      5818,
+      5819,
+      5820,
+      5821,
+      5822,
+      5823,
+      5824,
+      5825,
+      5826,
+      5827,
+      5828,
+      5829,
+      5830,
+      5831,
+      5832,
+      5833,
+      5834,
+      5835,
+      5836,
+      5837,
+      5838,
+      5839,
+      5840,
+      5841,
+      5842,
+      5843,
+      5844,
+      5845,
+      5846,
+      5847,
+      5848,
+      5849,
+      5850,
+      5851,
+      5852,
+      5853,
+      5854,
+      5855,
+      5856,
+      5857,
+      5858,
+      5859,
+      5860,
+      5861,
+      5862,
+      5863,
+      5864,
+      5865,
+      5866,
+      5867,
+      5868,
+      5869,
+      5870,
+      5871,
+      5872,
+      5873,
+      5874,
+      5875,
+      5876,
+      5877,
+      5878,
+      5879,
+      5880,
+      5881,
+      5882,
+      5883,
+      5884,
+      5885,
+      5886,
+      5887,
+      5888,
+      5889,
+      5890,
+      5891,
+      5892,
+      5893,
+      5894,
+      5895,
+      5896,
+      5897,
+      5898,
+      5899,
+      5900,
+      5901,
+      5902,
+      5903,
+      5904,
+      5905,
+      5906,
+      5907,
+      5908,
+      5909,
+      5910,
+      5911,
+      5912,
+      5913,
+      5914,
+      5915,
+      5916,
+      5917,
+      5918,
+      5919,
+      5920,
+      5921,
+      5922,
+      5923,
+      5924,
+      5925,
+      5926,
+      5927,
+      5928,
+      5929,
+      5930,
+      5931,
+      5932,
+      5933,
+      5934,
+      5935,
+      5936,
+      5937,
+      5938,
+      5939,
+      5940,
+      5941,
+      5942,
+      5943,
+      5944,
+      5945,
+      5946,
+      5947,
+      5948,
+      5949,
+      5950,
+      5951,
+      5952,
+      5953,
+      5954,
+      5955,
+      5956,
+      5957,
+      5958,
+      5959,
+      5960,
+      5961,
+      5962,
+      5963,
+      5964,
+      5965,
+      5966,
+      5967,
+      5968,
+      5969,
+      5970,
+      5971,
+      5972,
+      5973,
+      5974,
+      5975,
+      5976,
+      5977,
+      5978,
+      5979,
+      5980,
+      5981,
+      5982,
+      5983,
+      5984,
+      5985,
+      5986,
+      5987,
+      5988,
+      5989,
+      5990,
+      5991,
+      5992,
+      5993,
+      5994,
+      5995,
+      5996,
+      5997,
+      5998,
+      5999,
+      6000
+    ],
+    "checkpoint_notes": "2450=versus fixture; 5560..=6000=third-round match end, both ranking checks, versus game-over palette/scroll and 240-frame hold, game-state reset, slot-2 kill and return to 0x3ccae"
+  }
+}

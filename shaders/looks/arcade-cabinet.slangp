@@ -1,0 +1,38 @@
+#reference "../crt/crt-guest-advanced.slangp"
+
+# ARCADE CABINET (ticket #207, spec #203): Guest advanced tuned toward a
+# 15 kHz arcade monitor showing a 224-line RGB picture. Written for this
+# game, not upstream; the shaders it reaches are the vendored Guest passes.
+# Proposed values, for the user to approve by eye on the 3200x2000 screen.
+#
+# The cabinet fed the tube RGB, so the picture is sharper than a home TV's
+# composite: more horizontal sharpness, no smart-edge blur.
+h_sharp = "6.000000"
+s_sharp = "0.700000"
+# 224 lines on a 15 kHz tube: clearly separated scanlines, beams that widen
+# on bright pixels.
+beam_min = "1.400000"
+beam_max = "1.050000"
+beam_size = "0.650000"
+scangamma = "2.400000"
+# The arcade tubes of the time were slot-mask tubes: a slot mask over the
+# CGWG triad, moderate so the picture keeps its brightness.
+shadowMask = "0.000000"
+maskstr = "0.400000"
+slotmask = "0.500000"
+slotmask1 = "0.600000"
+slotwidth = "0.000000"
+double_slot = "2.000000"
+mcut = "1.100000"
+# Brighten to make up for the mask and scanlines; a little glow and
+# halation around bright sprites, as a tube's phosphor has.
+brightboost = "1.550000"
+brightboost1 = "1.150000"
+glow = "0.060000"
+halation = "0.050000"
+# A flat tube: curvature belongs to a curved look; small rounded corners.
+warpX = "0.000000"
+warpY = "0.000000"
+csize = "0.020000"
+# 224 lines never interlace.
+interm = "0.000000"

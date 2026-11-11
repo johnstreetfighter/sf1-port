@@ -1,0 +1,380 @@
+{
+  "scenario_id": "sf-music-03",
+  "format_version": 1,
+  "description": "Music CPU: a tune that ends by itself (issue #33) and the attract ranking screen (issue #56). The fixed fight (sf-fixed-fight-01's inputs) continued through the loss, the continue countdown, the game-over screen (6240-6328) and the return to the attract loop (6329): the attract ranking tune 0x39 (queued by 0x4268c at 7185, not a game-over tune) starts at frame 7186 and ends by itself (sequencer opcode 0xf) at 7301; the ranking screen's exit stop 0x3f at 7393 ends the window. Checkpoints every frame over 7185..=7392. Audio runs: run_audio_probe.py --hook-window 7185 7395.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": "factory defaults; observed readback DSW1=0xdfff, DSW2=0xffff"
+  },
+  "controls": {
+    "coin1": {
+      "port": "IN0",
+      "bit": 0
+    },
+    "coin2": {
+      "port": "IN0",
+      "bit": 1
+    },
+    "p1_button6": {
+      "port": "IN0",
+      "bit": 2
+    },
+    "p2_button6": {
+      "port": "IN0",
+      "bit": 8
+    },
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p2_button3": {
+      "port": "IN0",
+      "bit": 10
+    },
+    "p1_right": {
+      "port": "IN1",
+      "bit": 0
+    },
+    "p1_left": {
+      "port": "IN1",
+      "bit": 1
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    },
+    "p1_button1": {
+      "port": "IN1",
+      "bit": 4
+    },
+    "p1_button2": {
+      "port": "IN1",
+      "bit": 5
+    },
+    "p1_button4": {
+      "port": "IN1",
+      "bit": 6
+    },
+    "p1_button5": {
+      "port": "IN1",
+      "bit": 7
+    },
+    "p2_right": {
+      "port": "IN1",
+      "bit": 8
+    },
+    "p2_left": {
+      "port": "IN1",
+      "bit": 9
+    },
+    "p2_down": {
+      "port": "IN1",
+      "bit": 10
+    },
+    "p2_up": {
+      "port": "IN1",
+      "bit": 11
+    },
+    "p2_button1": {
+      "port": "IN1",
+      "bit": 12
+    },
+    "p2_button2": {
+      "port": "IN1",
+      "bit": 13
+    },
+    "p2_button4": {
+      "port": "IN1",
+      "bit": 14
+    },
+    "p2_button5": {
+      "port": "IN1",
+      "bit": 15
+    },
+    "start1": {
+      "port": "SYSTEM",
+      "bit": 0
+    },
+    "start2": {
+      "port": "SYSTEM",
+      "bit": 1
+    },
+    "service1": {
+      "port": "SYSTEM",
+      "bit": 2
+    }
+  },
+  "duration_frames": 9000,
+  "inputs": [
+    {
+      "frame": 1450,
+      "press": "coin1",
+      "hold_frames": 12,
+      "comment": "insert coin; title screen is up from ~1375"
+    },
+    {
+      "frame": 1520,
+      "press": "start1",
+      "hold_frames": 12,
+      "comment": "1P start; start sound observed ~1522"
+    },
+    {
+      "frame": 1900,
+      "press": "start1",
+      "hold_frames": 12,
+      "comment": "confirm default country Japan at country select (visible by ~1860)"
+    },
+    {
+      "frame": 2400,
+      "press": "p1_right",
+      "hold_frames": 180,
+      "comment": "walk toward Retsu; fight control begins ~2280"
+    },
+    {
+      "frame": 2590,
+      "press": "p1_button1",
+      "hold_frames": 10,
+      "comment": "light punch"
+    },
+    {
+      "frame": 2630,
+      "press": "p1_button4",
+      "hold_frames": 10,
+      "comment": "light kick"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [
+      7185,
+      7186,
+      7187,
+      7188,
+      7189,
+      7190,
+      7191,
+      7192,
+      7193,
+      7194,
+      7195,
+      7196,
+      7197,
+      7198,
+      7199,
+      7200,
+      7201,
+      7202,
+      7203,
+      7204,
+      7205,
+      7206,
+      7207,
+      7208,
+      7209,
+      7210,
+      7211,
+      7212,
+      7213,
+      7214,
+      7215,
+      7216,
+      7217,
+      7218,
+      7219,
+      7220,
+      7221,
+      7222,
+      7223,
+      7224,
+      7225,
+      7226,
+      7227,
+      7228,
+      7229,
+      7230,
+      7231,
+      7232,
+      7233,
+      7234,
+      7235,
+      7236,
+      7237,
+      7238,
+      7239,
+      7240,
+      7241,
+      7242,
+      7243,
+      7244,
+      7245,
+      7246,
+      7247,
+      7248,
+      7249,
+      7250,
+      7251,
+      7252,
+      7253,
+      7254,
+      7255,
+      7256,
+      7257,
+      7258,
+      7259,
+      7260,
+      7261,
+      7262,
+      7263,
+      7264,
+      7265,
+      7266,
+      7267,
+      7268,
+      7269,
+      7270,
+      7271,
+      7272,
+      7273,
+      7274,
+      7275,
+      7276,
+      7277,
+      7278,
+      7279,
+      7280,
+      7281,
+      7282,
+      7283,
+      7284,
+      7285,
+      7286,
+      7287,
+      7288,
+      7289,
+      7290,
+      7291,
+      7292,
+      7293,
+      7294,
+      7295,
+      7296,
+      7297,
+      7298,
+      7299,
+      7300,
+      7301,
+      7302,
+      7303,
+      7304,
+      7305,
+      7306,
+      7307,
+      7308,
+      7309,
+      7310,
+      7311,
+      7312,
+      7313,
+      7314,
+      7315,
+      7316,
+      7317,
+      7318,
+      7319,
+      7320,
+      7321,
+      7322,
+      7323,
+      7324,
+      7325,
+      7326,
+      7327,
+      7328,
+      7329,
+      7330,
+      7331,
+      7332,
+      7333,
+      7334,
+      7335,
+      7336,
+      7337,
+      7338,
+      7339,
+      7340,
+      7341,
+      7342,
+      7343,
+      7344,
+      7345,
+      7346,
+      7347,
+      7348,
+      7349,
+      7350,
+      7351,
+      7352,
+      7353,
+      7354,
+      7355,
+      7356,
+      7357,
+      7358,
+      7359,
+      7360,
+      7361,
+      7362,
+      7363,
+      7364,
+      7365,
+      7366,
+      7367,
+      7368,
+      7369,
+      7370,
+      7371,
+      7372,
+      7373,
+      7374,
+      7375,
+      7376,
+      7377,
+      7378,
+      7379,
+      7380,
+      7381,
+      7382,
+      7383,
+      7384,
+      7385,
+      7386,
+      7387,
+      7388,
+      7389,
+      7390,
+      7391,
+      7392
+    ],
+    "checkpoint_notes": "790=static black window (pixels/RAM consistent); 794=warning complete (transition frame: RAM dump already carries the next frame's videoram); 1500=title with credit; 1860=country select; 1980=VS screen; 2160=ROUND 1; 2280=round 1 fight start (music command 0x28); 2460=walk; 2595=punch; 2660=after attacks; 3360=round 1 result (CPU KO at ~3328, jingle 09/a7 at ~3361); 3840=round 2 fight start; 4800=round 2 KO blow; 4990=round 2 result, match decided"
+  }
+}

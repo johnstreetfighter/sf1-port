@@ -1,0 +1,191 @@
+{
+  "fighter": "eagle",
+  "poses": {
+    "crouch": {
+      "origin": "generated",
+      "crc32": "7a057856",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_block": {
+      "origin": "generated",
+      "crc32": "f6f2ccdf",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_hit": {
+      "origin": "generated",
+      "crc32": "613f1b7a",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_sweep": {
+      "origin": "generated",
+      "crc32": "6735d064",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_uppercut": {
+      "origin": "generated",
+      "crc32": "f5d0aba0",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jab": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jab_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_high": {
+      "origin": "generated",
+      "crc32": "4f108425",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_jab": {
+      "origin": "generated",
+      "crc32": "c463b808",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_poke": {
+      "origin": "generated",
+      "crc32": "825a3151",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_rise": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_smash": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_squat": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_swing": {
+      "origin": "generated",
+      "crc32": "161c1cbf",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_top": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "generated",
+      "crc32": "d1fe7055",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising_strike": {
+      "origin": "generated",
+      "crc32": "295e0a1c",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "smash": {
+      "origin": "generated",
+      "crc32": "81babe5e",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "smash_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "spin_back": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "spin_front": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "spin_side": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "spin_turn": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrust_windup": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

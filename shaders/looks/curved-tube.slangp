@@ -1,0 +1,23 @@
+# CURVED TUBE (ticket #208, spec #203): crt-geom, cgwg's curved tube.
+# Written for this game, not upstream. Its one pass is a trimmed copy of
+# the vendored crt-geom (curved-tube/crt-geom-lean.slang says what was cut
+# and why: the whole shader ran at about 3 fps through librashader's wgpu
+# runtime). Proposed values, for the user to approve by eye on the
+# 3200x2000 screen.
+shaders = "1"
+shader0 = "curved-tube/crt-geom-lean.slang"
+filter_linear0 = "false"
+scale_type0 = "viewport"
+
+# The curve: crt-geom's own radius and viewing distance, a tube seen from
+# in front; small rounded corners.
+CURVATURE = "1.000000"
+R = "2.000000"
+d = "1.500000"
+cornersize = "0.030000"
+# The aperture-grille mask at crt-geom's strength, scanlines as upstream.
+mask_type = "1.000000"
+DOTMASK = "0.300000"
+scanline_weight = "0.300000"
+# 224 lines never interlace.
+interlace_detect = "0.000000"

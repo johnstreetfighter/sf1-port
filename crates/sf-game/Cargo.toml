@@ -1,0 +1,22 @@
+[package]
+name = "sf-game"
+version.workspace = true
+edition.workspace = true
+description = "The game: the 1987 machine behind the overhaul front end, in a window with keyboard and sound"
+
+[features]
+# Tracker modules in the Jukebox through libopenmpt (sf-host's `tracker`).
+default = ["tracker"]
+tracker = ["sf-host/tracker"]
+
+[dependencies]
+sf-engine = { path = "../sf-engine" }
+sf-video = { path = "../sf-video" }
+sf-audio = { path = "../sf-audio" }
+sf-host = { path = "../sf-host", default-features = false }
+
+[build-dependencies]
+find-msvc-tools = "0.1"
+
+[dev-dependencies]
+minifb = "0.28"

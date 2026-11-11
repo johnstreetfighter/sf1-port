@@ -1,0 +1,93 @@
+{
+  "format": 1,
+  "lines": {
+    "alpha_counter": {
+      "take": 1,
+      "take_key": "be2c8325c4c60fd078863042c60ce661cbc95b0bb758cb1ae5073218ca2f2697"
+    },
+    "burnout": {
+      "take": 2,
+      "take_key": "f3093c036f1b3d0f2679354ba6639810d6c30d077134a0c94689cfbeaf99567c"
+    },
+    "combo_10": {
+      "take": 1,
+      "take_key": "2e1c78fa95a49b5a6485d76b239dbd5f10a347238deb4c66162ebe2580c2c97f"
+    },
+    "combo_11": {
+      "take": 1,
+      "take_key": "5b0a9676e28aaf93dd3bf1e35531e45c51c39f6d2a4c25327aa66a5806fc9e60"
+    },
+    "combo_12": {
+      "take": 1,
+      "take_key": "ce9ab222c96c3230f6f788d3a513524e22db838d57603a6c3de9cc8900d6b1cf"
+    },
+    "combo_13": {
+      "take": 1,
+      "take_key": "45815633e524586ed2a81304aa067534751b5f82d8ec4759662fe55283001db7"
+    },
+    "combo_14": {
+      "take": 1,
+      "take_key": "ea38fc2df44597f2190a5c048bca99848cf77d206e5ade884208af17959a17a4"
+    },
+    "combo_15": {
+      "take": 1,
+      "take_key": "bc3f5a3659f37700f6e19881f96c8624539f13d96a0c65b25227d89554252aed"
+    },
+    "combo_5": {
+      "take": 1,
+      "take_key": "c1001fc1ca4b2bb86d4d4394041686ebc87c33f0aa4e461fc94ee7a1d2198625"
+    },
+    "combo_6": {
+      "take": 1,
+      "take_key": "3d533e12964ee12e5bdabe5f00b80a957a2bf1e3c564ab904b5529e8781012a8"
+    },
+    "combo_7": {
+      "take": 1,
+      "take_key": "e56d41df20618007b3b854d624986e5cbc8453f12bb063989ddb8d9c9d9f7614"
+    },
+    "combo_8": {
+      "take": 1,
+      "take_key": "a81d9290ade135e672747fe121fbc399cb6cbf19728a6e3fc671520c1afabecc"
+    },
+    "combo_9": {
+      "take": 1,
+      "take_key": "e8df3c7b5cecca049a71563c96bef510db8529a7781f4c14e579c3614506927f"
+    },
+    "counter": {
+      "take": 2,
+      "take_key": "9e01e08e52f239dffc5efaf64d7bda1e4826bf49cd1d49d9074ca76f4b30bc77"
+    },
+    "crush_counter": {
+      "take": 1,
+      "take_key": "0f25148657855362aecd3cb9b349ff1a07ae58ee5693529bc4a1ce7104aa14b1"
+    },
+    "custom_combo": {
+      "take": 1,
+      "take_key": "0b1f7abc0f707b8820714e172a260b328ec42cbee06f9d0fc046d3b9c83e1cbb"
+    },
+    "first_attack": {
+      "take": 3,
+      "take_key": "bb68f009e11f39ab1f275e6124ab756ae27747591c3f5d04fed29ae45c1e83e6"
+    },
+    "perfect": {
+      "take": 2,
+      "take_key": "4b144184379fd2fadb517cd679f1501d9972168ea14db881d3f7b2af164a3c8d"
+    },
+    "perfect_parry": {
+      "take": 2,
+      "take_key": "07546a9cb20d74af744ad7ad7f24dc81c5c07c2637a1244305a5b7ca73499280"
+    },
+    "punish_counter": {
+      "take": 1,
+      "take_key": "d2939986b8a527a201b136dcfc0d512447274c5a4508c130d591841b1065567e"
+    },
+    "reversal": {
+      "take": 2,
+      "take_key": "eb7095664e35ae5c4b6ca344d7d94c0878cffeaa8ba04f58b712f1967cff8da6"
+    },
+    "super": {
+      "take": 2,
+      "take_key": "68cbfcbf8a5ead540b7fbd0fc2976b85b2fabb82fc59da9b4a6c39dd556f3c48"
+    }
+  }
+}

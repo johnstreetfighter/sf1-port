@@ -1,0 +1,2100 @@
+{
+  "scenario_id": "sf-sound-test-01",
+  "format_version": 1,
+  "description": "Ticket #62 (F22), label SM: Service Mode On from power-on; every FM effect and special command over silence, all 27 effects over tunes 0x33 and 0x28, priority replacement, non-empty effect stops, and effect 0x22 slide 0. Directions are held for ten frames per observed single step (the service screen samples at five frames); heavy punch plays on release. Checkpoints are on the frame before every music-command latch write and at run end.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    }
+  },
+  "duration_frames": 8700,
+  "inputs": [
+    {
+      "frame": 100,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 00: silence / initial stop"
+    },
+    {
+      "frame": 120,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 140,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 01: 1 steps"
+    },
+    {
+      "frame": 150,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 01: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 170,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 190,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 02: 1 steps"
+    },
+    {
+      "frame": 200,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 02: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 220,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 240,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 03: 1 steps"
+    },
+    {
+      "frame": 250,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 03: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 270,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 290,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 04: 1 steps"
+    },
+    {
+      "frame": 300,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 04: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 320,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 340,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 05: 1 steps"
+    },
+    {
+      "frame": 350,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 05: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 370,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 390,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 06: 1 steps"
+    },
+    {
+      "frame": 400,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 06: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 420,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 440,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 07: 1 steps"
+    },
+    {
+      "frame": 450,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 07: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 470,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 490,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 08: 1 steps"
+    },
+    {
+      "frame": 500,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 08: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 540,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 09: 1 steps"
+    },
+    {
+      "frame": 550,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 09: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 570,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 590,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0a: 1 steps"
+    },
+    {
+      "frame": 600,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0a: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 620,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 640,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0b: 1 steps"
+    },
+    {
+      "frame": 650,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0b: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 690,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0c: 1 steps"
+    },
+    {
+      "frame": 700,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0c: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 720,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 740,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0d: 1 steps"
+    },
+    {
+      "frame": 750,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0d: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 770,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 790,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0e: 1 steps"
+    },
+    {
+      "frame": 800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0e: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 820,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 840,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0f: 1 steps"
+    },
+    {
+      "frame": 850,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0f: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 870,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 890,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 10: 1 steps"
+    },
+    {
+      "frame": 900,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 10: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 920,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 940,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 11: 1 steps"
+    },
+    {
+      "frame": 950,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 11: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 970,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 990,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 12: 1 steps"
+    },
+    {
+      "frame": 1000,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 12: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1020,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1040,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 13: 1 steps"
+    },
+    {
+      "frame": 1050,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 13: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1070,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1090,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 14: 1 steps"
+    },
+    {
+      "frame": 1100,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 14: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1120,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1140,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 15: 1 steps"
+    },
+    {
+      "frame": 1150,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 15: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1170,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1190,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 16: 1 steps"
+    },
+    {
+      "frame": 1200,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 16: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1220,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1240,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 17: 1 steps"
+    },
+    {
+      "frame": 1250,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 17: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1270,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1290,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 18: 1 steps"
+    },
+    {
+      "frame": 1300,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 18: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1320,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1340,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 19: 1 steps"
+    },
+    {
+      "frame": 1350,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 19: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1370,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1390,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1a: 1 steps"
+    },
+    {
+      "frame": 1400,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1a: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1420,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1440,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1b: 1 steps"
+    },
+    {
+      "frame": 1450,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1b: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1470,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1490,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1c: 1 steps"
+    },
+    {
+      "frame": 1500,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1c: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1540,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1d: 1 steps"
+    },
+    {
+      "frame": 1550,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1d: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1570,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1590,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1e: 1 steps"
+    },
+    {
+      "frame": 1600,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1e: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1620,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1640,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1f: 1 steps"
+    },
+    {
+      "frame": 1650,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1f: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1690,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 20: 1 steps"
+    },
+    {
+      "frame": 1700,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 20: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1720,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1740,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 21: 1 steps"
+    },
+    {
+      "frame": 1750,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 21: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1770,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1790,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 22: 1 steps"
+    },
+    {
+      "frame": 1800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 22: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1820,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1840,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 23: 1 steps"
+    },
+    {
+      "frame": 1850,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 23: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1870,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1890,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 24: 1 steps"
+    },
+    {
+      "frame": 1900,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 24: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1920,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1940,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 25: 1 steps"
+    },
+    {
+      "frame": 1950,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 25: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 1970,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1990,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 26: 1 steps"
+    },
+    {
+      "frame": 2000,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 26: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 2020,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2040,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 27: 1 steps"
+    },
+    {
+      "frame": 2050,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 27: complete effect/special matrix over silence"
+    },
+    {
+      "frame": 2070,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2090,
+      "press": "p1_down",
+      "hold_frames": 370,
+      "comment": "Select 02: 37 steps"
+    },
+    {
+      "frame": 2460,
+      "press": "p1_button3",
+      "hold_frames": 6,
+      "comment": "Play 02: running effect for the following 00"
+    },
+    {
+      "frame": 2467,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Ignored playback attempt (service input latch)"
+    },
+    {
+      "frame": 2467,
+      "press": "p1_down",
+      "hold_frames": 20,
+      "comment": "Select 00: two steps"
+    },
+    {
+      "frame": 2473,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 00: stop while 02 is running"
+    },
+    {
+      "frame": 2520,
+      "press": "p1_up",
+      "hold_frames": 150,
+      "comment": "Select 0f: 15 steps"
+    },
+    {
+      "frame": 2670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Ignored initial 0f attempt"
+    },
+    {
+      "frame": 2676,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0f: changed-mask replacement source"
+    },
+    {
+      "frame": 2683,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 10: replacement"
+    },
+    {
+      "frame": 2694,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Ignored replacement attempt"
+    },
+    {
+      "frame": 2700,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 10: replace 0f and free its channels"
+    },
+    {
+      "frame": 2720,
+      "press": "p1_down",
+      "hold_frames": 10,
+      "comment": "Select 0f: non-empty stop source"
+    },
+    {
+      "frame": 2750,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0f: non-empty stop source"
+    },
+    {
+      "frame": 2756,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired 0f attempt (ignored)"
+    },
+    {
+      "frame": 2764,
+      "press": "p1_down",
+      "hold_frames": 30,
+      "comment": "Select 0c: stop both effect slots"
+    },
+    {
+      "frame": 2794,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0c: stop a non-empty effect slot"
+    },
+    {
+      "frame": 2800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired 0c attempt (ignored)"
+    },
+    {
+      "frame": 2850,
+      "press": "p1_down",
+      "hold_frames": 120,
+      "comment": "Select 00: 12 steps"
+    },
+    {
+      "frame": 2970,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 00: clear effects before tune matrix"
+    },
+    {
+      "frame": 2990,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3010,
+      "press": "p1_up",
+      "hold_frames": 510,
+      "comment": "Select 33: 51 steps"
+    },
+    {
+      "frame": 3520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 33: tune 33 under the complete effect matrix"
+    },
+    {
+      "frame": 3540,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3560,
+      "press": "p1_down",
+      "hold_frames": 500,
+      "comment": "Select 01: 50 steps"
+    },
+    {
+      "frame": 4060,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 01: effect 01 over tune 33"
+    },
+    {
+      "frame": 4080,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4100,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 02: 1 steps"
+    },
+    {
+      "frame": 4110,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 02: effect 02 over tune 33"
+    },
+    {
+      "frame": 4130,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4150,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 03: 1 steps"
+    },
+    {
+      "frame": 4160,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 03: effect 03 over tune 33"
+    },
+    {
+      "frame": 4180,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4200,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 04: 1 steps"
+    },
+    {
+      "frame": 4210,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 04: effect 04 over tune 33"
+    },
+    {
+      "frame": 4230,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4250,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 05: 1 steps"
+    },
+    {
+      "frame": 4260,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 05: effect 05 over tune 33"
+    },
+    {
+      "frame": 4280,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4300,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 06: 1 steps"
+    },
+    {
+      "frame": 4310,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 06: effect 06 over tune 33"
+    },
+    {
+      "frame": 4330,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4350,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 07: 1 steps"
+    },
+    {
+      "frame": 4360,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 07: effect 07 over tune 33"
+    },
+    {
+      "frame": 4380,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4400,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 08: 1 steps"
+    },
+    {
+      "frame": 4410,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 08: effect 08 over tune 33"
+    },
+    {
+      "frame": 4430,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4450,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 09: 1 steps"
+    },
+    {
+      "frame": 4460,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 09: effect 09 over tune 33"
+    },
+    {
+      "frame": 4480,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4500,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0a: 1 steps"
+    },
+    {
+      "frame": 4510,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0a: effect 0a over tune 33"
+    },
+    {
+      "frame": 4530,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4550,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0b: 1 steps"
+    },
+    {
+      "frame": 4560,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0b: effect 0b over tune 33"
+    },
+    {
+      "frame": 4580,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4600,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 0d: 2 steps"
+    },
+    {
+      "frame": 4620,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0d: effect 0d over tune 33"
+    },
+    {
+      "frame": 4640,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4660,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 0f: 2 steps"
+    },
+    {
+      "frame": 4680,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0f: effect 0f over tune 33"
+    },
+    {
+      "frame": 4700,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4720,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 10: 1 steps"
+    },
+    {
+      "frame": 4730,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 10: effect 10 over tune 33"
+    },
+    {
+      "frame": 4750,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4770,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 11: 1 steps"
+    },
+    {
+      "frame": 4780,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 11: effect 11 over tune 33"
+    },
+    {
+      "frame": 4800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4820,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 12: 1 steps"
+    },
+    {
+      "frame": 4830,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 12: effect 12 over tune 33"
+    },
+    {
+      "frame": 4850,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4870,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 13: 1 steps"
+    },
+    {
+      "frame": 4880,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 13: effect 13 over tune 33"
+    },
+    {
+      "frame": 4900,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4920,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 14: 1 steps"
+    },
+    {
+      "frame": 4930,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 14: effect 14 over tune 33"
+    },
+    {
+      "frame": 4950,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4970,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 16: 2 steps"
+    },
+    {
+      "frame": 4990,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 16: effect 16 over tune 33"
+    },
+    {
+      "frame": 5010,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5030,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 17: 1 steps"
+    },
+    {
+      "frame": 5040,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 17: effect 17 over tune 33"
+    },
+    {
+      "frame": 5060,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5080,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 18: 1 steps"
+    },
+    {
+      "frame": 5090,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 18: effect 18 over tune 33"
+    },
+    {
+      "frame": 5110,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5130,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 19: 1 steps"
+    },
+    {
+      "frame": 5140,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 19: effect 19 over tune 33"
+    },
+    {
+      "frame": 5160,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5180,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 1b: 2 steps"
+    },
+    {
+      "frame": 5200,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1b: effect 1b over tune 33"
+    },
+    {
+      "frame": 5220,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5240,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1c: 1 steps"
+    },
+    {
+      "frame": 5250,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1c: effect 1c over tune 33"
+    },
+    {
+      "frame": 5270,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5290,
+      "press": "p1_up",
+      "hold_frames": 40,
+      "comment": "Select 20: 4 steps"
+    },
+    {
+      "frame": 5330,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 20: effect 20 over tune 33"
+    },
+    {
+      "frame": 5350,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5370,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 21: 1 steps"
+    },
+    {
+      "frame": 5380,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 21: effect 21 over tune 33"
+    },
+    {
+      "frame": 5400,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5420,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 22: 1 steps"
+    },
+    {
+      "frame": 5430,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 22: effect 22 over tune 33"
+    },
+    {
+      "frame": 5450,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5470,
+      "press": "p1_up",
+      "hold_frames": 290,
+      "comment": "Select 3f: 29 steps"
+    },
+    {
+      "frame": 5760,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: stop tune 33 after its effect matrix"
+    },
+    {
+      "frame": 5780,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5800,
+      "press": "p1_down",
+      "hold_frames": 230,
+      "comment": "Select 28: 23 steps"
+    },
+    {
+      "frame": 6030,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 28: tune 28 under the complete effect matrix"
+    },
+    {
+      "frame": 6050,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6070,
+      "press": "p1_down",
+      "hold_frames": 390,
+      "comment": "Select 01: 39 steps"
+    },
+    {
+      "frame": 6460,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 01: effect 01 over tune 28"
+    },
+    {
+      "frame": 6480,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6500,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 02: 1 steps"
+    },
+    {
+      "frame": 6510,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 02: effect 02 over tune 28"
+    },
+    {
+      "frame": 6530,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6550,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 03: 1 steps"
+    },
+    {
+      "frame": 6560,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 03: effect 03 over tune 28"
+    },
+    {
+      "frame": 6580,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6600,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 04: 1 steps"
+    },
+    {
+      "frame": 6610,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 04: effect 04 over tune 28"
+    },
+    {
+      "frame": 6630,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6650,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 05: 1 steps"
+    },
+    {
+      "frame": 6660,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 05: effect 05 over tune 28"
+    },
+    {
+      "frame": 6680,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6700,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 06: 1 steps"
+    },
+    {
+      "frame": 6710,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 06: effect 06 over tune 28"
+    },
+    {
+      "frame": 6730,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6750,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 07: 1 steps"
+    },
+    {
+      "frame": 6760,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 07: effect 07 over tune 28"
+    },
+    {
+      "frame": 6780,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6800,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 08: 1 steps"
+    },
+    {
+      "frame": 6810,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 08: effect 08 over tune 28"
+    },
+    {
+      "frame": 6830,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6850,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 09: 1 steps"
+    },
+    {
+      "frame": 6860,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 09: effect 09 over tune 28"
+    },
+    {
+      "frame": 6880,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6900,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0a: 1 steps"
+    },
+    {
+      "frame": 6910,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0a: effect 0a over tune 28"
+    },
+    {
+      "frame": 6930,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6950,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 0b: 1 steps"
+    },
+    {
+      "frame": 6960,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0b: effect 0b over tune 28"
+    },
+    {
+      "frame": 6980,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7000,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 0d: 2 steps"
+    },
+    {
+      "frame": 7020,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0d: effect 0d over tune 28"
+    },
+    {
+      "frame": 7040,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7060,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 0f: 2 steps"
+    },
+    {
+      "frame": 7080,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 0f: effect 0f over tune 28"
+    },
+    {
+      "frame": 7100,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7120,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 10: 1 steps"
+    },
+    {
+      "frame": 7130,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 10: effect 10 over tune 28"
+    },
+    {
+      "frame": 7150,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7170,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 11: 1 steps"
+    },
+    {
+      "frame": 7180,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 11: effect 11 over tune 28"
+    },
+    {
+      "frame": 7200,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7220,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 12: 1 steps"
+    },
+    {
+      "frame": 7230,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 12: effect 12 over tune 28"
+    },
+    {
+      "frame": 7250,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7270,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 13: 1 steps"
+    },
+    {
+      "frame": 7280,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 13: effect 13 over tune 28"
+    },
+    {
+      "frame": 7300,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7320,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 14: 1 steps"
+    },
+    {
+      "frame": 7330,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 14: effect 14 over tune 28"
+    },
+    {
+      "frame": 7350,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7370,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 16: 2 steps"
+    },
+    {
+      "frame": 7390,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 16: effect 16 over tune 28"
+    },
+    {
+      "frame": 7410,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7430,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 17: 1 steps"
+    },
+    {
+      "frame": 7440,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 17: effect 17 over tune 28"
+    },
+    {
+      "frame": 7460,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7480,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 18: 1 steps"
+    },
+    {
+      "frame": 7490,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 18: effect 18 over tune 28"
+    },
+    {
+      "frame": 7510,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7530,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 19: 1 steps"
+    },
+    {
+      "frame": 7540,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 19: effect 19 over tune 28"
+    },
+    {
+      "frame": 7560,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7580,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 1b: 2 steps"
+    },
+    {
+      "frame": 7600,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1b: effect 1b over tune 28"
+    },
+    {
+      "frame": 7620,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7640,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 1c: 1 steps"
+    },
+    {
+      "frame": 7650,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 1c: effect 1c over tune 28"
+    },
+    {
+      "frame": 7670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7690,
+      "press": "p1_up",
+      "hold_frames": 40,
+      "comment": "Select 20: 4 steps"
+    },
+    {
+      "frame": 7730,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 20: effect 20 over tune 28"
+    },
+    {
+      "frame": 7750,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7770,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 21: 1 steps"
+    },
+    {
+      "frame": 7780,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 21: effect 21 over tune 28"
+    },
+    {
+      "frame": 7800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7820,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 22: 1 steps"
+    },
+    {
+      "frame": 7830,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 22: effect 22 over tune 28"
+    },
+    {
+      "frame": 7850,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7870,
+      "press": "p1_up",
+      "hold_frames": 290,
+      "comment": "Select 3f: 29 steps"
+    },
+    {
+      "frame": 8160,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: stop tune 28 after its effect matrix"
+    },
+    {
+      "frame": 8180,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8200,
+      "press": "p1_down",
+      "hold_frames": 100,
+      "comment": "Select 35: 10 steps"
+    },
+    {
+      "frame": 8300,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 35: special 4 over silence"
+    },
+    {
+      "frame": 8320,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8340,
+      "press": "p1_up",
+      "hold_frames": 80,
+      "comment": "Select 3d: 8 steps"
+    },
+    {
+      "frame": 8420,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3d: special 4 over silence"
+    },
+    {
+      "frame": 8440,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8460,
+      "press": "p1_up",
+      "hold_frames": 20,
+      "comment": "Select 3f: 2 steps"
+    },
+    {
+      "frame": 8480,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: final stop"
+    },
+    {
+      "frame": 8500,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 120,
+    "ram_crc_every_frames": 60,
+    "checkpoints": [
+      15,
+      16,
+      17,
+      106,
+      156,
+      206,
+      256,
+      306,
+      356,
+      406,
+      456,
+      506,
+      556,
+      606,
+      656,
+      706,
+      756,
+      806,
+      856,
+      906,
+      956,
+      1006,
+      1056,
+      1106,
+      1156,
+      1206,
+      1256,
+      1306,
+      1356,
+      1406,
+      1456,
+      1506,
+      1556,
+      1606,
+      1656,
+      1706,
+      1756,
+      1806,
+      1856,
+      1906,
+      1956,
+      2006,
+      2056,
+      2467,
+      2468,
+      2479,
+      2480,
+      2682,
+      2683,
+      2706,
+      2707,
+      2762,
+      2763,
+      2806,
+      2807,
+      2996,
+      3546,
+      4086,
+      4136,
+      4186,
+      4236,
+      4286,
+      4336,
+      4386,
+      4436,
+      4486,
+      4536,
+      4586,
+      4646,
+      4706,
+      4756,
+      4806,
+      4856,
+      4906,
+      4956,
+      5016,
+      5066,
+      5116,
+      5166,
+      5226,
+      5276,
+      5356,
+      5406,
+      5456,
+      5786,
+      6056,
+      6486,
+      6536,
+      6586,
+      6636,
+      6686,
+      6736,
+      6786,
+      6836,
+      6886,
+      6936,
+      6986,
+      7046,
+      7106,
+      7156,
+      7206,
+      7256,
+      7306,
+      7356,
+      7416,
+      7466,
+      7516,
+      7566,
+      7626,
+      7676,
+      7756,
+      7806,
+      7856,
+      8186,
+      8326,
+      8446,
+      8506,
+      8699
+    ]
+  },
+  "dip_changes": []
+}

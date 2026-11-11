@@ -1,0 +1,4 @@
+# Vendored shaders stay byte-identical to upstream: no line-ending conversion.
+shaders/** -text
+# libopenmpt's source stays byte-identical to the release it came from.
+crates/sf-openmpt/vendor/** -text

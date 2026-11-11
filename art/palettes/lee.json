@@ -1,0 +1,23 @@
+{
+  "fighter": "lee",
+  "note": "A grey shirt and blue trousers: his blue and his grey trade places.",
+  "from": 6,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#ee4455",
+    "#aaaabb",
+    "#444466",
+    "#444499",
+    "#4444bb",
+    "#666677",
+    "#666677",
+    "#888899",
+    "#888899"
+  ]
+}

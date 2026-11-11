@@ -1,0 +1,23 @@
+{
+  "fighter": "sagat",
+  "note": "Grey shorts and purple wraps: his purple shorts and his grey wraps trade places.",
+  "from": 12,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996644",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#bb00bb",
+    "#990088",
+    "#990088",
+    "#660099",
+    "#440044",
+    "#444444",
+    "#555555",
+    "#777777",
+    "#bbbbbb"
+  ]
+}

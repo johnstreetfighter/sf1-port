@@ -1,0 +1,17 @@
+# Original game data stays local.
+/sf.7z
+
+# Python bytecode.
+__pycache__/
+
+# MAME distribution, ROMs, and data-bearing captures stay local.
+/tools/reference/local/
+
+# Rust build output.
+/target/
+
+# MAME config side output from ad-hoc probe runs.
+/cfg/
+
+# Brainstorm mockup sessions.
+/.superpowers/

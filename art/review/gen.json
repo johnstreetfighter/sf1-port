@@ -1,0 +1,193 @@
+{
+  "fighter": "gen",
+  "poses": {
+    "crouch": {
+      "origin": "generated",
+      "crc32": "a026300c",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "crouching_block": {
+      "origin": "generated",
+      "crc32": "bdff7c1c",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "crouching_hit": {
+      "origin": "generated",
+      "crc32": "3af06ff4",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_kick": {
+      "origin": "generated",
+      "crc32": "6704b3a6",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_punch": {
+      "origin": "generated",
+      "crc32": "ce7376ab",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "gekiro_fall": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "gekiro_flip": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "gekiro_kick": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "gekiro_over": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "gekiro_round": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grab": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "hyaku_cross": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "hyaku_low": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "hyaku_raise": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "hyaku_spread": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch": {
+      "origin": "generated",
+      "crc32": "26caaa14",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch_down": {
+      "origin": "generated",
+      "crc32": "78676183",
+      "verdict": "approved",
+      "rejections": 3,
+      "next": "none"
+    },
+    "jump_top": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "kick_chamber": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "low_kick": {
+      "origin": "generated",
+      "crc32": "59055c75",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_palm": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_spin": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

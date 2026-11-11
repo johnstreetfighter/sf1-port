@@ -1,0 +1,19 @@
+{
+  "fighter": "birdie",
+  "palette": "d08cd976",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 1,
+  "history": [
+    {
+      "palette": "b9344ad5",
+      "verdict": "rejected",
+      "reason": "Looks good, but the colours are not different enough from his normal palette to read well; try different colours."
+    },
+    {
+      "palette": "d08cd976",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}

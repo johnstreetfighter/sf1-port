@@ -1,0 +1,918 @@
+{
+  "scenario_id": "sf-sound-test-02",
+  "format_version": 1,
+  "description": "Ticket #63 (F23), label SM: Service Mode On from power-on; all 21 tunes played alone through their whole-tune loop or opcode 0x0f end, with a 0x3f stop before each following tune. Tune 0x28 includes one complete pass after its first loop. Directions are held for ten frames per observed single step; heavy punch plays on release. Full checkpoints precede every latch command and surround each recorded reference boundary.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    }
+  },
+  "duration_frames": 39775,
+  "inputs": [
+    {
+      "frame": 100,
+      "press": "p1_up",
+      "hold_frames": 400,
+      "comment": "Select 28: 40 steps"
+    },
+    {
+      "frame": 500,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 28: through loop"
+    },
+    {
+      "frame": 520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5805,
+      "press": "p1_up",
+      "hold_frames": 230,
+      "comment": "Select 3f: 23 steps"
+    },
+    {
+      "frame": 6035,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 6055,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6075,
+      "press": "p1_down",
+      "hold_frames": 220,
+      "comment": "Select 29: 22 steps"
+    },
+    {
+      "frame": 6295,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 29: through loop"
+    },
+    {
+      "frame": 6315,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8235,
+      "press": "p1_up",
+      "hold_frames": 220,
+      "comment": "Select 3f: 22 steps"
+    },
+    {
+      "frame": 8455,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 8475,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8495,
+      "press": "p1_down",
+      "hold_frames": 210,
+      "comment": "Select 2a: 21 steps"
+    },
+    {
+      "frame": 8705,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2a: through loop"
+    },
+    {
+      "frame": 8725,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 9962,
+      "press": "p1_up",
+      "hold_frames": 210,
+      "comment": "Select 3f: 21 steps"
+    },
+    {
+      "frame": 10172,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 10192,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 10212,
+      "press": "p1_down",
+      "hold_frames": 200,
+      "comment": "Select 2b: 20 steps"
+    },
+    {
+      "frame": 10412,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2b: through loop"
+    },
+    {
+      "frame": 10432,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 11394,
+      "press": "p1_up",
+      "hold_frames": 200,
+      "comment": "Select 3f: 20 steps"
+    },
+    {
+      "frame": 11594,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 11614,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 11634,
+      "press": "p1_down",
+      "hold_frames": 190,
+      "comment": "Select 2c: 19 steps"
+    },
+    {
+      "frame": 11824,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2c: through loop"
+    },
+    {
+      "frame": 11844,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 12805,
+      "press": "p1_up",
+      "hold_frames": 190,
+      "comment": "Select 3f: 19 steps"
+    },
+    {
+      "frame": 12995,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 13015,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 13035,
+      "press": "p1_down",
+      "hold_frames": 180,
+      "comment": "Select 2d: 18 steps"
+    },
+    {
+      "frame": 13215,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2d: through loop"
+    },
+    {
+      "frame": 13235,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 14003,
+      "press": "p1_up",
+      "hold_frames": 180,
+      "comment": "Select 3f: 18 steps"
+    },
+    {
+      "frame": 14183,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 14203,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 14223,
+      "press": "p1_down",
+      "hold_frames": 170,
+      "comment": "Select 2e: 17 steps"
+    },
+    {
+      "frame": 14393,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2e: through loop"
+    },
+    {
+      "frame": 14413,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 15984,
+      "press": "p1_up",
+      "hold_frames": 170,
+      "comment": "Select 3f: 17 steps"
+    },
+    {
+      "frame": 16154,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 16174,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 16194,
+      "press": "p1_down",
+      "hold_frames": 160,
+      "comment": "Select 2f: 16 steps"
+    },
+    {
+      "frame": 16354,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 2f: through loop"
+    },
+    {
+      "frame": 16374,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 17642,
+      "press": "p1_up",
+      "hold_frames": 160,
+      "comment": "Select 3f: 16 steps"
+    },
+    {
+      "frame": 17802,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 17822,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 17842,
+      "press": "p1_down",
+      "hold_frames": 150,
+      "comment": "Select 30: 15 steps"
+    },
+    {
+      "frame": 17992,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 30: through loop"
+    },
+    {
+      "frame": 18012,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 19673,
+      "press": "p1_up",
+      "hold_frames": 150,
+      "comment": "Select 3f: 15 steps"
+    },
+    {
+      "frame": 19823,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 19843,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 19863,
+      "press": "p1_down",
+      "hold_frames": 140,
+      "comment": "Select 31: 14 steps"
+    },
+    {
+      "frame": 20003,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 31: through loop"
+    },
+    {
+      "frame": 20023,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 21025,
+      "press": "p1_up",
+      "hold_frames": 140,
+      "comment": "Select 3f: 14 steps"
+    },
+    {
+      "frame": 21165,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 21185,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 21205,
+      "press": "p1_down",
+      "hold_frames": 130,
+      "comment": "Select 32: 13 steps"
+    },
+    {
+      "frame": 21335,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 32: through end"
+    },
+    {
+      "frame": 21355,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 23623,
+      "press": "p1_up",
+      "hold_frames": 130,
+      "comment": "Select 3f: 13 steps"
+    },
+    {
+      "frame": 23753,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 23773,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 23793,
+      "press": "p1_down",
+      "hold_frames": 120,
+      "comment": "Select 33: 12 steps"
+    },
+    {
+      "frame": 23913,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 33: through end"
+    },
+    {
+      "frame": 23933,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 24369,
+      "press": "p1_up",
+      "hold_frames": 120,
+      "comment": "Select 3f: 12 steps"
+    },
+    {
+      "frame": 24489,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 24509,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 24529,
+      "press": "p1_down",
+      "hold_frames": 110,
+      "comment": "Select 34: 11 steps"
+    },
+    {
+      "frame": 24639,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 34: through loop"
+    },
+    {
+      "frame": 24659,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 26940,
+      "press": "p1_up",
+      "hold_frames": 110,
+      "comment": "Select 3f: 11 steps"
+    },
+    {
+      "frame": 27050,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 27070,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 27090,
+      "press": "p1_down",
+      "hold_frames": 90,
+      "comment": "Select 36: 9 steps"
+    },
+    {
+      "frame": 27180,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 36: through end"
+    },
+    {
+      "frame": 27200,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 28971,
+      "press": "p1_up",
+      "hold_frames": 90,
+      "comment": "Select 3f: 9 steps"
+    },
+    {
+      "frame": 29061,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 29081,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 29101,
+      "press": "p1_down",
+      "hold_frames": 80,
+      "comment": "Select 37: 8 steps"
+    },
+    {
+      "frame": 29181,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 37: through end"
+    },
+    {
+      "frame": 29201,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 29712,
+      "press": "p1_up",
+      "hold_frames": 80,
+      "comment": "Select 3f: 8 steps"
+    },
+    {
+      "frame": 29792,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 29812,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 29832,
+      "press": "p1_down",
+      "hold_frames": 70,
+      "comment": "Select 38: 7 steps"
+    },
+    {
+      "frame": 29902,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 38: through end"
+    },
+    {
+      "frame": 29922,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 35794,
+      "press": "p1_up",
+      "hold_frames": 70,
+      "comment": "Select 3f: 7 steps"
+    },
+    {
+      "frame": 35864,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 35884,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 35904,
+      "press": "p1_down",
+      "hold_frames": 60,
+      "comment": "Select 39: 6 steps"
+    },
+    {
+      "frame": 35964,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 39: through end"
+    },
+    {
+      "frame": 35984,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 36199,
+      "press": "p1_up",
+      "hold_frames": 60,
+      "comment": "Select 3f: 6 steps"
+    },
+    {
+      "frame": 36259,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 36279,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 36299,
+      "press": "p1_down",
+      "hold_frames": 50,
+      "comment": "Select 3a: 5 steps"
+    },
+    {
+      "frame": 36349,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3a: through loop"
+    },
+    {
+      "frame": 36369,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 37555,
+      "press": "p1_up",
+      "hold_frames": 50,
+      "comment": "Select 3f: 5 steps"
+    },
+    {
+      "frame": 37605,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 37625,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 37645,
+      "press": "p1_down",
+      "hold_frames": 40,
+      "comment": "Select 3b: 4 steps"
+    },
+    {
+      "frame": 37685,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3b: through loop"
+    },
+    {
+      "frame": 37705,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 38200,
+      "press": "p1_up",
+      "hold_frames": 40,
+      "comment": "Select 3f: 4 steps"
+    },
+    {
+      "frame": 38240,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 38260,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 38280,
+      "press": "p1_down",
+      "hold_frames": 30,
+      "comment": "Select 3c: 3 steps"
+    },
+    {
+      "frame": 38310,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3c: through end"
+    },
+    {
+      "frame": 38330,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 39115,
+      "press": "p1_up",
+      "hold_frames": 30,
+      "comment": "Select 3f: 3 steps"
+    },
+    {
+      "frame": 39145,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 39165,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 39185,
+      "press": "p1_down",
+      "hold_frames": 10,
+      "comment": "Select 3e: 1 steps"
+    },
+    {
+      "frame": 39195,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3e: through end"
+    },
+    {
+      "frame": 39215,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 39545,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 3f: 1 steps"
+    },
+    {
+      "frame": 39555,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 3f: isolate the following tune"
+    },
+    {
+      "frame": 39575,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 600,
+    "ram_crc_every_frames": 60,
+    "checkpoints": [
+      15,
+      16,
+      17,
+      506,
+      3112,
+      3113,
+      3114,
+      5691,
+      5692,
+      5693,
+      6041,
+      6301,
+      8122,
+      8123,
+      8124,
+      8461,
+      8711,
+      9848,
+      9849,
+      9850,
+      10178,
+      10418,
+      11280,
+      11281,
+      11282,
+      11600,
+      11830,
+      12691,
+      12692,
+      12693,
+      13001,
+      13221,
+      13890,
+      13891,
+      13892,
+      14189,
+      14399,
+      15870,
+      15871,
+      15872,
+      16160,
+      16360,
+      17528,
+      17529,
+      17530,
+      17808,
+      17998,
+      19552,
+      19553,
+      19554,
+      19829,
+      20009,
+      20911,
+      20912,
+      20913,
+      21171,
+      21341,
+      23509,
+      23510,
+      23511,
+      23759,
+      23919,
+      24256,
+      24257,
+      24258,
+      24495,
+      24645,
+      26827,
+      26828,
+      26829,
+      27056,
+      27186,
+      28857,
+      28858,
+      28859,
+      29067,
+      29187,
+      29598,
+      29599,
+      29600,
+      29798,
+      29908,
+      35681,
+      35682,
+      35683,
+      35870,
+      35970,
+      36085,
+      36086,
+      36087,
+      36265,
+      36355,
+      37441,
+      37442,
+      37443,
+      37611,
+      37691,
+      38086,
+      38087,
+      38088,
+      38246,
+      38316,
+      39001,
+      39002,
+      39003,
+      39151,
+      39201,
+      39431,
+      39432,
+      39433,
+      39561,
+      39774
+    ]
+  },
+  "dip_changes": []
+}

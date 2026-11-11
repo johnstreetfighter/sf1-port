@@ -1,0 +1,185 @@
+{
+  "spec": {
+    "number": 150,
+    "url": "https://github.com/geox123/sf1-port/issues/150"
+  },
+  "approved": "2026-11-02",
+  "published": "FE1-FE13",
+  "tickets": [
+    {
+      "localId": "FE1",
+      "number": 151,
+      "url": "https://github.com/geox123/sf1-port/issues/151",
+      "title": "FE1: Shared host crate (prefactor)",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": "FE3",
+      "number": 152,
+      "url": "https://github.com/geox123/sf1-port/issues/152",
+      "title": "FE3: Boss ladder report",
+      "label": "ready-for-agent",
+      "blockers": [],
+      "blockerNumbers": []
+    },
+    {
+      "localId": "FE2",
+      "number": 153,
+      "url": "https://github.com/geox123/sf1-port/issues/153",
+      "title": "FE2: The game boots to the attract and the Main Menu",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE1"
+      ],
+      "blockerNumbers": [
+        151
+      ]
+    },
+    {
+      "localId": "FE4",
+      "number": 154,
+      "url": "https://github.com/geox123/sf1-port/issues/154",
+      "title": "FE4: Local into a real fight",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE2"
+      ],
+      "blockerNumbers": [
+        153
+      ]
+    },
+    {
+      "localId": "FE5",
+      "number": 155,
+      "url": "https://github.com/geox123/sf1-port/issues/155",
+      "title": "FE5: The portrait select finished",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE3",
+        "FE4"
+      ],
+      "blockerNumbers": [
+        152,
+        154
+      ]
+    },
+    {
+      "localId": "FE6",
+      "number": 156,
+      "url": "https://github.com/geox123/sf1-port/issues/156",
+      "title": "FE6: Arcade as Ryu or Ken",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE4"
+      ],
+      "blockerNumbers": [
+        154
+      ]
+    },
+    {
+      "localId": "FE7",
+      "number": 157,
+      "url": "https://github.com/geox123/sf1-port/issues/157",
+      "title": "FE7: Pause box and Training",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE4"
+      ],
+      "blockerNumbers": [
+        154
+      ]
+    },
+    {
+      "localId": "FE8",
+      "number": 158,
+      "url": "https://github.com/geox123/sf1-port/issues/158",
+      "title": "FE8: Settings and persistence",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE4"
+      ],
+      "blockerNumbers": [
+        154
+      ]
+    },
+    {
+      "localId": "FE9",
+      "number": 159,
+      "url": "https://github.com/geox123/sf1-port/issues/159",
+      "title": "FE9: Pads and rebinding",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE7",
+        "FE8"
+      ],
+      "blockerNumbers": [
+        157,
+        158
+      ]
+    },
+    {
+      "localId": "FE10",
+      "number": 160,
+      "url": "https://github.com/geox123/sf1-port/issues/160",
+      "title": "FE10: The faithful cabinet",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE8"
+      ],
+      "blockerNumbers": [
+        158
+      ]
+    },
+    {
+      "localId": "FE11",
+      "number": 161,
+      "url": "https://github.com/geox123/sf1-port/issues/161",
+      "title": "FE11: Shipping shape",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE8"
+      ],
+      "blockerNumbers": [
+        158
+      ]
+    },
+    {
+      "localId": "FE12",
+      "number": 162,
+      "url": "https://github.com/geox123/sf1-port/issues/162",
+      "title": "FE12: Completeness audit and README",
+      "label": "ready-for-agent",
+      "blockers": [
+        "FE5",
+        "FE6",
+        "FE7",
+        "FE9",
+        "FE10",
+        "FE11"
+      ],
+      "blockerNumbers": [
+        155,
+        156,
+        157,
+        159,
+        160,
+        161
+      ]
+    },
+    {
+      "localId": "FE13",
+      "number": 163,
+      "url": "https://github.com/geox123/sf1-port/issues/163",
+      "title": "FE13: A person's session with two DualShock 4 pads (person)",
+      "label": "ready-for-human",
+      "blockers": [
+        "FE9"
+      ],
+      "blockerNumbers": [
+        159
+      ]
+    }
+  ]
+}

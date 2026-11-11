@@ -1,0 +1,266 @@
+{
+  "scenario_id": "sf-jump-attacks-06",
+  "format_version": 1,
+  "description": "Versus jump attacks (ticket #19): 2P versus Ryu (P1) vs Ken (P2), both defaulting to Japan; the checkpoint-2450 fixture of sf-move-01. A forward jump heavy kick into Ken from the fixture distance; P2 never touched. Compared interval 2450..=2560, checkpoints every frame.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": "defaults"
+  },
+  "controls": {
+    "coin1": {
+      "port": "IN0",
+      "bit": 0
+    },
+    "coin2": {
+      "port": "IN0",
+      "bit": 1
+    },
+    "start1": {
+      "port": "SYSTEM",
+      "bit": 0
+    },
+    "start2": {
+      "port": "SYSTEM",
+      "bit": 1
+    },
+    "p1_right": {
+      "port": "IN1",
+      "bit": 0
+    },
+    "p1_left": {
+      "port": "IN1",
+      "bit": 1
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    },
+    "p1_lp": {
+      "port": "IN1",
+      "bit": 4
+    },
+    "p1_mp": {
+      "port": "IN1",
+      "bit": 5
+    },
+    "p1_hp": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_lk": {
+      "port": "IN1",
+      "bit": 6
+    },
+    "p1_mk": {
+      "port": "IN1",
+      "bit": 7
+    },
+    "p1_hk": {
+      "port": "IN0",
+      "bit": 2
+    },
+    "p2_right": {
+      "port": "IN1",
+      "bit": 8
+    },
+    "p2_left": {
+      "port": "IN1",
+      "bit": 9
+    },
+    "p2_down": {
+      "port": "IN1",
+      "bit": 10
+    },
+    "p2_up": {
+      "port": "IN1",
+      "bit": 11
+    }
+  },
+  "duration_frames": 2561,
+  "inputs": [
+    {
+      "frame": 1450,
+      "press": "coin1",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1480,
+      "press": "coin2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1560,
+      "press": "start2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 1900,
+      "press": "start1",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 2000,
+      "press": "start2",
+      "hold_frames": 12,
+      "comment": "boot"
+    },
+    {
+      "frame": 2460,
+      "press": "p1_up",
+      "hold_frames": 12,
+      "comment": "forward jump HK: up"
+    },
+    {
+      "frame": 2460,
+      "press": "p1_right",
+      "hold_frames": 12,
+      "comment": "forward jump HK: right"
+    },
+    {
+      "frame": 2468,
+      "press": "p1_hk",
+      "hold_frames": 6,
+      "comment": "forward jump HK: button"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [
+      2450,
+      2451,
+      2452,
+      2453,
+      2454,
+      2455,
+      2456,
+      2457,
+      2458,
+      2459,
+      2460,
+      2461,
+      2462,
+      2463,
+      2464,
+      2465,
+      2466,
+      2467,
+      2468,
+      2469,
+      2470,
+      2471,
+      2472,
+      2473,
+      2474,
+      2475,
+      2476,
+      2477,
+      2478,
+      2479,
+      2480,
+      2481,
+      2482,
+      2483,
+      2484,
+      2485,
+      2486,
+      2487,
+      2488,
+      2489,
+      2490,
+      2491,
+      2492,
+      2493,
+      2494,
+      2495,
+      2496,
+      2497,
+      2498,
+      2499,
+      2500,
+      2501,
+      2502,
+      2503,
+      2504,
+      2505,
+      2506,
+      2507,
+      2508,
+      2509,
+      2510,
+      2511,
+      2512,
+      2513,
+      2514,
+      2515,
+      2516,
+      2517,
+      2518,
+      2519,
+      2520,
+      2521,
+      2522,
+      2523,
+      2524,
+      2525,
+      2526,
+      2527,
+      2528,
+      2529,
+      2530,
+      2531,
+      2532,
+      2533,
+      2534,
+      2535,
+      2536,
+      2537,
+      2538,
+      2539,
+      2540,
+      2541,
+      2542,
+      2543,
+      2544,
+      2545,
+      2546,
+      2547,
+      2548,
+      2549,
+      2550,
+      2551,
+      2552,
+      2553,
+      2554,
+      2555,
+      2556,
+      2557,
+      2558,
+      2559,
+      2560
+    ]
+  }
+}

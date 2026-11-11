@@ -1,0 +1,22 @@
+[
+  {
+    "batch": "design round 1",
+    "note": "eleven_ttv_v3, 184 preview characters",
+    "started": "2026-11-04T19:32:25+00:00",
+    "before": 5539,
+    "after": 5723,
+    "credits": 184,
+    "limit": 40000,
+    "finished": "2026-11-04T19:33:35+00:00"
+  },
+  {
+    "batch": "voice: 66 takes",
+    "note": "906 prompt characters",
+    "started": "2026-11-04T19:37:03+00:00",
+    "before": 5723,
+    "after": 5827,
+    "credits": 104,
+    "limit": 40000,
+    "finished": "2026-11-04T19:38:10+00:00"
+  }
+]

@@ -1,0 +1,214 @@
+{
+  "scenario_id": "sf-service-01",
+  "format_version": 1,
+  "description": "Service mode from power-on (ticket #145, F73): Service Mode = On (DSW1=0x5fff, DSW2=0xffff), RAM test over frames 1..=15, palette upload over 16..=19, input/DIP/sound test screen from frame 20 exercising port bits, P1/P2 punch/kick strength latches, sound selector up/down and playback, and exit at frame 41 (0x48618) into the service menu at 0x48644. Checkpoints on every frame 0..=41.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {
+    "coin1": {
+      "port": "IN0",
+      "bit": 0
+    },
+    "coin2": {
+      "port": "IN0",
+      "bit": 1
+    },
+    "p1_button6": {
+      "port": "IN0",
+      "bit": 2
+    },
+    "p2_button6": {
+      "port": "IN0",
+      "bit": 8
+    },
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p2_button3": {
+      "port": "IN0",
+      "bit": 10
+    },
+    "p1_right": {
+      "port": "IN1",
+      "bit": 0
+    },
+    "p1_left": {
+      "port": "IN1",
+      "bit": 1
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    },
+    "p1_button1": {
+      "port": "IN1",
+      "bit": 4
+    },
+    "p1_button2": {
+      "port": "IN1",
+      "bit": 5
+    },
+    "p1_button4": {
+      "port": "IN1",
+      "bit": 6
+    },
+    "p1_button5": {
+      "port": "IN1",
+      "bit": 7
+    },
+    "p2_right": {
+      "port": "IN1",
+      "bit": 8
+    },
+    "p2_left": {
+      "port": "IN1",
+      "bit": 9
+    },
+    "p2_down": {
+      "port": "IN1",
+      "bit": 10
+    },
+    "p2_up": {
+      "port": "IN1",
+      "bit": 11
+    },
+    "p2_button1": {
+      "port": "IN1",
+      "bit": 12
+    },
+    "p2_button2": {
+      "port": "IN1",
+      "bit": 13
+    },
+    "p2_button4": {
+      "port": "IN1",
+      "bit": 14
+    },
+    "p2_button5": {
+      "port": "IN1",
+      "bit": 15
+    },
+    "start1": {
+      "port": "SYSTEM",
+      "bit": 0
+    },
+    "start2": {
+      "port": "SYSTEM",
+      "bit": 1
+    },
+    "service1": {
+      "port": "SYSTEM",
+      "bit": 2
+    }
+  },
+  "duration_frames": 42,
+  "inputs": [
+    {
+      "frame": 21,
+      "press": "start1",
+      "hold_frames": 1,
+      "comment": "exercise SYSTEM bit 0 in port display at frame 22"
+    },
+    {
+      "frame": 21,
+      "press": "service1",
+      "hold_frames": 1,
+      "comment": "exercise SYSTEM bit 2 in port display at frame 22"
+    },
+    {
+      "frame": 21,
+      "press": "p2_left",
+      "hold_frames": 1,
+      "comment": "exercise IN1 bit 9 in port display at frame 22"
+    },
+    {
+      "frame": 21,
+      "press": "p1_button4",
+      "hold_frames": 1,
+      "comment": "latch P1 LK strength 0x40 into 0xff8863 on release at frame 23"
+    },
+    {
+      "frame": 21,
+      "press": "p2_button2",
+      "hold_frames": 1,
+      "comment": "latch P2 MP strength 0xe0 into 0xff8864 on release at frame 23"
+    },
+    {
+      "frame": 21,
+      "press": "p2_button6",
+      "hold_frames": 1,
+      "comment": "latch P2 HK strength 0xfe into 0xff8865 on release at frame 23"
+    },
+    {
+      "frame": 23,
+      "press": "p1_up",
+      "hold_frames": 2,
+      "comment": "increment sound selector D7 to 0x01 on tick==5 at frame 24"
+    },
+    {
+      "frame": 26,
+      "press": "p1_button3",
+      "hold_frames": 1,
+      "comment": "release P1 HP at frame 28: latches 0xfe into 0xff8862, toggles 0xff8849 to 0xff, and queues sound 0x01"
+    },
+    {
+      "frame": 30,
+      "press": "p1_button1",
+      "hold_frames": 1,
+      "comment": "release P1 LP at frame 32: latches 0x40 into 0xff8862 and toggles 0xff8849 to 0x00"
+    },
+    {
+      "frame": 33,
+      "press": "p1_down",
+      "hold_frames": 2,
+      "comment": "decrement sound selector D7 to 0x00 on tick==5 at frame 34"
+    },
+    {
+      "frame": 38,
+      "press": "p1_button6",
+      "hold_frames": 2,
+      "comment": "hold P1 HK at frames 39..40; release at frame 41 latches 0xfe (>4) into 0xff86b1"
+    },
+    {
+      "frame": 40,
+      "press": "p1_up",
+      "hold_frames": 2,
+      "comment": "hold P1 Up at frame 41 while P1 HK release is latched: exits via 0x48618 to 0x48644"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 1,
+    "checkpoints": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+      31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+      41
+    ]
+  }
+}

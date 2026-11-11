@@ -1,0 +1,12 @@
+[package]
+name = "sf-compare"
+version.workspace = true
+edition.workspace = true
+description = "Scenario comparison runner: validates local input data, consumes a reference scenario, reports the first observable mismatch"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+crc32fast = { workspace = true }
+sha1 = { workspace = true }
+clap = { workspace = true }

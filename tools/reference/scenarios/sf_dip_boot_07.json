@@ -1,0 +1,42 @@
+{
+  "scenario_id": "sf-dip-boot-07",
+  "format_version": 1,
+  "description": "Boot DIP decode scenario 7 (ticket #57, F17): power-on, no inputs, Coin A = 1 Coin/2 Credits, Coin B = 1 Coin/1 Credit, Game Continuation = 3rd Stage Maximum, Buy-In Feature = 1st Stage Maximum, Round Time Count = 200, Difficulty = Very Difficult, Number of Countries Selected = 2, Flip Screen = Off, frames 0..=11 (duration_frames=12), checkpoints on every frame 0..=11.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Coin A": "1 Coin/2 Credits",
+      "Coin B": "1 Coin/1 Credit",
+      "Game Continuation": "3rd Stage Maximum",
+      "Buy-In Feature": "1st Stage Maximum",
+      "Round Time Count": "200",
+      "Difficulty": "Very Difficult",
+      "Number of Countries Selected": "2",
+      "Flip Screen": "Off"
+    }
+  },
+  "controls": {},
+  "duration_frames": 12,
+  "inputs": [],
+  "observations": {
+    "screen_downsample_stride": 4,
+    "ram_crc_every_frames": 10,
+    "checkpoints": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    ]
+  }
+}

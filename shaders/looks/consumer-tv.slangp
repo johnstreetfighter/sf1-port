@@ -1,0 +1,23 @@
+#reference "../crt/crt-guest-advanced-ntsc.slangp"
+
+# CONSUMER TV (ticket #208, spec #203): Guest advanced with its NTSC
+# passes, a home television fed composite video. Written for this game,
+# not upstream; the shaders it reaches are the vendored Guest passes.
+# Proposed values, for the user to approve by eye on the 3200x2000 screen.
+#
+# Composite colour: the preset's own NTSC artifacting, fringing and blur
+# (2-phase for a 384-wide picture), left as upstream tuned them.
+# A home set's tube: a dot-triad shadow mask (Lottes' TV-style mask),
+# softer beams than the arcade monitor's, and a gentle curve with
+# rounded corners.
+shadowMask = "1.000000"
+beam_min = "1.300000"
+beam_max = "1.000000"
+warpX = "0.020000"
+warpY = "0.030000"
+csize = "0.030000"
+# A touch more glow and halation than a monitor: a TV ran brighter.
+glow = "0.080000"
+halation = "0.080000"
+# 224 lines never interlace.
+interm = "0.000000"

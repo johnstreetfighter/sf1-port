@@ -1,0 +1,193 @@
+{
+  "fighter": "lee",
+  "poses": {
+    "crouch": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_block": {
+      "origin": "generated",
+      "crc32": "a383bc8e",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_hit": {
+      "origin": "generated",
+      "crc32": "bef9f2ae",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_kick": {
+      "origin": "generated",
+      "crc32": "250d800b",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "crouching_punch": {
+      "origin": "generated",
+      "crc32": "bd34e3ed",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grab": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "high_chamber": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "high_follow": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "high_kick": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "high_land": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "high_settle": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick": {
+      "origin": "generated",
+      "crc32": "53c44f02",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch": {
+      "origin": "generated",
+      "crc32": "cfb42dfa",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch_down": {
+      "origin": "generated",
+      "crc32": "ea09c173",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_top": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "ready": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "side_chamber": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "side_kick": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "step": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_heave": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_recover": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_turn": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "zessh_gather": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "zessh_strike": {
+      "origin": "generated",
+      "crc32": "5ebb906a",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

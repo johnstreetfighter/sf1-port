@@ -1,0 +1,23 @@
+{
+  "fighter": "joe",
+  "note": "Grey trousers and red shoes: his red trousers and his grey shoes trade places.",
+  "from": 5,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#bb0000",
+    "#990000",
+    "#660000",
+    "#888855",
+    "#bbbb77",
+    "#666677",
+    "#666677",
+    "#888899",
+    "#bbbbcc"
+  ]
+}

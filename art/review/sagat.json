@@ -1,0 +1,176 @@
+{
+  "fighter": "sagat",
+  "poses": {
+    "crouch": {
+      "origin": "generated",
+      "crc32": "3d92661e",
+      "verdict": "approved",
+      "rejections": 2,
+      "next": "none"
+    },
+    "crouching_hit": {
+      "origin": "generated",
+      "crc32": "0bff0f24",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_kick_2": {
+      "origin": "generated",
+      "crc32": "ea4cc5db",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_kick_chamber": {
+      "origin": "generated",
+      "crc32": "c511799b",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "crouching_punch": {
+      "origin": "generated",
+      "crc32": "c540eb53",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grab": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "grabbed": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick": {
+      "origin": "generated",
+      "crc32": "7738cb3b",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "jump_kick_down": {
+      "origin": "generated",
+      "crc32": "e359ffc2",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_kick_high": {
+      "origin": "generated",
+      "crc32": "7da9aeea",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_knee": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_lift": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "jump_punch": {
+      "origin": "generated",
+      "crc32": "e2d89cb3",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "jump_punch_down": {
+      "origin": "generated",
+      "crc32": "ecb1a552",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "low_tiger_shot_1": {
+      "origin": "generated",
+      "crc32": "06c8205e",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "low_tiger_shot_2": {
+      "origin": "generated",
+      "crc32": "ae578d51",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "lying": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 4,
+      "next": "none"
+    },
+    "rising": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "stance": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "sweep_1": {
+      "origin": "generated",
+      "crc32": "830859e2",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "sweep_2": {
+      "origin": "generated",
+      "crc32": "dcde2ae8",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "sweep_3": {
+      "origin": "generated",
+      "crc32": "80f35861",
+      "verdict": "approved",
+      "rejections": 1,
+      "next": "none"
+    },
+    "throw_fling": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "throw_knee": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_1": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "thrown_2": {
+      "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    }
+  }
+}

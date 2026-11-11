@@ -1,0 +1,839 @@
+{
+  "fighter": "ryu",
+  "calls": [
+    {
+      "at": "2026-11-03T05:11:00Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "a4551f4c-3e5a-4887-9056-28cdc1553ffb",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base: identity, proportions, pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the throw's first pose, just before this one: how his arms, gloves and gi sleeves are drawn as he seizes the opponent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back, turned shoulders and belt knot are drawn in the original art when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references: Ryu, a karate fighter in a white gi with a black belt, a red headband and red gloves, barefoot, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the turn: he has spun round to face LEFT, so his back is toward the right side, where his opponent stands close behind him (the opponent is not drawn). His knees are bent and his hips dropped low under the opponent, and both his hands are raised up by his right shoulder, gripping the unseen opponent's collar and sleeve and pulling them forward over his back. Keep his exact proportions, pixel scale, dark outline and shading from the references; the figure is about 70 pixels wide and 85 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The turn. All four 20 to 25 per cent bigger than his ROM scale: the prompt asked for an 85-pixel figure, taller than a bent-kneed Ryu is. None kept. Times in this ledger are to the minute."
+    },
+    {
+      "at": "2026-11-03T05:11:00Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "92aedb1e-9fb8-4875-9c8d-018f0b83379d",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base: identity, proportions, pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the throw's first pose: how his arms, gloves and gi sleeves are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back, turned shoulders and belt knot are drawn in the original art when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references: Ryu, a karate fighter in a white gi with a black belt, a red headband and red gloves, barefoot, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the finish: facing LEFT, he bends far forward at the waist with his back rounded, both arms swung down and forward in front of him, having just thrown an unseen opponent over his shoulder onto the floor in front of him (the opponent is not drawn). His knees are bent and his feet planted wide apart. Keep his exact proportions, pixel scale, dark outline and shading from the references; the figure is about 80 pixels wide and 75 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The heave. All four faced right despite the prompt (the generator has no facing control) and were about 10 to 15 per cent too big; three had long headband tails. His 1987 headband is white and his hair red, and the prompt had it wrong. None kept."
+    },
+    {
+      "at": "2026-11-03T05:15:00Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "93a8f1d2-eb05-46af-857d-39c9205632ca",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base: identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the throw's first pose, just before this one: his arms, wristbands and gi sleeves as he seizes the opponent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back, turned shoulders and belt knot are drawn in the original art when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, a red headband tied with a short knot (no long trailing tails), red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the turn: he has spun round to face LEFT, so his back is toward the right side, where his opponent stands close behind him (the opponent is not drawn). His knees are bent and his hips dropped low, and both his hands are raised up by his right shoulder, gripping the unseen opponent's collar and sleeve and pulling them forward over his back. He is the same size as in the references: his head and fists the same size as in his stance, the figure about 62 pixels wide and 78 pixels tall, shorter than his 92-pixel stance because his knees are bent.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The turn, with sizes corrected and his crouch for scale. Still too big: the best, candidate 2, was about half as wide again across the back as his ROM back view. None kept."
+    },
+    {
+      "at": "2026-11-03T05:15:00Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "e2a894b8-0fca-46fd-ba1a-ae34b8ffa76e",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character base: identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his arms, wristbands and gi sleeves reaching forward in the original art",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back, turned shoulders and belt knot are drawn in the original art when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, a red headband tied with a short knot (no long trailing tails), red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the finish: facing LEFT, he bends far forward at the waist with his back rounded, both arms swung down and forward in front of him, having just thrown an unseen opponent over his shoulder onto the floor in front of him (the opponent is not drawn). His knees are bent and his feet planted wide apart. He is the same size as in the references: his head and fists the same size as in his stance, the figure about 78 pixels wide and 66 pixels tall.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The heave, sizes corrected. Still read as bigger than his ROM art (user, 2026-11-03); measured, the shoes were 18 pixels long against his 14 to 16. None kept."
+    },
+    {
+      "at": "2026-11-03T05:18:00Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "071fe8c4-994e-47f2-9976-0dd4199de130",
+      "cost": 10,
+      "canvas": [
+        128,
+        128
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and exact size: his turned-away body, head, back and belt knot",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "how his arms, fists and wristbands are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references: Ryu, a karate fighter in a white gi with a black belt, a red headband tied with a short knot (no long trailing tails), red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the turn. Keep the first reference's pose and size: him turned away, facing LEFT, his back toward the right where his opponent stands close behind him (not drawn), his head and back exactly as large as in that reference. Change only his legs and arms: both feet planted flat on the ground, wide apart, knees bent and hips low; both hands raised up beside his right shoulder, gripping the unseen opponent's collar and sleeve to pull him forward over his back. The figure is about 66 pixels wide and 84 pixels tall, at exactly the references' pixel scale.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The turn on his ROM back view as the pose base. 93 to 110 pixels tall, taller than he stands, with shoes 18 to 21 pixels: on a 128-pixel canvas the generator draws him to fill it. None kept."
+    },
+    {
+      "at": "2026-11-03T05:20:45Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "52b187d7-edc6-4a46-9da6-4059da83b464",
+      "cost": 10,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and exact size: his turned-away body, head, back and belt knot",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "how his arms, fists and wristbands are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, spiky red hair with a thin white headband, red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the turn: he has spun round to face LEFT, so his back is toward the right side, where his opponent stands close behind him (the opponent is not drawn). Both feet planted wide apart, knees bent, hips low; both hands raised up beside his right shoulder, gripping the unseen opponent's collar and sleeve to pull him forward over his back. He is no bigger than in the references: the figure is about 60 pixels wide and 78 pixels tall, his shoes about 14 pixels long.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The turn on a 96-pixel canvas: all four came back as a hoist, knees bent and both fists by his shoulder, rather than a full back turn. Noticeably smaller than his ROM art (user, 2026-11-03), with shoes 13 to 14 pixels against his 14 to 16."
+    },
+    {
+      "at": "2026-11-03T05:20:45Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "6f085a18-7a90-4be7-8d44-1986b11bf178",
+      "cost": 10,
+      "canvas": [
+        96,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his arms, wristbands and gi sleeves reaching forward in the original art",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back and belt knot are drawn when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, spiky red hair with a thin white headband, red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the finish: he bends far forward at the waist with his back rounded, both arms swung down and forward in front of him, having just thrown an unseen opponent over his shoulder onto the floor in front of him (the opponent is not drawn). Knees bent, feet planted wide apart. He is no bigger than in the references: the figure is about 76 pixels wide and 64 pixels tall, his shoes about 14 pixels long.",
+      "candidates": 4,
+      "kept": [],
+      "note": "The heave on a 96-pixel canvas: noticeably smaller than his ROM art (user, 2026-11-03)."
+    },
+    {
+      "at": "2026-11-03T05:25:30Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "d440d9b9-605c-40a8-8334-2bc3c13a11bf",
+      "cost": 10,
+      "canvas": [
+        108,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and exact size: his turned-away body, head, back and belt knot",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "how his arms, fists and wristbands are drawn",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, spiky red hair with a thin white headband, red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the turn: he has spun round to face LEFT, so his back is toward the right side, where his opponent stands close behind him (the opponent is not drawn). Both feet planted wide apart, knees bent, hips low; both hands raised up beside his right shoulder, gripping the unseen opponent's collar and sleeve to pull him forward over his back. Exactly the size of the references: the figure is about 64 pixels wide and 82 pixels tall, his head 16 pixels wide, his shoes about 15 pixels long.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "throw_turn",
+          "crc32": "3ba39388",
+          "note": "Rejected on the review page (user, 2026-11-03): it faced the opponent instead of turning its back, stood where the grab stands, and its bulk, shading, face and hands read as later art than 1987. Replaced by the retry with his ROM grab as the style image.",
+          "touch_ups": [
+            "the ground shadow joined across the gap between his feet in black, rows 98-99 (66 pixels), as under his ROM poses"
+          ]
+        }
+      ],
+      "note": "The turn on a 108-pixel canvas, between the 96 (too small) and the 128 (too big); the user chose this size on 2026-11-03. Shoes 14 to 18 pixels. Candidate 2 turns his back; candidate 3 copied the ROM grab; candidates 0 and 1 are guards facing right."
+    },
+    {
+      "at": "2026-11-03T05:25:30Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "18c8278d-c407-4db3-91a3-c2d7f19083dc",
+      "cost": 10,
+      "canvas": [
+        108,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his arms, wristbands and gi sleeves reaching forward in the original art",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back and belt knot are drawn when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, at exactly their pixel scale: Ryu, a karate fighter in a white gi with a black belt, spiky red hair with a thin white headband, red wristbands and red shoes, drawn as a 1987 Capcom arcade sprite. Shoulder throw, the finish: he bends far forward at the waist with his back rounded, both arms swung down and forward in front of him, having just thrown an unseen opponent over his shoulder onto the floor in front of him (the opponent is not drawn). Knees bent, feet planted wide apart. Exactly the size of the references: the figure is about 82 pixels wide and 70 pixels tall, his head 16 pixels wide, his shoes about 15 pixels long.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "throw_heave",
+          "crc32": "aa5b1d43",
+          "note": "Rejected on the review page (user, 2026-11-03): a heavy black outline (73 per cent of its edge, against 8 to 25 in his ROM poses), a belt end flying out, later-style bulk and shading, and it stood where the grab stands. Replaced by the retry with his ROM grab as the style image.",
+          "touch_ups": [
+            "mirrored left to right, to face where the opponent lands (the generator has no facing control)",
+            "the ground shadow joined across the gap between his feet in black, rows 99-100 (39 pixels), as under his ROM poses"
+          ]
+        }
+      ],
+      "note": "The heave on a 108-pixel canvas: all four bend forward, facing right, with shoes 17 pixels. Candidate 0 bends deepest."
+    },
+    {
+      "at": "2026-11-03T06:28:40Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "65922905-f20b-47ec-80f6-d5dd73ef3eb8",
+      "cost": 10,
+      "canvas": [
+        108,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "pose base and exact size: his turned-away body, head, back and belt knot",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, face, fists, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: lean build, thin limbs, flat simple shading with a few grey fold lines, no muscle definition, dark grey outline on the gi and brown outline on the skin. Ryu: spiky red hair with a thin white headband, a sleeveless white gi top with a black belt whose ends hang down, red wristbands and red shoes. Shoulder throw, the turn: seen from behind at three-quarters, he has turned his back on his opponent (not drawn) and stepped in under him, knees bent, hips low, both fists raised up in front of his shoulder gripping the unseen opponent's collar and sleeve to haul him over his back. Exactly the size of the references: the figure about 64 pixels wide and 82 pixels tall, his head 16 pixels wide, his shoes about 15 pixels long.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 2,
+          "pose": "throw_turn",
+          "crc32": "cc3890e5",
+          "touch_ups": [
+            "mirrored left to right (the generator has no facing control)"
+          ]
+        }
+      ],
+      "note": "The retry for the turn, with his ROM grab (0x042a) as the style image for outline, detail and shading. All four came back lean and flat-shaded like his 1987 art, seen from behind; mirrored, his back is to the opponent. Shoes 15 to 16 pixels."
+    },
+    {
+      "at": "2026-11-03T06:28:40Z",
+      "move": "throw",
+      "tool": "PixelLab create_image_pro",
+      "job": "8b5a8652-86fe-491c-aaa4-a7a9cfcbf54f",
+      "cost": 10,
+      "canvas": [
+        108,
+        108
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#cccccc",
+        "#550000",
+        "#880000",
+        "#bb0000",
+        "#444444",
+        "#666666",
+        "#888888",
+        "#aaaaaa"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x0063",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "character identity, proportions, exact pixel scale, face, fists, outline and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0120",
+            "large": false,
+            "rows": 3,
+            "cols": 2
+          },
+          "usage": "his crouch: how big he is drawn when his knees are bent",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x0600",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "how his back and belt knot are drawn when he turns away",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        },
+        {
+          "rom": {
+            "code": "0x042a",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "the style image (style_copy outline, detail, shading): his 1987 outline, detail and shading",
+          "note": "Drawn from its pens by sf-art reference, transparent only at pen 15."
+        }
+      ],
+      "prompt": "The same fighter as the references, drawn exactly in the style image's 1987 Capcom arcade style: lean build, thin limbs, flat simple shading with a few grey fold lines, no muscle definition, dark grey outline on the gi and brown outline on the skin, no heavy black outline. Ryu: spiky red hair with a thin white headband, a sleeveless white gi top with a black belt whose ends hang down, red wristbands and red shoes. Shoulder throw, the finish: he bends far forward at the waist with his back rounded, both arms swung down and forward in front of him, having just thrown an unseen opponent over his shoulder onto the floor in front of him (the opponent is not drawn). Knees bent, feet planted wide apart. Exactly the size of the references: the figure about 82 pixels wide and 70 pixels tall, his head 16 pixels wide, his shoes about 15 pixels long.",
+      "candidates": 4,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "throw_heave",
+          "crc32": "51452992",
+          "touch_ups": [
+            "mirrored left to right (the generator has no facing control)",
+            "the ground shadow joined across the gap between his feet in black, rows 96-97 (85 pixels), as under his ROM poses"
+          ]
+        }
+      ],
+      "note": "The retry for the heave, with the same style image. Black on 8 to 12 per cent of the edge, like his ROM poses; candidate 0's belt hangs down."
+    }
+  ]
+}

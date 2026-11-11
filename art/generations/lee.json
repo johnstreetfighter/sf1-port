@@ -1,0 +1,737 @@
+{
+  "fighter": "lee",
+  "calls": [
+    {
+      "at": "2026-11-07T05:36:00Z",
+      "move": "crouching block",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "6c8738ee-54d9-4640-b2c9-f5f2b73ede8b",
+      "cost": 5,
+      "canvas": [
+        64,
+        72
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1f40",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his standing block's raised forearm and fist (x40-53, y8-40), stood on the crouch's elbow in place of its guard fist; the mask covers the elbow, the shoulder and the old fist's place (x24-53, y8-40 of the 64x72 canvas), sparing the forearm above the cuff and his head",
+          "note": "inpaint-source-crouching-block-64x72.png and inpaint-mask-crouching-block.png in candidates/lee/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter squatting low in a crouching block: his near forearm raised straight up before him, the elbow bent at his side, the wide royal-blue sleeve of his Chinese jacket falling back to the elbow, its dark inside showing; the upper arm joins his shoulder; his blue jacket's chest and shoulder behind the raised arm. Nothing else in the empty space to the right of the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_block",
+          "crc32": "a383bc8e",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 126 pixels differ from the source, and the 148 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "7 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T05:36:05Z",
+      "move": "crouching punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "2a2fb3db-4d51-4240-852d-e2e0c8a25a97",
+      "cost": 5,
+      "canvas": [
+        64,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1cc4",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his straight punch's arm (x34-63, y4-28: sleeve, forearm and fist) laid from the crouch's right shoulder in place of its guard arm; the mask covers the shoulder join and the space the guard arm left (x22-41, y4-32 and x36-51, y18-32), sparing his head",
+          "note": "inpaint-source-crouching-punch-64x64.png and inpaint-mask-crouching-punch.png in candidates/lee/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter squatting low and punching straight forward: his near arm driven out from his shoulder at full reach, in the wide royal-blue sleeve of his Chinese jacket, the sleeve joining his shoulder cleanly; his blue jacket's side and chest under the arm. Nothing else in the empty space under the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_punch",
+          "crc32": "bd34e3ed",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 178 pixels differ from the source, and the 239 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "11 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T05:36:10Z",
+      "move": "crouching kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e7de0bac-3ecf-4b1f-98f7-f06540e20469",
+      "cost": 5,
+      "canvas": [
+        72,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1f04",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his sweep's outstretched leg (x44-84, y38-61: grey trouser leg and blue shoe) laid from the crouch's right hip in place of its right knee; the mask covers the hip and the space under the jacket's hem (x24-49, y33-61), sparing his floor hand",
+          "note": "inpaint-source-crouching-kick-72x64.png and inpaint-mask-crouching-kick.png in candidates/lee/round1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter squatting on his rear leg with his front leg kicked straight out low along the floor: the hem of his royal-blue Chinese jacket over his hip, his baggy light-grey trouser leg running from under the hem into the outstretched leg, joined cleanly at the hip. Empty space under the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_kick",
+          "crc32": "250d800b",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 58 pixels differ from the source, and the 0 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "16 single pixels inside the mask set to the pen around them",
+            "his black ground shadow's second row carried on under the outstretched leg (37 pixels), as his ROM sweep (0x1f04) draws it"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T05:36:15Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "65f3a55d-767e-480e-9cf8-86603a14dbeb",
+      "cost": 5,
+      "canvas": [
+        68,
+        64
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1fa0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his hunched hit reaction from the head to the hands (rows 13-48), laid on the crouch's hem and knees, lined up by the frog buttons; the mask covers the band where they meet (y28-43) and the floor hand's place between the knees",
+          "note": "candidates/lee/round1 (make_ground.py's first version)."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter hit while crouching, hunched over his knees: his royal-blue Chinese jacket from his chest down over his waist to its hem, which falls over his bent knees in baggy light-grey trousers; one body, the jacket joining the knees cleanly. Between the knees the jacket's hem and the dark inside of his trousers.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the band ran through his lower hand, whose fingers came back muddled."
+    },
+    {
+      "at": "2026-11-07T05:37:50Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0d5ba65c-b714-4554-8ee1-dbf2171c24f3",
+      "cost": 5,
+      "canvas": [
+        68,
+        64
+      ],
+      "seed": 1988,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1fa0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "as the first try, his hands kept whole outside the mask (x18-43 above y37)",
+          "note": "candidates/lee/round1b."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter hit while crouching, hunched over his knees: his royal-blue Chinese jacket from below his hands down over his waist to its hem, which falls over his bent knees in baggy light-grey trousers; one body, the jacket joining the knees cleanly. Between the knees the jacket's hem hangs down, with a little dark shadow under it.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: the source's crop of his hit reaction stopped at row 48, cutting his lower hand off at the knuckles."
+    },
+    {
+      "at": "2026-11-07T05:38:40Z",
+      "move": "crouching hit",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "a42c0543-d00b-4a4a-983e-006302cde52b",
+      "cost": 5,
+      "canvas": [
+        68,
+        64
+      ],
+      "seed": 1988,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1f00",
+            "large": true,
+            "rows": 1,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his crouch: his sweep's closing squat (0x1f00), its head turned to face the opponent (the recipe's crouch), so his ROM head, knees and floor hand stay pixel for pixel",
+          "note": "make_ground.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1fa0",
+            "large": true,
+            "rows": 2,
+            "cols": 2
+          },
+          "usage": "his hunched hit reaction from the head to the hands (rows 13-53), laid on the crouch's hem and knees, lined up by the frog buttons; the mask covers the band where they meet (y28-43), sparing his hands and their outlines, and the floor hand's place between the knees",
+          "note": "inpaint-source-crouching-hit-68x64.png and inpaint-mask-crouching-hit.png in candidates/lee/round1c."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter hit while crouching, hunched over his knees: his royal-blue Chinese jacket from below his hands down over his waist to its hem, which falls over his bent knees in baggy light-grey trousers; one body, the jacket joining the knees cleanly. Between the knees the jacket's hem hangs down, with a little dark shadow under it.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "crouching_hit",
+          "crc32": "bef9f2ae",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 349 pixels differ from the source, and the 169 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "16 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:38:00Z",
+      "move": "jumping punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c2fe6740-9472-46a4-96a6-5e5ae5b89559",
+      "cost": 5,
+      "canvas": [
+        88,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1e4c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x1e4c), so his ROM head, rear hand, body and tucked legs stay pixel for pixel",
+          "note": "make_air.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1cc4",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "his straight punch's arm (x34-63, y6-27: sleeve, forearm and fist) laid from the tuck's front shoulder in place of its guard fist, 8 pixels lower than his head-to-arm place in the punch so the fist is at shoulder height; the mask covers the shoulder join and the guard fist's place (x40-57, y12-41 and x46-65, y34-41), sparing his head and the forearm",
+          "note": "inpaint-source-jump-punch-88x80.png and inpaint-mask-jump-punch.png in candidates/lee/ap18-r1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter in mid-air with his knees tucked, punching straight forward: his near arm driven out from his shoulder at shoulder height, in the wide royal-blue sleeve of his Chinese jacket, the sleeve joining his shoulder cleanly; his blue jacket's side and chest under the arm, down to the hem over his grey trousers. Nothing else in the empty space under the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch",
+          "crc32": "cfb42dfa",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 181 pixels differ from the source, and the 13 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "8 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:38:05Z",
+      "move": "jumping diagonal punch",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "c2cd6eb6-4e1e-4b14-a03a-bbd3d1f5ff79",
+      "cost": 5,
+      "canvas": [
+        84,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1e4c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x1e4c), so his ROM head, rear hand, body and tucked legs stay pixel for pixel",
+          "note": "make_air.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1ec0",
+            "large": true,
+            "rows": 1,
+            "cols": 2
+          },
+          "usage": "his flying kick's front arm (from x50, y16-46: sleeve and fist reaching down and forward), whose head lies exactly on the tuck's, laid at the same place in place of the guard fist; the mask covers the shoulder join and the guard fist's place (x40-63, y13-43), sparing his head and the fist",
+          "note": "inpaint-source-jump-punch-down-84x80.png and inpaint-mask-jump-punch-down.png in candidates/lee/ap18-r1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter in mid-air with his knees tucked, punching down and forward: his near arm driven down from his shoulder toward the fist, in the wide royal-blue sleeve of his Chinese jacket, the sleeve joining his shoulder cleanly; his blue jacket's side and chest behind the arm, down to the hem over his grey trousers. Nothing else in the empty space above and below the arm.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_punch_down",
+          "crc32": "ea09c173",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 118 pixels differ from the source, and the 0 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "12 single pixels inside the mask set to the pen around them",
+            "a loose fragment of jacket inpainted below the sleeve, over the knee (9 pixels), removed",
+            "the flying kick's (0x1ec0) outline of the leg under the cuff, left hanging below it (8 ROM pixels), removed; the cuff ends on its own outline"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:38:10Z",
+      "move": "jumping kick",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "e5ec59a1-c8b5-411e-b21c-0ca97d546616",
+      "cost": 6,
+      "canvas": [
+        104,
+        80
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1e4c",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is built on his top-of-jump tuck (0x1e4c), so his ROM head, rear hand, body and tucked legs stay pixel for pixel",
+          "note": "make_air.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1ea8",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his jumping heavy kick's leg (x44-105, y60-80: grey trouser leg and blue shoe) laid with its thigh at the tuck's front hip in place of the front knee, shin and foot, kicked straight out at waist height; the mask covers the hip (x32-53, y36-61), sparing the tucked rear knee",
+          "note": "inpaint-source-jump-kick-104x80.png and inpaint-mask-jump-kick.png in candidates/lee/ap18-r1."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter in mid-air kicking straight forward at waist height: the hem of his royal-blue Chinese jacket over his hip, his baggy light-grey trouser leg running from under the hem into the outstretched leg, joined cleanly at the hip; his other knee tucked up beside it. Empty space under the thigh.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "jump_kick",
+          "crc32": "53c44f02",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 191 pixels differ from the source, and the 88 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "2 single pixels inside the mask set to the pen around them",
+            "2 ROM pixels just outside the mask, left as a speck cut off from the body (x36 y58, x36 y60), removed"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:46:00Z",
+      "move": "zesshouohken",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "ba0968e3-1fdf-476d-b51b-fa6e6aaea90d",
+      "cost": 6,
+      "canvas": [
+        112,
+        84
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1d20",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "the picture inpainted is his lunging punch's strike (0x1d20), raised 12 rows, so his ROM head, body, near arm and lunge stay pixel for pixel; its sleeve's end and forearm (x76-93, y22-43) laid again 6 pixels back and 16 lower as the second arm",
+          "note": "make_special.py in the pack's candidates/lee/tools; inpaint-source-zessh-strike-112x84.png and inpaint-mask-zessh-strike.png in candidates/lee/ap18-r1."
+        },
+        {
+          "rom": {
+            "code": "0x1c66",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his palm strike's open hand (x84-101, y12-34), fingers up, heel forward, laid in place of the lunge's fist on each forearm's end; the mask covers both wrists and the lower arm's root at his chest (x64-97, y6-49), sparing the palms"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter lunging forward in a double-palm strike: both arms driven straight forward from the shoulders, one above the other, each in the wide royal-blue sleeve of his Chinese jacket, each ending in an open palm, heel forward, fingers up; the lower arm comes from his far shoulder, out from under the upper arm and in front of his chest. Clean wrists joining the forearms to the palms. Nothing else in the empty space around the arms.",
+      "candidates": 1,
+      "kept": [
+        {
+          "candidate": 0,
+          "pose": "zessh_strike",
+          "crc32": "5ebb906a",
+          "touch_ups": [
+            "outside the mask every pixel is the ROM source's; inside, 353 pixels differ from the source, and the 156 pixels the inpainting drew off his palette were taken to his nearest pens",
+            "19 single pixels inside the mask set to the pen around them"
+          ]
+        }
+      ],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards."
+    },
+    {
+      "at": "2026-11-07T06:46:05Z",
+      "move": "zesshouohken",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "4e35258d-b767-4993-99b6-249c62a9218d",
+      "cost": 5,
+      "canvas": [
+        64,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1ccc",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is his step-in (0x1ccc, his lunging punch's and high kick's first step), so his ROM head, body, rear arm and legs stay pixel for pixel",
+          "note": "make_special.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        },
+        {
+          "rom": {
+            "code": "0x1c66",
+            "large": true,
+            "rows": 2,
+            "cols": 3
+          },
+          "usage": "his palm strike's open hand (x84-101, y12-34), fingers up, heel forward, turned a quarter so the fingers point forward, laid at each hip in place of his fists; the mask covers his front arm from the shoulder (x36-59, y18-51) and his rear wrist"
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter stepping in, gathering his strength: both hands drawn back to his hips as open palms, fingers pointing forward; each arm bent at the elbow, hanging from its shoulder in the wide royal-blue sleeve of his Chinese jacket, the forearm running down to the palm at the hip. His blue jacket's chest and side behind the arms. Nothing else in the empty space around the arms.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: both arms came out long and limp in short sleeves, the turned palms reading as claws."
+    },
+    {
+      "at": "2026-11-07T06:50:00Z",
+      "move": "zesshouohken",
+      "tool": "PixelLab inpaint_image_pro_flash",
+      "job": "0eaf2211-9dd0-46e5-8ef3-e6ed5c38f2fe",
+      "cost": 5,
+      "canvas": [
+        64,
+        96
+      ],
+      "seed": 1987,
+      "palette": [
+        "#000000",
+        "#664400",
+        "#996655",
+        "#cc9977",
+        "#ddaa88",
+        "#ddccaa",
+        "#ee4455",
+        "#4444dd",
+        "#666677",
+        "#888899",
+        "#aaaabb",
+        "#444466",
+        "#444477",
+        "#444499",
+        "#4444bb"
+      ],
+      "references": [
+        {
+          "rom": {
+            "code": "0x1ccc",
+            "large": true,
+            "rows": 2,
+            "cols": 1
+          },
+          "usage": "the picture inpainted is his step-in (0x1ccc, his lunging punch's and high kick's first step), so his ROM head, body, rear arm and legs stay pixel for pixel; its rear fist, chambered at the rear hip, mirrored and laid at the front hip in place of the raised front fist; the mask covers the front arm from the shoulder to that fist (x36-59, y22-49)",
+          "note": "make_special.py in the pack's candidates/lee/tools builds the sources and masks from his ROM poses."
+        }
+      ],
+      "prompt": "1987 Capcom arcade fighter sprite, flat simple shading, dark outline, exactly the colours and the drawing of the rest of the sprite. Lee the kung fu fighter stepping in and drawing his front arm back: the upper arm hangs from his shoulder at his side in the wide royal-blue sleeve of his Chinese jacket, the elbow bent back, the bare forearm running forward from the sleeve's end to the fist chambered at his hip. His blue jacket's chest and side behind the arm. Nothing else in the empty space around the arm.",
+      "candidates": 1,
+      "kept": [],
+      "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: no arm was drawn, so the fist floated at his hip. The gather was rebuilt instead from his own ROM pixels (the recipe's zessh_gather: the step-in's rear arm mirrored to the front side), with no generation."
+    }
+  ]
+}

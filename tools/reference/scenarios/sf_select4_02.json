@@ -1,0 +1,354 @@
+{
+ "scenario_id": "sf-select4-02",
+ "format_version": 1,
+ "description": "Four-country select (Number of Countries Selected = 4, DSW2=0xfbff, 0xffc005=0) to England (country 3) via down and button (ticket #87, F47): coin1@1450, start1@1520, down@1540 (England 3), up-right diagonal@1570 (ignored), LP (p1_button1)@1598 confirming England at frame 1611 (0x3f at 1612), checkpoints 1440..=1620.",
+ "reference": {
+  "rom_set": "sf",
+  "mame_version": "0.289",
+  "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+ },
+ "machine": {
+  "set": "sf",
+  "mame_options": [
+   "-video",
+   "none",
+   "-sound",
+   "none",
+   "-nothrottle",
+   "-skip_gameinfo",
+   "-noreadconfig",
+   "-nowriteconfig"
+  ],
+  "dipswitches": {
+   "Number of Countries Selected": "4"
+  }
+ },
+ "controls": {
+  "coin1": {
+   "port": "IN0",
+   "bit": 0
+  },
+  "coin2": {
+   "port": "IN0",
+   "bit": 1
+  },
+  "p1_button6": {
+   "port": "IN0",
+   "bit": 2
+  },
+  "p2_button6": {
+   "port": "IN0",
+   "bit": 8
+  },
+  "p1_button3": {
+   "port": "IN0",
+   "bit": 9
+  },
+  "p2_button3": {
+   "port": "IN0",
+   "bit": 10
+  },
+  "p1_right": {
+   "port": "IN1",
+   "bit": 0
+  },
+  "p1_left": {
+   "port": "IN1",
+   "bit": 1
+  },
+  "p1_down": {
+   "port": "IN1",
+   "bit": 2
+  },
+  "p1_up": {
+   "port": "IN1",
+   "bit": 3
+  },
+  "p1_button1": {
+   "port": "IN1",
+   "bit": 4
+  },
+  "p1_button2": {
+   "port": "IN1",
+   "bit": 5
+  },
+  "p1_button4": {
+   "port": "IN1",
+   "bit": 6
+  },
+  "p1_button5": {
+   "port": "IN1",
+   "bit": 7
+  },
+  "p2_right": {
+   "port": "IN1",
+   "bit": 8
+  },
+  "p2_left": {
+   "port": "IN1",
+   "bit": 9
+  },
+  "p2_down": {
+   "port": "IN1",
+   "bit": 10
+  },
+  "p2_up": {
+   "port": "IN1",
+   "bit": 11
+  },
+  "p2_button1": {
+   "port": "IN1",
+   "bit": 12
+  },
+  "p2_button2": {
+   "port": "IN1",
+   "bit": 13
+  },
+  "p2_button4": {
+   "port": "IN1",
+   "bit": 14
+  },
+  "p2_button5": {
+   "port": "IN1",
+   "bit": 15
+  },
+  "start1": {
+   "port": "SYSTEM",
+   "bit": 0
+  },
+  "start2": {
+   "port": "SYSTEM",
+   "bit": 1
+  },
+  "service1": {
+   "port": "SYSTEM",
+   "bit": 2
+  }
+ },
+ "duration_frames": 1621,
+ "inputs": [
+  {
+   "frame": 1450,
+   "press": "coin1",
+   "hold_frames": 12,
+   "comment": "insert coin during title"
+  },
+  {
+   "frame": 1520,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "1P start -> enters four-country select at 1521"
+  },
+  {
+   "frame": 1540,
+   "press": "p1_down",
+   "hold_frames": 12,
+   "comment": "pure down -> D6=0, D7=1 -> England (3) at 1541"
+  },
+  {
+   "frame": 1570,
+   "press": "p1_up",
+   "hold_frames": 12,
+   "comment": "up-right diagonal (with p1_right) -> ignored"
+  },
+  {
+   "frame": 1570,
+   "press": "p1_right",
+   "hold_frames": 12,
+   "comment": "up-right diagonal (with p1_up) -> ignored"
+  },
+  {
+   "frame": 1598,
+   "press": "p1_button1",
+   "hold_frames": 12,
+   "comment": "LP release at 1610 -> confirms England (3) at 1611"
+  }
+ ],
+ "observations": {
+  "screen_downsample_stride": 4,
+  "ram_crc_every_frames": 10,
+  "checkpoints": [
+   1440,
+   1441,
+   1442,
+   1443,
+   1444,
+   1445,
+   1446,
+   1447,
+   1448,
+   1449,
+   1450,
+   1451,
+   1452,
+   1453,
+   1454,
+   1455,
+   1456,
+   1457,
+   1458,
+   1459,
+   1460,
+   1461,
+   1462,
+   1463,
+   1464,
+   1465,
+   1466,
+   1467,
+   1468,
+   1469,
+   1470,
+   1471,
+   1472,
+   1473,
+   1474,
+   1475,
+   1476,
+   1477,
+   1478,
+   1479,
+   1480,
+   1481,
+   1482,
+   1483,
+   1484,
+   1485,
+   1486,
+   1487,
+   1488,
+   1489,
+   1490,
+   1491,
+   1492,
+   1493,
+   1494,
+   1495,
+   1496,
+   1497,
+   1498,
+   1499,
+   1500,
+   1501,
+   1502,
+   1503,
+   1504,
+   1505,
+   1506,
+   1507,
+   1508,
+   1509,
+   1510,
+   1511,
+   1512,
+   1513,
+   1514,
+   1515,
+   1516,
+   1517,
+   1518,
+   1519,
+   1520,
+   1521,
+   1522,
+   1523,
+   1524,
+   1525,
+   1526,
+   1527,
+   1528,
+   1529,
+   1530,
+   1531,
+   1532,
+   1533,
+   1534,
+   1535,
+   1536,
+   1537,
+   1538,
+   1539,
+   1540,
+   1541,
+   1542,
+   1543,
+   1544,
+   1545,
+   1546,
+   1547,
+   1548,
+   1549,
+   1550,
+   1551,
+   1552,
+   1553,
+   1554,
+   1555,
+   1556,
+   1557,
+   1558,
+   1559,
+   1560,
+   1561,
+   1562,
+   1563,
+   1564,
+   1565,
+   1566,
+   1567,
+   1568,
+   1569,
+   1570,
+   1571,
+   1572,
+   1573,
+   1574,
+   1575,
+   1576,
+   1577,
+   1578,
+   1579,
+   1580,
+   1581,
+   1582,
+   1583,
+   1584,
+   1585,
+   1586,
+   1587,
+   1588,
+   1589,
+   1590,
+   1591,
+   1592,
+   1593,
+   1594,
+   1595,
+   1596,
+   1597,
+   1598,
+   1599,
+   1600,
+   1601,
+   1602,
+   1603,
+   1604,
+   1605,
+   1606,
+   1607,
+   1608,
+   1609,
+   1610,
+   1611,
+   1612,
+   1613,
+   1614,
+   1615,
+   1616,
+   1617,
+   1618,
+   1619,
+   1620
+  ]
+ }
+}

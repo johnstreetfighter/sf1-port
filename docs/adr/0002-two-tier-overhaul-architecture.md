@@ -1,0 +1,5 @@
+# Separate surgical 1987 core toggles from the data-driven overhaul layer
+
+The project will split optional gameplay improvements and overhaul features into two architectural tiers: **Tier 1 (`CoreToggles` in `sf-engine`)** applies surgical, individually selectable mechanical fixes directly at the translated 1987 68000 routine boundaries on the `Bus`, while **Tier 2 (`sf-overhaul`)** implements the multi-era movesets, era gauges, AI-generated 1987-style sprite delta packs, extended scene composition, and new game modes as a data-driven layer above `sf-engine`, `sf-video`, and `sf-audio`.
+
+This hybrid structure allows players to toggle individual fixes (such as positive-edge button registration or fixed blocking) directly on the verified 1987 engine without duplicating 1987 physics, preserves 100% byte-identical MAME verification when `CoreToggles` are disabled, and avoids shoehorning multi-era gauges, stance switching, and three-fighter Dramatic Battles into the 1987 ROM's 64 KB work-RAM layout and bitpacked entity flags.

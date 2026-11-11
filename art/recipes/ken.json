@@ -1,0 +1,85 @@
+{
+  "fighter": "ken",
+  "poses": [
+    {
+      "name": "stance",
+      "rom": { "code": "0x0863", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "Move 1's header pose."
+    },
+    {
+      "name": "crouch",
+      "rom": { "code": "0x0920", "large": false, "rows": 3, "cols": 2 },
+      "anchor": [-24, -64],
+      "note": "Move 5's header pose."
+    },
+    {
+      "name": "rising",
+      "rom": { "code": "0x0c80", "large": true, "rows": 1, "cols": 1 },
+      "anchor": [-32, -64],
+      "note": "His knock-out fall pose, set on the ground. Played after the lying pose it reads as rising to his knees, as Ryu's does."
+    },
+    {
+      "name": "lying",
+      "rom": { "code": "0x0c84", "large": true, "rows": 0, "cols": 3 },
+      "anchor": [-64, -32],
+      "note": "The pose every knock-out stream ends on, centred on him so the get-up rises where he lies, as Ryu's is (his knock-out streams shift it 48 pixels back, as Ryu's do)."
+    },
+    {
+      "name": "thrown_1",
+      "parts": [{ "rom": { "code": "0x0c80", "large": true, "rows": 1, "cols": 1 }, "turn": 1 }],
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, lifted: his fall pose turned a quarter clockwise, head first toward the thrower, off the ground."
+    },
+    {
+      "name": "thrown_2",
+      "parts": [{ "rom": { "code": "0x0c80", "large": true, "rows": 1, "cols": 1 }, "turn": 2 }],
+      "anchor": [-32, -112],
+      "note": "His being-thrown set, over the top: his fall pose turned upside down, higher still."
+    },
+    {
+      "name": "grabbed",
+      "rom": { "code": "0x08c0", "large": true, "rows": 2, "cols": 1 },
+      "anchor": [-32, -96],
+      "note": "His being-thrown set, seized: the first pose of his standing-hit reaction (stream 0x03c60), leaning back with his hands up."
+    },
+    {
+      "name": "grab",
+      "rom": { "code": "0x0c2a", "large": true, "rows": 2, "cols": 2 },
+      "anchor": [-32, -96],
+      "note": "The shoulder throw's grab: his Hadoken thrust (stream 0x03440), both hands forward to seize the collar and sleeve, placed as the Hadoken places it (x-offset 16)."
+    },
+    {
+      "name": "throw_turn",
+      "pack": { "crc32": "f8f81325" },
+      "anchor": [-13, -89],
+      "note": "Ryu's approved turn (cc3890e5) in Ken's colours: Ken's pens line up with Ryu's, so his gi is red and his wristbands gold. Then Ken's own differences, measured against his ROM art, fixed by hand: no headband; his hair outlined and streaked in brown, mostly his light gold, and over his ears; his raised hand bare, his band on the wrist only; his flat foot his ROM grab's front foot, mirrored, and his rear heel shaded in skin. No new generation; the same size and the same 20-pixel step-in as Ryu's. The second try: the first left Ryu's gold-covered fist, Ryu's cut and flat feet (user, 2026-11-03)."
+    },
+    {
+      "name": "throw_heave",
+      "pack": { "crc32": "02e632d1" },
+      "anchor": [-24, -80],
+      "note": "Ryu's approved heave (51452992) in Ken's colours, with the same fixes by hand: no headband; his hair outlined and streaked in brown, mostly his light gold, and over his ear; black kept only for his eyes and brows; his flat foot his ROM grab's front foot, mirrored, and his rear foot, which faces us, his ROM stance's rear foot, mirrored, toes toward us. No new generation. The third try: the first left Ryu's cut and flat feet, the second drew the rear foot as a heel where it faces us (user, 2026-11-03)."
+    }
+  ],
+  "moves": [
+    {
+      "name": "get-up",
+      "poses": ["lying", "rising", "crouch", "stance"],
+      "timing": [60, 12, 10, 60],
+      "note": "His knock-out played in reverse into his stance, from his ROM poses only, as Ryu's get-up is."
+    },
+    {
+      "name": "throw",
+      "poses": ["grab", "throw_turn", "throw_heave"],
+      "timing": [8, 10, 16],
+      "note": "The shoulder throw (AP2), as Ryu's: he grabs the collar and sleeve, turns and hoists the opponent over his shoulder, and throws him to land in front of him. The opponent plays his being-thrown set; SF1+ turns Ken round afterwards to face him on his new side."
+    },
+    {
+      "name": "thrown",
+      "poses": ["grabbed", "thrown_1", "thrown_2", "lying"],
+      "timing": [8, 8, 8, 30],
+      "note": "His generic being-thrown set, used by every throw: seized, lifted head first toward the thrower, over the top, landing on his back. All from his own ROM poses. SF1+ moves him through the arc and turns him round on landing; then the get-up."
+    }
+  ]
+}

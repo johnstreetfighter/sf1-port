@@ -1,0 +1,32 @@
+{
+  "name": "test-stage",
+  "about": "The test stage (ticket #198): Joe's foreground (USA, its colour rows 0-4 in place) over Geki's background (Japan) with its tiles copied into the bank and its colour rows 0 and 8 moved to 12 and 13, on page 1 at the scroll words of Retsu's stage. Every pixel is a ROM pixel; the arrangement is new. Pickable in tests and with sf-game's --stage, never listed for players.",
+  "owner": null,
+  "theme": "0x40",
+  "page": 1,
+  "fg_scroll": "0x1c80",
+  "bg_scroll": "0x1800",
+  "fg": {
+    "columns": [{ "from": 580, "count": 48 }],
+    "palette": {
+      "rows": {
+        "0": ["0x1a668", 0],
+        "1": ["0x1a668", 1],
+        "2": ["0x1a668", 2],
+        "3": ["0x1a668", 3],
+        "4": ["0x1a668", 4]
+      }
+    }
+  },
+  "bg": {
+    "columns": [{ "from": 540, "count": 56 }],
+    "bank_tiles": true,
+    "colours": { "0": 12, "8": 13 },
+    "palette": {
+      "rows": {
+        "12": ["0x1b068", 0],
+        "13": ["0x1b068", 8]
+      }
+    }
+  }
+}

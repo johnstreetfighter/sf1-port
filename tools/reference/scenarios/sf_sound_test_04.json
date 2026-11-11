@@ -1,0 +1,1384 @@
+{
+  "scenario_id": "sf-sound-test-04",
+  "format_version": 1,
+  "description": "Ticket #64 (F24), label SM: Service Mode On from power-on; every ADPCM command 0x81-0xbf played alone through its table-derived end, then 0x80 stops of active samples on each channel and substantial overlapping playback on both channels. Channel 1 is stopped through the service screen's exit helper because its samples end before menu navigation can select 0x80. Directions are held for ten frames per observed single step; heavy punch plays on release. Full checkpoints precede every command latch and close the run. Both MSM5205 hooks cover the frame before the first command through the run's end.",
+  "reference": {
+    "rom_set": "sf",
+    "mame_version": "0.289",
+    "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+  },
+  "machine": {
+    "set": "sf",
+    "mame_options": [
+      "-video",
+      "none",
+      "-sound",
+      "none",
+      "-nothrottle",
+      "-skip_gameinfo",
+      "-noreadconfig",
+      "-nowriteconfig"
+    ],
+    "dipswitches": {
+      "Service Mode": "On"
+    }
+  },
+  "controls": {
+    "p1_button6": {
+      "port": "IN0",
+      "bit": 2
+    },
+    "p1_button3": {
+      "port": "IN0",
+      "bit": 9
+    },
+    "p1_down": {
+      "port": "IN1",
+      "bit": 2
+    },
+    "p1_up": {
+      "port": "IN1",
+      "bit": 3
+    }
+  },
+  "duration_frames": 12760,
+  "inputs": [
+    {
+      "frame": 100,
+      "press": "p1_down",
+      "hold_frames": 1270,
+      "comment": "Select 81: 127 steps"
+    },
+    {
+      "frame": 1370,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 81: isolated sample through its natural end"
+    },
+    {
+      "frame": 1390,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1437,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 82: 1 steps"
+    },
+    {
+      "frame": 1447,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 82: isolated sample through its natural end"
+    },
+    {
+      "frame": 1467,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1514,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 83: 1 steps"
+    },
+    {
+      "frame": 1524,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 83: isolated sample through its natural end"
+    },
+    {
+      "frame": 1544,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1592,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 84: 1 steps"
+    },
+    {
+      "frame": 1602,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 84: isolated sample through its natural end"
+    },
+    {
+      "frame": 1622,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1670,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 85: 1 steps"
+    },
+    {
+      "frame": 1680,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 85: isolated sample through its natural end"
+    },
+    {
+      "frame": 1700,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1780,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 86: 1 steps"
+    },
+    {
+      "frame": 1790,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 86: isolated sample through its natural end"
+    },
+    {
+      "frame": 1810,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1851,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 87: 1 steps"
+    },
+    {
+      "frame": 1861,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 87: isolated sample through its natural end"
+    },
+    {
+      "frame": 1881,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 1989,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 88: 1 steps"
+    },
+    {
+      "frame": 1999,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 88: isolated sample through its natural end"
+    },
+    {
+      "frame": 2019,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2113,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 89: 1 steps"
+    },
+    {
+      "frame": 2123,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 89: isolated sample through its natural end"
+    },
+    {
+      "frame": 2143,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2215,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8a: 1 steps"
+    },
+    {
+      "frame": 2225,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8a: isolated sample through its natural end"
+    },
+    {
+      "frame": 2245,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2325,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8b: 1 steps"
+    },
+    {
+      "frame": 2335,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8b: isolated sample through its natural end"
+    },
+    {
+      "frame": 2355,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2442,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8c: 1 steps"
+    },
+    {
+      "frame": 2452,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8c: isolated sample through its natural end"
+    },
+    {
+      "frame": 2472,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2546,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8d: 1 steps"
+    },
+    {
+      "frame": 2556,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8d: isolated sample through its natural end"
+    },
+    {
+      "frame": 2576,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2684,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8e: 1 steps"
+    },
+    {
+      "frame": 2694,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8e: isolated sample through its natural end"
+    },
+    {
+      "frame": 2714,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2794,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 8f: 1 steps"
+    },
+    {
+      "frame": 2804,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 8f: isolated sample through its natural end"
+    },
+    {
+      "frame": 2824,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 2906,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 90: 1 steps"
+    },
+    {
+      "frame": 2916,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 90: isolated sample through its natural end"
+    },
+    {
+      "frame": 2936,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3042,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 91: 1 steps"
+    },
+    {
+      "frame": 3052,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 91: isolated sample through its natural end"
+    },
+    {
+      "frame": 3072,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3151,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 92: 1 steps"
+    },
+    {
+      "frame": 3161,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 92: isolated sample through its natural end"
+    },
+    {
+      "frame": 3181,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3241,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 93: 1 steps"
+    },
+    {
+      "frame": 3251,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 93: isolated sample through its natural end"
+    },
+    {
+      "frame": 3271,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3356,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 94: 1 steps"
+    },
+    {
+      "frame": 3366,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 94: isolated sample through its natural end"
+    },
+    {
+      "frame": 3386,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3456,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 95: 1 steps"
+    },
+    {
+      "frame": 3466,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 95: isolated sample through its natural end"
+    },
+    {
+      "frame": 3486,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3600,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 96: 1 steps"
+    },
+    {
+      "frame": 3610,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 96: isolated sample through its natural end"
+    },
+    {
+      "frame": 3630,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3691,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 97: 1 steps"
+    },
+    {
+      "frame": 3701,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 97: isolated sample through its natural end"
+    },
+    {
+      "frame": 3721,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3798,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 98: 1 steps"
+    },
+    {
+      "frame": 3808,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 98: isolated sample through its natural end"
+    },
+    {
+      "frame": 3828,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 3918,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 99: 1 steps"
+    },
+    {
+      "frame": 3928,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 99: isolated sample through its natural end"
+    },
+    {
+      "frame": 3948,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4037,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9a: 1 steps"
+    },
+    {
+      "frame": 4047,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9a: isolated sample through its natural end"
+    },
+    {
+      "frame": 4067,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4158,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9b: 1 steps"
+    },
+    {
+      "frame": 4168,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9b: isolated sample through its natural end"
+    },
+    {
+      "frame": 4188,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4278,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9c: 1 steps"
+    },
+    {
+      "frame": 4288,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9c: isolated sample through its natural end"
+    },
+    {
+      "frame": 4308,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4447,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9d: 1 steps"
+    },
+    {
+      "frame": 4457,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9d: isolated sample through its natural end"
+    },
+    {
+      "frame": 4477,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 4910,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9e: 1 steps"
+    },
+    {
+      "frame": 4920,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9e: isolated sample through its natural end"
+    },
+    {
+      "frame": 4940,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5219,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select 9f: 1 steps"
+    },
+    {
+      "frame": 5229,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9f: isolated sample through its natural end"
+    },
+    {
+      "frame": 5249,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5393,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a0: 1 steps"
+    },
+    {
+      "frame": 5403,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a0: isolated sample through its natural end"
+    },
+    {
+      "frame": 5423,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5618,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a1: 1 steps"
+    },
+    {
+      "frame": 5628,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a1: isolated sample through its natural end"
+    },
+    {
+      "frame": 5648,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5694,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a2: 1 steps"
+    },
+    {
+      "frame": 5704,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a2: isolated sample through its natural end"
+    },
+    {
+      "frame": 5724,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5793,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a3: 1 steps"
+    },
+    {
+      "frame": 5803,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a3: isolated sample through its natural end"
+    },
+    {
+      "frame": 5823,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5880,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a4: 1 steps"
+    },
+    {
+      "frame": 5890,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a4: isolated sample through its natural end"
+    },
+    {
+      "frame": 5910,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 5971,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a5: 1 steps"
+    },
+    {
+      "frame": 5981,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a5: isolated sample through its natural end"
+    },
+    {
+      "frame": 6001,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6101,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a6: 1 steps"
+    },
+    {
+      "frame": 6111,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a6: isolated sample through its natural end"
+    },
+    {
+      "frame": 6131,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6201,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a7: 1 steps"
+    },
+    {
+      "frame": 6211,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a7: isolated sample through its natural end"
+    },
+    {
+      "frame": 6231,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6349,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a8: 1 steps"
+    },
+    {
+      "frame": 6359,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a8: isolated sample through its natural end"
+    },
+    {
+      "frame": 6379,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6474,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select a9: 1 steps"
+    },
+    {
+      "frame": 6484,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a9: isolated sample through its natural end"
+    },
+    {
+      "frame": 6504,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6699,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select aa: 1 steps"
+    },
+    {
+      "frame": 6709,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play aa: isolated sample through its natural end"
+    },
+    {
+      "frame": 6729,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6793,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select ab: 1 steps"
+    },
+    {
+      "frame": 6803,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play ab: isolated sample through its natural end"
+    },
+    {
+      "frame": 6823,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 6918,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select ac: 1 steps"
+    },
+    {
+      "frame": 6928,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play ac: isolated sample through its natural end"
+    },
+    {
+      "frame": 6948,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7028,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select ad: 1 steps"
+    },
+    {
+      "frame": 7038,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play ad: isolated sample through its natural end"
+    },
+    {
+      "frame": 7058,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7227,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select ae: 1 steps"
+    },
+    {
+      "frame": 7237,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play ae: isolated sample through its natural end"
+    },
+    {
+      "frame": 7257,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7314,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select af: 1 steps"
+    },
+    {
+      "frame": 7324,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play af: isolated sample through its natural end"
+    },
+    {
+      "frame": 7344,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7444,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b0: 1 steps"
+    },
+    {
+      "frame": 7454,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b0: isolated sample through its natural end"
+    },
+    {
+      "frame": 7474,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7551,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b1: 1 steps"
+    },
+    {
+      "frame": 7561,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b1: isolated sample through its natural end"
+    },
+    {
+      "frame": 7581,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7758,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b2: 1 steps"
+    },
+    {
+      "frame": 7768,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b2: isolated sample through its natural end"
+    },
+    {
+      "frame": 7788,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 7875,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b3: 1 steps"
+    },
+    {
+      "frame": 7885,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b3: isolated sample through its natural end"
+    },
+    {
+      "frame": 7905,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8077,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b4: 1 steps"
+    },
+    {
+      "frame": 8087,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b4: isolated sample through its natural end"
+    },
+    {
+      "frame": 8107,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8173,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b5: 1 steps"
+    },
+    {
+      "frame": 8183,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b5: isolated sample through its natural end"
+    },
+    {
+      "frame": 8203,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8372,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b6: 1 steps"
+    },
+    {
+      "frame": 8382,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b6: isolated sample through its natural end"
+    },
+    {
+      "frame": 8402,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8466,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b7: 1 steps"
+    },
+    {
+      "frame": 8476,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b7: isolated sample through its natural end"
+    },
+    {
+      "frame": 8496,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8660,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b8: 1 steps"
+    },
+    {
+      "frame": 8670,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b8: isolated sample through its natural end"
+    },
+    {
+      "frame": 8690,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8770,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select b9: 1 steps"
+    },
+    {
+      "frame": 8780,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play b9: isolated sample through its natural end"
+    },
+    {
+      "frame": 8800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 8956,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select ba: 1 steps"
+    },
+    {
+      "frame": 8966,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play ba: isolated sample through its natural end"
+    },
+    {
+      "frame": 8986,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 9250,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select bb: 1 steps"
+    },
+    {
+      "frame": 9260,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play bb: isolated sample through its natural end"
+    },
+    {
+      "frame": 9280,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 9429,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select bc: 1 steps"
+    },
+    {
+      "frame": 9439,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play bc: isolated sample through its natural end"
+    },
+    {
+      "frame": 9459,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 9516,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select bd: 1 steps"
+    },
+    {
+      "frame": 9526,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play bd: isolated sample through its natural end"
+    },
+    {
+      "frame": 9546,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 9856,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select be: 1 steps"
+    },
+    {
+      "frame": 9866,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play be: isolated sample through its natural end"
+    },
+    {
+      "frame": 9886,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 10158,
+      "press": "p1_up",
+      "hold_frames": 10,
+      "comment": "Select bf: 1 steps"
+    },
+    {
+      "frame": 10168,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play bf: isolated sample through its natural end"
+    },
+    {
+      "frame": 10188,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 10460,
+      "press": "p1_down",
+      "hold_frames": 340,
+      "comment": "Select 9d: 34 steps"
+    },
+    {
+      "frame": 10800,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9d: channel-0 stop source"
+    },
+    {
+      "frame": 10820,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 10920,
+      "press": "p1_down",
+      "hold_frames": 290,
+      "comment": "Select 80: 29 steps"
+    },
+    {
+      "frame": 11210,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 80: stop active channel 0"
+    },
+    {
+      "frame": 11230,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 11270,
+      "press": "p1_up",
+      "hold_frames": 290,
+      "comment": "Select 9d: 29 steps"
+    },
+    {
+      "frame": 11560,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 9d: overlap source on channel 0"
+    },
+    {
+      "frame": 11580,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 11610,
+      "press": "p1_up",
+      "hold_frames": 30,
+      "comment": "Select a0: 3 steps"
+    },
+    {
+      "frame": 11640,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a0: overlap source on channel 1"
+    },
+    {
+      "frame": 11660,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 11760,
+      "press": "p1_down",
+      "hold_frames": 320,
+      "comment": "Select 80: 32 steps"
+    },
+    {
+      "frame": 12080,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play 80: stop both overlapping channels"
+    },
+    {
+      "frame": 12100,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 12200,
+      "press": "p1_up",
+      "hold_frames": 320,
+      "comment": "Select a0: 32 steps"
+    },
+    {
+      "frame": 12520,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Play a0: channel-1 stop source"
+    },
+    {
+      "frame": 12540,
+      "press": "p1_button3",
+      "hold_frames": 5,
+      "comment": "Paired playback attempt (service input latch)"
+    },
+    {
+      "frame": 12580,
+      "press": "p1_up",
+      "hold_frames": 60,
+      "comment": "Hold Up through the heavy-kick release"
+    },
+    {
+      "frame": 12580,
+      "press": "p1_button6",
+      "hold_frames": 10,
+      "comment": "Exit service screen: queue 27, 3f, 80"
+    }
+  ],
+  "observations": {
+    "screen_downsample_stride": 600,
+    "ram_crc_every_frames": 60,
+    "checkpoints": [
+      15,
+      16,
+      17,
+      1376,
+      1453,
+      1530,
+      1608,
+      1686,
+      1796,
+      1867,
+      2005,
+      2129,
+      2231,
+      2341,
+      2458,
+      2562,
+      2700,
+      2810,
+      2922,
+      3058,
+      3167,
+      3257,
+      3372,
+      3472,
+      3616,
+      3707,
+      3814,
+      3934,
+      4053,
+      4174,
+      4294,
+      4463,
+      4926,
+      5235,
+      5409,
+      5634,
+      5710,
+      5809,
+      5896,
+      5987,
+      6117,
+      6217,
+      6365,
+      6490,
+      6715,
+      6809,
+      6934,
+      7044,
+      7243,
+      7330,
+      7460,
+      7567,
+      7774,
+      7891,
+      8093,
+      8189,
+      8388,
+      8482,
+      8676,
+      8786,
+      8972,
+      9266,
+      9445,
+      9532,
+      9872,
+      10174,
+      10806,
+      11216,
+      11566,
+      11646,
+      12086,
+      12526,
+      12591,
+      12592,
+      12593,
+      12759
+    ]
+  },
+  "dip_changes": []
+}

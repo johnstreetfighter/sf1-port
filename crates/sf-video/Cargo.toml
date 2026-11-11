@@ -1,0 +1,10 @@
+[package]
+name = "sf-video"
+version.workspace = true
+edition.workspace = true
+description = "Native renderer for the original game's video hardware: tile decode, tilemaps, sprites, palette"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+png = { workspace = true }

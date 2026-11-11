@@ -1,0 +1,23 @@
+{
+  "fighter": "birdie",
+  "note": "Light khaki trousers and grey hair: his dark grey trousers turn to his khaki, and his khaki hair to grey.",
+  "from": 9,
+  "slot": 14,
+  "pens": [
+    "#000000",
+    "#664400",
+    "#996655",
+    "#cc9977",
+    "#ddaa88",
+    "#ddccaa",
+    "#bbbbbb",
+    "#777777",
+    "#555555",
+    "#666666",
+    "#bbbbbb",
+    "#888855",
+    "#888855",
+    "#bbbb77",
+    "#bbbb77"
+  ]
+}

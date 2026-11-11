@@ -1,0 +1,10 @@
+[package]
+name = "mugen-extract"
+version.workspace = true
+edition.workspace = true
+description = "Offline M.U.G.E.N extractor for sf1-port overhaul packs"
+license = "MIT"
+publish = false
+
+[dependencies]
+sf-engine = { path = "../../crates/sf-engine" }

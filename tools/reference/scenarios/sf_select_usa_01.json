@@ -1,0 +1,415 @@
+{
+ "scenario_id": "sf-select-usa-01",
+ "format_version": 1,
+ "description": "Two-country select to USA via stick and button (ticket #74, F34): coin1@1450, start1@1520, then right@1540 (USA), left@1570 (Japan), right@1600 (USA), up-left diagonal@1630 (ignored), and LP (p1_button1)@1648 confirming USA at frame 1661 (0x3f at 1662), with full checkpoints on every frame 1440..=1670.",
+ "reference": {
+  "rom_set": "sf",
+  "mame_version": "0.289",
+  "notes": "US set 1, six-button controls; MAME set sf. ROM set verified by mame -verifyroms against the pinned build."
+ },
+ "machine": {
+  "set": "sf",
+  "mame_options": [
+   "-video",
+   "none",
+   "-sound",
+   "none",
+   "-nothrottle",
+   "-skip_gameinfo",
+   "-noreadconfig",
+   "-nowriteconfig"
+  ],
+  "dipswitches": "factory defaults; observed readback DSW1=0xdfff, DSW2=0xffff"
+ },
+ "controls": {
+  "coin1": {
+   "port": "IN0",
+   "bit": 0
+  },
+  "coin2": {
+   "port": "IN0",
+   "bit": 1
+  },
+  "p1_button6": {
+   "port": "IN0",
+   "bit": 2
+  },
+  "p2_button6": {
+   "port": "IN0",
+   "bit": 8
+  },
+  "p1_button3": {
+   "port": "IN0",
+   "bit": 9
+  },
+  "p2_button3": {
+   "port": "IN0",
+   "bit": 10
+  },
+  "p1_right": {
+   "port": "IN1",
+   "bit": 0
+  },
+  "p1_left": {
+   "port": "IN1",
+   "bit": 1
+  },
+  "p1_down": {
+   "port": "IN1",
+   "bit": 2
+  },
+  "p1_up": {
+   "port": "IN1",
+   "bit": 3
+  },
+  "p1_button1": {
+   "port": "IN1",
+   "bit": 4
+  },
+  "p1_button2": {
+   "port": "IN1",
+   "bit": 5
+  },
+  "p1_button4": {
+   "port": "IN1",
+   "bit": 6
+  },
+  "p1_button5": {
+   "port": "IN1",
+   "bit": 7
+  },
+  "p2_right": {
+   "port": "IN1",
+   "bit": 8
+  },
+  "p2_left": {
+   "port": "IN1",
+   "bit": 9
+  },
+  "p2_down": {
+   "port": "IN1",
+   "bit": 10
+  },
+  "p2_up": {
+   "port": "IN1",
+   "bit": 11
+  },
+  "p2_button1": {
+   "port": "IN1",
+   "bit": 12
+  },
+  "p2_button2": {
+   "port": "IN1",
+   "bit": 13
+  },
+  "p2_button4": {
+   "port": "IN1",
+   "bit": 14
+  },
+  "p2_button5": {
+   "port": "IN1",
+   "bit": 15
+  },
+  "start1": {
+   "port": "SYSTEM",
+   "bit": 0
+  },
+  "start2": {
+   "port": "SYSTEM",
+   "bit": 1
+  },
+  "service1": {
+   "port": "SYSTEM",
+   "bit": 2
+  }
+ },
+ "duration_frames": 1671,
+ "inputs": [
+  {
+   "frame": 1450,
+   "press": "coin1",
+   "hold_frames": 12,
+   "comment": "insert coin during title"
+  },
+  {
+   "frame": 1520,
+   "press": "start1",
+   "hold_frames": 12,
+   "comment": "1P start -> enters two-country select at 1521"
+  },
+  {
+   "frame": 1540,
+   "press": "p1_right",
+   "hold_frames": 12,
+   "comment": "pure right -> selects USA (0xffc006 = 2) at 1541"
+  },
+  {
+   "frame": 1570,
+   "press": "p1_left",
+   "hold_frames": 12,
+   "comment": "pure left -> selects Japan (0xffc006 = 0) at 1571"
+  },
+  {
+   "frame": 1600,
+   "press": "p1_right",
+   "hold_frames": 12,
+   "comment": "pure right -> selects USA (0xffc006 = 2) at 1601"
+  },
+  {
+   "frame": 1630,
+   "press": "p1_left",
+   "hold_frames": 12,
+   "comment": "up-left diagonal with p1_up@1630 -> ignored (0xff868f = 0xf5 != 0xfd)"
+  },
+  {
+   "frame": 1630,
+   "press": "p1_up",
+   "hold_frames": 12,
+   "comment": "up-left diagonal with p1_left@1630 -> ignored"
+  },
+  {
+   "frame": 1648,
+   "press": "p1_button1",
+   "hold_frames": 12,
+   "comment": "LP confirms USA at 1661 (0x3f at 1662, arrays from 0x19958)"
+  }
+ ],
+ "observations": {
+  "screen_downsample_stride": 4,
+  "ram_crc_every_frames": 10,
+  "checkpoints": [
+   1440,
+   1441,
+   1442,
+   1443,
+   1444,
+   1445,
+   1446,
+   1447,
+   1448,
+   1449,
+   1450,
+   1451,
+   1452,
+   1453,
+   1454,
+   1455,
+   1456,
+   1457,
+   1458,
+   1459,
+   1460,
+   1461,
+   1462,
+   1463,
+   1464,
+   1465,
+   1466,
+   1467,
+   1468,
+   1469,
+   1470,
+   1471,
+   1472,
+   1473,
+   1474,
+   1475,
+   1476,
+   1477,
+   1478,
+   1479,
+   1480,
+   1481,
+   1482,
+   1483,
+   1484,
+   1485,
+   1486,
+   1487,
+   1488,
+   1489,
+   1490,
+   1491,
+   1492,
+   1493,
+   1494,
+   1495,
+   1496,
+   1497,
+   1498,
+   1499,
+   1500,
+   1501,
+   1502,
+   1503,
+   1504,
+   1505,
+   1506,
+   1507,
+   1508,
+   1509,
+   1510,
+   1511,
+   1512,
+   1513,
+   1514,
+   1515,
+   1516,
+   1517,
+   1518,
+   1519,
+   1520,
+   1521,
+   1522,
+   1523,
+   1524,
+   1525,
+   1526,
+   1527,
+   1528,
+   1529,
+   1530,
+   1531,
+   1532,
+   1533,
+   1534,
+   1535,
+   1536,
+   1537,
+   1538,
+   1539,
+   1540,
+   1541,
+   1542,
+   1543,
+   1544,
+   1545,
+   1546,
+   1547,
+   1548,
+   1549,
+   1550,
+   1551,
+   1552,
+   1553,
+   1554,
+   1555,
+   1556,
+   1557,
+   1558,
+   1559,
+   1560,
+   1561,
+   1562,
+   1563,
+   1564,
+   1565,
+   1566,
+   1567,
+   1568,
+   1569,
+   1570,
+   1571,
+   1572,
+   1573,
+   1574,
+   1575,
+   1576,
+   1577,
+   1578,
+   1579,
+   1580,
+   1581,
+   1582,
+   1583,
+   1584,
+   1585,
+   1586,
+   1587,
+   1588,
+   1589,
+   1590,
+   1591,
+   1592,
+   1593,
+   1594,
+   1595,
+   1596,
+   1597,
+   1598,
+   1599,
+   1600,
+   1601,
+   1602,
+   1603,
+   1604,
+   1605,
+   1606,
+   1607,
+   1608,
+   1609,
+   1610,
+   1611,
+   1612,
+   1613,
+   1614,
+   1615,
+   1616,
+   1617,
+   1618,
+   1619,
+   1620,
+   1621,
+   1622,
+   1623,
+   1624,
+   1625,
+   1626,
+   1627,
+   1628,
+   1629,
+   1630,
+   1631,
+   1632,
+   1633,
+   1634,
+   1635,
+   1636,
+   1637,
+   1638,
+   1639,
+   1640,
+   1641,
+   1642,
+   1643,
+   1644,
+   1645,
+   1646,
+   1647,
+   1648,
+   1649,
+   1650,
+   1651,
+   1652,
+   1653,
+   1654,
+   1655,
+   1656,
+   1657,
+   1658,
+   1659,
+   1660,
+   1661,
+   1662,
+   1663,
+   1664,
+   1665,
+   1666,
+   1667,
+   1668,
+   1669,
+   1670
+  ],
+  "checkpoint_notes": "1440..=1670=every frame from before coin1@1450 through start1@1520, right/left/right/diagonal, LP exit at 1661, and stage-start/event-3 entry at 1662..=1670"
+ }
+}

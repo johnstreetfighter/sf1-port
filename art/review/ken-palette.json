@@ -1,0 +1,19 @@
+{
+  "fighter": "ken",
+  "palette": "2d0507bb",
+  "verdict": "approved",
+  "reason": "",
+  "rejections": 1,
+  "history": [
+    {
+      "palette": "b34abedd",
+      "verdict": "rejected",
+      "reason": "Keep Ken's hair blonde."
+    },
+    {
+      "palette": "2d0507bb",
+      "verdict": "approved",
+      "reason": ""
+    }
+  ]
+}
