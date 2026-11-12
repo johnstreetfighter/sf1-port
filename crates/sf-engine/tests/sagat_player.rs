@@ -1075,6 +1075,23 @@ fn the_high_and_low_tiger_shots_come_from_their_commands_and_launch_high_and_low
 }
 
 #[test]
+fn tiger_knee_extends_into_a_high_kick() {
+    let Some(l) = local_roms() else { return };
+    let kick = l.art.catalogue("sagat").unwrap().pose("tiger_knee_high_kick").unwrap().grid.code;
+    let mut session = apart(&l);
+    let inputs = dp(5);
+    let mut active_poses = Vec::new();
+    for tick in 0..80 {
+        session.step(inputs.get(tick).copied().unwrap_or_default());
+        let fighter = p1(&session);
+        if fighter.move_id == 0x19 && fighter.attack_active {
+            active_poses.push(p1_codes(&session)[0]);
+        }
+    }
+    assert_eq!(active_poses, [[0x2d0a; 6], [kick; 6]].concat());
+}
+
+#[test]
 fn the_tiger_knee_comes_from_its_command_and_is_blocked_standing_or_crouching() {
     let Some(l) = local_roms() else { return };
     let rom = &l.a.maincpu;

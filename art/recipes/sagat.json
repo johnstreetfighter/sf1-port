@@ -164,6 +164,15 @@
       "pack": { "crc32": "ae578d51" },
       "anchor": [-31, -93],
       "note": "Generated on his crouch and his own Tiger Shot thrust (0x2f06), as AP2 describes it: from low down he thrusts both arms forward at knee height, lunging over his front knee. The shot is his ROM projectile, launched lower by SF1+. By hand: the sparks the generator drew round his hands cleared, outline specks, the ground shadow. His rear foot where the crouch's is."
+    },
+    {
+      "name": "tiger_knee_high_kick",
+      "parts": [
+        { "rom": { "code": "0x2d84", "large": true, "rows": 3, "cols": 2 }, "crop": [0, 0, 96, 126], "at": [32, 0] },
+        { "rom": { "code": "0x2d84", "large": true, "rows": 3, "cols": 2 }, "crop": [0, 126, 29, 2], "at": [32, 126] }
+      ],
+      "anchor": [-64, -128],
+      "note": "His ROM high kick with the ground line removed for the airborne Tiger Knee. The transparent padding keeps the kick centred on the same point as his knee."
     }
   ],
   "moves": [

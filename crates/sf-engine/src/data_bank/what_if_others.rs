@@ -8,15 +8,21 @@ const PUNCH_REACTION: u32 = 0x45c88;
 const LAUNCH_REACTION: u32 = 0x45f52;
 const ACTIVE: u8 = 0x80;
 
-pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+pub(super) fn build(
+    rom: &[u8],
+    region: &mut Region,
+    fighter: TournamentFighter,
+    catalogue: &Catalogue,
+) -> Result<(), String> {
     match fighter {
         Gen => build_gen(rom, region),
         Birdie => build_birdie(rom, region),
         Eagle => build_eagle(rom, region),
         Adon => build_adon(rom, region),
-        Sagat => build_sagat(rom, region),
+        Sagat => build_sagat(rom, region, catalogue)?,
         _ => {}
     }
+    Ok(())
 }
 
 fn aliases(region: &mut Region, family: EraFamily, slots: &[(u8, u8)]) {
@@ -159,7 +165,7 @@ fn build_adon(rom: &[u8], region: &mut Region) {
     aliases(region, Sf5, &[(0x2b, 0x19), (0x2c, 0x2c)]);
 }
 
-fn build_sagat(rom: &[u8], region: &mut Region) {
+fn build_sagat(rom: &[u8], region: &mut Region, catalogue: &Catalogue) -> Result<(), String> {
     use EraFamily::*;
 
     for family in [Sf3, Sf6] {
@@ -178,14 +184,21 @@ fn build_sagat(rom: &[u8], region: &mut Region) {
     aliases(region, Sf3, &[(0x29, 0x29), (0x2a, 0x2a)]);
     aliases(region, Sf6, &[(0x29, 0x2a), (0x2a, 0x29)]);
 
-    build_nexus(rom, region);
+    build_nexus(rom, region, catalogue)
 }
 
-fn build_nexus(rom: &[u8], region: &mut Region) {
+fn build_nexus(rom: &[u8], region: &mut Region, catalogue: &Catalogue) -> Result<(), String> {
     let (ready, ready_boxes) = header_pose(&region.bytes, bank_header_offset(1));
-    let kick = |region: &mut Region, frame, damage, launch, windup| {
-        let strike = rom_pose(rom, frame);
-        let mut boxes = rom_boxes(rom, frame);
+    let mut kick = |name, box_frame, damage, launch, windup| {
+        let mut strike = catalogue_pose(catalogue, name, ready.attr & 0xff)?;
+        let previous = rom_pose(rom, box_frame);
+        // Place the new drawing around the previous frame's collision centre.
+        let (half_w, half_h) = strike.half();
+        strike.anchor = [
+            i16::from(previous.x_offset()) - half_w as i16,
+            (previous.top_on_ground() + previous.half().1 - half_h - GROUND) as i16,
+        ];
+        let mut boxes = rom_boxes(rom, box_frame);
         boxes[12..16].copy_from_slice(&[6, 26, 28, 25]);
         let source = if launch {
             LAUNCH_REACTION
@@ -207,11 +220,11 @@ fn build_nexus(rom: &[u8], region: &mut Region) {
         s.hold(strike, strike.top_on_ground(), 4, boxes, ACTIVE, hit);
         s.hold(ready, ready.top_on_ground(), 14, ready_boxes, 0, 0);
         s.end();
-        stream
+        Ok::<_, String>(stream)
     };
-    let mighty = kick(region, 0x1414c, 5, false, 3);
-    let greedy = kick(region, 0x14056, 6, true, 4);
-    let nova = kick(region, 0x1412c, 6, true, 6);
+    let mighty = kick("jump_kick_down", 0x1414c, 5, false, 3)?;
+    let greedy = kick("tiger_knee_high_kick", 0x14056, 6, true, 4)?;
+    let nova = kick("jump_kick", 0x1412c, 6, true, 6)?;
     let select = region.put(&[ROUTINE_SF6_TIGER_NEXUS, 0, 0, 0]);
     for stream in [mighty, greedy, nova] {
         region.put_l(stream);
@@ -246,6 +259,7 @@ fn build_nexus(rom: &[u8], region: &mut Region) {
         );
         put_era_header(region, EraFamily::Sf6, slot, &data);
     }
+    Ok(())
 }
 
 fn hit_entry(rom: &[u8], region: &mut Region, source: u32, damage: u8) -> u32 {

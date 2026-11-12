@@ -664,19 +664,24 @@ impl GameSession {
         self.stage = stage;
     }
 
+    /// The graphics for the running fight, including the banks that its
+    /// preset uses. Use these when stepping or rendering a cloned fight.
+    pub fn fight_assets(&self) -> Option<&Assets> {
+        let preset = self.play.as_ref()?.fight.setup().config.preset;
+        Some(fight_assets(&self.assets, &self.bank_assets, preset))
+    }
+
     /// The map pages the running fight draws from: the ROM tilemap's, plus
     /// the background bank's under an overhaul preset. `None` when no fight
     /// is running.
     pub fn fight_background_pages(&self) -> Option<usize> {
-        let play = self.play.as_ref()?;
-        Some(fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset).background_pages())
+        self.fight_assets().map(Assets::background_pages)
     }
 
     /// The sprite tiles the running fight draws with: the ROM's 14,336, plus
     /// the bank's under an overhaul preset. `None` when no fight is running.
     pub fn fight_sprite_tiles(&self) -> Option<usize> {
-        let play = self.play.as_ref()?;
-        Some(fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset).sprite_tiles())
+        self.fight_assets().map(Assets::sprite_tiles)
     }
 
     /// The bindings by name, when the host gave them.
@@ -748,6 +753,7 @@ impl GameSession {
         }
     }
 
+    /// The unmodified ROM assets. Use [`Self::fight_assets`] to render a fight.
     pub fn assets(&self) -> &Assets {
         &self.assets
     }

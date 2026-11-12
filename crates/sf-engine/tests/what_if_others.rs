@@ -334,10 +334,11 @@ fn tiger_nexus_selects_three_finishes_after_contact() {
     let Some(session) = bout(Sagat, Revision::Sf6, Loadout::Standard) else {
         return;
     };
-    let assets = session.assets();
+    let assets = session.fight_assets().unwrap();
     let base = session.fight().unwrap();
     let mut close = base.clone();
     close_range(&mut close, assets);
+    let mut finish_poses = std::collections::BTreeSet::new();
     for (kick, expected) in [(LK, 0x21), (MK, 0x22), (HK, 0x23)] {
         let mut sagat = close.clone();
         let hp = sagat.machine().era_fighters()[1].sub_hp;
@@ -351,6 +352,27 @@ fn tiger_nexus_selects_three_finishes_after_contact() {
             "Tiger Nexus selects kick {kick}"
         );
         assert!(sagat.machine().era_fighters()[1].sub_hp < hp);
+
+        let strike = (0..16).find_map(|_| {
+            step(&mut sagat, assets, PlayerInputs::default());
+            let fighter = sagat.fight_read().fighter(Side::P1);
+            if fighter.move_id != expected {
+                return None;
+            }
+            let machine = sagat.machine();
+            let offset = usize::from(machine.diagnostic_telemetry().p1.entity_offset);
+            let grid = &machine.state.objectram[offset..];
+            let code = u16::from_be_bytes([grid[0], grid[1]]);
+            if code == 0x2c00 {
+                return None;
+            }
+            let top = i32::from(u16::from_be_bytes([grid[4], grid[5]]));
+            let cell = if grid[2] & 4 == 0 { 16 } else { 32 };
+            assert!(top + (i32::from(grid[0xc]) + 1) * cell <= sf_engine::data_bank::GROUND);
+            Some(code)
+        }).expect("the follow-up reaches its active pose");
+        assert_ne!(strike, 0x2d0a, "a follow-up kick has its own strike pose");
+        assert!(finish_poses.insert(strike), "the follow-up kicks use distinct poses");
     }
 
     let mut whiff = base.clone();

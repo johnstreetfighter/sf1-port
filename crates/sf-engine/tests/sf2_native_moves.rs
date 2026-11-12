@@ -13,6 +13,7 @@ use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
 use sf_video::callouts::Side;
 use sf_video::romset::load_assets;
+use sf_video::sprite_bank::{sprite_slot, ROM_SPRITE_TILES};
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
 const PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
@@ -312,6 +313,48 @@ fn sagat_uses_the_native_tiger_uppercut_and_tiger_genocide_streams() {
     assert!(super_hits >= 2, "Tiger Genocide's knee and uppercut contacts: {super_hits}");
     assert!(super_freeze);
     assert_eq!(super_launches, 2);
+}
+
+#[test]
+fn tiger_genocide_draws_sagats_own_poses() {
+    let Some(mut session) = fight(Sagat, true) else { return };
+    close(&mut session);
+
+    let bank = session.data_bank().unwrap();
+    let crouch_header = bank.move_header(Sagat, 5).unwrap();
+    let crouch = u16::from_be_bytes([bank.rb(crouch_header), bank.rb(crouch_header + 1)]);
+    let crouch_slot = sprite_slot(crouch);
+    assert!(crouch_slot >= ROM_SPRITE_TILES);
+    assert!(crouch_slot < session.fight_sprite_tiles().unwrap());
+
+    let drawn_pose = |session: &GameSession| {
+        let machine = session.fight_machine().unwrap();
+        let offset = usize::from(machine.diagnostic_telemetry().p1.entity_offset);
+        let grid = &machine.state.objectram[offset..];
+        u16::from_be_bytes([grid[0], grid[1]])
+    };
+    for (index, direction) in [2, 3, 6, 2, 3, 6].into_iter().enumerate() {
+        for _ in 0..3 {
+            session.step(p1(direction, (index == 5).then_some(LK)));
+            if direction == 2 {
+                assert_eq!(drawn_pose(&session), crouch, "quarter-circle crouch");
+            }
+        }
+    }
+
+    let mut poses = Vec::new();
+    for _ in 0..150 {
+        if session.fight().unwrap().fight_read().fighter(Side::P1).move_id == SF2_SUPER_SLOT {
+            let pose = drawn_pose(&session);
+            if poses.last() != Some(&pose) {
+                poses.push(pose);
+            }
+        } else if !poses.is_empty() {
+            break;
+        }
+        session.step(idle());
+    }
+    assert_eq!(poses, [0x2d80, 0x2d0a, 0x2c8c, 0x2d80, 0x2d00, 0x2c8c, 0x2d80]);
 }
 
 #[test]

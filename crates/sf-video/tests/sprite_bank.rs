@@ -8,7 +8,7 @@
 use std::path::Path;
 
 use sf_video::decode::decode_sprite_tile;
-use sf_video::render::{render_frame, VISAREA_X, VISAREA_Y, WIDTH};
+use sf_video::render::{capture_sprite_pose, render_frame, VISAREA_X, VISAREA_Y, WIDTH};
 use sf_video::romset::{load_assets, Assets};
 use sf_video::scene::SceneState;
 use sf_video::sprite_bank::{encode_sprite_tile, sprite_slot, SpriteBank, ROM_SPRITE_TILES};
@@ -79,6 +79,35 @@ fn blank_graphics() -> Assets {
         gfx4: vec![0; 16],
         tilerom: vec![0; 0x20000],
     }
+}
+
+#[test]
+fn an_unloaded_bank_tile_does_not_draw_an_unrelated_rom_tile() {
+    let mut assets = blank_graphics();
+    let [first, second] = encode_sprite_tile(&[[1; 16]; 16]);
+    let half = assets.gfx3.len() / 2;
+    assets.gfx3[..64].copy_from_slice(&first);
+    assets.gfx3[half..half + 64].copy_from_slice(&second);
+
+    let mut scene = SceneState {
+        videoram: vec![0; 0x1000],
+        objectram: vec![0; 0x2000],
+        paletteram: vec![0; 2048],
+        bg_scroll: 0,
+        fg_scroll: 0,
+        active: 0x80,
+        flip_screen: false,
+        bg_page: 0,
+        fg_page: 0,
+    };
+    scene.paletteram[1026..1028].copy_from_slice(&0x0fffu16.to_be_bytes());
+    scene.objectram[4..6].copy_from_slice(&(VISAREA_Y as u16).to_be_bytes());
+    scene.objectram[6..8].copy_from_slice(&(VISAREA_X as u16).to_be_bytes());
+    assert_eq!(render_frame(&assets, &scene).argb[0], 0xffff_ffff);
+
+    scene.objectram[..2].copy_from_slice(&(ROM_SPRITE_TILES as u16).to_be_bytes());
+    assert_eq!(render_frame(&assets, &scene).argb[0], 0xff00_0000);
+    assert!(capture_sprite_pose(&assets, &scene, 0, 1).is_empty());
 }
 
 #[test]

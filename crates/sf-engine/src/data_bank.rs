@@ -533,7 +533,7 @@ impl DataBank {
                     sf5::build(rom, &mut region, fighter);
                     sf6::build(rom, &mut region, fighter);
                     what_if::build(rom, &mut region, fighter);
-                    what_if_others::build(rom, &mut region, fighter);
+                    what_if_others::build(rom, &mut region, fighter, catalogue)?;
                     what_if::build_systems(rom, &mut region, fighter);
                     fits(region).map(|region| (region, entry))
                 });
@@ -5567,7 +5567,6 @@ mod sagat {
     const RISING_FRAME: u32 = 0x14242; // 0x2d80, his take-off and landing squat
     const JUMP_LIFT_FRAME: u32 = 0x14268; // 0x2c8c, his rising and falling pose
     const JUMP_KNEE_FRAME: u32 = 0x1412c; // 0x2d0a, his forward-leaping knee (hit `0x480d0`)
-    const JUMP_KICK_FRAME: u32 = 0x1414c; // 0x2d84, his forward-leaping high kick (hit `0x480d0`)
 
     /// Boxes for his fourteen new poses, as rectangles in each drawing (see
     /// `tests/sagat_player.rs`, which checks them against the pens).
@@ -5848,8 +5847,7 @@ mod sagat {
         let tk_knee_boxes = rom_boxes(rom, JUMP_KNEE_FRAME);
         let mut tk_knee_idle_boxes = tk_knee_boxes;
         tk_knee_idle_boxes[12..16].fill(0);
-        let kick_rom = rom_pose(rom, JUMP_KICK_FRAME);
-        let tk_kick_boxes = rom_boxes(rom, JUMP_KICK_FRAME);
+        let kick = geom("tiger_knee_high_kick")?;
         let tk_stream = {
             let mut s = Stream::new(&mut region, rising, rising.top_on_ground());
             let at = s.call(0x45a7a, 0);
@@ -5876,11 +5874,11 @@ mod sagat {
             );
             let kick_top = s.top;
             s.travel(
-                kick_rom,
+                kick,
                 kick_top,
                 tiger_knee::KICK,
                 (tiger_knee::KICK_DY, tiger_knee::SPEED),
-                tk_kick_boxes,
+                tk_knee_boxes,
                 0x80,
                 tiger_knee::HIT,
             );
@@ -6053,7 +6051,7 @@ mod sagat {
     ///   (`0x2c8c` at `dy = -4, dx = 4`); his rising knee (`0x2d0a`) is out on
     ///   the 7th frame.
     /// - **Active 6 + 6**: 6 rising knee frames (`0x2d0a` at `dy = -3, dx = 4`)
-    ///   and 6 high kick frames (`0x2d84` at `dy = -1, dx = 4`), both with his
+    ///   and 6 high kick frames (built from `0x2d84`, `dy = -1, dx = 4`), both with his
     ///   1987 leap's hit (`0x480d0`, damage 13 deep and 10 otherwise, guarded
     ///   standing or crouching via `low_in_air: true`, scoring as the
     ///   Shoryuken). Under `true_combos` the one-hit-per-move rule stops after

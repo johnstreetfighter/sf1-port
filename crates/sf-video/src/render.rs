@@ -392,7 +392,7 @@ fn sprite_tiles(
 pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, cells: usize) -> Vec<IndexedSprite> {
     let Some(entries) = scene.objectram.get(first..first + cells * 0x40) else { return Vec::new() };
     let palette = Palette::from_ram(&scene.paletteram);
-    let tile_count = assets.gfx3.len() / 128;
+    let tile_count = assets.sprite_tiles();
     let mut pose = Vec::new();
     for entry in entries.chunks_exact(0x40).rev() {
         let word = |i: usize| u16::from_be_bytes([entry[i], entry[i + 1]]);
@@ -400,7 +400,11 @@ pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, ce
         let color = GFX3_PALETTE_BASE + usize::from(attr & 15) * 16;
         let colors = std::array::from_fn(|pen| if pen == 0 { 0 } else { palette.argb(color + pen - 1) });
         sprite_tiles(code, attr, (i32::from(sx), i32::from(sy)), scene.flip_screen, |code, (fx, fy), (x, y)| {
-            let tile = decode_sprite_tile(&assets.gfx3, usize::from(code) % tile_count);
+            let slot = usize::from(code);
+            if slot >= tile_count {
+                return;
+            }
+            let tile = decode_sprite_tile(&assets.gfx3, slot);
             let pixels = std::array::from_fn(|i| {
                 let (x, y) = (i % 16, i / 16);
                 let pen = tile[if fy { 15 - y } else { y }][if fx { 15 - x } else { x }];
@@ -422,8 +426,12 @@ fn draw_sprite_tile(
 ) {
     let (flipx, flipy) = flip;
     let (sx, sy) = pos;
-    let tile_count = assets.gfx3.len() / 128;
-    let tile = decode_sprite_tile(&assets.gfx3, (code as usize) % tile_count);
+    let slot = usize::from(code);
+    if slot >= assets.sprite_tiles() {
+        // An unloaded bank tile has no sprite to draw at this index.
+        return;
+    }
+    let tile = decode_sprite_tile(&assets.gfx3, slot);
     for py in 0..16 {
         for px in 0..16 {
             let (cx, cy) = (
