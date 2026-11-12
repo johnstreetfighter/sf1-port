@@ -11,6 +11,9 @@
 
 #[path = "support/select.rs"]
 mod select;
+#[allow(dead_code)]
+#[path = "support/alpha.rs"]
+mod alpha;
 
 use std::path::Path;
 
@@ -18,7 +21,7 @@ use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::data_bank::{
     ALPHA_COUNTER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT, SF2_SUPER_SLOT,
 };
-use sf_engine::era::{EraFamily, Loadout};
+use sf_engine::era::{EraFamily, Loadout, Revision};
 use sf_engine::era_fight::SUPER_FREEZE_FRAMES;
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::moves::Choice;
@@ -337,6 +340,88 @@ fn show_move(s: &mut GameSession, row: usize) {
     open_list_at(s, row);
     choose_show(s);
     assert!(s.move_list().is_none(), "Show closes the panel");
+}
+
+#[test]
+fn era_show_and_try_resolve_overlapping_commands_and_rapid_punches() {
+    use TournamentFighter::{Adon, Gen, Retsu, Ryu};
+
+    for (fighter, revision, loadout, name, slot) in [
+        (Ryu, Revision::Sfz3, Loadout::AIsm, "HADOKEN", 0x1a),
+        (Retsu, Revision::St, Loadout::Standard, "IZUNA SHOULDER THROW", 0x21),
+        (Retsu, Revision::St, Loadout::Standard, "TOBI GERI", 0x1b),
+        (Retsu, Revision::St, Loadout::Standard, "HUNDRED MONK SLAPS", 0x20),
+        (Gen, Revision::Usf4, Loadout::Ultra1, "HYAKURENKO", 0x1a),
+        (Gen, Revision::Sf6, Loadout::Standard, "HYAKU RENKOU", 0x1a),
+        (Adon, Revision::Usf4, Loadout::Ultra1, "JAGUAR TOOTH", 0x20),
+        (Adon, Revision::Usf4, Loadout::Ultra1, "EX JAGUAR TOOTH", 0x20),
+        (Adon, Revision::Usf4, Loadout::Ultra1, "JAGUAR KICK", 0x1b),
+    ] {
+        let Some(mut session) = alpha::training_fight_with_fighter(fighter, revision, loadout) else {
+            return;
+        };
+        alpha::assert_training_move_demo(&mut session, name, slot, false);
+    }
+}
+
+#[test]
+fn alpha_command_normal_still_starts_without_a_special_motion() {
+    use sf_engine::moves::{ButtonClass, Dir, MoveInput};
+
+    let Some(mut session) = alpha::training_fight_with_fighter(
+        TournamentFighter::Ryu, Revision::Sfz3, Loadout::AIsm,
+    ) else {
+        return;
+    };
+    let command = MoveInput { motion: &[Dir::Forward], button: ButtonClass::MediumPunch };
+    assert!(command.frames(true, Strength::Medium).into_iter().any(|p1| {
+        session.step(FrameInputs { p1, ..FrameInputs::default() });
+        p1_move(&session) == 0x1c
+    }), "forward and medium punch still start Collarbone Breaker");
+}
+
+#[test]
+fn era_show_lists_the_special_that_owns_a_reused_command() {
+    let Some(mut session) = alpha::training_fight_with_fighter(
+        TournamentFighter::Eagle, Revision::Sf5Ce, Loadout::Skill1Trigger1,
+    ) else {
+        return;
+    };
+    open_list_on(&mut session, "LIVERPOOL WHITE");
+    assert!(session.move_list().unwrap().text().iter().all(|line| !line.contains("ST. ANDREW'S GREEN")));
+    choose_show(&mut session);
+    assert!((0..120).any(|_| {
+        session.step(idle());
+        p1_move(&session) == 0x22
+    }));
+}
+
+#[test]
+fn try_distinguishes_gens_commands_that_share_a_move_slot() {
+    use sf_engine::moves::{ButtonClass, MoveInput};
+
+    let Some(mut session) = alpha::training_fight_with_fighter(
+        TournamentFighter::Gen, Revision::Sf6, Loadout::Standard,
+    ) else {
+        return;
+    };
+    open_list_on(&mut session, "SWITCH TO CRANE");
+    tap(&mut session, confirm());
+    tap(&mut session, stick(RIGHT));
+    assert_eq!(session.move_list().unwrap().choosing(), Some(Choice::Try));
+    tap(&mut session, confirm());
+
+    for button in [ButtonClass::TripleKick, ButtonClass::TriplePunch] {
+        let command = MoveInput { motion: &[], button };
+        let mut switched = false;
+        for p1 in command.frames(true, Strength::Medium) {
+            session.step(with(|frame| frame.p1 = p1));
+            switched |= p1_move(&session) == 0x1f;
+        }
+        assert!(switched, "both stance changes enter the same native move slot");
+        let coach = session.coach().unwrap();
+        assert_eq!((coach.attempts(), coach.successes()), (1, 1));
+    }
 }
 
 #[test]

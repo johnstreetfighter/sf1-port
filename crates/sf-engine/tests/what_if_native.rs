@@ -8,8 +8,8 @@ use sf_engine::roster::TournamentFighter::{self, Geki, Joe, Lee, Mike, Retsu};
 use sf_video::romset::Assets;
 
 use alpha::{
-    assert_training_move_demo, local_fight, local_select_with_fighter, pad,
-    training_fight_with_fighter, DOWN, LEFT, LP, RIGHT,
+    assert_training_move_demo, assert_training_show, local_fight, local_select_with_fighter, pad,
+    training_fight_with_fighter, DOWN, LEFT, LP, RIGHT, UP,
 };
 const MP: usize = 1;
 const MK: usize = 4;
@@ -124,6 +124,49 @@ fn five_what_if_kits_execute_in_the_native_fight_loop() {
             assert_eq!(most_stars, 3, "EX Shuriken Fan sends three separate stars");
         }
     }
+}
+
+#[test]
+fn geki_air_utsusemi_lands_and_returns_to_stance() {
+    let Some(select) =
+        local_select_with_fighter(GaugeMode::EraDefault, Geki, Revision::St, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = select.assets();
+    let mut fight = local_fight(&select, Revision::Sf1Plus, Loadout::Standard)
+        .fight()
+        .expect("a local fight")
+        .clone();
+    for _ in 0..12 {
+        step(&mut fight, assets, UP, &[]);
+    }
+    for direction in [DOWN, DOWN | LEFT] {
+        for _ in 0..3 {
+            step(&mut fight, assets, direction, &[]);
+        }
+    }
+    step(&mut fight, assets, LEFT, &[]);
+    step(&mut fight, assets, LEFT, &[LP]);
+    assert_eq!(fight.fight_read().fighters[0].move_id, 0x21);
+
+    let mut landed = false;
+    let recovered = (0..100).any(|_| {
+        step(&mut fight, assets, 0, &[]);
+        let geki = fight.fight_read().fighters[0];
+        landed |= geki.move_id == 0x21 && geki.state & 7 == 4;
+        geki.move_id == 1
+    });
+    assert!(landed, "Geki reaches the Air Utsusemi landing pose");
+    assert!(recovered, "Geki returns to stance after Air Utsusemi");
+}
+
+#[test]
+fn training_show_advances_after_geki_air_utsusemi_recovers() {
+    let Some(mut session) = training_fight_with_fighter(Geki, Revision::Sfz3, Loadout::AIsm) else {
+        return;
+    };
+    assert_training_show(&mut session, "AIR UTSUSEMI", 0x21);
 }
 
 #[test]

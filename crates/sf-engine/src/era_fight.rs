@@ -47,6 +47,14 @@ pub(crate) mod what_if_others;
 
 pub(crate) use alpha_moves::AlphaMove;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SpecialContext {
+    Ground { canceling: bool },
+    Airborne,
+    /// A rapid-press special may interrupt the normal started by its first tap.
+    MashCancel,
+}
+
 const ALPHA_MOTION_SLOTS: usize = 10;
 const PUNCH_MASK: u8 = 0b000111;
 const KICK_MASK: u8 = 0b111000;

@@ -1,5 +1,5 @@
 //! What-If commands use each era's native fighter and gauge rules.
-use super::{EraFighterState, MotionTracker, KICK_MASK, PUNCH_MASK, STOCK_AT};
+use super::{EraFighterState, MotionTracker, SpecialContext, KICK_MASK, PUNCH_MASK, STOCK_AT};
 use crate::config::RulesetPreset;
 use crate::era::{EraFamily, Loadout, Revision};
 use crate::fighter::Bus;
@@ -128,10 +128,11 @@ const RETSU: WhatIfKit = WhatIfKit {
     specials: &[
         WhatIfMove::new(0x1a, "KIAI SHOT", QCF, Punch).ex("EX KIAI SHOT"),
         WhatIfMove::new(0x19, "SHORYUKEN", DP, Punch).ex("EX SHORYUKEN"),
+        // The half circle also completes Tobi Geri's quarter circle.
+        WhatIfMove::new(0x21, "IZUNA SHOULDER THROW", HCF, Kick),
         WhatIfMove::new(0x1b, "TOBI GERI", QCF, Kick).ex("EX TOBI GERI"),
         WhatIfMove::new(0x1f, "SENPUU KYAKU", QCB, Kick).ex("EX SENPUU KYAKU"),
         WhatIfMove::new(0x20, "HUNDRED MONK SLAPS", &[], MashPunch),
-        WhatIfMove::new(0x21, "IZUNA SHOULDER THROW", HCF, Kick),
     ],
     supers: ["SHIN KIAIHOU", "KIAI BAKUSAI", "TENSEI RENGE"],
     v_skills: ["SHORINJI PALM THRUST", "RISING DRAGON KNEE"],
@@ -543,8 +544,7 @@ impl Bus<'_> {
         &mut self,
         ps: u32,
         entity: u16,
-        airborne: bool,
-        canceling: bool,
+        context: SpecialContext,
     ) -> bool {
         let Some(side) = self.era_side(ps) else {
             return false;
@@ -554,7 +554,9 @@ impl Bus<'_> {
         let Some(kit) = state.what_if_kit() else {
             return false;
         };
-        let finisher = (!airborne)
+        let airborne = context == SpecialContext::Airborne;
+        let canceling = matches!(context, SpecialContext::Ground { canceling: true });
+        let finisher = matches!(context, SpecialContext::Ground { .. })
             .then(|| {
                 [1, 2, 0].into_iter().find_map(|index| {
                     let initial = state.what_if_finisher(kit, index, 1)?;
@@ -610,7 +612,10 @@ impl Bus<'_> {
             .iter()
             .enumerate()
             .find_map(|(index, &special)| {
-                if special.air != airborne || canceling && special.crane.is_some() {
+                if special.air != airborne
+                    || canceling && special.crane.is_some()
+                    || context == SpecialContext::MashCancel && special.input.button != MashPunch
+                {
                     return None;
                 }
                 if !state.what_if_kit.specials[index].ready(special.motion()) {

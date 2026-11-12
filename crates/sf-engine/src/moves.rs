@@ -1348,7 +1348,10 @@ pub(crate) fn live_move_list(
         entries.retain(|entry| !era.replaces_special(entry.produces));
         let family_moves = era.family_moves();
         entries.retain(|entry| !family_moves.iter().any(|other| {
-            other.kind == MoveKind::Special && (entry.produces == other.produces || entry.name == other.name)
+            other.kind == MoveKind::Special
+                && (entry.produces == other.produces
+                    || entry.name == other.name
+                    || (entry.kind == MoveKind::Special && entry.input == other.input))
         }));
         entries.extend(family_moves.into_iter().filter(|entry| player_table || !entry.available.player_table));
         for entry in era.alpha_moves().filter(|_| fighter.is_shoto() || player_table) {

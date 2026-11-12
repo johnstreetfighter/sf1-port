@@ -11,7 +11,7 @@ use sf_engine::front::menu::MenuItem;
 use sf_engine::front::pause::PauseBox;
 use sf_engine::front::settings::Settings;
 use sf_engine::front::{FrameInputs, GameSession, PlayerInputs, Transition};
-use sf_engine::moves::Strength;
+use sf_engine::moves::{Recognizer, Strength};
 use sf_engine::roster::TournamentFighter;
 use sf_video::art::{load_art_from, Art, ArtSources};
 use sf_video::art_pack::ArtPack;
@@ -238,12 +238,7 @@ pub fn training_fight_with_fighter(
 }
 
 #[allow(dead_code)]
-pub fn assert_training_move_demo(
-    session: &mut GameSession,
-    name: &str,
-    slot: u8,
-    needs_contact: bool,
-) {
+pub fn assert_training_show(session: &mut GameSession, name: &str, slot: u8) {
     let key = |direction, button| FrameInputs {
         p1: pad(direction, button),
         ..FrameInputs::default()
@@ -284,16 +279,38 @@ pub fn assert_training_move_demo(
         "{name} Show advances to Try"
     );
     assert!(shown, "Show activates {name} in the fight");
+    assert_eq!(session.coach().unwrap().entry().name, name);
+}
 
+#[allow(dead_code)]
+pub fn assert_training_move_demo(
+    session: &mut GameSession,
+    name: &str,
+    slot: u8,
+    needs_contact: bool,
+) {
+    assert_training_show(session, name, slot);
     let entry = *session.coach().unwrap().entry();
-    assert_eq!(entry.name, name);
     if needs_contact {
+        let guard = entry.recognizer == Recognizer::AlphaCounter;
         assert!(
             (0..240).any(|_| {
-                session.step(FrameInputs::default());
-                session.fight().unwrap().fight_read().fighters[1].attacking()
+                let fight = session.fight().unwrap();
+                let mut input = FrameInputs::default();
+                if guard && fight.fight_read().fighters[1].attacking() {
+                    let positions = fight.machine().diagnostic_telemetry();
+                    let away = if positions.p1.center_x <= positions.p2.center_x {
+                        LEFT
+                    } else {
+                        RIGHT
+                    };
+                    input.p1 = pad(away, None);
+                }
+                session.step(input);
+                let [player, opponent] = session.fight().unwrap().fight_read().fighters;
+                if guard { player.blockstun } else { opponent.attacking() }
             }),
-            "the counter drill supplies an incoming strike for {name}"
+            "the counter drill reaches the contact window for {name}"
         );
     }
     let positions = session.fight_machine().unwrap().diagnostic_telemetry();

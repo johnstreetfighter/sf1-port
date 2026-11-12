@@ -1410,7 +1410,8 @@ impl Bus<'_> {
             // The fighter, unseen in his smoke, moves to the record's gap
             // in front of the opponent's centre on his own side (by his
             // facing); the separation and clamps of the frame then apply as
-            // to any step.
+            // to any step. Air Utsusemi sets its falling posture before that
+            // frame, so continue reading control entries after the warp.
             crate::data_bank::ROUTINE_TELEPORT => {
                 let gap = self.rw(r + 2);
                 let target = if (self.eb(me, 0x37) as i8) < 4 {
@@ -1419,7 +1420,7 @@ impl Bus<'_> {
                     self.center_x(other).wrapping_add(gap)
                 };
                 self.shift_grid_x(me, target.wrapping_sub(self.center_x(me)));
-                Some(Resume::Load)
+                Some(Resume::Control)
             }
             // As 0x452e0: the jump's apex, skipped without a buffered
             // attack.
@@ -5124,11 +5125,14 @@ impl Bus<'_> {
         let jumping = matches!(mv, 9..=0xb);
         let airborne = jumping && self.is_jump_airborne(me) && self.frames_until_landing(me) >= 4;
         let normal = matches!(mv, 0xd..=0x18) && state & 0x80 != 0;
+        use crate::era_fight::SpecialContext::{Airborne, MashCancel};
         if !scripted_turn
-            && ((airborne && self.era_sf4_command(ps, me, true, false))
-                || (airborne && self.try_what_if_move(ps, me, true, false))
+            && ((airborne && self.era_sf4_command(ps, me, Airborne))
+                || (airborne && self.try_what_if_move(ps, me, Airborne))
                 || (jumping && (airborne || state & 3 == 1) && self.try_alpha_move(ps, me, airborne, false))
-                || (normal && self.try_alpha_move(ps, me, false, true)))
+                || (normal && (self.try_alpha_move(ps, me, false, true)
+                    || self.try_what_if_move(ps, me, MashCancel)
+                    || self.era_sf4_command(ps, me, MashCancel))))
         {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
@@ -5265,16 +5269,17 @@ impl Bus<'_> {
     }
 
     fn try_era_special(&mut self, ps: u32, entity: u16) -> bool {
-        use crate::era_fight::SF2_SUPER;
+        use crate::era_fight::{SpecialContext, SF2_SUPER};
 
         let canceling = self.eb(entity, 9) & 0xc0 == 0xc0;
-        if self.try_what_if_move(ps, entity, false, canceling) {
+        let context = SpecialContext::Ground { canceling };
+        if self.try_what_if_move(ps, entity, context) {
             return true;
         }
         if self.alpha_state(ps).is_some() {
             return self.try_alpha_move(ps, entity, false, false);
         }
-        if self.try_sf3_move(ps, entity, false) || self.era_sf4_command(ps, entity, false, canceling) {
+        if self.try_sf3_move(ps, entity, false) || self.era_sf4_command(ps, entity, context) {
             return true;
         }
         let punch = self.latch_fires(ps, false).then(|| self.era_special_command(ps, false)).flatten();
@@ -5346,6 +5351,13 @@ impl Bus<'_> {
         let Some((entry, level, strength)) = self.era_alpha_command(ps, strength, airborne, normal) else {
             return false;
         };
+        if entry.kind == crate::moves::MoveKind::Normal {
+            // A completed special takes priority over a forward command normal.
+            let forward = if self.eb(entity, 0x37) & 4 == 0 { 1 } else { 2 };
+            if self.special_ready_for_dir(ps, entity, forward, entry.input.button.kick()) {
+                return false;
+            }
+        }
         if self.alpha_state(ps).and_then(|era| era.fighter)
                 .and_then(|fighter| self.data_bank?.alpha_move_header(fighter, entry.slot)).is_none()
         {

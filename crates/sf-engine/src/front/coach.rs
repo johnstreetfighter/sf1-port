@@ -229,6 +229,8 @@ struct Frame {
     kick: bool,
     punch_pressed: bool,
     kick_pressed: bool,
+    /// The selected command's button or chord, as opposed to any punch or kick.
+    command_held: bool,
     /// The engine took a punch or a kick on this frame: its latch went up (a
     /// button taken while the gate held the fighter), or the fighter entered
     /// an attack on a frame a button of the class went down or came up (a
@@ -418,6 +420,17 @@ impl Coach {
         self.window = u64::from(view.window);
         let (inputs, facing_right) = self.pad.take().unwrap_or((PlayerInputs::default(), true));
         let (punch, kick) = (ButtonClass::Punch.down(inputs.buttons), ButtonClass::Kick.down(inputs.buttons));
+        let command = self.entry.input.button;
+        let command_held = command.down(inputs.buttons) && match command {
+            // The stance switches share a move slot. Six simultaneous
+            // buttons provide no evidence of which command was intended.
+            ButtonClass::TriplePunch => !ButtonClass::TripleKick.down(inputs.buttons),
+            ButtonClass::TripleKick => !ButtonClass::TriplePunch.down(inputs.buttons),
+            ButtonClass::MediumPair if self.entry.produces == crate::era_fight::sf4::FOCUS => {
+                !ButtonClass::RedFocus.down(inputs.buttons)
+            }
+            _ => true,
+        };
         let (punch_edge, kick_edge) = (punch != self.last_buttons.0, kick != self.last_buttons.1);
         // The engine's word that it took a button: a latch that went up, or an
         // attack begun on a frame the class's button moved (the press or the
@@ -432,6 +445,7 @@ impl Coach {
             kick,
             punch_pressed: punch && !self.last_buttons.0,
             kick_pressed: kick && !self.last_buttons.1,
+            command_held,
             took_punch,
             took_kick,
             counted: stage,
@@ -500,11 +514,25 @@ impl Coach {
                 landed.is_some() || read.blocked[1] || (me.guarding() && foe.attacking())
             };
 
-        // The move out. It needs the motion behind it: an open or settling
-        // attempt, or a tracker that had counted two steps a frame ago.
-        if came_out && (self.entry.recognizer == Recognizer::AlphaMove
-            || self.attempt.is_some() || self.settling.is_some() || self.last_stage >= ATTEMPT_STAGE)
-        {
+        // Directionless era commands have no motion tracker. Confirm the
+        // native move transition and the selected button, including moves
+        // that start on release rather than while the chord is held.
+        let button_only = self.entry.recognizer == Recognizer::FamilyMove && complete == 0;
+        let recognized = if button_only {
+            let release_command = self.entry.input.button == ButtonClass::ReleasePair
+                || (self.entry.produces == crate::era_fight::sf4::FOCUS
+                    && matches!(self.entry.input.button, ButtonClass::MediumPair | ButtonClass::RedFocus));
+            self.history.back().is_some_and(|frame| frame.command_held)
+                || (release_command && self.history.iter().rev().nth(1).is_some_and(|frame| frame.command_held))
+        } else {
+            self.entry.recognizer == Recognizer::AlphaMove
+                || self.attempting()
+                || self.last_stage >= ATTEMPT_STAGE
+        };
+        if came_out && recognized {
+            if button_only && !self.attempting() {
+                self.attempts += 1;
+            }
             self.attempt = None;
             self.settling = None;
             self.pending = None;
@@ -792,6 +820,28 @@ mod tests {
         }
         frame(&mut coach, 0, 5);
         assert_eq!((coach.attempting(), coach.attempts(), coach.outcome()), (false, 0, None));
+    }
+
+    #[test]
+    fn a_held_shift_chord_confirms_a_deferred_shift_break() {
+        use crate::era_fight::sf5::{SHIFT, SHIFT_BREAK};
+        use crate::moves::MoveInput;
+
+        let mut coach = Coach::new(MoveEntry {
+            input: MoveInput { motion: &[], button: ButtonClass::ShiftPair },
+            recognizer: Recognizer::FamilyMove,
+            produces: SHIFT_BREAK,
+            ..REGISTRY[0]
+        });
+        frame(&mut coach, 0, 1);
+        let held = PlayerInputs { buttons: [false, false, true, false, true, false], ..PlayerInputs::default() };
+        for _ in 0..8 {
+            coach.input(held, true);
+            assert_eq!(frame(&mut coach, 0, SHIFT), None);
+        }
+        coach.input(held, true);
+        assert_eq!(frame(&mut coach, 0, SHIFT_BREAK), Some(Outcome::Success));
+        assert_eq!((coach.attempts(), coach.successes()), (1, 1));
     }
 
     #[test]

@@ -231,9 +231,15 @@ impl Show {
                     }
                     let contact = practice_contact(&self.entry);
                     let strike_ticks = if foe.attacking() { strike_ticks.saturating_add(1) } else { 0 };
+                    // The scripted heavy kick for V-Shift Break starts later than a punch.
+                    let strike_startup = if self.entry.input.button == ButtonClass::ShiftPair {
+                        18
+                    } else {
+                        9
+                    };
                     let can_start = match contact {
                         Some(PracticeContact::Guard) => me.blockstun && me.guarding(),
-                        Some(PracticeContact::Strike) => ready(me) && strike_ticks >= 9,
+                        Some(PracticeContact::Strike) => ready(me) && strike_ticks >= strike_startup,
                         Some(PracticeContact::Counter) => ready(me) && strike_ticks != 0,
                         None => ready(me),
                     };

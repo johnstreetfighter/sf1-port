@@ -9,12 +9,30 @@ use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::{Fight, FightFrame};
 use sf_engine::front::PlayerInputs;
 use sf_engine::netplay::{encode_inputs, RollbackEngine};
+use sf_engine::roster::TournamentFighter::{Geki, Sagat};
 use sf_video::announcer::AnnouncerLine;
 use sf_video::callouts::{CalloutKind, Side};
 use sf_video::romset::{load_assets, Assets};
 
 const HK: usize = 5;
 const STOCK: u8 = 48;
+
+#[test]
+fn training_alpha_counters_work_from_each_fighters_push_range() {
+    for fighter in [Sagat, Geki] {
+        let Some(mut session) =
+            alpha::training_fight_with_fighter(fighter, Revision::Sfz3, Loadout::AIsm)
+        else {
+            return;
+        };
+        alpha::assert_training_move_demo(
+            &mut session,
+            "ALPHA COUNTER (P)",
+            ALPHA_COUNTER_SLOT,
+            true,
+        );
+    }
+}
 
 fn start_fight(
     gauge_mode: GaugeMode,

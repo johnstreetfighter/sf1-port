@@ -342,10 +342,7 @@ pub struct Fight {
     /// after the player's Start on the continue countdown.
     continuing: Option<u32>,
     overlay: OverlayMode,
-    /// How the era gauges are drawn, from the Settings value (the pause
-    /// box's `GAUGE ART` changes it live). A fight carries no era state
-    /// yet, so nothing is drawn in it until project 4 moves the eras onto
-    /// the real fighters.
+    /// The active gauge art from Settings or the pause box.
     gauge_art: GaugeArt,
     /// The machine at the start of the current round (`0x3ea3e`).
     round_start: Option<PowerOnSnapshot>,
@@ -1008,16 +1005,15 @@ impl Fight {
         }
         let positions = self.machine.diagnostic_telemetry();
         let gap = positions.p1.center_x - positions.p2.center_x;
-        let reach = if entry.recognizer == crate::moves::Recognizer::AlphaCounter {
-            38
-        } else {
-            (positions.p1.pushbox.half_w + positions.p2.pushbox.half_w + 3).max(38) as u32
-        };
+        // Wider fighters can stop the dummy outside the usual attack distance.
+        let reach = (positions.p1.pushbox.half_w + positions.p2.pushbox.half_w + 3).max(38) as u32;
         if gap.unsigned_abs() > reach {
             pad.directions = [gap > 0, gap < 0, false, false];
         } else {
-            // Use the faster standing punch for a short evasion window.
-            pad.buttons[if contact == PracticeContact::Guard { 5 } else { 1 }] = true;
+            // V-Shift Break needs a strike that reaches the fighter as they step back.
+            let long_strike = contact == PracticeContact::Guard
+                || entry.input.button == crate::moves::ButtonClass::ShiftPair;
+            pad.buttons[if long_strike { 5 } else { 1 }] = true;
         }
         Some(pad)
     }

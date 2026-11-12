@@ -14,6 +14,10 @@ route to the peer. Both queries run away from the game thread.
 Online supports 1v1 Versus and SF1+ co-op Dramatic Battle. Up to four spectators
 can watch either mode.
 
+In Versus rooms with Style Cards enabled, each player locks their own era,
+revision, and loadout before the stage is picked. Both players use the same
+pair of locked styles for the match.
+
 For co-op, open **Host Match**, set **Room Kind** to **Dramatic 2v1**, and open
 the room. The guest can select the room in Browse or choose **Dramatic Ally 2**
 under **Join As** in Direct Join. The host chooses a rivalry or sets up a custom

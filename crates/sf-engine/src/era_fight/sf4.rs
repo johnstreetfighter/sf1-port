@@ -1,6 +1,7 @@
 //! Street Fighter IV rules for the translated fighter engine.
 use super::{
-    EraFighterState, EraProjectileState, MotionTracker, FULL_SUB_HP, STOCK_AT, SUB_HP_PER_POINT,
+    EraFighterState, EraProjectileState, MotionTracker, SpecialContext, FULL_SUB_HP, STOCK_AT,
+    SUB_HP_PER_POINT,
 };
 use crate::config::RulesetPreset;
 use crate::era::{EraFamily, Loadout, Revision};
@@ -289,8 +290,9 @@ const ADON: &[Command] = &[
     Command::new(0x2b, "JAGUAR AVALANCHE", QCF2, TripleKick, Ultra2),
     Command::new(0x29, "JAGUAR VARIED ASSAULT", QCF2, Punch, Super),
     Command::new(0x19, "RISING JAGUAR", DP, Kick, Special).ex("EX RISING JAGUAR"),
-    Command::new(0x1b, "JAGUAR KICK", QCB, Kick, Special).ex("EX JAGUAR KICK"),
+    // Jaguar Tooth's half circle also completes Jaguar Kick's quarter circle.
     Command::new(0x20, "JAGUAR TOOTH", HCB, Kick, Special).ex("EX JAGUAR TOOTH"),
+    Command::new(0x1b, "JAGUAR KICK", QCB, Kick, Special).ex("EX JAGUAR KICK"),
     Command::new(0x21, "AIR JAGUAR KICK", AIR_QCB, Kick, Special)
         .ex("EX AIR JAGUAR KICK")
         .air(),
@@ -609,14 +611,15 @@ impl Bus<'_> {
         &mut self,
         ps: u32,
         entity: u16,
-        airborne: bool,
-        canceling: bool,
+        context: SpecialContext,
     ) -> bool {
         let Some(side) = self.era_side(ps) else {
             return false;
         };
         let (held, fresh) = self.era_buttons(ps);
         let state = &self.toggle_state.era.fighters[side];
+        let airborne = context == SpecialContext::Airborne;
+        let canceling = matches!(context, SpecialContext::Ground { canceling: true });
         let meter = state.super_meter;
         let revenge = if state.unified_gauge {
             REVENGE_MAX
@@ -632,6 +635,7 @@ impl Bus<'_> {
                 if !command.usable(state)
                     || airborne != command.airborne
                     || canceling && command.cost == Stance
+                    || context == SpecialContext::MashCancel && command.input.button != MashPunch
                 {
                     return None;
                 }

@@ -25,6 +25,22 @@ const STOCK: u8 = 48;
 const QCF: &[u8] = &[DOWN, DOWN | RIGHT, RIGHT];
 const QCF_X2: &[u8] = &[DOWN, DOWN | RIGHT, RIGHT, DOWN, DOWN | RIGHT, RIGHT];
 
+#[test]
+fn training_show_evades_an_attack_before_v_shift_break() {
+    for (fighter, name) in [
+        (TournamentFighter::Joe, "V-SHIFT BREAK"),
+        (TournamentFighter::Ken, "SHADOW THUNDER-KICK"),
+        (Birdie, "BULL CRUSH"),
+    ] {
+        let Some(mut session) =
+            training_fight_with_fighter(fighter, Revision::Sf5Ce, Loadout::Skill1Trigger1)
+        else {
+            return;
+        };
+        alpha::assert_training_show(&mut session, name, 0x2f);
+    }
+}
+
 fn bout(
     fighter: TournamentFighter,
     revision: Revision,

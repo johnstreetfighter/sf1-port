@@ -514,8 +514,7 @@ impl OverlayState {
     /// Faithful play uses the hardware frame (and the diagnostic overlay when
     /// it is enabled). Overhaul play goes through the extended compositor:
     /// the same hardware frame, then the extra sprites, select type and the
-    /// training overlay. The 1987 fighters carry no era state, so no era
-    /// gauges are drawn here.
+    /// training overlay. The fight renderer draws the live era gauges.
     pub fn render_presented(
         &self,
         assets: &Assets,

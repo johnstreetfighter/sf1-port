@@ -1,6 +1,7 @@
 //! NP5 (#308): real online front-end flow through the public transport queues.
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
+use sf_engine::era::{Loadout, Revision};
 use sf_engine::front::settings::NetplayHudMode;
 use sf_engine::front::{
     FrameInputs, FrameOutput, GameSession, MenuItem, MenuKeys, PlayerInputs, Transition, TypedKey,
@@ -164,6 +165,10 @@ impl Pair {
             self.idle();
         }
         self.confirm_fighter(0);
+        self.wait_for_stage_select();
+    }
+
+    fn wait_for_stage_select(&mut self) {
         for _ in 0..60 {
             self.idle();
             if self
@@ -318,6 +323,73 @@ impl Pair {
         } else {
             transition
         }
+    }
+}
+
+#[test]
+fn mixed_era_locks_apply_native_rules_on_both_online_peers() {
+    let mut pair = Pair::connected();
+    let alpha = [
+        MenuInput::Right,
+        MenuInput::Right,
+        MenuInput::Up,
+        MenuInput::Right,
+    ];
+    let drive = [MenuInput::Left, MenuInput::Left];
+    for (side, choices) in [(1, &drive[..]), (0, &alpha[..])] {
+        assert_eq!(
+            pair.pulse(side, MenuInput::Confirm)[side].transition,
+            Some(Transition::StyleOpened)
+        );
+        for &choice in choices {
+            pair.pulse(side, choice);
+        }
+        pair.pulse(side, MenuInput::Confirm);
+    }
+    pair.wait_for_stage_select();
+    pair.start_fight();
+
+    let ready = |peer: &GameSession| {
+        let fight = peer.fight().unwrap();
+        fight
+            .fight_read()
+            .fighters
+            .iter()
+            .all(|fighter| fighter.present && fighter.move_id == 1)
+    };
+    for _ in 0..3_000 {
+        if pair.peers.iter().all(ready) {
+            break;
+        }
+        pair.idle();
+    }
+    assert!(pair.peers.iter().all(ready), "both peers enter the real fight loop");
+    for peer in &pair.peers {
+        let states = peer.fight_machine().unwrap().era_fighters();
+        assert_eq!(
+            states
+                .each_ref()
+                .map(|state| (state.style.revision, state.style.loadout)),
+            [
+                (Revision::Sfz3, Loadout::VIsm),
+                (Revision::Sf6, Loadout::Standard),
+            ]
+        );
+        assert_eq!(states[1].sf6_drive_points(), Some(288));
+    }
+
+    let mut client = FrameInputs::default();
+    client.p1.buttons[2] = true;
+    client.p1.buttons[5] = true;
+    pair.step([FrameInputs::default(), client]);
+    for _ in 0..30 {
+        pair.idle();
+    }
+    for peer in &pair.peers {
+        assert_eq!(peer.screen(), "fight");
+        let states = peer.fight_machine().unwrap().era_fighters();
+        assert_eq!(states[0].sf6_drive_points(), None);
+        assert_eq!(states[1].sf6_drive_points(), Some(240));
     }
 }
 
