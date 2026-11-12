@@ -25,6 +25,7 @@
 //!   attempt is open. It counts as nothing: no call-out, no fix. Holding
 //!   back in the guard posture alone, with nothing coming, is not a block:
 //!   a Tatsumaki's motion passes through down-back and back.
+//!   Alpha Counter Try treats blocked attacks as the setup for the move.
 //! - **Miss**: the tracker falls back with no move out. A move may still
 //!   come out after the tracker is gone (the recovery input buffer keeps a
 //!   button through a recovery), so the miss is held open for the buffer's
@@ -67,7 +68,7 @@ use sf_video::callouts::Strip;
 
 use crate::fight_reader::FightRead;
 use crate::front::PlayerInputs;
-use crate::moves::{ButtonClass, Dir, InputNotation, MoveEntry, RecognizerView, REGISTRY};
+use crate::moves::{ButtonClass, Dir, InputNotation, MoveEntry, Recognizer, RecognizerView, REGISTRY};
 
 /// The stage a tracker has to reach for an attempt to start: the first two
 /// steps of the motion are through.
@@ -246,23 +247,26 @@ struct Frame {
 impl Frame {
     fn down(&self, class: ButtonClass) -> bool {
         match class {
-            ButtonClass::Punch => self.punch,
-            ButtonClass::Kick => self.kick,
+            ButtonClass::Either | ButtonClass::ReleasePair => self.punch || self.kick,
+            class if class.kick() => self.kick,
+            _ => self.punch,
         }
     }
 
     fn pressed(&self, class: ButtonClass) -> bool {
         match class {
-            ButtonClass::Punch => self.punch_pressed,
-            ButtonClass::Kick => self.kick_pressed,
+            ButtonClass::Either | ButtonClass::ReleasePair => self.punch_pressed || self.kick_pressed,
+            class if class.kick() => self.kick_pressed,
+            _ => self.punch_pressed,
         }
     }
 
     /// The engine took a button of `class` on this frame.
     fn took(&self, class: ButtonClass) -> bool {
         match class {
-            ButtonClass::Punch => self.took_punch,
-            ButtonClass::Kick => self.took_kick,
+            ButtonClass::Either | ButtonClass::ReleasePair => self.took_punch || self.took_kick,
+            class if class.kick() => self.took_kick,
+            _ => self.took_punch,
         }
     }
 
@@ -488,13 +492,19 @@ impl Coach {
         let came_out = entered && me.move_id == self.entry.produces;
         let other = (entered && me.move_id != self.entry.produces && REGISTRY.iter().any(|e| e.produces == me.move_id))
             .then_some(me.move_id);
-        // A hit or chip landing on P1, a hit reaction, or a block of an
-        // attack: not the guard posture alone.
-        let interrupted = me.reacting() || read.landed[1].is_some() || read.blocked[1] || (me.guarding() && foe.attacking());
+        let landed = read.landed[1];
+        let interrupted = me.reacting()
+            || if self.entry.recognizer == Recognizer::AlphaCounter {
+                landed.is_some_and(|hit| !hit.chip && !me.guarding())
+            } else {
+                landed.is_some() || read.blocked[1] || (me.guarding() && foe.attacking())
+            };
 
         // The move out. It needs the motion behind it: an open or settling
         // attempt, or a tracker that had counted two steps a frame ago.
-        if came_out && (self.attempt.is_some() || self.settling.is_some() || self.last_stage >= ATTEMPT_STAGE) {
+        if came_out && (self.entry.recognizer == Recognizer::AlphaMove
+            || self.attempt.is_some() || self.settling.is_some() || self.last_stage >= ATTEMPT_STAGE)
+        {
             self.attempt = None;
             self.settling = None;
             self.pending = None;
@@ -652,7 +662,8 @@ impl Coach {
             let window: Vec<&Frame> = frames.iter().filter(to_fall).filter(|f| f.no >= first_done).collect();
             let done: Vec<&Frame> = window.iter().copied().filter(|f| f.counted == complete).collect();
             let held = window.iter().any(|f| (f.took(class) || f.pressed(class)) && !f.gate_open);
-            let wrong = window.iter().any(|f| f.took(class.other()));
+            let wrong = !matches!(class, ButtonClass::Either | ButtonClass::ReleasePair)
+                && window.iter().any(|f| f.took(class.other()));
             Some(if taken_early {
                 FixKind::ButtonTooEarly
             } else if held {
@@ -781,6 +792,34 @@ mod tests {
         }
         frame(&mut coach, 0, 5);
         assert_eq!((coach.attempting(), coach.attempts(), coach.outcome()), (false, 0, None));
+    }
+
+    #[test]
+    fn alpha_counter_practice_treats_guard_as_setup_and_interrupts_on_a_hit() {
+        let mut coach = Coach::new(MoveEntry {
+            recognizer: Recognizer::AlphaCounter,
+            produces: crate::data_bank::ALPHA_COUNTER_SLOT,
+            ..REGISTRY[0]
+        });
+        let guard = FightRead { fighters: [fighter(4), fighter(0x10)], ..FightRead::default() };
+        for stage in [0, 0, 1, 1, 0] {
+            assert_eq!(coach.observe(&view(stage, false, 4), &guard, true, 0), None);
+        }
+        assert_eq!(coach.attempts(), 0, "holding back is not an attempt");
+
+        let blocked = FightRead { blocked: [false, true], ..guard };
+        assert_eq!(coach.observe(&view(1, false, 4), &blocked, true, 0), None);
+        let chip = LandedHit { damage: 1, into_hitstun: false, chip: true };
+        let chipped = FightRead { landed: [None, Some(chip)], ..guard };
+        assert_eq!(coach.observe(&view(2, false, 4), &chipped, true, 0), None);
+        assert!(coach.attempting());
+
+        let hurt = FightRead { fighters: [fighter(0x30), fighter(0x10)], ..FightRead::default() };
+        assert_eq!(
+            coach.observe(&view(0, false, 0x30), &hurt, true, 0),
+            Some(Outcome::Interrupted),
+        );
+        assert!(!coach.attempting());
     }
 
     #[test]

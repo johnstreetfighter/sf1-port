@@ -248,9 +248,9 @@ fn local_cards_darken_the_portraits_update_the_badge_and_remember_each_era() {
     let sf3 = tap(&mut session, |i| i.p1.directions[0] = true);
     assert_text(
         &sf3.frame,
-        51,
+        53,
         97,
-        "SHINKU HADOKEN (1 STOCK)",
+        "SHINKUU HADOKEN (2 STK)",
         font.pen(ink::GOLD_A, 0),
     );
     assert_text(

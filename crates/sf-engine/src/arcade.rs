@@ -1,13 +1,6 @@
-//! Twelve-fighter Arcade Mode (`#102`, `O11`).
-//!
-//! Any of the twelve tournament fighters can clear Japan, the USA, China,
-//! England, and Thailand. Plank and barrel bonuses score the press when
-//! `positive_edge_attacks` is on, and the release when it is off. Beating
-//! Thailand opens that fighter's ending and a credits roll.
+//! Arcade route, bonus scoring and ending content.
 
-use crate::config::MatchConfig;
 use crate::roster::TournamentFighter;
-use crate::sf1plus::{CombatSession, MoveKind, Pad};
 use sf_video::asset_pack::{validate_tile, IndexedTile, Rgba};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,20 +47,6 @@ pub fn rival(country: Country) -> TournamentFighter {
         Country::China => TournamentFighter::Lee,
         Country::England => TournamentFighter::Birdie,
         Country::Thailand => TournamentFighter::Sagat,
-    }
-}
-
-fn opponent_for(player: TournamentFighter, country: Country) -> TournamentFighter {
-    let waiting = rival(country);
-    if player != waiting {
-        return waiting;
-    }
-    match country {
-        Country::Japan => TournamentFighter::Geki,
-        Country::Usa => TournamentFighter::Mike,
-        Country::China => TournamentFighter::Gen,
-        Country::England => TournamentFighter::Eagle,
-        Country::Thailand => TournamentFighter::Adon,
     }
 }
 
@@ -342,135 +321,5 @@ pub fn ending_for(fighter: TournamentFighter) -> Ending {
             "Sound".to_string(),
             "The end".to_string(),
         ],
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Stop {
-    pub country: Country,
-    pub rival: TournamentFighter,
-    pub player_line: &'static str,
-    pub rival_line: &'static str,
-    pub win_line: &'static str,
-    pub bonus: BonusScore,
-    pub specials: Vec<&'static str>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ArcadeClear {
-    pub fighter: TournamentFighter,
-    pub stops: Vec<Stop>,
-    pub ending: Option<Ending>,
-}
-
-fn clearing_script(stage: &BonusStage) -> Vec<Sample> {
-    if stage.positive_edge {
-        match stage.kind {
-            BonusKind::Plank => press_at(10, 3),
-            BonusKind::Barrel => {
-                let mut samples = press_at(6, 1);
-                samples.extend(press_at(13, 2));
-                samples.extend(press_at(19, 3));
-                samples
-            }
-        }
-    } else {
-        match stage.kind {
-            BonusKind::Plank => release_at(10, 3),
-            BonusKind::Barrel => vec![
-                Sample {
-                    frame: 1,
-                    down: true,
-                    power: 1,
-                },
-                Sample {
-                    frame: 6,
-                    down: false,
-                    power: 0,
-                },
-                Sample {
-                    frame: 8,
-                    down: true,
-                    power: 2,
-                },
-                Sample {
-                    frame: 13,
-                    down: false,
-                    power: 0,
-                },
-                Sample {
-                    frame: 15,
-                    down: true,
-                    power: 3,
-                },
-                Sample {
-                    frame: 19,
-                    down: false,
-                    power: 0,
-                },
-            ],
-        }
-    }
-}
-
-/// Walk `start` through Thailand. The first stop rehearses every special.
-/// Later stops throw a jab so the route still steps a fight. Each stop then
-/// runs the plank or barrel bonus with a swing timed for the active edge.
-pub fn clear_route(
-    fighter: TournamentFighter,
-    config: &MatchConfig,
-    start: Country,
-) -> ArcadeClear {
-    let positive_edge = config.toggles.positive_edge_attacks;
-    let mut stops = Vec::new();
-    for (i, country) in route_from(start).iter().copied().enumerate() {
-        let rival = opponent_for(fighter, country);
-        let mut specials = Vec::new();
-        let mut session = CombatSession::from_config(fighter, rival, config);
-        if i == 0 {
-            let kit = session.p1_kit().clone();
-            for mv in kit.moves.iter().filter(|mv| mv.kind == MoveKind::Special) {
-                session.play(&mv.rehearsal());
-                for _ in 0..mv.total_frames() {
-                    session.step(Pad::default(), Pad::default());
-                }
-                if session.events.iter().any(|event| matches!(event, crate::sf1plus::CombatEvent::Started(name) if *name == mv.name)) {
-                    specials.push(mv.name);
-                }
-                session = CombatSession::from_config(fighter, rival, config);
-            }
-        } else if let Some(jab) = session
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "stand LP")
-            .cloned()
-        {
-            session.play(&jab.rehearsal());
-        }
-        let stage = if i % 2 == 0 {
-            BonusStage::plank(positive_edge)
-        } else {
-            BonusStage::barrel(positive_edge)
-        };
-        let bonus = stage.judge(&clearing_script(&stage));
-        stops.push(Stop {
-            country,
-            rival,
-            player_line: player_intro(fighter),
-            rival_line: rival_taunt(rival),
-            win_line: win_quote(fighter),
-            bonus,
-            specials,
-        });
-    }
-    let ending = stops
-        .iter()
-        .any(|stop| stop.country == Country::Thailand)
-        .then(|| ending_for(fighter));
-    ArcadeClear {
-        fighter,
-        stops,
-        ending,
     }
 }

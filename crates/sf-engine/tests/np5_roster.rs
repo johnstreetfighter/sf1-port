@@ -243,11 +243,13 @@ fn all_twelve_online_picks_use_the_approved_bank_and_boss_fights_converge() {
         pair.pulse(1, MenuInput::Right);
     }
     pair.pulse(1, MenuInput::Down); // Sagat, below Mike.
-    pair.pulse(1, MenuInput::Confirm);
-    for _ in 0..5 {
-        pair.idle();
+    for side in [1, 0] {
+        pair.pulse(side, MenuInput::Confirm); // Open the fighter's Style Card.
+        pair.pulse(side, MenuInput::Confirm); // Lock the default style.
+        for _ in 0..5 {
+            pair.idle();
+        }
     }
-    pair.pulse(0, MenuInput::Confirm);
     for _ in 0..60 {
         pair.idle();
         if pair

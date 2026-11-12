@@ -70,6 +70,7 @@ const RNG_STATE: u32 = 0xff8e4a; // 8-byte random state
 pub const GAME_MODE: u32 = 0xffc002; // ($4002,A5): 1 = 2P versus, 2 = 1P vs CPU
 /// Training's health floor: the points a hit always leaves (ADR-0013).
 pub const TRAINING_HEALTH_FLOOR: u16 = 1;
+const GUARD_SPECIAL_PRESSURE: u8 = 8;
 pub const SCENE_MODE: u32 = 0xffc008; // ($4008,A5): 0x80 during the fight
 const DRIFT_COUNT: u32 = 0xffc010; // ($4010,A5): stage-drift frame counter
 const DRIFT_POS: u32 = 0xffc00e; // ($400e,A5): stage-drift position
@@ -789,10 +790,18 @@ impl Bus<'_> {
 
     // ---- moves and animation -------------------------------------------
 
+    fn is_native_super(&self, ps: u32, move_id: u8) -> bool {
+        (move_id == crate::era_fight::SF2_SUPER && self.sf2_state(ps).is_some())
+            || self.era_state(ps).is_some_and(|era| {
+                era.alpha_super_level(move_id) != 0
+                    || (move_id == crate::data_bank::ALPHA_COUNTER_SLOT && era.custom_combo_active())
+            })
+    }
+
     /// 0x441b0: start move `mv` from the player's move table (+0x12): copy
     /// the 0x30-byte move header over entity +0..+0x2f, keep the centre
-    /// (minus the old x-offset), and write the first pose grid unflipped
-    /// (the runner flips it on its first frame when facing left).
+    /// (minus the old x-offset), and write the first pose grid. Native
+    /// Supers may show that grid before the runner processes its first frame.
     pub fn start_move(&mut self, e: u16, ps: u32, mv: u8) {
         let d3 = self.center_x(e).wrapping_sub(sext8(self.eb(e, 0x26)));
         self.start_move_at(e, ps, mv, d3);
@@ -802,11 +811,33 @@ impl Bus<'_> {
     /// placement entries 0x44114.. enter here with 0 (keep the header's
     /// position) or an x such as 0x1c0.
     pub fn start_move_at(&mut self, e: u16, ps: u32, mv: u8, mut d3: u16) {
+        self.era_clear_alpha_move(ps, mv);
         let table = self.rl(ps + 0x12);
-        let era_slot = matches!(mv, crate::era_fight::SF2_EXTRA_SPECIAL | crate::era_fight::SF2_SUPER);
-        let src = match self.sf2_state(ps).and_then(|era| era.fighter) {
-            Some(fighter) if era_slot => self.data_bank.and_then(|bank| bank.move_header(fighter, mv)),
-            _ => crate::data_bank::move_header(|addr| self.rl(addr), table, mv),
+        let family_move = self.era_state(ps)
+            .filter(|state| {
+                state.alpha_move_active(mv) && (state.uses_family_bank()
+                    || (mv == crate::data_bank::ALPHA_COUNTER_SLOT && state.custom_combo_active()))
+            });
+        let src = if let Some(state) = family_move {
+            state.fighter.and_then(|fighter| self.data_bank?.era_move_header(fighter, state.style.family, mv))
+        } else if mv == crate::data_bank::ALPHA_COUNTER_SLOT {
+            self.alpha_counter_header(ps)
+        } else if mv == 1 && self.era_state(ps).is_some_and(|era| {
+            (era.is_alpha() || era.is_sf4() || era.what_if_active()) && era.gen_stance() == crate::alpha::Stance::Crane
+        }) {
+            self.data_bank.and_then(|bank| bank.move_header(crate::roster::TournamentFighter::Gen, 0x28))
+        } else if let Some(fighter) = self.alpha_state(ps).filter(|era| era.alpha_move_active(mv))
+            .and_then(|era| era.fighter)
+        {
+            self.data_bank.and_then(|bank| bank.alpha_move_header(fighter, mv))
+        } else {
+            let era_slot = matches!(mv, crate::era_fight::SF2_EXTRA_SPECIAL | crate::era_fight::SF2_SUPER);
+            let fighter = self.sf2_state(ps).filter(|_| era_slot)
+                .and_then(|era| era.fighter);
+            match fighter {
+                Some(fighter) => self.data_bank.and_then(|bank| bank.move_header(fighter, mv)),
+                None => crate::data_bank::move_header(|addr| self.rl(addr), table, mv),
+            }
         };
         let Some(src) = src else {
             return;
@@ -819,7 +850,7 @@ impl Bus<'_> {
         if let Some(slot) = self.player_slot_index(ps) {
             self.toggle_state.human_attack_frames[slot] = 0;
         }
-        if self.toggles.true_combos {
+        if self.era_offense_flag(ps, self.toggles.true_combos) || self.era_state(ps).is_some_and(|era| era.alpha_move_active(mv)) {
             self.combo_new_move(e, mv);
         }
         if self.toggles.cancels {
@@ -878,6 +909,10 @@ impl Bus<'_> {
         // 0x4422e: the unflipped grid from the header's code/attr/position.
         let (sy, sx, code, attr) = (self.ew(e, 4), self.ew(e, 6), self.ew(e, 0), self.ew(e, 2));
         self.write_grid(e, code, attr, sx, sy);
+        if self.eb(e, 0x37) & 4 != 0 && self.is_native_super(ps, mv) {
+            // Super freeze presents this pose before the object runner.
+            self.face_left(e);
+        }
     }
 
     /// 0x44174 (P1, `ps = 0xff86b0`) / 0x44192 (P2, `ps = 0xff86da`, mode 4
@@ -979,7 +1014,11 @@ impl Bus<'_> {
                 self.set_eb(e, 0xf, self.eb(e, 0xf) & 0x7f);
             }
         }
-        if self.toggles.true_combos {
+        let alpha_move = self.era_state(self.el(e, 0x38))
+            .is_some_and(|era| era.alpha_move_active(self.eb(e, 0xa)));
+        if self.era_offense_flag(self.el(e, 0x38), self.toggles.true_combos)
+            || alpha_move || self.combo_reacting(e) || self.guard_crush_reaction(e)
+        {
             self.combo_load_frame(e, a1);
         }
         self.era_move_recovery(e, a1);
@@ -1017,7 +1056,9 @@ impl Bus<'_> {
             // First frame of a move started by the input handler.
             self.set_eb(me, 0x33, self.eb(me, 0xe));
             self.set_eb(me, 8, 2);
-            if self.eb(me, 0x37) & 4 != 0 {
+            let super_grid_mirrored = self.ew(me, 2) & 0x100 != 0
+                && self.is_native_super(self.el(me, 0x38), self.eb(me, 0xa));
+            if self.eb(me, 0x37) & 4 != 0 && !super_grid_mirrored {
                 self.face_left(me);
             }
             let snd = self.eb(me, 0x10);
@@ -1105,6 +1146,16 @@ impl Bus<'_> {
                     // 0xff, 0, address), which continues the frame in one
                     // of three ways.
                     let routine = self.rl(a1 + 2);
+                    if self.eb(me, 8) == 2 && crate::data_bank::in_bank(routine)
+                        && self.rb(routine) == crate::data_bank::ROUTINE_THROW_GET_UP
+                    {
+                        let delay = self.era_sf4_wakeup_extra(self.el(me, 0x38));
+                        if delay != 0 {
+                            // Keep the lying pose and repeat the get-up call after the hold.
+                            self.set_eb(me, 0x33, delay - 1);
+                            return;
+                        }
+                    }
                     match self.stream_call(me, other, routine, a1) {
                         // jmp 0x42cae: load the frame after the entry,
                         // without re-checking for control bytes.
@@ -1376,6 +1427,65 @@ impl Bus<'_> {
             crate::data_bank::ROUTINE_JUMP_APEX => Some(self.jump_attack_bank(me, r)),
             // Throws (SP19): `me` is the victim running his `thrown` stream,
             // `other` the thrower.
+            crate::data_bank::ROUTINE_ALPHA_HOLD_P => {
+                if self.era_hold_punch(self.el(me, 0x38), self.rb(r + 1)) {
+                    Some(Resume::LoadAt(self.rl(r + 4)))
+                } else {
+                    Some(Resume::Control)
+                }
+            }
+            crate::data_bank::ROUTINE_ALPHA_REPEAT_K => {
+                let ps = self.el(me, 0x38);
+                if self.era_take_repeated_kick(ps) {
+                    Some(Resume::Control)
+                } else {
+                    Some(Resume::ControlAt(self.rl(r + 4)))
+                }
+            }
+            crate::data_bank::ROUTINE_SF6_TIGER_NEXUS => {
+                use crate::era_fight::what_if_others::{GREEDY_TIGER, MIGHTY_TIGER, NEXUS, NOVA_TIGER, OD_NEXUS};
+
+                let ps = self.el(me, 0x38);
+                let (held, _) = self.era_buttons(ps);
+                let kicks = (held >> 3) & 7;
+                let connected = self.era_state(ps).is_some_and(|state| {
+                    (state.what_if_sagat_slot(NEXUS) || state.what_if_sagat_slot(OD_NEXUS))
+                        && state.move_hits != 0
+                });
+                if connected && kicks != 0 && self.relative_directions(me, self.pad_directions(ps)) == 1 {
+                    let strength = kicks.ilog2() as u8;
+                    let slot = [MIGHTY_TIGER, GREEDY_TIGER, NOVA_TIGER][usize::from(strength)];
+                    self.era_stage_banked_move(ps, slot, 0, None);
+                    self.set_eb(me, 0xa, slot);
+                    let attacker = self.combo_slot(me);
+                    self.toggle_state.combo.connected[attacker] = false;
+                    Some(Resume::LoadAt(self.rl(r + 4 + u32::from(strength) * 4)))
+                } else {
+                    Some(Resume::Control)
+                }
+            }
+            crate::data_bank::ROUTINE_ALPHA_CATCH => {
+                if self.try_alpha_catch(me, other, self.rb(r + 4).into(), self.rb(r + 5)) {
+                    Some(Resume::Restart)
+                } else {
+                    Some(Resume::Load)
+                }
+            }
+            crate::data_bank::ROUTINE_ALPHA_WALL_REBOUND => {
+                let cx = self.center_x(me);
+                let rear = u16::from(self.eb(me, 0x19));
+                let intro = self.rb(SCENE_MODE) == 0xc0;
+                let at_wall = if self.eb(me, 0x37) & 4 == 0 {
+                    cx.saturating_sub(rear) <= if intro { 0xb0 } else { 0x60 }
+                } else {
+                    cx + rear >= if intro { 0x16e } else { 0x1a0 }
+                };
+                if at_wall || self.dramatic_rules().is_some() {
+                    Some(Resume::Control)
+                } else {
+                    Some(Resume::LoadAt(self.rl(r + 4)))
+                }
+            }
             crate::data_bank::ROUTINE_THROW_ARC => {
                 let s = self.combo_slot(me);
                 if self.toggle_state.throw.crosses[s] {
@@ -1464,6 +1574,7 @@ impl Bus<'_> {
         crate::data_bank::SPECIAL_SLOTS.into_iter().find(|&slot| {
             let s = self.special_slot(ps, slot);
             (s.tracker, s.kick) == (off, kick) && self.move_in_table(ps, slot)
+                && !self.alpha_state(ps).is_some_and(|era| era.replaces_special(slot))
         })
     }
 
@@ -1533,10 +1644,15 @@ impl Bus<'_> {
     /// impact effect and whether it cuts the thrower's hold short come from
     /// the record, and it never asks for the slow motion.
     fn bank_effect_hit(&mut self, s: u16, rec: u32) {
-        self.transform_effect(s, self.rl(rec + 0xc));
+        let attack_x = self.effect_centre(s).0;
+        let era = self.era_projectile(s);
+        if self.era_projectile_hit(s) {
+            self.transform_effect(s, self.rl(rec + 0xc));
+        }
         let owner_ps = self.el(s, 0x20);
         let (me, other) = self.player_entities(owner_ps);
-        let is_blocked = self.eb(other, 9) & 0x20 != 0;
+        let air_block = !era.unblockable && self.alpha_air_blocks(other, attack_x);
+        let is_blocked = !era.unblockable && (air_block || self.eb(other, 9) & 0x20 != 0);
         let entry = self.rl(rec + if is_blocked { 8 } else { 4 });
         if self.rb(rec + 1) & 1 != 0 {
             self.set_eb(me, 0x33, 0);
@@ -1545,18 +1661,13 @@ impl Bus<'_> {
         self.add_score(me, self.rb(entry));
         self.show_score(owner_ps);
         self.check_hiscore(me);
-        let dmg = self.effective_entry_damage(entry, is_blocked);
-        self.damage_with_chip(me, dmg, is_blocked);
-        self.react_as(
-            me,
-            other,
-            entry,
-            if is_blocked {
-                HitSource::Chip
-            } else {
-                HitSource::Projectile
-            },
-        );
+        let dmg = if is_blocked && self.era_state(self.el(other, 0x38)).is_some_and(|state| state.sf6_burnout()) {
+            self.effective_entry_damage(me, self.rl(rec + 4), false).div_ceil(4)
+        } else {
+            self.effective_entry_damage(me, entry, is_blocked)
+        };
+        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
+        self.react_projectile(me, other, entry, is_blocked, air_block);
     }
 
     /// 0x45630: the CPU opponent's follow-up decision, called at the end of
@@ -1786,6 +1897,13 @@ impl Bus<'_> {
     /// chainable move, then clear the busy bits (+9 &= 0x3f).
     fn end_move(&mut self, me: u16) {
         let ps = self.el(me, 0x38);
+        if matches!(self.eb(me, 0xa), 0x28 | 0x35..=0x3f) {
+            let delay = self.era_sf4_wakeup_extra(ps);
+            if delay != 0 {
+                self.set_eb(me, 0x33, delay - 1);
+                return;
+            }
+        }
         if self.eb(me, 0xa) & 0x0b != 0 && self.eb(me, 9) == 0xc1 {
             let p = self.eb(me, 0x34);
             self.set_eb(me, 0x34, 0);
@@ -1824,8 +1942,9 @@ impl Bus<'_> {
             self.cancel_close(me);
         }
         if self.toggles.throws && self.eb(me, 0xa) == crate::combo::throw::GET_UP_MOVE {
-            let s = self.combo_slot(me);
-            self.toggle_state.throw.wakeup_invuln[s] = crate::combo::throw::WAKEUP_INVULN + 1;
+            let slot = self.combo_slot(me);
+            self.toggle_state.throw.wakeup_invuln[slot] = crate::combo::throw::WAKEUP_INVULN + 1;
+            self.separate_corner_throw(me);
         }
     }
 
@@ -1930,6 +2049,11 @@ impl Bus<'_> {
         if self.dramatic_rules().is_some() {
             return;
         }
+        let rebound = self.sf3_wall_motion(me);
+        if rebound != 0 {
+            self.shift_grid_x(me, i16::from(rebound) as u16);
+            self.set_eb(me, 0x15, 0);
+        }
         let cx = self.center_x(me);
         let c0 = self.rb(SCENE_MODE) == 0xc0;
         let facing_left = (self.eb(me, 0x37) as i8) >= 4;
@@ -1949,7 +2073,8 @@ impl Bus<'_> {
             )
         };
         let right = (self.eb(me, front) as u16).wrapping_add(cx);
-        let d6 = if right > right_lim {
+        let right_wall = right > right_lim;
+        let d6 = if right_wall {
             right - right_lim
         } else {
             let left = cx.wrapping_sub(self.eb(me, back) as u16);
@@ -1958,6 +2083,9 @@ impl Bus<'_> {
             }
             left.wrapping_sub(left_lim)
         };
+        if self.sf3_wall_contact(me, right_wall) {
+            self.set_eb(me, 0x15, 0);
+        }
         self.set_eb(me, 0x36, self.eb(me, 0x15));
         self.shift_grid_x(me, d6.wrapping_neg());
     }
@@ -2060,14 +2188,44 @@ impl Bus<'_> {
     /// a hit calls the frame's hit function (+0x28) with depth 1 (inside the
     /// tight box) or 2 (loose only).
     fn judge(&mut self, me: u16, other: u16) {
+        use crate::era_fight::what_if_others::{GREEDY_TIGER, MIGHTY_TIGER, NEXUS, OD_NEXUS};
+
         let owner = self.el(me, 0x38);
         let move_id = self.eb(me, 0xa);
-        let sf2 = self.sf2_state(owner);
-        let hit_limit = sf2.map_or(1, |era| era.move_hit_limit(move_id));
+        let alpha = self.era_state(owner).filter(|era| era.alpha_move_active(move_id));
+        let alpha_move = alpha.is_some();
+        if alpha.is_some_and(|era| era.is_alpha()
+            && era.fighter == Some(crate::roster::TournamentFighter::Gen)
+            && move_id == 0x2b)
+            && !self.is_jump_airborne(other) && !self.airborne_reaction(other)
+            && !matches!(self.eb(other, 0xa), 0x20..=0x26)
+        {
+            return;
+        }
+        if move_id == GREEDY_TIGER && alpha.is_some_and(|era| era.what_if_sagat_slot(move_id))
+            && self.eb(other, 9) & 4 != 0
+        {
+            return;
+        }
+        let era = self.sf2_state(owner).or(alpha);
+        let hit_limit = era.map_or(1, |era| {
+            if matches!(move_id, NEXUS | OD_NEXUS) && era.what_if_sagat_slot(move_id) {
+                2
+            } else {
+                era.move_hit_limit(move_id)
+            }
+        });
         let juggle = self.era_can_juggle(other, hit_limit);
+        let alpha_rehit = alpha.is_some_and(|era| era.move_hits != 0 && era.move_hits < hit_limit)
+            && self.eb(other, 8) == 2
+            && (0x30..=0x3f).contains(&self.eb(other, 0xa))
+            && self.eb(other, 0xa) != crate::combo::throw::THROWN_MOVE
+            && self.eb(other, 9) & 1 == 0;
+        let custom = self.alpha_state(owner).is_some_and(|era| era.custom_combo_active());
+        let can_rehit = juggle || alpha_rehit || (custom && self.era_can_juggle(other, 8));
         if self.eb(me, 0xf) & 0x80 == 0
-            || ((self.eb(other, 0xf) & 0x08 != 0 || (sf2.is_some() && self.airborne_reaction(other)))
-                && !juggle)
+            || ((self.eb(other, 0xf) & 0x08 != 0 || (era.is_some() && self.airborne_reaction(other)))
+                && !can_rehit)
         {
             return;
         }
@@ -2081,7 +2239,7 @@ impl Bus<'_> {
             let d = p.wrapping_sub(q) as i16;
             (d.unsigned_abs() as i16) > reach as i16
         };
-        let body = self.era_juggle_body(other, juggle);
+        let body = self.era_juggle_body(other, can_rehit);
         let dx_loose = body.map_or_else(|| dcx.wrapping_add(sext8(self.eb(other, 0x20))), |_| dcx);
         let dy_loose = body.map_or_else(|| dcy.wrapping_sub(sext8(self.eb(other, 0x1e))), |_| dcy);
         let (loose_w, loose_h) = body.unwrap_or_else(|| (u16::from(self.eb(other, 0x21)), u16::from(self.eb(other, 0x1f))));
@@ -2104,8 +2262,39 @@ impl Bus<'_> {
         } else {
             1
         };
+        let air_move = alpha.is_some_and(|era| era.alpha_move_airborne(move_id) || era.sf4_airborne_move(move_id) || era.what_if_airborne(move_id));
+        let overhead = alpha.is_some_and(|era| era.alpha_move_overhead(move_id) || era.sf3_overhead(move_id) || era.sf6_jinrai_overhead(move_id) || era.what_if_overhead(move_id)
+            || move_id == MIGHTY_TIGER && era.what_if_sagat_slot(move_id));
         let f = self.el(me, 0x28);
-        match hit_function(f) {
+        let hit_function = hit_function(f);
+        let low = matches!(hit_function, Some(
+            HitFn::Basic { low: true, .. } | HitFn::Strength { low: true, .. }
+            | HitFn::Cpu { block_state: 0x24, .. }
+        ));
+        let defender = self.el(other, 0x38);
+        let parried = self.what_if_eagle_riposte(other, self.center_x(me))
+            || self.sf3_parry(other, self.center_x(me), low, false, self.era_airborne(other));
+        if parried || self.sf5_defend(defender, other, false) || self.sf6_defend(defender) {
+            self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
+            let attacker_slot = self.combo_slot(me);
+            if hit_limit <= 1 {
+                self.toggle_state.combo.connected[attacker_slot] = true;
+                if parried {
+                    self.set_eb(me, 0x33, self.eb(me, 0x33).max(8));
+                }
+            }
+            if parried {
+                let defender_slot = self.combo_slot(other);
+                self.toggle_state.combo.blockstun[defender_slot] = 0;
+            }
+            return;
+        }
+        match hit_function {
+            Some(_) if self.eb(me, 9) & 3 == 1 && self.alpha_air_blocks(other, self.center_x(me)) => {
+                self.block_contact(other);
+                self.combo_blocked(me, other);
+                self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
+            }
             Some(HitFn::Basic {
                 template,
                 table,
@@ -2190,12 +2379,36 @@ impl Bus<'_> {
                 table,
                 blocked,
             }) => self.hit_redirect(me, other, depth, template, table, blocked),
+            None if (move_id == crate::data_bank::ALPHA_COUNTER_SLOT || alpha_move)
+                && crate::data_bank::in_bank(f) =>
+            {
+                let airborne = self.eb(me, 9) & 1 != 0
+                    || air_move
+                    || (alpha_move && self.eb(me, 9) == 0xc2 && self.eb(me, 0x14) != 0);
+                let air_block = airborne && self.alpha_air_blocks(other, self.center_x(me));
+                let guard = if overhead {
+                    self.eb(other, 9) == 0x22 || self.eb(other, 0xa) == 4
+                } else {
+                    self.eb(other, 9) & 0x20 != 0 || matches!(self.eb(other, 0xa), 4 | 8)
+                };
+                if (air_block || guard) && !self.era_sf4_focus_unblockable(owner, move_id) {
+                    if self.era_state(defender).is_some_and(|state| state.sf6_burnout()) {
+                        let chip = self.rb(f + 1).div_ceil(4);
+                        self.damage_with_chip(me, chip, true);
+                    }
+                    self.block_contact(other);
+                    self.combo_blocked(me, other);
+                } else {
+                    self.land_hit_entry(me, other, 0x1853c, f);
+                }
+                self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
+            }
             None => self.note_unrecovered(f),
         }
         // True combos (SP17): every hit function clears the attacker's
         // active bit, hit or guarded; the move has connected, so its later
         // active frames no longer hit (`combo_load_frame`).
-        if self.toggles.true_combos && self.eb(me, 0xf) & 0x80 == 0 {
+        if (self.era_offense_flag(owner, self.toggles.true_combos) || alpha_move) && self.eb(me, 0xf) & 0x80 == 0 {
             let s = self.combo_slot(me);
             let move_hits = self.era_side(owner).filter(|_| hit_limit > 1).map(|side| {
                 let count = &mut self.toggle_state.era.fighters[side].move_hits;
@@ -2206,7 +2419,7 @@ impl Bus<'_> {
         }
         // Cancels (SP18): a cancelable normal that connected, hit or
         // guarded, opens its cancel window.
-        if self.toggles.cancels && self.eb(me, 0xf) & 0x80 == 0 {
+        if self.era_offense_flag(owner, self.toggles.cancels) && self.eb(me, 0xf) & 0x80 == 0 {
             self.cancel_open(me);
         }
     }
@@ -2304,6 +2517,7 @@ impl Bus<'_> {
                     if d0 & 0xff == 0 {
                         self.queue_sound(8);
                         self.training_contact(other);
+                        self.guard_power_contact(me, other, GUARD_SPECIAL_PRESSURE);
                     } else {
                         self.land_hit_entry_with_chip(
                             me,
@@ -2382,12 +2596,28 @@ impl Bus<'_> {
         self.add_score(me, self.rb(entry));
         let ps = self.el(me, 0x38);
         self.show_score(ps);
-        let dmg = self.effective_entry_damage(entry, is_chip);
+        let defender = self.el(other, 0x38);
+        let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
+        let dmg = if burnout && src == HitSource::Chip {
+            self.effective_entry_damage(me, 0x46012, false).div_ceil(4)
+        } else {
+            self.effective_entry_damage(me, entry, is_chip)
+        };
         // A Tatsumaki's chip outside Balanced roster passes as chip too: only
         // Balanced roster's chip rule (whose branches never reach here
         // with it off) and the combo scaling read the flag.
-        self.damage_with_chip(me, dmg, is_chip || src == HitSource::Chip);
-        self.react_as(me, other, entry, src);
+        let chip = is_chip || src == HitSource::Chip;
+        let punish = !chip && self.eb(other, 9) & 0xc0 == 0xc0
+            && self.eb(other, 0x30) >= 6 && self.eb(other, 0xf) & 0x80 == 0
+            && self.sf6_impact_punish(ps, defender, self.eb(me, 0xa));
+        let crush = self.sf5_strike(me, other, self.eb(me, 0xa), chip);
+        self.damage_with_chip(me, dmg, chip);
+        self.react_as(me, other, if punish { 0x45b6e } else if crush { 0x45f52 } else { entry }, src);
+        if crush {
+            let slot = self.combo_slot(other);
+            let stun = &mut self.toggle_state.combo.hitstun[slot];
+            *stun = stun.saturating_add(10);
+        }
         self.check_hiscore(me);
         self.spawn_effect(me, template);
     }
@@ -2466,16 +2696,28 @@ impl Bus<'_> {
         self.damage_with_source(me, dmg, is_chip, None);
     }
 
-    fn damage_with_source(&mut self, me: u16, mut dmg: u8, is_chip: bool, projectile: Option<u8>) {
+    fn damage_with_source(
+        &mut self,
+        me: u16,
+        mut dmg: u8,
+        is_chip: bool,
+        projectile: Option<crate::era_fight::EraProjectileState>,
+    ) {
         let owner = self.el(me, 0x38);
         let ps = self.el(me, 0x3c);
-        if self.toggles.true_combos && !is_chip {
+        let suppress_chip = is_chip && self.era_state(ps).is_some_and(|state| state.is_sf6() && state.gauge().is_some() && !state.sf6_burnout());
+        if self.era_offense_flag(owner, self.toggles.true_combos) && !is_chip {
             dmg = self.combo_scale(ps, dmg);
         }
         let sf2 = self.sf2_state(owner).copied();
+        let alpha = self.era_state(owner);
+        let move_id = projectile.map_or_else(|| self.eb(me, 0xa), |source| source.move_id);
+        let alpha_level = projectile.map_or_else(
+            || alpha.map_or(0, |era| era.alpha_super_level(move_id)),
+            |source| source.alpha_super_level,
+        );
         let mut damage = u16::from(dmg) * crate::era_fight::SUB_HP_PER_POINT;
         if let Some(era) = sf2 {
-            let move_id = projectile.unwrap_or_else(|| self.eb(me, 0xa));
             let delta = crate::era_fight::RevisionDelta::of(era.style);
             if !is_chip {
                 if move_id == crate::era_fight::SF2_SUPER {
@@ -2487,21 +2729,55 @@ impl Bus<'_> {
             if let Some(delta) = delta {
                 damage = (u32::from(damage) * u32::from(delta.damage_percent) / 100) as u16;
             }
-            if !is_chip {
-                let defender = self.rw(ps + 0x10);
-                if self.eb(defender, 9) & 3 == 1 {
-                    if let Some(side) = self.era_side(ps) {
-                        let juggle = &mut self.toggle_state.era.fighters[side].juggle_count;
-                        *juggle = juggle.saturating_add(1);
-                    }
+        }
+        if !is_chip && projectile.is_some_and(|source| source.family_hits != 0) {
+            damage = if alpha_level != 0 { 60 } else { 70 };
+        } else if alpha_level != 0 && !is_chip {
+            use crate::roster::TournamentFighter::{Ken, Ryu, Sagat};
+            match (alpha.and_then(|era| era.fighter), move_id, projectile.is_some()) {
+                (Some(Ryu), crate::era_fight::SF2_SUPER, true)
+                | (Some(Sagat), crate::data_bank::ALPHA_SUPER_SECOND_SLOT, true) => damage = 60,
+                (Some(Ken), crate::era_fight::SF2_SUPER, false) => damage = 76,
+                _ => {}
+            }
+            let percent = 90 + 10 * u32::from(alpha_level);
+            damage = (u32::from(damage) * percent / 100) as u16;
+        }
+        if !is_chip && projectile.is_none() && move_id == crate::era_fight::SF2_EXTRA_SPECIAL
+            && alpha.is_some_and(|era| era.charged_tiger_blow)
+        {
+            damage += damage / 2;
+        }
+        let custom = alpha.is_some_and(|era| era.custom_combo_active() || era.gen_genei_jin());
+        if custom {
+            damage /= 2;
+        }
+        let x_attack = alpha.is_some_and(|era| era.is_alpha_x_ism());
+        let x_defense = self.alpha_state(ps).is_some_and(|era| era.is_alpha_x_ism());
+        if x_attack || x_defense {
+            let outgoing = if x_attack { 112 } else { 100 };
+            let incoming = if x_defense { 115 } else { 100 };
+            damage = ((u32::from(damage) * outgoing * incoming + 5000) / 10000) as u16;
+        }
+        if !is_chip && (custom || sf2.is_some() || alpha_level != 0
+            || alpha.is_some_and(|era| era.alpha_move_active(move_id) && era.move_hit_limit(move_id) > 1))
+        {
+            let defender = self.rw(ps + 0x10);
+            if self.eb(defender, 9) & 3 == 1 {
+                if let Some(side) = self.era_side(ps) {
+                    let juggle = &mut self.toggle_state.era.fighters[side].juggle_count;
+                    *juggle = juggle.saturating_add(1);
                 }
             }
         }
-        let record = if sf2.is_some() {
-            damage.div_ceil(crate::era_fight::SUB_HP_PER_POINT).min(u16::from(u8::MAX)) as u8
-        } else {
-            dmg
-        };
+        let Some(adjusted) = self.era_sf4_damage(owner, ps, move_id, damage, is_chip, projectile) else { return };
+        let armor_break = alpha_level != 0 || (sf2.is_some() && move_id == crate::era_fight::SF2_SUPER);
+        let Some(adjusted) = self.sf6_damage(owner, ps, move_id, adjusted, is_chip, armor_break) else { return };
+        damage = self.sf5_damage(owner, ps, move_id, if suppress_chip { 0 } else { adjusted }, is_chip);
+        if !is_chip {
+            self.era_alpha_damage_effects(owner, ps, move_id, alpha_level);
+        }
+        let record = damage.div_ceil(crate::era_fight::SUB_HP_PER_POINT).min(u16::from(u8::MAX)) as u8;
         self.training_hit(ps, record);
         if let Some(rules) = self.dramatic_rules() {
             self.damage_dramatic(me, ps, dmg, is_chip, rules.lifebar);
@@ -2657,11 +2933,49 @@ impl Bus<'_> {
     /// [`Self::react`] for a hit landed by `src`, which the true-combo gate
     /// reads at the end ([`Self::combo_react`]).
     fn react_as(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
+        let target = self.el(other, 0x38);
+        if self.era_sf4_take_absorbed(target) || self.sf6_take_absorbed(target) {
+            return;
+        }
+        if src == HitSource::Chip && self.guard_power_contact(me, other, GUARD_SPECIAL_PRESSURE) {
+            return;
+        }
         if src == HitSource::Melee {
             self.era_normal_contact(me, false);
         }
         self.react_one(me, other, entry, src);
+        if src == HitSource::Melee {
+            self.sf3_mark_wall_launch(self.el(me, 0x38), target, self.eb(me, 0xa));
+            self.era_sf4_crumple_hit(self.el(me, 0x38), target, self.eb(me, 0xa));
+        }
         self.dramatic_shared_knockdown(me, other, entry, src);
+    }
+
+    fn react_projectile(&mut self, me: u16, other: u16, entry: u32, blocked: bool, air_block: bool) {
+        let defender = self.el(other, 0x38);
+        if self.era_sf4_take_absorbed(defender) || self.sf6_take_absorbed(defender) {
+            return;
+        }
+        if blocked && self.era_state(defender).is_some_and(|state| state.is_sf6()) && self.defender_alive(defender) {
+            let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
+            self.block_contact(other);
+            self.alpha_guard_contact(other, if burnout { 22 } else { 18 });
+            return;
+        }
+        let can_counter = matches!(self.eb(other, 0xa), 4 | 8) && (self.can_alpha_counter(defender)
+            || self.era_state(defender).is_some_and(|state| state.is_sf3()));
+        if blocked && (air_block || can_counter) && self.defender_alive(defender) {
+            if !self.guard_power_contact(me, other, GUARD_SPECIAL_PRESSURE) {
+                self.block_contact(other);
+                if can_counter {
+                    // Use a guard window for Alpha without changing the chip damage.
+                    self.alpha_guard_contact(other, 18);
+                }
+            }
+            return;
+        }
+        let src = if blocked { HitSource::Chip } else { HitSource::Projectile };
+        self.react_as(me, other, entry, src);
     }
 
     fn dramatic_shared_knockdown(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
@@ -2792,8 +3106,11 @@ impl Bus<'_> {
         } else if self.eb(other, 0xb) >= 2 {
             self.set_eb(other, 0xb, 2);
         }
-        if self.toggles.true_combos {
+        if self.era_offense_flag(self.el(me, 0x38), self.toggles.true_combos) {
             self.combo_react(me, other, te, src);
+        } else {
+            let slot = self.combo_slot(other);
+            self.toggle_state.combo.blockstun[slot] = 0;
         }
         if self.toggles.cancels {
             // Cancels (SP18): a hit fighter's own window closes (his
@@ -3332,9 +3649,25 @@ impl Bus<'_> {
     /// +0x21 horizontal); an invulnerable target (+0xf bit 3) is skipped.
     /// A hit runs the effect's handler at +0x14.
     fn effect_vs_fighter(&mut self, s: u16) {
-        if self.effect_overlaps_fighter(s, self.effect_target(s)) {
-            self.effect_handler(s, self.el(s, 0x14), None);
+        let defender = self.effect_target(s);
+        if !self.effect_overlaps_fighter(s, defender) {
+            return;
         }
+        let parried = self.what_if_eagle_riposte(defender, self.effect_centre(s).0)
+            || self.sf3_parry(defender, self.effect_centre(s).0, false, true, self.era_airborne(defender));
+        if parried || self.sf5_defend(self.el(defender, 0x38), defender, false)
+            || self.sf6_defend(self.el(defender, 0x38))
+        {
+            if parried {
+                let slot = self.combo_slot(defender);
+                self.toggle_state.combo.blockstun[slot] = 0;
+            }
+            if self.era_projectile_hit(s) {
+                self.transform_effect(s, 0x186fc);
+            }
+            return;
+        }
+        self.effect_handler(s, self.el(s, 0x14), None);
     }
 
     fn effect_overlaps_fighter(&self, s: u16, t: u16) -> bool {
@@ -3342,7 +3675,7 @@ impl Bus<'_> {
             return false;
         }
         let era = self.era_projectile(s);
-        let limit = if era.crimson { 3 } else if era.move_id == crate::era_fight::SF2_SUPER { 5 } else { 1 };
+        let limit = era.hit_limit();
         let juggle = self.era_can_juggle(t, limit);
         if (self.eb(t, 0xf) & 8 != 0 || (era.hits_remaining != 0 && self.airborne_reaction(t))) && !juggle {
             return false;
@@ -3442,12 +3775,15 @@ impl Bus<'_> {
                 if self.eb(me, 8) & 8 != 0 {
                     return;
                 }
+                let air_block = self.alpha_air_blocks(other, self.effect_centre(s).0);
                 self.transform_effect(s, 0x18944);
-                if self.toggles.standard_high_low_block
-                    && (self.eb(other, 9) & 0x20 != 0 || matches!(self.eb(other, 0xa), 4 | 8))
+                if air_block
+                    || (self.toggles.standard_high_low_block
+                        && (self.eb(other, 9) & 0x20 != 0 || matches!(self.eb(other, 0xa), 4 | 8)))
                 {
-                    self.queue_sound(8);
-                    self.training_contact(other);
+                    if !self.guard_power_contact(me, other, GUARD_SPECIAL_PRESSURE) {
+                        self.block_contact(other);
+                    }
                     return;
                 }
                 self.damage(me, self.rb(0x4338f));
@@ -3577,15 +3913,21 @@ impl Bus<'_> {
             // 0x436a8 (30 damage), applying damage (0x3c034) and reaction
             // (0x4451a).
             (0x43652, None) => {
+                let attack_x = self.effect_centre(s).0;
                 let era = self.era_projectile(s);
                 if self.era_projectile_hit(s) {
                     self.transform_effect(s, 0x186fc);
                 }
                 let (me, other) = self.player_entities(self.el(s, 0x20));
-                let is_blocked = self.eb(other, 9) & 0x20 != 0;
+                let air_block = !era.unblockable && self.alpha_air_blocks(other, attack_x);
+                let is_blocked = !era.unblockable && (air_block || self.eb(other, 9) & 0x20 != 0);
                 let entry = if is_blocked { 0x436b0 } else { 0x436a8 };
-                let dmg = self.effective_entry_damage(entry, is_blocked);
-                self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era.move_id));
+                let dmg = if is_blocked && self.era_state(self.el(other, 0x38)).is_some_and(|state| state.sf6_burnout()) {
+                    self.effective_entry_damage(me, 0x436a8, false).div_ceil(4)
+                } else {
+                    self.effective_entry_damage(me, entry, is_blocked)
+                };
+                self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
                 if !is_blocked {
                     let def_ps = self.el(me, 0x3c);
                     let def_ko = !self.defender_alive(def_ps);
@@ -3594,16 +3936,7 @@ impl Bus<'_> {
                         self.wb(0xff8e36, 9);
                     }
                 }
-                self.react_as(
-                    me,
-                    other,
-                    entry,
-                    if is_blocked {
-                        HitSource::Chip
-                    } else {
-                        HitSource::Projectile
-                    },
-                );
+                self.react_projectile(me, other, entry, is_blocked, air_block);
             }
             (h, _) => self.note_unrecovered(h),
         }
@@ -3630,13 +3963,15 @@ impl Bus<'_> {
     /// event 9) and takes entry 0x4345e. Score, its redraw, the top-score
     /// check, damage and the reaction follow as for any landed hit.
     fn fireball_hits_fighter(&mut self, s: u16) {
+        let attack_x = self.effect_centre(s).0;
         let era = self.era_projectile(s);
         if self.era_projectile_hit(s) {
             self.transform_effect(s, 0x186fc);
         }
         let owner_ps = self.el(s, 0x20);
         let (me, other) = self.player_entities(owner_ps);
-        let is_blocked = self.eb(other, 9) & 0x20 != 0;
+        let air_block = !era.unblockable && self.alpha_air_blocks(other, attack_x);
+        let is_blocked = !era.unblockable && (air_block || self.eb(other, 9) & 0x20 != 0);
         let entry = if is_blocked {
             if self.toggles.balanced_roster || self.rb(GAME_MODE) == 1 {
                 0x43466
@@ -3660,8 +3995,12 @@ impl Bus<'_> {
         self.add_score(me, self.rb(entry));
         self.show_score(owner_ps);
         self.check_hiscore(me);
-        let dmg = self.effective_entry_damage(entry, is_blocked);
-        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era.move_id));
+        let dmg = if is_blocked && self.era_state(self.el(other, 0x38)).is_some_and(|state| state.sf6_burnout()) {
+            self.effective_entry_damage(me, 0x4345e, false).div_ceil(4)
+        } else {
+            self.effective_entry_damage(me, entry, is_blocked)
+        };
+        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
         if !is_blocked {
             let def_ps = self.el(me, 0x3c);
             let def_ko = !self.defender_alive(def_ps);
@@ -3670,16 +4009,7 @@ impl Bus<'_> {
                 self.wb(0xff8e36, 9);
             }
         }
-        self.react_as(
-            me,
-            other,
-            entry,
-            if is_blocked {
-                HitSource::Chip
-            } else {
-                HitSource::Projectile
-            },
-        );
+        self.react_projectile(me, other, entry, is_blocked, air_block);
     }
 
     /// 0x42eb4: turn effect `s` into `template` in place: the template's
@@ -3950,6 +4280,10 @@ impl Bus<'_> {
         let group = |raw: u8, mask: u8, shift: u8, heavy: bool| {
             ((!raw & mask) >> shift) | if heavy { 3 } else { 0 }
         };
+        let alpha_buttons = |raw: u8, hp: bool, hk: bool| {
+            ((!raw & 0x30) >> 4) | (u8::from(hp) << 2)
+                | ((!raw & 0xc0) >> 3) | (u8::from(hk) << 5)
+        };
         let head = |heavy: bool, pressed_cost: u32| 52 + if heavy { pressed_cost } else { 10 };
         // 0x3b05a: the scene chain to the latch calls at 0x3b0b8 (P1), 0x3b0c4
         // (P2), 0x3b082 (the game-mode chain: 26 to 0x3b0a4 both players, 54
@@ -3972,6 +4306,7 @@ impl Bus<'_> {
         };
         if do_p1 {
             let (heavy1, heavy2) = (!in0_hi & 2 != 0, !in0_lo & 4 != 0);
+            self.era_read_buttons(P1_STRUCT, alpha_buttons(p1, heavy1, heavy2));
             let path = self.button_latch(0xff8690, P1_STRUCT, group(p1, 0x30, 4, heavy1), 0x3b450);
             cycles += 18 + head(heavy1, 30) + latch_cycles(path, 14);
             let path =
@@ -3980,6 +4315,7 @@ impl Bus<'_> {
         }
         if do_p2 {
             let (heavy1, heavy2) = (!in0_hi & 4 != 0, !in0_hi & 1 != 0);
+            self.era_read_buttons(P2_STRUCT, alpha_buttons(p2, heavy1, heavy2));
             let path = self.button_latch(0xff86a0, P2_STRUCT, group(p2, 0x30, 4, heavy1), 0x3b450);
             cycles += 18 + head(heavy1, 20) + latch_cycles(path, 14);
             let path =
@@ -3990,6 +4326,7 @@ impl Bus<'_> {
             && self.arcade_player_opponent().is_some()
         {
             let (heavy1, heavy2) = (!in0_hi & 4 != 0, !in0_hi & 1 != 0);
+            self.era_read_buttons(CPU_STRUCT, alpha_buttons(p2, heavy1, heavy2));
             self.button_latch(0xff86a0, CPU_STRUCT, group(p2, 0x30, 4, heavy1), 0x3b450);
             self.button_latch(0xff86a8, CPU_STRUCT + 1, group(p2, 0xc0, 6, heavy2), 0x3b506);
         }
@@ -4069,7 +4406,7 @@ impl Bus<'_> {
     /// to the player's latch byte `out`. Returns the branch taken, for the
     /// cycle accounting.
     pub fn button_latch(&mut self, state: u32, out: u32, pressed: u8, table: u32) -> LatchPath {
-        if self.toggles.positive_edge_attacks {
+        if self.era_offense_flag(out & !1, self.toggles.positive_edge_attacks) {
             if self.rb(state) == 0 {
                 if pressed != 0 {
                     self.wb(state, 0xff);
@@ -4223,7 +4560,7 @@ impl Bus<'_> {
     pub fn cpu_decide(&mut self) {
         let a1 = CPU_STRUCT;
         let (me, other) = self.player_entities(a1);
-        if self.eb(me, 9) & 0x80 != 0 {
+        if self.eb(me, 9) & 0x80 != 0 || self.era_guard_crushed(a1) {
             return;
         }
         let wait = self.eb(me, 0x1a);
@@ -4599,10 +4936,14 @@ impl Bus<'_> {
         if self.dramatic_rules().is_some() {
             self.bind_dramatic_boss_target();
         }
-        if self.toggles.true_combos {
+        if self.toggles.true_combos || self.era_rules.enabled {
             self.combo_frame();
+        } else {
+            for frames in &mut self.toggle_state.combo.blockstun {
+                *frames = frames.saturating_sub(1);
+            }
         }
-        if self.toggles.throws {
+        if self.toggles.throws || self.era_rules.enabled {
             self.throw_frame();
         }
         if let Some(rules) = self.dramatic_rules() {
@@ -4706,25 +5047,37 @@ impl Bus<'_> {
             self.input_tail(me, ps);
             return;
         }
+        if self.era_guard_crushed(ps) || self.era_dizzy(ps) || self.era_sf4_holding_crumple(ps) || self.sf6_wall_stun(ps) {
+            if self.era_dizzy(ps) && matches!(self.eb(me, 0xa), 2..=4 | 8) {
+                self.start_move(me, ps, 1);
+            }
+            self.ww(ps, 0);
+            self.clear_neg_edge_latches_for_player(ps);
+            self.clear_recovery_buffer(ps);
+            self.input_tail(me, ps);
+            return;
+        }
+        let era_cancels = self.era_offense_flag(ps, self.toggles.cancels);
+        let era_throws = self.era_offense_flag(ps, self.toggles.throws);
         let mode = self.rb(SCENE_MODE);
         let scripted_turn = mode == 0x40 || mode == 0xc0;
         if !scripted_turn {
             self.track_commands(ps, me, d0);
-            let relative = if self.eb(me, 0x37) & 4 == 0 {
-                d0
-            } else {
-                (d0 & !3) | ((d0 & 1) << 1) | ((d0 & 2) >> 1)
-            };
+            let relative = self.relative_directions(me, d0);
             self.era_track_motion(ps, relative);
+            if self.try_family_input(ps, me, relative) || self.try_alpha_counter(ps, me, relative) {
+                self.input_tail(me, ps);
+                return;
+            }
         }
-        if self.toggles.positive_edge_attacks {
+        if self.era_offense_flag(ps, self.toggles.positive_edge_attacks) {
             self.filter_neg_edge_latches(ps, me, d0);
         }
         // Cancels (SP18): in a cancelable normal's window, a special's
         // command cancels the normal into the special.
         let cancel_slot = self.combo_slot(me);
         let era_cancel = !scripted_turn
-            && self.toggles.cancels
+            && era_cancels
             && self.toggle_state.cancel.window[cancel_slot] != 0
             && self.toggle_state.cancel.move_id[cancel_slot] == self.eb(me, 0xa)
             && self.eb(me, 9) & 0x80 != 0
@@ -4733,20 +5086,20 @@ impl Bus<'_> {
             let count = &mut self.toggle_state.cancel.count[cancel_slot];
             *count = count.wrapping_add(1);
         }
-        if era_cancel || (self.toggles.cancels && self.cancel_gate(ps, me, other, d0)) {
+        if era_cancel || (era_cancels && self.cancel_gate(ps, me, other, d0)) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
         }
         // Throws (SP19): in the 7-frame tech window of a throw, pressing
         // forward or back with heavy punch or heavy kick techs the throw.
-        if self.toggles.throws && self.try_throw_tech(ps, me, other, d0) {
+        if era_throws && self.try_throw_tech(ps, me, other, d0) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
         }
         // True combos (SP17): blockstun holds the guard.
-        if self.toggles.true_combos && self.combo_blockstun(ps, me, d0) {
+        if self.combo_blockstun(ps, me, d0) {
             self.record_recovery_buffer_frame(ps, me, d0);
             self.input_tail(me, ps);
             return;
@@ -4755,6 +5108,32 @@ impl Bus<'_> {
         let state = self.eb(me, 9);
         let d2 = state & 0xc9;
         let mv = self.eb(me, 0xa);
+        let custom = self.era_state(ps).is_some_and(|era| era.custom_combo_active() || era.gen_genei_jin());
+        let cancel_custom = custom && state & 0x80 != 0 && state & 3 != 1
+            && matches!(mv, 0xd..=0x1b | 0x1f | 0x2c..=0x2f) && mv != crate::data_bank::ALPHA_COUNTER_SLOT
+            && self.era_buttons(ps).1 != 0
+            && (self.latch_fires(ps, false) || self.latch_fires(ps + 1, true));
+        if !scripted_turn && cancel_custom {
+            if !self.try_era_special(ps, me) {
+                self.dispatch_direction(ps, me, other, d0, d0);
+            }
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
+        let jumping = matches!(mv, 9..=0xb);
+        let airborne = jumping && self.is_jump_airborne(me) && self.frames_until_landing(me) >= 4;
+        let normal = matches!(mv, 0xd..=0x18) && state & 0x80 != 0;
+        if !scripted_turn
+            && ((airborne && self.era_sf4_command(ps, me, true, false))
+                || (airborne && self.try_what_if_move(ps, me, true, false))
+                || (jumping && (airborne || state & 3 == 1) && self.try_alpha_move(ps, me, airborne, false))
+                || (normal && self.try_alpha_move(ps, me, false, true)))
+        {
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
         if self.is_player_driven(ps) && busy_banked_jump(state, mv, self.rl(ps + 0x12)) {
             self.record_recovery_buffer_frame(ps, me, d0);
             self.input_tail(me, ps);
@@ -4794,16 +5173,16 @@ impl Bus<'_> {
             self.input_tail(me, ps);
             return;
         }
-        if self.toggles.positive_edge_attacks {
+        if self.era_offense_flag(ps, self.toggles.positive_edge_attacks) {
             self.filter_neg_edge_latches(ps, me, d0);
         }
         let dispatch_d0 = self.apply_recovery_buffer(ps, me, d0);
-        if !scripted_turn && self.try_era_special(ps, me) {
+        if !scripted_turn && (self.try_custom_combo(ps, me) || self.try_era_special(ps, me)) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
         }
-        if self.toggles.throws && self.try_throw(ps, me, other, dispatch_d0) {
+        if era_throws && self.try_throw(ps, me, other, dispatch_d0) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
@@ -4811,6 +5190,51 @@ impl Bus<'_> {
         self.dispatch_direction(ps, me, other, dispatch_d0, d0);
         self.clear_neg_edge_latches_for_player(ps);
         self.input_tail(me, ps);
+    }
+
+    fn try_family_input(&mut self, ps: u32, entity: u16, relative: u8) -> bool {
+        if !self.era_state(ps).is_some_and(|state| state.uses_family_bank()) {
+            return false;
+        }
+        let posture = self.eb(entity, 9);
+        let move_id = self.eb(entity, 0xa);
+        let slot = self.combo_slot(entity);
+        let blockstun = self.toggle_state.combo.blockstun[slot] != 0;
+        let airborne = self.era_airborne(entity);
+        let actionable = !blockstun && (posture & 0x80 == 0
+            || (self.toggles.interruptible_walk_cycle && matches!(move_id, 2 | 3)));
+        let cancel = !airborne && self.toggle_state.cancel.window[slot] != 0
+            && self.toggle_state.cancel.move_id[slot] == move_id && posture & 0x80 != 0;
+        let in_jump = self.is_jump_airborne(entity);
+        self.what_if_track(ps, relative);
+        self.sf3_track_input(ps, relative, airborne, actionable || in_jump, blockstun);
+        if in_jump && self.frames_until_landing(entity) >= 4 && self.try_sf3_move(ps, entity, true) {
+            self.clear_neg_edge_latches_for_player(ps);
+            return true;
+        }
+        let special_active = posture & 0xc0 == 0xc0 && (matches!(move_id, 0x19..=0x1b)
+            || self.era_state(ps).is_some_and(|state| state.sf4_special_active(move_id) || state.what_if_special_active(move_id)));
+        let hard_knockdown = !airborne && posture & 0x80 != 0 && matches!(move_id, 0x28 | 0x35..=0x3f);
+        if self.era_sf4_input(ps, entity, relative, actionable && !airborne, special_active, hard_knockdown)
+            || self.sf5_input(ps, entity, relative, actionable && !airborne, cancel, blockstun)
+            || self.sf6_input(ps, entity, relative, actionable && !airborne, cancel, blockstun)
+        {
+            if blockstun && (self.era_state(ps).is_some_and(|state| state.is_sf6())
+                && self.eb(entity, 0xa) == crate::era_fight::sf6::REVERSAL
+                || self.era_state(ps).is_some_and(|state| state.style.family == crate::era::EraFamily::Sf5)
+                    && self.eb(entity, 0xa) == crate::era_fight::sf5::REVERSAL)
+            {
+                self.toggle_state.combo.blockstun[slot] = 0;
+            }
+            self.clear_neg_edge_latches_for_player(ps);
+            return true;
+        }
+        false
+    }
+
+    fn era_airborne(&self, entity: u16) -> bool {
+        self.is_jump_airborne(entity) || self.airborne_reaction(entity)
+            || (self.eb(entity, 9) & 3 == 1 && matches!(self.eb(entity, 0xa), 0x20..=0x26))
     }
 
     fn era_special_command(&self, ps: u32, kick: bool) -> Option<u8> {
@@ -4843,6 +5267,16 @@ impl Bus<'_> {
     fn try_era_special(&mut self, ps: u32, entity: u16) -> bool {
         use crate::era_fight::SF2_SUPER;
 
+        let canceling = self.eb(entity, 9) & 0xc0 == 0xc0;
+        if self.try_what_if_move(ps, entity, false, canceling) {
+            return true;
+        }
+        if self.alpha_state(ps).is_some() {
+            return self.try_alpha_move(ps, entity, false, false);
+        }
+        if self.try_sf3_move(ps, entity, false) || self.era_sf4_command(ps, entity, false, canceling) {
+            return true;
+        }
         let punch = self.latch_fires(ps, false).then(|| self.era_special_command(ps, false)).flatten();
         let kick = self.latch_fires(ps + 1, true).then(|| self.era_special_command(ps, true)).flatten();
         let (move_id, latch, strength_table) = if let Some(mv) = kick.filter(|mv| *mv == SF2_SUPER || punch.is_none()) {
@@ -4867,10 +5301,149 @@ impl Bus<'_> {
         true
     }
 
+    pub(crate) fn era_start_banked_move(
+        &mut self, ps: u32, entity: u16, slot: u8, level: u8, call_out: Option<&'static str>,
+    ) -> bool {
+        let Some(state) = self.era_state(ps).filter(|state| state.uses_family_bank()) else { return false };
+        if state.fighter.and_then(|fighter| self.data_bank?.era_move_header(fighter, state.style.family, slot)).is_none() {
+            return false;
+        }
+        self.ww(ps, 0);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.era_stage_banked_move(ps, slot, level, call_out);
+        self.start_move(entity, ps, slot);
+        self.set_eb(entity, 0x34, level.clamp(1, 3));
+        true
+    }
+
+    fn try_custom_combo(&mut self, ps: u32, entity: u16) -> bool {
+        let (held, pressed) = self.era_buttons(ps);
+        let paired = [0x09, 0x12, 0x24].into_iter().any(|pair| held & pair == pair && pressed & pair != 0);
+        let slot = crate::data_bank::ALPHA_COUNTER_SLOT;
+        if !paired || self.alpha_state(ps).and_then(|state| state.fighter)
+            .and_then(|fighter| self.data_bank?.era_move_header(fighter, crate::era::EraFamily::SfZ, slot)).is_none()
+            || !self.era_begin_custom_combo(ps)
+        {
+            return false;
+        }
+        self.ww(ps, 0);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.start_move(entity, ps, slot);
+        true
+    }
+
+    fn try_alpha_move(&mut self, ps: u32, entity: u16, airborne: bool, normal: bool) -> bool {
+        let strength = [false, true].map(|kick| {
+            let latch = ps + u32::from(kick);
+            if self.latch_fires(latch, kick) && !self.is_neg_edge_latch(latch) {
+                crate::combo::level(self.rb(latch))
+            } else {
+                0
+            }
+        });
+        let Some((entry, level, strength)) = self.era_alpha_command(ps, strength, airborne, normal) else {
+            return false;
+        };
+        if self.alpha_state(ps).and_then(|era| era.fighter)
+                .and_then(|fighter| self.data_bank?.alpha_move_header(fighter, entry.slot)).is_none()
+        {
+            return false;
+        }
+        let center_y = self.center_y(entity);
+        self.ww(ps, 0);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.era_begin_alpha_move(ps, entry, level);
+        self.start_move(entity, ps, entry.slot);
+        self.set_eb(entity, 0x34, strength);
+        if airborne {
+            self.era_adjust_air_start(ps, entity, center_y);
+        }
+        true
+    }
+
+    pub(crate) fn era_adjust_air_start(&mut self, ps: u32, entity: u16, center_y: u16) {
+        let authored_y = self.center_y(entity);
+        let offset = center_y.wrapping_sub(authored_y);
+        self.shift_grid_y(entity, offset);
+        let (frames, _) = self.stream_air_frames_and_dy(self.el(entity, 0x2c));
+        if let Some(slot) = self.player_slot_index(ps) {
+            self.toggle_state.air_adj_frames_1[slot] = frames.saturating_sub(1);
+            self.toggle_state.air_adj_rem_1[slot] = offset.wrapping_neg() as i16;
+        }
+    }
+
+    fn relative_directions(&self, entity: u16, directions: u8) -> u8 {
+        if self.eb(entity, 0x37) & 4 == 0 {
+            directions
+        } else {
+            (directions & !3) | ((directions & 1) << 1) | ((directions & 2) >> 1)
+        }
+    }
+
+    fn what_if_eagle_riposte(&mut self, entity: u16, source_x: u16) -> bool {
+        use crate::era_fight::what_if_others::{EAGLE_COUNTER, EAGLE_RIPOSTE};
+        use crate::roster::TournamentFighter::Eagle;
+
+        let ps = self.el(entity, 0x38);
+        let center = self.center_x(entity);
+        let from_front = source_x == center || (source_x > center) == (self.eb(entity, 0x37) & 4 == 0);
+        // The guard window is the header pose, before the first recovery frame.
+        let in_counter_pose = self.era_state(ps).filter(|state| state.what_if_eagle_counter())
+            .and_then(|state| self.data_bank?.era_move_header(Eagle, state.style.family, EAGLE_COUNTER))
+            .is_some_and(|header| self.el(entity, 0x2c) == self.rl(header + 0x2c));
+        if !from_front || self.eb(entity, 0xa) != EAGLE_COUNTER || !in_counter_pose
+            || !self.era_start_banked_move(ps, entity, EAGLE_RIPOSTE, 0, None)
+        {
+            return false;
+        }
+        self.era_emit_callout(ps, sf_video::callouts::CalloutKind::Move { word: "PARRY" });
+        true
+    }
+
+    fn can_alpha_counter(&self, ps: u32) -> bool {
+        self.alpha_state(ps).is_some_and(|era| era.alpha_counter_enabled())
+    }
+
+    fn alpha_counter_header(&self, ps: u32) -> Option<u32> {
+        let fighter = self.alpha_state(ps)?.fighter?;
+        self.data_bank?.move_header(fighter, crate::data_bank::ALPHA_COUNTER_SLOT)
+    }
+
+    fn try_alpha_counter(&mut self, ps: u32, entity: u16, relative: u8) -> bool {
+        let slot = self.combo_slot(entity);
+        if self.toggle_state.combo.blockstun[slot] == 0 || !matches!(self.eb(entity, 0xa), 4 | 8) {
+            self.era_reset_alpha_counter(ps);
+            return false;
+        }
+        self.era_track_alpha_counter(ps, relative);
+        if !self.era_alpha_counter_ready(ps)
+            || ![(ps, false), (ps + 1, true)].into_iter().any(|(latch, kick)| {
+                self.latch_fires(latch, kick) && !self.is_neg_edge_latch(latch)
+            })
+            || self.alpha_counter_header(ps).is_none()
+            || !self.era_spend_alpha_counter(ps)
+        {
+            return false;
+        }
+        self.ww(ps, 0);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.toggle_state.combo.blockstun[slot] = 0;
+        self.start_move(entity, ps, crate::data_bank::ALPHA_COUNTER_SLOT);
+        true
+    }
+
     fn era_move_started(&mut self, entity: u16, ps: u32, move_id: u8) {
         use crate::era_fight::SF2_EXTRA_SPECIAL;
         use crate::roster::TournamentFighter::{Ken, Ryu, Sagat};
 
+        self.era_sf4_started(ps, move_id);
+        self.sf6_started(ps, move_id);
+        self.sf5_on_move_started(ps, move_id);
         let Some(era) = self.sf2_state(ps) else { return };
         let Some(delta) = crate::era_fight::RevisionDelta::of(era.style) else { return };
         // Super Turbo awards special meter once when the move starts, even on a whiff.
@@ -4879,6 +5452,7 @@ impl Bus<'_> {
             (Some(Ken), 0x19) => 8,
             (Some(Ryu | Ken), 0x1a) | (Some(Ryu), SF2_EXTRA_SPECIAL) => 2,
             (Some(Ryu | Ken), 0x1b) | (Some(Sagat), 0x19) => 6,
+            (Some(Ryu | Ken), crate::era_fight::sf3::AIR_TATSU) if era.alpha_move_active(move_id) => 6,
             (Some(Sagat), 0x1a | 0x1b) => 3,
             _ => 0,
         };
@@ -4898,7 +5472,18 @@ impl Bus<'_> {
 
         let owner = self.el(entity, 0x38);
         let move_id = self.eb(entity, 0xa);
-        if self.sf2_state(owner).is_none()
+        if move_id == crate::era_fight::sf3::AIR_TATSU
+            && self.era_state(owner).is_some_and(|state| state.alpha_move_active(move_id))
+        {
+            return;
+        }
+        if self.era_state(owner).is_some_and(|state| state.is_sf3() || state.is_sf4())
+            && matches!(move_id, 0x0d..=0x18 | 0x1c..=0x1e | 0x20..=0x26)
+        {
+            self.era_meter_gain(owner, if guarded { 2 } else { 4 });
+            return;
+        }
+        if (self.sf2_state(owner).is_none() && self.alpha_state(owner).is_none())
             || !Self::is_player_table(self.rl(owner + 0x12))
             || !matches!(move_id, 0x0d..=0x18 | 0x1c..=0x1e | 0x20..=0x26)
         {
@@ -5460,6 +6045,7 @@ impl Bus<'_> {
 
     /// 0x4050c: clear the turn bit; drop latched strengths during an attack.
     fn input_tail(&mut self, me: u16, ps: u32) {
+        self.era_finish_input(ps);
         self.set_eb(me, 0x37, self.eb(me, 0x37) & 0xfe);
         if self.eb(me, 9) & 0xc0 == 0xc0
             || (self.toggles.positive_edge_attacks && self.is_in_recovery_or_stun(me))
@@ -5597,6 +6183,20 @@ impl Bus<'_> {
         }
         let mv = self.eb(me, 0xa);
         !matches!(mv, 0..=3 | 9..=0x0c)
+    }
+
+    pub(crate) fn clear_frozen_attack_inputs(&mut self) {
+        let mode = self.rb(GAME_MODE);
+        let players = match mode {
+            2 => [P1_STRUCT, CPU_STRUCT],
+            4 => [P2_STRUCT, CPU_STRUCT],
+            _ => [P1_STRUCT, P2_STRUCT],
+        };
+        for ps in players {
+            self.ww(ps, 0);
+            self.clear_neg_edge_latches_for_player(ps);
+            self.era_finish_input(ps);
+        }
     }
 
     fn clear_recovery_buffer(&mut self, ps: u32) {
@@ -5976,7 +6576,9 @@ impl Bus<'_> {
     }
 
     fn step_air_attack_trajectory(&mut self, me: u16) {
-        if !self.toggles.anytime_jump_attacks || !matches!(self.eb(me, 0xa), 0x20..=0x26) {
+        let slot = self.eb(me, 0xa);
+        let air_special = self.era_state(self.el(me, 0x38)).is_some_and(|era| era.alpha_move_airborne(slot) || era.sf4_airborne_move(slot) || era.what_if_airborne(slot));
+        if !air_special && (!self.toggles.anytime_jump_attacks || !matches!(slot, 0x20..=0x26)) {
             return;
         }
         let Some(slot) = self.player_slot_index(self.el(me, 0x38)) else {
@@ -6001,6 +6603,14 @@ impl Bus<'_> {
         };
         if step_adj != 0 {
             self.shift_grid_y(me, step_adj as u16);
+        }
+        if air_special {
+            let rows = i32::from(self.eb(me, 0xc)) + 1;
+            let cell = if self.is_big(me) { 32 } else { 16 };
+            let bottom = i32::from(self.ew(me, 4) as i16) + rows * cell;
+            if bottom > crate::data_bank::GROUND {
+                self.shift_grid_y(me, (crate::data_bank::GROUND - bottom) as u16);
+            }
         }
     }
 
@@ -6094,7 +6704,44 @@ impl Bus<'_> {
             || (d0 == down_back_dir && self.incoming_attack(me, other, true))
     }
 
+    fn alpha_air_blocks(&self, defender: u16, attack_x: u16) -> bool {
+        use crate::era::{GaugeMode, Loadout, Revision};
+
+        let ps = self.el(defender, 0x38);
+        let Some(side) = self.era_side(ps) else { return false };
+        let fighter = &self.toggle_state.era.fighters[side];
+        let can_air_block = matches!(
+            (fighter.style.revision, fighter.style.loadout),
+            (Revision::Sfz1 | Revision::Sfz2 | Revision::Sfz2A, Loadout::Standard)
+                | (Revision::Sfz3, Loadout::AIsm | Loadout::VIsm)
+        );
+        if !can_air_block
+            || !fighter.is_alpha() || fighter.custom_combo_active()
+            || self.era_rules.gauge_mode == GaugeMode::NoGauges
+            || self.era_guard_crushed(ps)
+            || self.eb(defender, 9) & 0x40 != 0
+            || !self.is_jump_airborne(defender)
+            || self.frames_until_landing(defender) == 0
+        {
+            return false;
+        }
+
+        let defender_x = self.center_x(defender);
+        let source_on_right = attack_x > defender_x
+            || (attack_x == defender_x && self.eb(defender, 0x37) & 4 == 0);
+        let away = if source_on_right { 2 } else { 1 };
+        self.pad_directions(ps) & 3 == away
+    }
+
+    fn block_contact(&mut self, defender: u16) {
+        self.queue_sound(8);
+        self.training_contact(defender);
+    }
+
     fn incoming_attack(&self, me: u16, other: u16, low: bool) -> bool {
+        if self.alpha_state(self.el(me, 0x38)).is_some_and(|era| era.custom_combo_active()) {
+            return false;
+        }
         let attacks = |e| {
             if low { self.opponent_attacks_low(e) } else { self.opponent_attacks_high(e) }
         };
@@ -6255,11 +6902,11 @@ impl Bus<'_> {
     }
 
     /// The animation step met the end entry at `a1` of `me`'s stream: a
-    /// combo-able reaction holds its last frame until its hitstun ends.
+    /// combo-able reaction or guard crush holds its last frame through the stun.
     fn combo_holds(&self, me: u16, a1: u32) -> bool {
-        self.toggles.true_combos
-            && self.rb(SCENE_MODE) & 0x80 != 0
-            && self.combo_reacting(me)
+        self.rb(SCENE_MODE) & 0x80 != 0
+            && (self.combo_reacting(me) || self.guard_crush_reaction(me)
+                || self.era_sf4_holding_crumple(self.el(me, 0x38)) || self.sf6_wall_stun(self.el(me, 0x38)))
             && (self.rb(a1) == 0xfd || self.rl(a1 + 2) == 0x45630)
     }
 
@@ -6273,11 +6920,15 @@ impl Bus<'_> {
     ///   dormant: one hit per move.
     fn combo_load_frame(&mut self, e: u16, a1: u32) {
         let s = self.combo_slot(e);
-        if self.combo_reacting(e) && (0x30..=0x3f).contains(&self.eb(e, 0xa)) {
-            if let Some(boxes) = crate::combo::frame_boxes(a1) {
+        let guard_crush = self.guard_crush_reaction(e);
+        if (self.combo_reacting(e) || guard_crush) && (0x30..=0x3f).contains(&self.eb(e, 0xa)) {
+            let boxes = crate::combo::frame_boxes(a1);
+            if let Some(boxes) = boxes {
                 for (i, b) in boxes.into_iter().enumerate() {
                     self.set_eb(e, 0x1a + i as u32, b);
                 }
+            }
+            if guard_crush || boxes.is_some() {
                 self.set_eb(e, 0xf, self.eb(e, 0xf) & !0x08);
             }
             if self.toggle_state.combo.fresh[s] {
@@ -6340,12 +6991,91 @@ impl Bus<'_> {
     /// the move's blockstun.
     fn combo_blocked(&mut self, me: u16, other: u16) {
         self.era_normal_contact(me, true);
-        if !self.toggles.true_combos || !self.is_player_driven(self.el(other, 0x38)) {
+        self.era_sf4_blocked(self.el(me, 0x38), self.eb(me, 0xa));
+        self.sf5_block(me, other);
+        let strength = crate::combo::level(self.eb(me, 0x34));
+        use crate::combo::Class;
+        let pressure = match self.eb(me, 0xa) {
+            crate::data_bank::ALPHA_COUNTER_SLOT
+            | crate::data_bank::SF2_SPECIAL_SLOT
+            | crate::data_bank::SF2_SUPER_SLOT
+            | crate::data_bank::ALPHA_SUPER_SECOND_SLOT
+            | crate::data_bank::ALPHA_SUPER_THIRD_SLOT => GUARD_SPECIAL_PRESSURE,
+            mv => match crate::combo::class_of(mv, strength) {
+                Class::Light | Class::Jump(1) => 4,
+                Class::Medium | Class::Jump(2) => 7,
+                Class::Heavy | Class::Sweep | Class::Jump(_) => 10,
+                Class::Special => GUARD_SPECIAL_PRESSURE,
+            },
+        };
+        if self.guard_power_contact(me, other, pressure) {
             return;
         }
-        let block = self.move_stun_of(me).block;
-        let s = self.combo_slot(other);
-        self.toggle_state.combo.blockstun[s] = block;
+        let defender = self.el(other, 0x38);
+        if !self.is_player_driven(defender) {
+            return;
+        }
+        let owner = self.el(me, 0x38);
+        self.sf6_block_drain(defender, pressure.saturating_add(12));
+        let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
+        let center = self.center_x(other);
+        if self.sf6_impact_block(owner, defender, !(0x86..=0x17a).contains(&center)) {
+            self.react_one(me, other, 0x45b6e, HitSource::Chip);
+            return;
+        }
+        let block = self.move_stun_of(me).block.saturating_add(self.sf6_take_rush_bonus(owner))
+            .saturating_add(if burnout { 4 } else { 0 });
+        if block > 0 && matches!(self.eb(other, 0xa), 4 | 8) && self.can_alpha_counter(defender) {
+            self.alpha_guard_contact(other, block);
+        } else if self.era_offense_flag(owner, self.toggles.true_combos)
+            || self.era_state(defender).is_some_and(|state| state.uses_family_bank())
+        {
+            let slot = self.combo_slot(other);
+            self.toggle_state.combo.blockstun[slot] = block;
+        }
+    }
+
+    fn guard_power_contact(&mut self, attacker: u16, defender: u16, pressure: u8) -> bool {
+        let ps = self.el(defender, 0x38);
+        if !self.era_guard_contact(ps, pressure) {
+            return false;
+        }
+        let slot = self.combo_slot(defender);
+        self.toggle_state.combo.blockstun[slot] = 0;
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.ww(ps, 0);
+        self.clear_neg_edge_latches_for_player(ps);
+        // A grounded guard breaks into the existing stagger without taking
+        // the blocked attack's damage. A jumping defender finishes the jump,
+        // vulnerable and without access to a second air guard.
+        if !self.is_jump_airborne(defender) {
+            self.react_one(attacker, defender, 0x45b6e, HitSource::Chip);
+        }
+        self.set_eb(defender, 0xf, self.eb(defender, 0xf) & !0x88);
+        true
+    }
+
+    fn guard_crush_reaction(&self, entity: u16) -> bool {
+        let move_id = self.eb(entity, 0xa);
+        self.eb(entity, 8) == 2
+            && (0x30..=0x3f).contains(&move_id)
+            && move_id != crate::combo::throw::THROWN_MOVE
+            && self.eb(entity, 9) & 0x81 == 0x80
+            && self.era_guard_crushed(self.el(entity, 0x38))
+    }
+
+    fn alpha_guard_contact(&mut self, entity: u16, frames: u8) {
+        let ps = self.el(entity, 0x38);
+        let slot = self.combo_slot(entity);
+        if self.toggle_state.combo.blockstun[slot] == 0 {
+            let relative = self.relative_directions(entity, self.pad_directions(ps));
+            self.era_reset_alpha_counter(ps);
+            self.era_track_alpha_counter(ps, relative);
+        }
+        self.toggle_state.combo.blockstun[slot] = frames;
+        // Alpha meter uses the native contact rates, with a medium guard award.
+        self.era_meter_gain(ps, 3);
     }
 
     /// The input handler of `ps` (entity `me`, direction `d0`) in blockstun:
@@ -6552,6 +7282,10 @@ impl Bus<'_> {
             self.set_eb(e, i, b);
         }
         let mv = self.eb(e, 0xa);
+        self.era_clear_alpha_move(ps, mv);
+        self.era_sf4_started(ps, mv);
+        self.sf5_on_move_started(ps, mv);
+        self.sf6_started(ps, mv);
         self.toggle_state.dp_connected[self.player_slot_index(ps).unwrap_or(1)] = false;
         if let Some(slot) = self.player_slot_index(ps) {
             self.toggle_state.human_attack_frames[slot] = 0;
@@ -6622,6 +7356,13 @@ impl Bus<'_> {
     /// hitstun, blockstun, a throw, a get-up, post-wakeup throw
     /// invulnerability, or an invulnerable frame.
     pub(crate) fn can_throw(&self, me: u16, other: u16) -> bool {
+        self.can_throw_at_range(me, other, crate::combo::throw::RANGE)
+    }
+
+    fn can_throw_at_range(&self, me: u16, other: u16, range: u16) -> bool {
+        if self.sf5_throw_invulnerable(self.el(other, 0x38)) {
+            return false;
+        }
         if self.dramatic_rules().is_some() {
             let owner = self.el(me, 0x38);
             let target = self.el(other, 0x38);
@@ -6649,7 +7390,27 @@ impl Bus<'_> {
         {
             return false;
         }
-        self.center_x(me).abs_diff(self.center_x(other)) <= crate::combo::throw::RANGE
+        self.center_x(me).abs_diff(self.center_x(other)) <= range
+    }
+
+    fn try_alpha_catch(&mut self, me: u16, other: u16, range: u16, damage: u8) -> bool {
+        if !self.can_throw_at_range(me, other, range) {
+            return false;
+        }
+        let ps = self.el(me, 0x38);
+        let Some(side) = self.era_side(ps) else { return false };
+        let entries = self.data_bank.and_then(|bank| {
+            let attacker = bank.throw_entry(self.fighter_of_entity(me)?)?;
+            let defender = bank.throw_entry(self.fighter_of_entity(other)?)?;
+            Some((attacker, defender))
+        });
+        let Some((attacker, defender)) = entries else { return false };
+        self.start_throw(ps, me, other, attacker.throw_header, defender.thrown_header, false);
+        let victim_slot = self.combo_slot(other);
+        self.toggle_state.throw.tech_window[victim_slot] = 0;
+        self.toggle_state.throw.crosses[victim_slot] = false;
+        self.toggle_state.era.fighters[side].command_throw_damage = damage;
+        true
     }
 
     /// Start `me`'s throw (`throw_header`) and `other`'s being-thrown reaction
@@ -6664,6 +7425,9 @@ impl Bus<'_> {
         back_throw: bool,
     ) {
         let other_ps = self.el(other, 0x38);
+        if let Some(side) = self.era_side(ps) {
+            self.toggle_state.era.fighters[side].command_throw_damage = 0;
+        }
         self.clear_all_trackers(ps);
         self.ww(ps, 0);
         self.clear_recovery_buffer(ps);
@@ -6700,6 +7464,29 @@ impl Bus<'_> {
             .map_or(back_throw, |fighter| crate::combo::throw::crosses_original_side(fighter, back_throw));
     }
 
+    fn separate_corner_throw(&mut self, victim: u16) {
+        use crate::combo::throw::{RANGE, TECH_PUSH};
+        use crate::era::EraFamily::{Sf1Plus, Sf2};
+
+        let thrower_ps = self.el(victim, 0x3c);
+        if self.era_rules.allow_corner_throw_loops
+            || !matches!(self.chosen_era(thrower_ps), Some(Sf1Plus | Sf2))
+        {
+            return;
+        }
+        let thrower = self.rw(thrower_ps + 0x10);
+        let victim_x = self.center_x(victim);
+        let thrower_x = self.center_x(thrower);
+        if victim_x.abs_diff(thrower_x) > RANGE {
+            return;
+        }
+        if victim_x <= 0x86 && thrower_x >= victim_x {
+            self.shift_grid_x(thrower, TECH_PUSH);
+        } else if victim_x >= 0x17a && thrower_x <= victim_x {
+            self.shift_grid_x(thrower, TECH_PUSH.wrapping_neg());
+        }
+    }
+
     fn throw_bounds(&self) -> (u16, u16) {
         if self.dramatic_rules().is_some() {
             let origin = sf_video::render::VISAREA_X as u16;
@@ -6722,12 +7509,13 @@ impl Bus<'_> {
             return false;
         }
         let heavy = self.rb(ps) == 0xfe || self.rb(ps + 1) == 0xfe;
+        let era_light = self.chosen_era(ps).is_some_and(|family| family != crate::era::EraFamily::Sf1987);
         let sf2 = self.sf2_state(ps).is_some() || self.sf2_state(self.el(other, 0x38)).is_some();
         let light = |at, table| {
             let latch = self.rb(at) & 0xfe;
             latch > self.rb(table) && latch < self.rb(table + 2)
         };
-        let light_chord = sf2 && light(ps, 0x405b6) && light(ps + 1, 0x405be);
+        let light_chord = (era_light || sf2) && light(ps, 0x405b6) && light(ps + 1, 0x405be);
         if !light_chord && (!matches!(d0, 1 | 2) || !heavy) {
             return false;
         }
@@ -6824,7 +7612,11 @@ impl Bus<'_> {
         if dramatic {
             self.bind_dramatic_target(thrower_ps, victim_ps);
         }
-        self.damage_with_chip(thrower, crate::combo::throw::DAMAGE, false);
+        let command_damage = self.era_side(thrower_ps).map_or(0, |side| {
+            std::mem::take(&mut self.toggle_state.era.fighters[side].command_throw_damage)
+        });
+        let damage = if command_damage == 0 { crate::combo::throw::DAMAGE } else { command_damage };
+        self.damage_with_chip(thrower, damage, false);
         if !self.defender_alive(victim_ps) {
             self.set_eb(victim, 8, 8);
             self.set_eb(victim, 0xa, 0x40);
@@ -6962,8 +7754,13 @@ impl Bus<'_> {
 
     // ---- Tier 1 damage, chip, and CPU AI scaling helpers (#97, O6) --------
 
-    fn effective_entry_damage(&self, entry: u32, is_chip: bool) -> u8 {
-        if !self.toggles.balanced_roster {
+    fn effective_entry_damage(&self, attacker: u16, entry: u32, is_chip: bool) -> u8 {
+        let classic_special = !is_chip
+            && matches!(entry, 0x4345e | 0x45f52 | 0x46012 | 0x436a8)
+            && self.chosen_era(self.el(attacker, 0x38)).is_some_and(|era| {
+                self.era_rules.classic_1987_special_damage || era == crate::era::EraFamily::Sf1987
+            });
+        if !self.toggles.balanced_roster || classic_special {
             return self.rb(entry + 1);
         }
         if is_chip || matches!(entry, 0x43466 | 0x4346e | 0x4601a | 0x46022 | 0x436b0) {

@@ -81,6 +81,12 @@ impl Pair {
         output.into_iter().nth(side).unwrap()
     }
 
+    fn confirm_fighter(&mut self, side: usize) {
+        if self.pulse(side, MenuInput::Confirm).transition == Some(Transition::StyleOpened) {
+            self.pulse(side, MenuInput::Confirm);
+        }
+    }
+
     fn connected(preset: RulesetPreset, override_side: Option<usize>) -> Self {
         let mut pair = Self {
             peers: [session(preset), session(preset)],
@@ -118,9 +124,9 @@ fn a_local_stage_override_on_either_peer_keeps_the_shared_online_stage_flow() {
     // GameSession::set_stage documents this as a Local/Training development hook.
     for override_side in 0..2 {
         let mut pair = Pair::connected(RulesetPreset::DefinitiveOverhaul, Some(override_side));
-        pair.pulse(1, MenuInput::Confirm);
+        pair.confirm_fighter(1);
         for _ in 0..5 { pair.idle(); }
-        pair.pulse(0, MenuInput::Confirm);
+        pair.confirm_fighter(0);
         for _ in 0..60 { pair.idle(); }
         let screens = pair.peers.each_ref().map(|peer| peer.screen());
         assert_eq!(screens, ["stage select"; 2],

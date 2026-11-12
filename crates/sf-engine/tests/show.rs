@@ -15,12 +15,15 @@ mod select;
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
-use sf_engine::data_bank::SF2_SUPER_SLOT;
-use sf_engine::era::Loadout;
+use sf_engine::data_bank::{
+    ALPHA_COUNTER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT, SF2_SUPER_SLOT,
+};
+use sf_engine::era::{EraFamily, Loadout};
 use sf_engine::era_fight::SUPER_FREEZE_FRAMES;
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::moves::Choice;
 use sf_engine::front::pause::PauseBox;
+use sf_engine::front::settings::Settings;
 use sf_engine::front::show::ready;
 use sf_engine::front::{FrameInputs, FrameOutput, GameSession, MenuItem, Transition};
 use sf_engine::moves::{Strength, REGISTRY};
@@ -36,6 +39,7 @@ const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 
 const FIGHT_LOOP: u32 = 0x3eafa;
 const RIGHT: usize = 0;
+const LEFT: usize = 1;
 const DOWN: usize = 2;
 const UP: usize = 3;
 const LP: usize = 0;
@@ -96,9 +100,24 @@ fn training(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool) -> G
     training_with_style(preset, fighter, dummy, None)
 }
 
-fn training_with_style(preset: RulesetPreset, fighter: TournamentFighter, dummy: bool, st: Option<Loadout>) -> GameSession {
+fn training_with_style(
+    preset: RulesetPreset,
+    fighter: TournamentFighter,
+    dummy: bool,
+    style: Option<(EraFamily, Loadout)>,
+) -> GameSession {
+    training_with_settings(preset, fighter, dummy, style, Settings::default())
+}
+
+fn training_with_settings(
+    preset: RulesetPreset,
+    fighter: TournamentFighter,
+    dummy: bool,
+    style: Option<(EraFamily, Loadout)>,
+    settings: Settings,
+) -> GameSession {
     let a = assets().expect("local ROMs");
-    let mut s = GameSession::new(a, MatchConfig::from_preset(preset));
+    let mut s = GameSession::new(a, MatchConfig::from_preset(preset)).with_settings(settings);
     for _ in 0..200 {
         s.step(idle());
     }
@@ -114,12 +133,27 @@ fn training_with_style(preset: RulesetPreset, fighter: TournamentFighter, dummy:
     for _ in 0..at % 6 {
         tap(&mut s, stick(RIGHT));
     }
-    if let Some(loadout) = st {
+    if let Some((family, loadout)) = style {
         assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::StyleOpened));
-        tap(&mut s, stick(RIGHT)); // SF2, ST by default.
-        if loadout == Loadout::Old {
+        let family_steps = match family {
+            EraFamily::Sf1Plus => 0,
+            EraFamily::Sf2 => 1,
+            EraFamily::SfZ => 2,
+            EraFamily::Sf3 => 3,
+            EraFamily::Sf4 => 4,
+            EraFamily::Sf5 => 5,
+            EraFamily::Sf6 => 6,
+            EraFamily::Sf1987 => 7,
+        };
+        for _ in 0..family_steps {
+            tap(&mut s, stick(RIGHT));
+        }
+        if matches!(loadout, Loadout::Old | Loadout::XIsm) {
             tap(&mut s, stick(UP)); // LOAD.
             tap(&mut s, stick(RIGHT));
+            if loadout == Loadout::XIsm {
+                tap(&mut s, stick(RIGHT));
+            }
         }
         tap(&mut s, confirm());
     } else {
@@ -137,6 +171,124 @@ fn training_with_style(preset: RulesetPreset, fighter: TournamentFighter, dummy:
         s.step(idle());
     }
     s
+}
+
+#[test]
+fn refilled_training_supers_can_be_repeated_in_the_same_round() {
+    use sf_engine::moves::{ButtonClass, Dir, MoveInput};
+    use sf_video::announcer::AnnouncerLine;
+
+    if assets().is_none() {
+        return;
+    }
+    const DOUBLE_QCF: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::Down, Dir::DownForward, Dir::Forward];
+    const QCF_DP: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::Down, Dir::DownForward];
+    const DOUBLE_QCB: &[Dir] = &[Dir::Down, Dir::DownBack, Dir::Back, Dir::Down, Dir::DownBack, Dir::Back];
+    for (fighter, family, loadout, motion, button, full_meter) in [
+        (TournamentFighter::Ryu, EraFamily::SfZ, Loadout::AIsm, DOUBLE_QCF, ButtonClass::Punch, 144),
+        (TournamentFighter::Ken, EraFamily::SfZ, Loadout::AIsm, QCF_DP, ButtonClass::Punch, 144),
+        (TournamentFighter::Ryu, EraFamily::SfZ, Loadout::XIsm, DOUBLE_QCF, ButtonClass::Punch, 48),
+        (TournamentFighter::Ken, EraFamily::Sf2, Loadout::Standard, DOUBLE_QCF, ButtonClass::Punch, 48),
+        (TournamentFighter::Ryu, EraFamily::SfZ, Loadout::AIsm, DOUBLE_QCB, ButtonClass::Kick, 144),
+        (TournamentFighter::Ryu, EraFamily::SfZ, Loadout::AIsm, QCF_DP, ButtonClass::Kick, 144),
+    ] {
+        let initial = training_with_settings(
+            RulesetPreset::DefinitiveOverhaul,
+            fighter,
+            true,
+            Some((family, loadout)),
+            Settings { fill_meters: true, ..Settings::default() },
+        );
+        let facings: &[bool] = if fighter == TournamentFighter::Ryu { &[false, true] } else { &[false] };
+        for &faces_left in facings {
+            let mut session = initial.clone();
+            if faces_left {
+                cross_training_dummy(&mut session);
+            }
+            assert_eq!(p1_faces_left(&session), faces_left);
+            for attempt in 0..2 {
+                assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, full_meter);
+                let mut supers = 0;
+                let input = MoveInput { motion, button };
+                for pad in fast_motion(input, !p1_faces_left(&session)) {
+                    let out = session.step(with(|frame| frame.p1 = pad));
+                    supers += usize::from(out.announcements.contains(&AnnouncerLine::Super));
+                }
+                assert_eq!(supers, 1, "{fighter:?} {family:?} {loadout:?}, left={faces_left}, attempt {}", attempt + 1);
+                for _ in 0..180 {
+                    if session.fight_machine().unwrap().era_fighters()[0].super_meter == full_meter {
+                        break;
+                    }
+                    session.step(idle());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn shown_super_can_be_repeated_as_soon_as_the_meter_refills() {
+    use sf_video::announcer::AnnouncerLine;
+
+    if assets().is_none() {
+        return;
+    }
+    let initial = training_with_settings(
+        RulesetPreset::DefinitiveOverhaul,
+        TournamentFighter::Ryu,
+        true,
+        Some((EraFamily::SfZ, Loadout::AIsm)),
+        Settings { fill_meters: true, ..Settings::default() },
+    );
+    for slot in [SF2_SUPER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT] {
+        let mut session = initial.clone();
+        open_list_at(&mut session, 0);
+        for _ in 0..8 {
+            if session.move_list().unwrap().selected().unwrap().produces == slot {
+                break;
+            }
+            tap(&mut session, stick(DOWN));
+        }
+        let entry = *session.move_list().unwrap().selected().unwrap();
+        assert_eq!(entry.produces, slot);
+        choose_show(&mut session);
+        let full_meter = 144;
+        let meter = |session: &GameSession| session.fight_machine().unwrap().era_fighters()[0].super_meter;
+        let mut first_super = false;
+        for _ in 0..250 {
+            let frame = session.step(idle());
+            first_super |= frame.announcements.contains(&AnnouncerLine::Super);
+            if first_super && meter(&session) == full_meter {
+                break;
+            }
+        }
+        assert!(first_super);
+        assert_eq!(meter(&session), full_meter);
+        let mut repeated = false;
+        for pad in fast_motion(entry.input, !p1_faces_left(&session)) {
+            let frame = session.step(with(|frame| frame.p1 = pad));
+            repeated |= frame.announcements.contains(&AnnouncerLine::Super);
+        }
+        assert!(repeated, "the first visible refill frame accepts the next {} motion", entry.name);
+        assert_eq!(meter(&session), 0);
+        assert_eq!(session.coach().expect("Show hands back control in Try").successes(), 1);
+    }
+}
+
+fn fast_motion(input: sf_engine::moves::MoveInput, facing_right: bool) -> Vec<sf_engine::front::PlayerInputs> {
+    use sf_engine::front::PlayerInputs;
+    let mut steps: Vec<PlayerInputs> = Vec::new();
+    for pad in input.frames(facing_right, Strength::Heavy) {
+        match steps.last_mut() {
+            Some(step) if step.directions == pad.directions => {
+                for (pressed, held) in step.buttons.iter_mut().zip(pad.buttons) {
+                    *pressed |= held;
+                }
+            }
+            _ => steps.push(pad),
+        }
+    }
+    steps
 }
 
 fn p1_move(s: &GameSession) -> u8 {
@@ -158,6 +310,17 @@ fn open_list_at(s: &mut GameSession, row: usize) -> FrameOutput {
         tap(s, stick(DOWN));
     }
     s.step(idle())
+}
+
+fn open_list_on(s: &mut GameSession, name: &str) {
+    open_list_at(s, 0);
+    for _ in 0..64 {
+        if s.move_list().unwrap().selected().is_some_and(|entry| entry.name == name) {
+            return;
+        }
+        tap(s, stick(DOWN));
+    }
+    panic!("missing move {name}");
 }
 
 /// Confirm the row and then SHOW; the fight is resumed by it.
@@ -182,11 +345,10 @@ fn st_new_shows_and_coaches_the_native_super_and_old_hides_it() {
         return;
     }
     let preset = RulesetPreset::DefinitiveOverhaul;
-    let mut session = training_with_style(preset, TournamentFighter::Ryu, true, Some(Loadout::Standard));
+    let mut session = training_with_style(preset, TournamentFighter::Ryu, true, Some((EraFamily::Sf2, Loadout::Standard)));
     assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
     assert!(session.fight().unwrap().era_hud().p1.is_some());
-    open_list_at(&mut session, 4);
-    assert_eq!(session.move_list().unwrap().selected().unwrap().name, "SHINKU HADOKEN");
+    open_list_on(&mut session, "SHINKU HADOKEN");
     choose_show(&mut session);
     let mut announced = false;
     let mut freeze = 0;
@@ -206,7 +368,7 @@ fn st_new_shows_and_coaches_the_native_super_and_old_hides_it() {
     assert_eq!(entry.produces, SF2_SUPER_SLOT);
     session.step(idle());
     assert!(session.fight_machine().unwrap().era_fighters()[0].super_meter > 0);
-    open_list_at(&mut session, 4);
+    open_list_on(&mut session, "SHINKU HADOKEN");
     assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0,
         "pausing the Try restores the meter from before the Show");
     tap(&mut session, confirm());
@@ -219,10 +381,148 @@ fn st_new_shows_and_coaches_the_native_super_and_old_hides_it() {
     }
     assert_eq!(session.coach().unwrap().successes(), 1, "Try saw the native double motion succeed");
 
-    let mut old = training_with_style(preset, TournamentFighter::Ryu, true, Some(Loadout::Old));
+    let mut old = training_with_style(preset, TournamentFighter::Ryu, true, Some((EraFamily::Sf2, Loadout::Old)));
     assert!(old.fight().unwrap().era_hud().p1.is_none());
     open_list_at(&mut old, 0);
     assert!(!old.move_list().unwrap().text().iter().any(|line| line.contains("SHINKU HADOKEN")));
+}
+
+#[test]
+fn alpha_counter_show_and_try_supply_a_real_attack_to_guard() {
+    if assets().is_none() {
+        return;
+    }
+    for dummy in [true, false] {
+        alpha_counter_training(dummy);
+    }
+}
+
+fn alpha_counter_training(dummy: bool) {
+    use sf_video::announcer::AnnouncerLine;
+
+    let mut session = training_with_style(
+        RulesetPreset::DefinitiveOverhaul,
+        TournamentFighter::Ryu,
+        dummy,
+        Some((EraFamily::SfZ, Loadout::AIsm)),
+    );
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
+    open_list_at(&mut session, 0);
+    for _ in 0..8 {
+        if session.move_list().unwrap().selected().unwrap().produces == ALPHA_COUNTER_SLOT {
+            break;
+        }
+        tap(&mut session, stick(DOWN));
+    }
+    assert_eq!(session.move_list().unwrap().selected().unwrap().produces, ALPHA_COUNTER_SLOT);
+    choose_show(&mut session);
+
+    let mut saw_guard = false;
+    let mut counter_calls = 0;
+    for _ in 0..400 {
+        let output = session.step(idle());
+        saw_guard |= session.fight().unwrap().fight_read().fighters[0].blockstun;
+        counter_calls += output.announcements.iter().filter(|&&line| line == AnnouncerLine::AlphaCounter).count();
+        if session.coach().is_some() {
+            break;
+        }
+    }
+    assert!(saw_guard, "Show blocked the opponent's attack");
+    assert_eq!(counter_calls, 1, "Show announced one real Alpha Counter");
+    let entry = *session.coach().expect("Alpha Counter Show enters Try").entry();
+    assert_eq!(entry.produces, ALPHA_COUNTER_SLOT);
+
+    for _ in 0..240 {
+        if session.fight().unwrap().fight_read().fighters[0].blockstun {
+            break;
+        }
+        let away = if p1_faces_left(&session) { RIGHT } else { LEFT };
+        session.step(stick(away));
+    }
+    assert!(session.fight().unwrap().fight_read().fighters[0].blockstun);
+    for input in entry.input.frames(!p1_faces_left(&session), Strength::Medium) {
+        session.step(with(|frame| frame.p1 = input));
+    }
+    assert_eq!(session.coach().unwrap().successes(), 1, "Try saw the guard cancel");
+    open_list_at(&mut session, 0);
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
+}
+
+#[test]
+fn alpha_super_show_uses_the_selected_isms_meter_and_enters_try() {
+    if assets().is_none() {
+        return;
+    }
+    for (loadout, remaining) in [(Loadout::AIsm, 48), (Loadout::XIsm, 0)] {
+        check_alpha_super_training(
+            TournamentFighter::Ryu,
+            loadout,
+            SF2_SUPER_SLOT,
+            "SHINKUU HADOKEN",
+            remaining,
+        );
+    }
+}
+
+#[test]
+fn alpha_alternate_supers_can_be_shown_and_practiced() {
+    if assets().is_none() {
+        return;
+    }
+    for (fighter, slot, name, remaining) in [
+        (TournamentFighter::Ryu, ALPHA_SUPER_SECOND_SLOT, "METSU SHORYUKEN", 0),
+        (TournamentFighter::Ryu, ALPHA_SUPER_THIRD_SLOT, "SHINKUU TATSUMAKI", 48),
+        (TournamentFighter::Ken, ALPHA_SUPER_SECOND_SLOT, "SHINRYUKEN", 48),
+        (TournamentFighter::Ken, ALPHA_SUPER_THIRD_SLOT, "SHIPPU JINRAIKYAKU", 0),
+    ] {
+        check_alpha_super_training(fighter, Loadout::AIsm, slot, name, remaining);
+    }
+}
+
+fn check_alpha_super_training(
+    fighter: TournamentFighter,
+    loadout: Loadout,
+    slot: u8,
+    name: &str,
+    remaining: u8,
+) {
+    use sf_video::announcer::AnnouncerLine;
+
+    let mut session = training_with_style(
+        RulesetPreset::DefinitiveOverhaul,
+        fighter,
+        true,
+        Some((EraFamily::SfZ, loadout)),
+    );
+    open_list_at(&mut session, 0);
+    for _ in 0..8 {
+        if session.move_list().unwrap().selected().unwrap().produces == slot {
+            break;
+        }
+        tap(&mut session, stick(DOWN));
+    }
+    assert_eq!(session.move_list().unwrap().selected().unwrap().name, name);
+    choose_show(&mut session);
+    let mut announced = 0;
+    for _ in 0..400 {
+        let output = session.step(idle());
+        if output.announcements.contains(&AnnouncerLine::Super) {
+            announced += 1;
+            assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, remaining, "{name}");
+        }
+        if session.coach().is_some() {
+            break;
+        }
+    }
+    assert_eq!(announced, 1, "Show announced {name} once in {loadout:?}");
+    let entry = *session.coach().expect("Show enters Try").entry();
+    assert_eq!(entry.name, name);
+    for input in entry.input.frames(!p1_faces_left(&session), Strength::Medium) {
+        session.step(with(|frame| frame.p1 = input));
+    }
+    assert_eq!(session.coach().unwrap().successes(), 1, "Try observed {name}");
+    open_list_at(&mut session, 0);
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
 }
 
 /// Step the session until `done`, at most `limit` frames, collecting the
@@ -405,19 +705,10 @@ fn show_is_the_same_as_a_pad_giving_the_same_inputs_and_leaves_the_opponent_alon
     }
     for dummy in [true, false] {
         let mut base = training(RulesetPreset::DefinitiveOverhaul, TournamentFighter::Ryu, dummy);
-        // Against the CPU (the fair CPU under this preset, SP21) the fight
-        // moves on its own: start from a frame where the show feeds at once,
-        // P1 free, standing and facing right, as the pad's frames are, with
-        // the CPU on the ground and far enough off not to cross over P1 (the
-        // show would then feed the mirrored motion, as it should).
+        // Start when the Show can feed its first input immediately.
         for f in 0..2_000 {
-            let m = base.fight_machine().unwrap();
-            let facing_right = sf_engine::moves::facing_right(m.work_ram(), &m.state.objectram, sf_engine::fighter::P1_STRUCT);
-            let o = &m.state.objectram;
-            let x = |e: usize| u16::from_be_bytes([o[e + 6], o[e + 7]]);
-            let [p1, p2] = base.fight().unwrap().fight_read().fighters;
-            let apart = x(0x400).abs_diff(x(0xa00)) > 120 && !matches!(p2.move_id, 9..=0xb) && p2.state & 1 == 0;
-            if ready(&p1) && facing_right && (dummy || apart) {
+            let [p1, _] = base.fight().unwrap().fight_read().fighters;
+            if ready(&p1) {
                 break;
             }
             assert!(f < 1_999, "a moment to show from");
@@ -429,12 +720,16 @@ fn show_is_the_same_as_a_pad_giving_the_same_inputs_and_leaves_the_opponent_alon
         let mut shown = base.clone();
         show_move(&mut shown, 1);
         let mut padded = base.clone();
-        // The pad: the entry's frames, then neutral.
-        let frames = entry.input.frames(true, Strength::Medium);
+        // Mirror the pad motion as the player turns during a CPU fight.
+        let frames = [false, true].map(|facing| entry.input.frames(facing, Strength::Medium));
         let at = shown.fight_machine().unwrap().state.frame;
         assert_eq!(padded.fight_machine().unwrap().state.frame, at);
-        for n in 0..frames.len() + 60 {
-            let input = frames.get(n).copied().unwrap_or_default();
+        for n in 0..frames[0].len() + 60 {
+            let machine = padded.fight_machine().unwrap();
+            let facing = sf_engine::moves::facing_right(
+                machine.work_ram(), &machine.state.objectram, sf_engine::fighter::P1_STRUCT,
+            );
+            let input = frames[usize::from(facing)].get(n).copied().unwrap_or_default();
             shown.step(idle());
             padded.step(with(|i| i.p1 = input));
             let (a, b) = (shown.fight_machine().unwrap(), padded.fight_machine().unwrap());
@@ -555,6 +850,17 @@ fn show_feeds_the_mirror_to_a_fighter_who_has_turned_to_face_left() {
         return;
     }
     let mut s = training(RulesetPreset::DefinitiveOverhaul, TournamentFighter::Ryu, true);
+    cross_training_dummy(&mut s);
+    show_move(&mut s, 0);
+    let mut came_out = false;
+    while s.fight().unwrap().showing().is_some() {
+        s.step(idle());
+        came_out |= p1_move(&s) == REGISTRY[0].produces;
+    }
+    assert!(came_out, "the Hadoken comes out facing left");
+}
+
+fn cross_training_dummy(s: &mut GameSession) {
     // Walk up to the dummy, then jump forward over it: Ryu turns to face it.
     for _ in 0..400 {
         s.step(stick(RIGHT));
@@ -578,17 +884,10 @@ fn show_feeds_the_mirror_to_a_fighter_who_has_turned_to_face_left() {
         }
     }
     assert!(turned, "the fighter turned to face left");
-    while p1_move(&s) != 1 {
+    while p1_move(s) != 1 {
         s.step(idle());
     }
-    assert!(p1_faces_left(&s));
-    show_move(&mut s, 0);
-    let mut came_out = false;
-    while s.fight().unwrap().showing().is_some() {
-        s.step(idle());
-        came_out |= p1_move(&s) == REGISTRY[0].produces;
-    }
-    assert!(came_out, "the Hadoken comes out facing left");
+    assert!(p1_faces_left(s));
 }
 
 #[test]
@@ -614,4 +913,51 @@ fn a_press_while_show_waits_cancels_it_and_the_pad_blocks_again() {
         s.step(stick(1));
     }
     assert!(matches!(p1_move(&s), 3 | 4 | 7 | 8), "the pad drives the fighter: {:#x}", p1_move(&s));
+}
+
+#[test]
+fn sf5_show_uses_the_actual_v_meter_and_scripted_defense() {
+    if assets().is_none() {
+        return;
+    }
+    let mut session = training_with_style(
+        RulesetPreset::DefinitiveOverhaul,
+        TournamentFighter::Ryu,
+        true,
+        Some((EraFamily::Sf5, Loadout::Skill1Trigger1)),
+    );
+    use sf_video::era_hud::{Fill, GaugeRow};
+    let initial = GaugeRow::stock(2, 0, Fill::of(0, 48));
+    let gauge = |session: &GameSession| session.fight_machine().unwrap().era_fighters()[0]
+        .gauge().unwrap().second.unwrap();
+    assert_eq!(gauge(&session), initial);
+    let mut fill = session.fight().unwrap().clone();
+    fill.set_fill_meters(true);
+    fill.step(session.assets(), Default::default(), Default::default(), false);
+    let filled = &fill.machine().era_fighters()[0];
+    assert_eq!(filled.super_meter, 144);
+    assert_eq!(filled.gauge().unwrap().second, Some(GaugeRow::stock(2, 2, Fill::EMPTY)));
+    for (name, slot) in [("DENJIN RENKI", 0x2a), ("HASHOGEKI", 0x2d), ("FUMIKOMI JODAN KAIRIGERI", 0x2f)] {
+        open_list_at(&mut session, 0);
+        for _ in 0..35 {
+            if session.move_list().unwrap().selected().unwrap().name == name {
+                break;
+            }
+            tap(&mut session, stick(DOWN));
+        }
+        assert_eq!(session.move_list().unwrap().selected().unwrap().name, name);
+        choose_show(&mut session);
+        let mut moves = std::collections::BTreeSet::new();
+        for _ in 0..700 {
+            session.step(idle());
+            moves.insert(p1_move(&session));
+            if session.coach().is_some() { break; }
+        }
+        assert!(moves.contains(&slot), "{name} Show reached {moves:x?}");
+        assert_eq!(session.coach().expect("Show transitions to Try").entry().name, name);
+        assert_eq!(session.step(start()).transition, Some(Transition::Paused));
+        session.step(idle());
+        assert_eq!(gauge(&session), initial, "{name} restored the reserve after Try");
+        tap(&mut session, start());
+    }
 }

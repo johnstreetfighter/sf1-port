@@ -172,11 +172,11 @@ fn write_png(dir: &str, name: &str, frame: &Frame) {
 
 fn stick_of(d: Option<Dir>) -> [bool; 4] {
     match d {
-        None => [false; 4],
+        None | Some(Dir::Neutral) => [false; 4],
         Some(Dir::Forward) => [true, false, false, false],
-        Some(Dir::Back) => [false, true, false, false],
-        Some(Dir::Down) => [false, false, true, false],
-        Some(Dir::Up) => [false, false, false, true],
+        Some(Dir::Back | Dir::ChargeBack) => [false, true, false, false],
+        Some(Dir::Down | Dir::ChargeDown) => [false, false, true, false],
+        Some(Dir::Up | Dir::Jump) => [false, false, false, true],
         Some(Dir::DownForward) => [true, false, true, false],
         Some(Dir::DownBack) => [false, true, true, false],
         Some(Dir::UpForward) => [true, false, false, true],
@@ -381,15 +381,15 @@ impl Kind {
 /// other class's.
 fn button_of(entry: &MoveEntry) -> u8 {
     match entry.input.button {
-        ButtonClass::Punch => MP,
         ButtonClass::Kick => MK,
+        _ => MP,
     }
 }
 
 fn other_button_of(entry: &MoveEntry) -> u8 {
     match entry.input.button {
-        ButtonClass::Punch => MK,
         ButtonClass::Kick => MP,
+        _ => MK,
     }
 }
 
@@ -409,8 +409,8 @@ fn early(entry: &MoveEntry, at: usize) -> Vec<Seg> {
 fn recorded(entry: &MoveEntry, kind: Kind, window: usize) -> Vec<Seg> {
     let [m0, m1, m2] = motion(entry);
     let heavy = match entry.input.button {
-        ButtonClass::Punch => HP,
         ButtonClass::Kick => HK,
+        _ => HP,
     };
     match kind {
         // The last step held back until the window has run out, then given with the button.

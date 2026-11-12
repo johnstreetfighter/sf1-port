@@ -61,11 +61,16 @@
 //! [`FairCpu`], which the machine's snapshot holds. The same inputs give the
 //! same fight, RESET POSITIONS included.
 
+mod era;
+pub(crate) use era::EraControl;
+use era::Tactics;
+
 use crate::config::{CoreToggles, RulesetPreset};
 use crate::data_bank::SpecialSlot;
 use crate::fight_reader::{player_struct, FIGHTER_SLOTS};
 use crate::fighter::{GAME_MODE, WORK_BASE};
-use crate::moves::{move_list, Dir, MoveEntry, MoveKind};
+use crate::era_fight::EraFighterState;
+use crate::moves::{live_move_list, move_list, ButtonClass, Dir, MoveEntry, MoveKind, Recognizer, Strength};
 use crate::roster::TournamentFighter;
 use sf_video::callouts::Side;
 
@@ -517,12 +522,12 @@ fn role(slot: &SpecialSlot) -> Role {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Kit {
     pub fighter: Option<TournamentFighter>,
-    projectile: Option<&'static MoveEntry>,
-    projectile_alt: Option<&'static MoveEntry>,
-    anti_air: Option<&'static MoveEntry>,
-    anti_air_alt: Option<&'static MoveEntry>,
-    advance: Option<&'static MoveEntry>,
-    advance_alt: Option<&'static MoveEntry>,
+    projectile: Option<MoveEntry>,
+    projectile_alt: Option<MoveEntry>,
+    anti_air: Option<MoveEntry>,
+    anti_air_alt: Option<MoveEntry>,
+    advance: Option<MoveEntry>,
+    advance_alt: Option<MoveEntry>,
 }
 
 impl Kit {
@@ -531,19 +536,54 @@ impl Kit {
     /// `None` when the fight holds no 1987 player table for him (a boss
     /// without the art pack), whose specials he then does not have.
     pub fn of(fighter: TournamentFighter, preset: RulesetPreset, slots: Option<[SpecialSlot; 3]>) -> Kit {
+        Self::from_moves(fighter, slots, move_list(fighter, preset).into_iter().copied())
+    }
+
+    #[cfg(test)]
+    fn of_alpha(fighter: TournamentFighter, preset: RulesetPreset, slots: Option<[SpecialSlot; 3]>, era: &EraFighterState) -> Kit {
+        let entries = live_move_list(fighter, preset, slots.is_some(), era);
+        Self::from_moves(fighter, slots, entries)
+    }
+
+    fn from_moves(fighter: TournamentFighter, slots: Option<[SpecialSlot; 3]>, entries: impl IntoIterator<Item = MoveEntry>) -> Kit {
         let mut kit = Kit {
             fighter: Some(fighter),
             ..Kit::default()
         };
         let ryu = [0x19, 0x1a, 0x1b].map(SpecialSlot::ryu);
-        for entry in move_list(fighter, preset) {
+        for entry in entries {
             if entry.kind != MoveKind::Special || (entry.available.player_table && slots.is_none()) {
                 continue;
             }
-            let Some(slot) = (0x19..=0x1b).contains(&entry.produces).then(|| slots.unwrap_or(ryu)[usize::from(entry.produces - 0x19)]) else {
+            let move_role = if entry.recognizer == Recognizer::AlphaMove {
+                use TournamentFighter::{Adon, Birdie, Eagle, Gen, Sagat};
+                match (fighter, entry.produces) {
+                    (Adon, 0x19) | (Gen, 0x1b) | (Eagle | Sagat, 0x1f) => Some(Role::AntiAir),
+                    (Sagat, 0x19) | (Adon, 0x1b | 0x2c) | (Birdie, 0x1a | 0x1b)
+                    | (Eagle, 0x1a | 0x2d | 0x2f) | (Gen, 0x1a | 0x2d | 0x2f) => Some(Role::Advance),
+                    // The ground attack plan needs a setup for airborne moves,
+                    // command throws and counters before it can pick them.
+                    _ => None,
+                }
+            } else if entry.recognizer == Recognizer::FamilyMove {
+                if entry.input.motion.first() == Some(&Dir::Jump)
+                    || matches!(entry.input.button, ButtonClass::PairPunch | ButtonClass::PairKick)
+                {
+                    None
+                } else if ["SHORYUKEN", "UPPERCUT", "GEKIROU"].iter().any(|name| entry.name.contains(name)) {
+                    Some(Role::AntiAir)
+                } else if ["HADOKEN", "TIGER SHOT", "KIAI SHOT"].iter().any(|name| entry.name.contains(name)) {
+                    Some(Role::Projectile)
+                } else {
+                    Some(Role::Advance)
+                }
+            } else {
+                (0x19..=0x1b).contains(&entry.produces).then(|| role(&slots.unwrap_or(ryu)[usize::from(entry.produces - 0x19)]))
+            };
+            let Some(move_role) = move_role else {
                 continue;
             };
-            let (first, second) = match role(&slot) {
+            let (first, second) = match move_role {
                 Role::Projectile => (&mut kit.projectile, &mut kit.projectile_alt),
                 Role::AntiAir => (&mut kit.anti_air, &mut kit.anti_air_alt),
                 Role::Advance => (&mut kit.advance, &mut kit.advance_alt),
@@ -556,6 +596,22 @@ impl Kit {
         }
         kit
     }
+
+    fn by_role(&self, role: Role) -> [Option<MoveEntry>; 2] {
+        match role {
+            Role::Projectile => [self.projectile, self.projectile_alt],
+            Role::AntiAir => [self.anti_air, self.anti_air_alt],
+            Role::Advance => [self.advance, self.advance_alt],
+        }
+    }
+
+    fn cancels_with(&self, role: Role) -> bool {
+        self.by_role(role).into_iter().flatten().any(can_cancel_into)
+    }
+}
+
+fn can_cancel_into(entry: MoveEntry) -> bool {
+    !matches!(entry.recognizer, Recognizer::AlphaMove | Recognizer::FamilyMove) || entry.input.button == ButtonClass::MashPunch
 }
 
 /// What the CPU is told about the fight besides what it sees: its level,
@@ -564,6 +620,7 @@ impl Kit {
 pub struct Context {
     pub level: Level,
     pub kit: Kit,
+    era: Option<Tactics>,
     /// Under `standard_high_low_block` the crouching guard stops standing
     /// attacks too; without it only the standing guard does.
     pub standard_block: bool,
@@ -583,11 +640,27 @@ impl Context {
         Context {
             level,
             kit,
+            era: None,
             standard_block: toggles.standard_high_low_block,
             true_combos: toggles.true_combos,
             cancels: toggles.cancels,
             throws: toggles.throws,
         }
+    }
+
+    pub(crate) fn with_era(
+        level: Level,
+        fighter: TournamentFighter,
+        slots: Option<[SpecialSlot; 3]>,
+        config: crate::config::MatchConfig,
+        state: &EraFighterState,
+        control: EraControl,
+    ) -> Self {
+        let entries = live_move_list(fighter, config.preset, slots.is_some(), state);
+        let kit = Kit::from_moves(fighter, slots, entries.iter().copied());
+        let mut context = Self::new(level, kit, &config.toggles);
+        context.era = Some(Tactics::of(state, &entries, config, level, control));
+        context
     }
 }
 
@@ -834,7 +907,12 @@ impl FairCpu {
         }
         self.learn(view, before);
         if let Some(before) = before {
-            if self.plan.interruptible() {
+            let interruptible = self.plan.interruptible();
+            let era_response = ctx.era.filter(|tactics| interruptible || tactics.can_interrupt())
+                .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before));
+            if let Some(plan) = era_response {
+                self.plan = plan;
+            } else if interruptible {
                 if let Some(plan) = self.react(step, view, before, ctx) {
                     self.plan = plan;
                 }
@@ -844,7 +922,8 @@ impl FairCpu {
             if !self.ready(view) {
                 return 0;
             }
-            self.plan = self.choose(step, view, ctx);
+            self.plan = ctx.era.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view))
+                .unwrap_or_else(|| self.choose(step, view, ctx));
         }
         self.next_pad(step, view, ctx)
     }
@@ -1051,11 +1130,11 @@ impl FairCpu {
         if whiffed && view.me.free() && view.frame >= self.settle {
             let reach = self.reach[0][2].max(self.reach[0][5]) + 6;
             if view.gap() <= reach && self.rng.chance(level.quality()) {
-                let cancel_role = if ctx.kit.anti_air.is_some() {
+                let cancel_role = if ctx.kit.cancels_with(Role::AntiAir) {
                     Some(Role::AntiAir)
-                } else if ctx.kit.advance.is_some() {
+                } else if ctx.kit.cancels_with(Role::Advance) {
                     Some(Role::Advance)
-                } else if ctx.kit.projectile.is_some() && !view.my_shot {
+                } else if ctx.kit.cancels_with(Role::Projectile) && !view.my_shot {
                     Some(Role::Projectile)
                 } else {
                     None
@@ -1159,11 +1238,11 @@ impl FairCpu {
             options.push((Choice::Combo, if gap <= 28 { 58 } else { 52 }));
         }
         if ctx.cancels && open {
-            let role = if ctx.kit.projectile.is_some() && !view.my_shot {
+            let role = if ctx.kit.cancels_with(Role::Projectile) && !view.my_shot {
                 Some(Role::Projectile)
-            } else if ctx.kit.advance.is_some() {
+            } else if ctx.kit.cancels_with(Role::Advance) {
                 Some(Role::Advance)
-            } else if ctx.kit.anti_air.is_some() {
+            } else if ctx.kit.cancels_with(Role::AntiAir) {
                 Some(Role::AntiAir)
             } else {
                 None
@@ -1267,16 +1346,8 @@ impl FairCpu {
                 Plan::of(PlanKind::Act, &pads)
             }
             Choice::Cancel { crouch, button: norm_btn, role } => {
-                let (first, second) = match role {
-                    Role::Projectile => (ctx.kit.projectile, ctx.kit.projectile_alt),
-                    Role::AntiAir => (ctx.kit.anti_air, ctx.kit.anti_air_alt),
-                    Role::Advance => (ctx.kit.advance, ctx.kit.advance_alt),
-                };
-                let entry = match (first, second) {
-                    (Some(a), Some(b)) => Some(if self.rng.chance(50) { b } else { a }),
-                    (first, _) => first,
-                };
-                let Some(entry) = entry else { return Plan::default() };
+                let entries = ctx.kit.by_role(role).map(|entry| entry.filter(|entry| can_cancel_into(*entry)));
+                let Some(entry) = self.pick_special(entries) else { return Plan::default() };
                 self.last_normal = None;
                 let mut pads = Vec::with_capacity(PLAN_CAP);
                 let reach = self.reach[usize::from(crouch)][norm_btn];
@@ -1295,10 +1366,15 @@ impl FairCpu {
                 let ok = self.rng.chance(clean);
                 let motion = entry.input.motion;
                 let strength = self.rng.below(3) as usize;
-                let sp_btn = match entry.input.button {
-                    crate::moves::ButtonClass::Punch => strength,
-                    crate::moves::ButtonClass::Kick => 3 + strength,
-                };
+                if matches!(entry.recognizer, Recognizer::AlphaMove | Recognizer::FamilyMove) {
+                    // Give the first tap its own edge even if the preceding
+                    // normal and the mash use the same punch button.
+                    pads.push(norm_stick);
+                    pads.extend(alpha_motion(&entry, facing_right, strength, ok));
+                    self.settle = settle_after(pads.len().min(PLAN_CAP) as u32);
+                    return Plan::of(PlanKind::Act, &pads);
+                }
+                let sp_btn = strength + if entry.input.button.kick() { 3 } else { 0 };
                 for &dir in &motion[..motion.len().saturating_sub(1)] {
                     let s = stick(dir, facing_right);
                     pads.push(s);
@@ -1347,24 +1423,22 @@ impl FairCpu {
                 Plan::of(PlanKind::Act, &frames)
             }
             Choice::Special(role) => {
-                let (first, second) = match role {
-                    Role::Projectile => (ctx.kit.projectile, ctx.kit.projectile_alt),
-                    Role::AntiAir => (ctx.kit.anti_air, ctx.kit.anti_air_alt),
-                    Role::Advance => (ctx.kit.advance, ctx.kit.advance_alt),
-                };
-                let entry = match (first, second) {
-                    (Some(a), Some(b)) => Some(if self.rng.chance(50) { b } else { a }),
-                    (first, _) => first,
-                };
-                let Some(entry) = entry else { return Plan::default() };
+                let Some(entry) = self.pick_special(ctx.kit.by_role(role)) else { return Plan::default() };
                 self.last_normal = None;
                 let lead = if answer { level.special_cost() } else { 0 };
-                let frames = self.motion(entry, !view.me.facing_left, view, ctx);
+                let frames = self.motion(&entry, !view.me.facing_left, view, ctx);
                 let mut pads = vec![0u16; lead];
                 pads.extend(frames);
                 self.settle = settle_after(lead as u32 + 9);
                 Plan::of(PlanKind::Act, &pads)
             }
+        }
+    }
+
+    fn pick_special(&mut self, [first, second]: [Option<MoveEntry>; 2]) -> Option<MoveEntry> {
+        match (first, second) {
+            (Some(a), Some(b)) => Some(if self.rng.chance(50) { b } else { a }),
+            (first, second) => first.or(second),
         }
     }
 
@@ -1378,6 +1452,11 @@ impl FairCpu {
     fn motion(&mut self, entry: &MoveEntry, facing_right: bool, view: Percept, ctx: &Context) -> Vec<u16> {
         let pressure = view.me.health < view.foe.health || view.dist() < 60;
         let clean = ctx.level.execution().saturating_sub(if pressure { (100 - ctx.level.execution()) / 2 } else { 0 });
+        if matches!(entry.recognizer, Recognizer::AlphaMove | Recognizer::FamilyMove) {
+            let ok = self.rng.chance(clean);
+            let strength = self.rng.below(3) as usize;
+            return alpha_motion(entry, facing_right, strength, ok);
+        }
         let mut motion: Vec<Dir> = entry.input.motion.to_vec();
         let mut early = false;
         if !self.rng.chance(clean) {
@@ -1388,10 +1467,7 @@ impl FairCpu {
             }
         }
         let strength = self.rng.below(3) as usize;
-        let b = match entry.input.button {
-            crate::moves::ButtonClass::Punch => strength,
-            crate::moves::ButtonClass::Kick => 3 + strength,
-        };
+        let b = strength + if entry.input.button.kick() { 3 } else { 0 };
         let steps = motion.len();
         let last_from = 3 * steps.saturating_sub(1);
         let pressed_from = if early { last_from.saturating_sub(2) } else { last_from + 1 };
@@ -1408,14 +1484,29 @@ impl FairCpu {
     }
 }
 
+fn alpha_motion(entry: &MoveEntry, facing_right: bool, strength: usize, clean: bool) -> Vec<u16> {
+    let strength = [Strength::Light, Strength::Medium, Strength::Heavy][strength];
+    entry.input.frames(facing_right, strength).into_iter().map(|frame| {
+        let dirs = frame.directions.into_iter().zip([RIGHT, LEFT, DOWN, UP])
+            .fold(0, |pad, (held, bit)| if held { pad | bit } else { pad });
+        if clean {
+            frame.buttons.into_iter().enumerate()
+                .fold(dirs, |pad, (b, held)| if held { pad | button(b) } else { pad })
+        } else {
+            dirs
+        }
+    }).collect()
+}
+
 /// The stick for a facing-relative direction.
 fn stick(dir: Dir, facing_right: bool) -> u16 {
     let (fwd, back) = if facing_right { (RIGHT, LEFT) } else { (LEFT, RIGHT) };
     match dir {
+        Dir::Neutral => 0,
         Dir::Forward => fwd,
-        Dir::Back => back,
-        Dir::Up => UP,
-        Dir::Down => DOWN,
+        Dir::Back | Dir::ChargeBack => back,
+        Dir::Up | Dir::Jump => UP,
+        Dir::Down | Dir::ChargeDown => DOWN,
         Dir::UpForward => UP | fwd,
         Dir::UpBack => UP | back,
         Dir::DownForward => DOWN | fwd,
@@ -1437,8 +1528,65 @@ mod tests {
         Context::new(level, Kit::of(TournamentFighter::Ryu, RulesetPreset::ClassicCompetitive, Some(RYU_SLOTS)), &CoreToggles::for_preset(RulesetPreset::ClassicCompetitive))
     }
 
+    fn alpha_kit(fighter: TournamentFighter, loadout: crate::era::Loadout) -> Kit {
+        let mut era = EraFighterState::default();
+        era.fighter = Some(fighter);
+        era.max_sub_hp = crate::era_fight::FULL_SUB_HP;
+        era.style = crate::era::StylePick::for_revision(crate::era::Revision::Sfz3, loadout);
+        let mut slots = RYU_SLOTS;
+        if fighter == TournamentFighter::Sagat {
+            slots[2] = SpecialSlot { kick: true, ..slots[1] };
+        }
+        Kit::of_alpha(fighter, RulesetPreset::DefinitiveOverhaul, Some(slots), &era)
+    }
+
     fn percept(frame: u32, foe: Body) -> Percept {
         Percept { frame, fighting: true, me: body(300), foe, ..Percept::default() }
+    }
+
+    #[test]
+    fn alpha_kit_uses_the_active_ground_commands_and_cancel_rules() {
+        use crate::era::Loadout::{AIsm, XIsm};
+        let adon = alpha_kit(TournamentFighter::Adon, AIsm);
+        assert_eq!(adon.anti_air.unwrap().input.button, ButtonClass::Kick);
+        assert_eq!(adon.advance.unwrap().input.motion, &[Dir::Back, Dir::Down, Dir::DownBack]);
+        assert_eq!(adon.advance_alt.unwrap().name, "JAGUAR TOOTH");
+        assert!(!adon.cancels_with(Role::Advance));
+        let adon_x = alpha_kit(TournamentFighter::Adon, XIsm);
+        assert_eq!(adon_x.advance.unwrap().name, "JAGUAR TOOTH");
+        assert!(adon_x.advance_alt.is_none());
+
+        let gen = alpha_kit(TournamentFighter::Gen, AIsm);
+        assert_eq!(gen.anti_air.unwrap().name, "GEKIROU");
+        assert_eq!(gen.advance.unwrap().input.button, ButtonClass::MashPunch);
+        assert!(gen.cancels_with(Role::Advance));
+        assert!(!gen.cancels_with(Role::AntiAir));
+    }
+
+    #[test]
+    fn alpha_pad_scripts_complete_charge_release_mash_and_up_commands() {
+        use crate::era::Loadout::{AIsm, XIsm};
+        let birdie = alpha_kit(TournamentFighter::Birdie, AIsm);
+        let head = alpha_motion(&birdie.advance.unwrap(), false, 0, true);
+        let horn = alpha_motion(&birdie.advance_alt.unwrap(), false, 0, true);
+        let charge = crate::moves::CHARGE_FRAMES;
+        assert_eq!(&head[..charge], &[RIGHT; crate::moves::CHARGE_FRAMES]);
+        assert_eq!(head[charge + 1], LEFT | button(0));
+        assert_eq!(&horn[..charge], &[button(0) | button(1); crate::moves::CHARGE_FRAMES]);
+        assert_eq!(horn[charge], 0);
+        assert!(charge + 1 + Level::Easy.special_cost() < PLAN_CAP);
+
+        let gen = alpha_kit(TournamentFighter::Gen, AIsm);
+        let mash = alpha_motion(&gen.advance.unwrap(), true, 1, true);
+        let presses: Vec<_> = mash.iter().enumerate().filter_map(|(tick, &pad)| (pad == button(1)).then_some(tick)).collect();
+        assert_eq!(presses, [0, 4, 8, 12]);
+
+        let sagat = alpha_kit(TournamentFighter::Sagat, XIsm);
+        let tiger_crush = sagat.advance.unwrap();
+        assert_eq!(tiger_crush.name, "TIGER CRUSH");
+        let knee = alpha_motion(&tiger_crush, true, 0, true);
+        let up = knee.iter().copied().find(|pad| pad & UP != 0);
+        assert_eq!(up, Some(UP | RIGHT | button(3)));
     }
 
     #[test]

@@ -159,11 +159,11 @@ impl Pair {
     }
 
     fn lock_fighters(&mut self) {
-        self.pulse(1, MenuInput::Confirm);
+        self.confirm_fighter(1);
         for _ in 0..5 {
             self.idle();
         }
-        self.pulse(0, MenuInput::Confirm);
+        self.confirm_fighter(0);
         for _ in 0..60 {
             self.idle();
             if self
@@ -310,14 +310,23 @@ impl Pair {
         self.idle();
         output
     }
+
+    fn confirm_fighter(&mut self, side: usize) -> Option<Transition> {
+        let transition = self.pulse(side, MenuInput::Confirm)[side].transition;
+        if transition == Some(Transition::StyleOpened) {
+            self.pulse(side, MenuInput::Confirm)[side].transition
+        } else {
+            transition
+        }
+    }
 }
 
 #[test]
 fn each_local_p1_controls_its_assigned_fighter_and_both_locks_reach_a_real_rollback_fight() {
     let mut pair = Pair::connected();
-    let picked = pair.pulse(1, MenuInput::Confirm);
+    let picked = pair.confirm_fighter(1);
     assert_eq!(
-        picked[1].transition,
+        picked,
         Some(Transition::Picked(TournamentFighter::Ken)),
         "the client's physical P1 locks the assigned P2 fighter, never the host's P1"
     );
@@ -340,7 +349,7 @@ fn each_local_p1_controls_its_assigned_fighter_and_both_locks_reach_a_real_rollb
     for _ in 0..5 {
         pair.idle();
     }
-    pair.pulse(0, MenuInput::Confirm);
+    pair.confirm_fighter(0);
     for _ in 0..60 {
         pair.idle();
         if pair
@@ -533,21 +542,24 @@ fn online_pause_and_moves_keep_simulating_neutral_input_and_resume_without_a_hel
 
 #[test]
 fn telemetry_uses_measured_link_values_and_local_hud_preferences_do_not_change_simulation() {
-    let original = Pair::fighting();
+    let original = Box::new(Pair::fighting());
     let with_hud = |mode| {
-        let mut pair = original.clone();
+        let mut pair = (*original).clone();
         let mut settings = pair.peers[1].settings().clone();
         settings.netplay_hud = mode;
         pair.peers[1] = pair.peers[1].clone().with_settings(settings);
         pair
     };
-    let mut off = with_hud(NetplayHudMode::Off);
-    let mut compact = with_hud(NetplayHudMode::Compact);
-    let mut full = with_hud(NetplayHudMode::Full);
-    let off_frame = off.idle();
-    let compact_frame = compact.idle();
-    let full_frame = full.idle();
-    let delay = compact
+    let (off_pixels, off_simulation) = {
+        let mut off = with_hud(NetplayHudMode::Off);
+        let [_, client] = off.idle();
+        let simulation = off.peers.each_ref().map(|peer| {
+            let fight = peer.fight().unwrap();
+            (fight.machine().save_snapshot(), fight.state_checksum())
+        });
+        (client.frame.argb, simulation)
+    };
+    let delay = original
         .packets
         .iter()
         .find_map(|(_, packet)| match packet {
@@ -559,56 +571,35 @@ fn telemetry_uses_measured_link_values_and_local_hud_preferences_do_not_change_s
             _ => None,
         })
         .expect("the public Welcome negotiated a delay");
-    let advantage = full
-        .packets
-        .iter()
-        .rev()
-        .find_map(|(side, packet)| match packet {
-            NetPacket::Input {
-                frame_advantage, ..
-            } if *side == 1 => Some(*frame_advantage),
-            _ => None,
-        })
-        .expect("the displayed advantage comes from the same outgoing simulation tick");
-    let mut expected_compact = off_frame[1].frame.argb.clone();
-    sf_video::compositor::fallback_text(
-        &mut expected_compact,
-        2,
-        2,
-        &format!("PING 34MS  RBF 0F  DLY {delay}F  [ETH]"),
-        0xffff_d438,
-        1,
-    );
-    assert!(
-        compact_frame[1].frame.argb == expected_compact,
-        "Compact draws literal measured 34ms RTT telemetry at y2 over the unchanged fight"
-    );
-    let mut expected_full = off_frame[1].frame.argb.clone();
-    sf_video::compositor::fallback_text(
-        &mut expected_full,
-        2,
-        2,
-        &format!("PING 34MS  JIT 0MS  RBF 0/8F  DLY {delay}F  ADV {advantage:+}F  [ETH]"),
-        0xffff_d438,
-        1,
-    );
-    assert!(
-        full_frame[1].frame.argb == expected_full,
-        "Full adds literal jitter, rollback limit and signed frame advantage"
-    );
-    for side in 0..2 {
-        let expected = off.peers[side].fight().unwrap();
-        for peer in [&compact.peers[side], &full.peers[side]] {
-            let actual = peer.fight().unwrap();
-            assert!(
-                actual.save_netplay_snapshot(0).machine
-                    == expected.save_netplay_snapshot(0).machine
-            );
-            assert_eq!(
-                actual.state_checksum(),
-                expected.state_checksum(),
-                "HUD is strictly local"
-            );
+    for mode in [NetplayHudMode::Compact, NetplayHudMode::Full] {
+        let mut pair = with_hud(mode);
+        let [_, client] = pair.idle();
+        let text = if mode == NetplayHudMode::Full {
+            let advantage = pair
+                .packets
+                .iter()
+                .rev()
+                .find_map(|(side, packet)| match packet {
+                    NetPacket::Input {
+                        frame_advantage, ..
+                    } if *side == 1 => Some(*frame_advantage),
+                    _ => None,
+                })
+                .expect("the displayed advantage comes from the same outgoing simulation tick");
+            format!("PING 34MS  JIT 0MS  RBF 0/8F  DLY {delay}F  ADV {advantage:+}F  [ETH]")
+        } else {
+            format!("PING 34MS  RBF 0F  DLY {delay}F  [ETH]")
+        };
+        let mut expected = off_pixels.clone();
+        sf_video::compositor::fallback_text(&mut expected, 2, 2, &text, 0xffff_d438, 1);
+        assert!(
+            client.frame.argb == expected,
+            "{mode:?} draws measured telemetry over the unchanged fight"
+        );
+        for (peer, (machine, checksum)) in pair.peers.iter().zip(&off_simulation) {
+            let fight = peer.fight().unwrap();
+            assert!(fight.machine().save_snapshot() == *machine);
+            assert_eq!(fight.state_checksum(), *checksum, "HUD is strictly local");
         }
     }
 }
@@ -836,9 +827,9 @@ fn dropped_vote_and_epoch_messages_recover_and_reselect_resets_both_locks() {
         pair.peers.iter().all(|peer| peer.screen() == "select"),
         "a dropped new Welcome cannot strand either peer in the old match"
     );
-    let client = pair.pulse(1, MenuInput::Confirm);
+    let client = pair.confirm_fighter(1);
     assert_eq!(
-        client[1].transition,
+        client,
         Some(Transition::Picked(TournamentFighter::Ken)),
         "Reselect clears the previous client lock"
     );
@@ -917,9 +908,9 @@ fn assert_shared_stage_back(mut pair: Pair, picker: usize) {
         }]);
         pair.idle();
     }
-    let chosen = pair.pulse(0, MenuInput::Confirm);
+    let chosen = pair.confirm_fighter(0);
     assert_eq!(
-        chosen[0].transition,
+        chosen,
         Some(Transition::Picked(TournamentFighter::Ryu)),
         "a delayed old character lock cannot relock P2 after Stage Back"
     );
@@ -1143,21 +1134,7 @@ fn rehosting_allocates_beyond_every_seen_epoch_and_retires_old_input_datagrams()
         generation > high_generation,
         "old lobby locks and votes also remain retired across rooms"
     );
-    next.pulse(1, MenuInput::Confirm);
-    for _ in 0..5 {
-        next.idle();
-    }
-    next.pulse(0, MenuInput::Confirm);
-    for _ in 0..60 {
-        next.idle();
-        if next
-            .peers
-            .iter()
-            .all(|peer| peer.screen() == "stage select")
-        {
-            break;
-        }
-    }
+    next.lock_fighters();
     next.pulse(0, MenuInput::Confirm);
     for _ in 0..120 {
         next.idle();

@@ -32,7 +32,7 @@ use sf_video::callouts::Strip;
 use super::session::PlayerInputs;
 use crate::fight_reader::FighterRead;
 use crate::canonical::{canonical_enum, Canonical, CanonicalHasher};
-use crate::moves::{busy_gate_free, MoveEntry, Strength};
+use crate::moves::{busy_gate_free, ButtonClass, MoveEntry, MoveKind, Recognizer, Strength};
 
 /// Frames a show waits for the fighter to be free and standing before it
 /// gives up (ten seconds at 60 Hz).
@@ -63,16 +63,46 @@ fn newly_pressed(was: &PlayerInputs, now: &PlayerInputs) -> bool {
         || now.buttons.iter().zip(&was.buttons).any(|(n, w)| *n && !*w)
 }
 
+/// Some system actions need a real incoming attack to demonstrate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PracticeContact {
+    Guard = 1,
+    Strike = 2,
+    Counter = 3,
+}
+
+pub(super) fn practice_contact(entry: &MoveEntry) -> Option<PracticeContact> {
+    use crate::era_fight::sf5;
+    if entry.recognizer == Recognizer::AlphaCounter {
+        return Some(PracticeContact::Guard);
+    }
+    if entry.recognizer == Recognizer::FamilyMove
+        && matches!(entry.name, "ST ANDREWS GREEN" | "EX ST ANDREWS GREEN")
+    {
+        return Some(PracticeContact::Counter);
+    }
+    if entry.recognizer != Recognizer::FamilyMove || entry.kind != MoveKind::System {
+        return None;
+    }
+    match (entry.produces, entry.input.button) {
+        (sf5::REVERSAL, ButtonClass::TriplePunch | ButtonClass::TripleKick) => Some(PracticeContact::Guard),
+        (sf5::SHIFT_BREAK, ButtonClass::ShiftPair) => Some(PracticeContact::Strike),
+        _ if entry.name == "DRIVE REVERSAL" => Some(PracticeContact::Guard),
+        _ if matches!(entry.name, "MIND'S EYE" | "ISSHIN") => Some(PracticeContact::Strike),
+        _ => None,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Phase {
-    Waiting { frames: u32 },
+    Waiting { frames: u32, strike_ticks: u8 },
     /// `fed` frames of the input are through.
     Feeding { fed: usize },
     Finishing { frames: u32 },
 }
 
-canonical_enum!(Phase, "show-phase/v1";
-    Waiting { frames } => 0,
+canonical_enum!(Phase, "show-phase/v2";
+    Waiting { frames, strike_ticks } => 0,
     Feeding { fed } => 1,
     Finishing { frames } => 2,
 );
@@ -103,10 +133,9 @@ impl Show {
             produces, name: _, kind: _, input: _, recognizer: _,
             call_out: _, available: _,
         } = entry;
-        out.tag("training-show/v1");
-        // The input is already expanded into right/left pad frames. The
-        // remaining entry metadata only draws the strip or advises the Try.
+        out.tag("training-show/v2");
         produces.encode(out);
+        practice_contact(entry).map(|contact| contact as u8).encode(out);
         phase.encode(out);
         right.encode(out);
         left.encode(out);
@@ -117,11 +146,26 @@ impl Show {
 
     /// A show of `entry`, waiting for the fighter to be free.
     pub fn new(entry: MoveEntry) -> Self {
+        let pads = |facing_right| {
+            let mut frames = entry.input.frames(facing_right, Strength::Medium);
+            if entry.recognizer == Recognizer::FamilyMove
+                && entry.produces == crate::era_fight::sf5::SHIFT_BREAK
+                && entry.input.button == ButtonClass::ShiftPair
+            {
+                // Holding HP + MK requests the follow-up when the shift
+                // actually evades the scripted strike.
+                for frame in frames.iter_mut().skip(1).take(18) {
+                    frame.buttons[2] = true;
+                    frame.buttons[4] = true;
+                }
+            }
+            frames
+        };
         Show {
             entry,
-            phase: Phase::Waiting { frames: 0 },
-            right: entry.input.frames(true, Strength::Medium),
-            left: entry.input.frames(false, Strength::Medium),
+            phase: Phase::Waiting { frames: 0, strike_ticks: 0 },
+            right: pads(true),
+            left: pads(false),
             came_out: false,
             pad: None,
             completed: false,
@@ -179,20 +223,32 @@ impl Show {
         self.came_out |= me.present && me.move_id == self.entry.produces;
         loop {
             match self.phase {
-                Phase::Waiting { frames } => {
+                Phase::Waiting { frames, strike_ticks } => {
                     // A new press while waiting is the player taking the pad back.
                     let before = self.pad.replace(pad);
                     if before.is_some_and(|was| newly_pressed(&was, &pad)) || frames >= WAIT_LIMIT {
                         return None;
                     }
-                    if ready(me) {
+                    let contact = practice_contact(&self.entry);
+                    let strike_ticks = if foe.attacking() { strike_ticks.saturating_add(1) } else { 0 };
+                    let can_start = match contact {
+                        Some(PracticeContact::Guard) => me.blockstun && me.guarding(),
+                        Some(PracticeContact::Strike) => ready(me) && strike_ticks >= 9,
+                        Some(PracticeContact::Counter) => ready(me) && strike_ticks != 0,
+                        None => ready(me),
+                    };
+                    if can_start {
                         // The move must come out of this input, not an earlier one.
                         self.came_out = false;
                         self.phase = Phase::Feeding { fed: 0 };
                         continue;
                     }
-                    self.phase = Phase::Waiting { frames: frames + 1 };
-                    return Some(PlayerInputs::default());
+                    self.phase = Phase::Waiting { frames: frames + 1, strike_ticks };
+                    let mut input = PlayerInputs::default();
+                    if contact == Some(PracticeContact::Guard) && foe.attacking() {
+                        input.directions = [!facing_right, facing_right, false, false];
+                    }
+                    return Some(input);
                 }
                 Phase::Feeding { fed } => {
                     let frames = if facing_right { &self.right } else { &self.left };
@@ -205,7 +261,11 @@ impl Show {
                 }
                 Phase::Finishing { frames } => {
                     // The move has come out and ended, or never came out.
-                    let ended = self.came_out && me.move_id != self.entry.produces;
+                    // A Super can finish recovering one frame before the
+                    // engine replaces its move ID. Return that frame's pad.
+                    let ended = self.came_out
+                        && (me.move_id != self.entry.produces
+                            || (self.entry.kind == MoveKind::Super && gate_free(me)));
                     let limit = if self.came_out { MOVE_LIMIT } else { COME_OUT_LIMIT };
                     if ended || frames >= limit {
                         self.completed = self.came_out;

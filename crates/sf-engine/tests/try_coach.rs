@@ -16,6 +16,7 @@ mod select;
 
 use std::path::Path;
 
+use sf_engine::combo::throw::{THROWN_MOVE, THROW_MOVE};
 use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::fight_reader::FighterRead;
 use sf_engine::fighter::{P1_STRUCT, WORK_BASE};
@@ -595,9 +596,7 @@ fn a_real_hit_from_the_cpu_ends_an_attempt_as_nothing() {
     // fight is deterministic, so the same frame every time.
     let mut s = training(RulesetPreset::DefinitiveOverhaul, TournamentFighter::Ryu, false);
     try_move(&mut s, 0);
-    let mut hit_at = None;
-    let (mut landed, health) = (false, s.fight().unwrap().fight_read().fighters[0].health);
-    for n in 0..6000 {
+    let health_before_contact = (0..6000).find_map(|n| {
         let phase = n % 70;
         // A throw can change sides; follow P1's own live fighter entity.
         let m = s.fight_machine().unwrap();
@@ -607,19 +606,24 @@ fn a_real_hit_from_the_cpu_ends_an_attempt_as_nothing() {
             6..=13 => hold([facing, !facing, true, false]),
             _ => idle(),
         };
+        let health = s.fight().unwrap().fight_read().fighters[0].health;
         s.step(input);
-        landed |= s.fight().unwrap().fight_read().landed[1].is_some();
-        let coach = s.coach().unwrap();
-        if coach.outcome() == Some(Outcome::Interrupted) {
-            let me = s.fight().unwrap().fight_read().fighters[0];
-            assert!(me.reacting(), "interrupted by a hit reaction, in move {:#x}", me.move_id);
-            assert!(landed, "the reader saw a hit land on the fighter");
-            assert!(me.health < health, "and it took health: {} of {health}", me.health);
-            hit_at = Some(n);
-            break;
+        if s.coach().unwrap().outcome() != Some(Outcome::Interrupted) {
+            return None;
         }
-    }
-    assert!(hit_at.is_some(), "the CPU hit the fighter mid-attempt");
+        let read = s.fight().unwrap().fight_read();
+        let [me, cpu] = read.fighters;
+        assert!(me.reacting(), "interrupted in reaction move {:#x}", me.move_id);
+        if me.move_id == THROWN_MOVE {
+            // A throw interrupts the attempt at capture and deals damage at the slam.
+            assert_eq!(cpu.move_id, THROW_MOVE);
+            assert_eq!(me.health, health);
+        } else {
+            assert!(read.landed[1].is_some_and(|hit| !hit.chip && hit.damage > 0));
+            assert!(me.health < health);
+        }
+        Some(health)
+    }).expect("the CPU hit the fighter mid-attempt");
     // It counts as nothing: no success, no call-out, and the hit's attempt is
     // not counted as a miss by the tracker running out afterwards.
     // (The earlier attempts of the loop were misses and have their fixes up still;
@@ -627,11 +631,15 @@ fn a_real_hit_from_the_cpu_ends_an_attempt_as_nothing() {
     let before = (s.coach().unwrap().attempts(), s.coach().unwrap().successes());
     assert_eq!(before.1, 0);
     let up = words(&s);
+    let mut damaged = s.fight().unwrap().fight_read().fighters[0].health < health_before_contact;
     for _ in 0..40 {
         s.step(idle());
+        let me = s.fight().unwrap().fight_read().fighters[0];
+        damaged |= me.move_id == THROWN_MOVE && me.health < health_before_contact;
         assert!(words(&s).iter().all(|w| up.contains(w)), "no new word after the hit");
         assert_eq!(s.coach().unwrap().outcome(), Some(Outcome::Interrupted));
     }
+    assert!(damaged, "the interrupting CPU attack took health");
     assert_eq!((s.coach().unwrap().attempts(), s.coach().unwrap().successes()), before);
 }
 

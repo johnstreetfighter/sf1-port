@@ -6,10 +6,7 @@
 //! Super Combo or a Super cancel come out.
 
 use crate::roster::TournamentFighter;
-use crate::sf1plus::{CombatEvent, CombatSession, EraStyle, MoveKind, Pad, Sf1PlusRules};
 use crate::config::RulesetPreset;
-use sf_video::callouts::CalloutKind;
-use sf_video::era_hud::{EraGauge, Fill, GaugeRow};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EraFamily {
@@ -465,12 +462,12 @@ pub fn revisions(fighter: TournamentFighter, family: EraFamily) -> Vec<Revision>
         }
         EraFamily::SfZ => match fighter {
             TournamentFighter::Eagle => vec![Revision::Sfz3],
+            TournamentFighter::Gen => vec![Revision::Sfz2, Revision::Sfz2A, Revision::Sfz3],
             TournamentFighter::Ryu
             | TournamentFighter::Ken
             | TournamentFighter::Adon
             | TournamentFighter::Sagat
-            | TournamentFighter::Birdie
-            | TournamentFighter::Gen => {
+            | TournamentFighter::Birdie => {
                 vec![Revision::Sfz1, Revision::Sfz2, Revision::Sfz2A, Revision::Sfz3]
             }
             _ => Vec::new(),
@@ -483,10 +480,10 @@ pub fn revisions(fighter: TournamentFighter, family: EraFamily) -> Vec<Revision>
             }
         }
         EraFamily::Sf4 => match fighter {
-            TournamentFighter::Ryu | TournamentFighter::Ken | TournamentFighter::Sagat => {
+            TournamentFighter::Ryu | TournamentFighter::Ken | TournamentFighter::Sagat | TournamentFighter::Gen => {
                 vec![Revision::Sf4, Revision::Ssf4, Revision::Ae2012, Revision::Usf4]
             }
-            TournamentFighter::Adon | TournamentFighter::Gen => {
+            TournamentFighter::Adon => {
                 vec![Revision::Ssf4, Revision::Ae2012, Revision::Usf4]
             }
             _ => Vec::new(),
@@ -548,364 +545,12 @@ pub fn costumes(fighter: TournamentFighter, family: EraFamily) -> Vec<Costume> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MoveStat {
-    pub name: &'static str,
-    pub startup: u8,
-    pub hitstun: u8,
-    pub damage: u16,
-    pub hits: u8,
-    pub air_ok: bool,
-    pub super_move: bool,
-}
-
 pub(crate) const STOCK_AT: u8 = 48;
-
-#[derive(Debug, Clone)]
-pub struct Sf2Session {
-    fighter: TournamentFighter,
-    revision: Revision,
-    loadout: Loadout,
-    gauge_mode: GaugeMode,
-    meter: u8,
-    stock: u8,
-    seen_hits: usize,
-    inner: CombatSession,
-}
-
-impl Sf2Session {
-    pub fn new(
-        fighter: TournamentFighter,
-        opponent: TournamentFighter,
-        revision: Revision,
-        loadout: Loadout,
-        gauge_mode: GaugeMode,
-        rules: Sf1PlusRules,
-    ) -> Self {
-        Self::versus(fighter, opponent, revision, loadout, gauge_mode, rules, EraStyle::Sf1Plus)
-    }
-
-    pub fn versus(
-        fighter: TournamentFighter,
-        opponent: TournamentFighter,
-        revision: Revision,
-        loadout: Loadout,
-        gauge_mode: GaugeMode,
-        rules: Sf1PlusRules,
-        defender: EraStyle,
-    ) -> Self {
-        let attacker = if revision == Revision::Arcade1987 {
-            EraStyle::Sf1987
-        } else {
-            EraStyle::Sf1Plus
-        };
-        Self {
-            fighter,
-            revision,
-            loadout,
-            gauge_mode,
-            meter: 0,
-            stock: 0,
-            seen_hits: 0,
-            inner: CombatSession::with_eras(fighter, opponent, rules, attacker, defender),
-        }
-    }
-
-    pub fn stock(&self) -> u8 {
-        self.stock
-    }
-
-    pub fn meter(&self) -> u8 {
-        self.meter
-    }
-
-    pub fn gauge_enabled(&self) -> bool {
-        match self.gauge_mode {
-            GaugeMode::NoGauges => false,
-            GaugeMode::Unified => true,
-            GaugeMode::EraDefault => self.revision == Revision::St,
-        }
-    }
-
-    pub fn stat(&self, name: &str) -> Option<MoveStat> {
-        move_stat(self.fighter, self.revision, self.loadout, name)
-    }
-
-    pub fn play(&mut self, name: &str) -> bool {
-        let stat = self.stat(name);
-        if stat.is_some_and(|stat| stat.super_move) {
-            return self.start_super(name, false);
-        }
-        let kit_name = if name == "Shakunetsu Hadoken" { "Hadoken" } else { name };
-        let Some(mv) = self.inner.p1_kit().moves.iter().find(|mv| mv.name == kit_name).cloned() else {
-            return false;
-        };
-        let before = self.inner.events.len();
-        self.inner.place(120, 150);
-        self.inner.play(&mv.rehearsal());
-        for _ in 0..mv.total_frames() {
-            self.inner.step(Pad::default(), Pad::default());
-        }
-        for event in self.inner.events.iter_mut().skip(before) {
-            if let Some(stat) = stat {
-                if let CombatEvent::Hit { damage, hitstun } = event {
-                    *damage = stat.damage;
-                    *hitstun = stat.hitstun;
-                }
-            }
-            if name == "Shakunetsu Hadoken" {
-                if let CombatEvent::Started(got) = event {
-                    if *got == "Hadoken" {
-                        *got = "Shakunetsu Hadoken";
-                    }
-                }
-            }
-        }
-        self.harvest(before);
-        if let Some(stat) = stat.filter(|stat| stat.hits > 1) {
-            if let Some(CombatEvent::Hit { damage, hitstun }) = self
-                .inner
-                .events
-                .iter()
-                .rev()
-                .find(|event| matches!(event, CombatEvent::Hit { .. }))
-                .copied()
-            {
-                for _ in 1..stat.hits {
-                    self.inner.events.push(CombatEvent::Hit { damage, hitstun });
-                }
-            }
-        }
-        self.inner.events.iter().skip(before).any(|event| match event {
-            CombatEvent::Started(got) => *got == name || *got == kit_name,
-            _ => false,
-        })
-    }
-
-    /// Jump, then try the special. Revisions without an air version refuse it.
-    pub fn play_air(&mut self, name: &str) -> bool {
-        let Some(stat) = self.stat(name) else {
-            return false;
-        };
-        if !stat.air_ok {
-            return false;
-        }
-        let Some(mv) = self.inner.p1_kit().moves.iter().find(|mv| mv.name == name).cloned() else {
-            return false;
-        };
-        let mut up = Pad::default();
-        up.up = true;
-        self.inner.step(up, Pad::default());
-        let before = self.inner.events.len();
-        self.inner.play(&mv.rehearsal());
-        self.inner.events.iter().skip(before).any(|event| matches!(event, CombatEvent::Started(got) if *got == name))
-    }
-
-    pub fn super_cancel(&mut self, normal: &str, super_name: &str) -> bool {
-        if self.stock == 0 || !self.gauge_enabled() {
-            return false;
-        }
-        let Some(mv) = self.inner.p1_kit().moves.iter().find(|mv| mv.name == normal).cloned() else {
-            return false;
-        };
-        let before = self.inner.events.len();
-        self.inner.play(&mv.rehearsal());
-        if !self.start_super(super_name, true) {
-            return false;
-        }
-        self.inner.events.iter().skip(before).any(|event| matches!(event, CombatEvent::Started(_)))
-    }
-
-    pub fn play_against(&mut self, name: &str, defender: Pad) -> bool {
-        let Some(mv) = self.inner.p1_kit().moves.iter().find(|mv| mv.name == name).cloned() else {
-            return false;
-        };
-        let before = self.inner.events.len();
-        self.inner.place(120, 150);
-        for pad in mv.rehearsal() {
-            self.inner.step(pad, defender);
-        }
-        for _ in 0..mv.total_frames() {
-            self.inner.step(Pad::default(), defender);
-        }
-        self.inner.events.iter().skip(before).any(|event| matches!(event, CombatEvent::Started(_)))
-    }
-
-    pub fn blocked(&self) -> bool {
-        self.inner.events.iter().any(|event| matches!(event, CombatEvent::Blocked { .. }))
-    }
-
-    pub fn canceled(&self, name: &str) -> bool {
-        self.inner.events.iter().any(|event| matches!(event, CombatEvent::Canceled(got) if *got == name))
-    }
-
-    /// Everything the session has reported, oldest first.
-    pub fn events(&self) -> &[CombatEvent] {
-        &self.inner.events
-    }
-
-    /// The call-out `event` earns: a Super Combo, reported as its start.
-    pub fn callout(&self, event: &CombatEvent) -> Option<CalloutKind> {
-        match event {
-            CombatEvent::Started(name) if self.stat(name).is_some_and(|stat| stat.super_move) => {
-                Some(CalloutKind::Super { name })
-            }
-            _ => None,
-        }
-    }
-
-    pub fn hits(&self) -> Vec<CombatEvent> {
-        self.inner.events.iter().copied().filter(|event| matches!(event, CombatEvent::Hit { .. })).collect()
-    }
-
-    /// The Super gauge: one stock cell, filling from the meter. Nothing
-    /// when this revision and gauge mode have no gauge.
-    pub fn hud(&self) -> Option<EraGauge> {
-        self.gauge_enabled()
-            .then(|| EraGauge::one(GaugeRow::stock(1, self.stock, Fill::of(self.meter.into(), STOCK_AT.into()))))
-    }
-
-    fn start_super(&mut self, name: &str, cancel: bool) -> bool {
-        if self.stock == 0 || !self.gauge_enabled() || self.stat(name).map(|stat| stat.super_move) != Some(true) {
-            return false;
-        }
-        self.stock = 0;
-        self.meter = 0;
-        let label = super_label(self.fighter);
-        self.inner.events.push(CombatEvent::Started(label));
-        if cancel {
-            self.inner.events.push(CombatEvent::Canceled(label));
-        }
-        true
-    }
-
-    fn harvest(&mut self, before: usize) {
-        if !self.gauge_enabled() || self.stock > 0 {
-            return;
-        }
-        let gain = self
-            .inner
-            .events
-            .iter()
-            .skip(before)
-            .find_map(|event| match event {
-                CombatEvent::Started(name) => self
-                    .inner
-                    .p1_kit()
-                    .moves
-                    .iter()
-                    .find(|mv| mv.name == *name)
-                    .map(|mv| noted_special_gain(mv.kind)),
-                _ => None,
-            })
-            .unwrap_or(16);
-        for event in self.inner.events.iter().skip(before) {
-            if matches!(event, CombatEvent::Hit { .. }) {
-                self.meter = self.meter.saturating_add(gain);
-                self.seen_hits += 1;
-                if self.meter >= STOCK_AT {
-                    self.meter = STOCK_AT;
-                    self.stock = 1;
-                    break;
-                }
-            }
-        }
-    }
-}
 
 pub(crate) fn super_label(fighter: TournamentFighter) -> &'static str {
     match fighter {
         TournamentFighter::Ken => "Shoryureppa",
         TournamentFighter::Sagat => "Tiger Genocide",
         _ => "Shinku Hadoken",
-    }
-}
-
-fn move_stat(fighter: TournamentFighter, revision: Revision, loadout: Loadout, name: &str) -> Option<MoveStat> {
-    let sf2 = matches!(revision, Revision::Ww | Revision::Ce | Revision::Hf | Revision::Super | Revision::St);
-    if !sf2 && !matches!(name, "stand LP" | "Hadoken" | "Shoryuken" | "Tatsumaki" | "High Tiger Shot" | "Tiger Knee") {
-        return None;
-    }
-    let old = loadout == Loadout::Old && revision == Revision::St;
-    let turbo = revision == Revision::Hf;
-    let mut startup = match name {
-        "stand LP" => 2,
-        "Hadoken" | "High Tiger Shot" | "Shakunetsu Hadoken" => 8,
-        "Shoryuken" | "Tiger Knee" => 3,
-        "Tatsumaki" => 6,
-        "Shinku Hadoken" | "Shoryureppa" | "Tiger Genocide" => 4,
-        _ => return None,
-    };
-    if turbo && startup > 1 && !matches!(name, "Shinku Hadoken" | "Shoryureppa" | "Tiger Genocide") {
-        startup -= 1;
-    }
-    let mut hitstun: u8 = match name {
-        "stand LP" => 10,
-        _ => 18,
-    };
-    if revision == Revision::Ww && name == "stand LP" {
-        hitstun = 20;
-    }
-    if old {
-        hitstun = hitstun.saturating_add(4);
-    }
-    let mut damage: u16 = match name {
-        "stand LP" => 20,
-        "Hadoken" | "High Tiger Shot" => 90,
-        "Shakunetsu Hadoken" => 110,
-        "Shoryuken" => if fighter == TournamentFighter::Ken { 140 } else { 130 },
-        "Tatsumaki" => 100,
-        "Shinku Hadoken" | "Shoryureppa" | "Tiger Genocide" => 280,
-        _ => 80,
-    };
-    if name == "Shoryuken" && matches!(revision, Revision::Super | Revision::St) && fighter == TournamentFighter::Ryu {
-        damage = damage.saturating_add(30);
-    }
-    if old {
-        damage = damage.saturating_add(damage / 5);
-    }
-    let hits = if name == "Shoryuken" && revision == Revision::Ce && fighter == TournamentFighter::Ken {
-        2
-    } else {
-        1
-    };
-    let air_ok = name == "Tatsumaki" && matches!(revision, Revision::Hf | Revision::Super | Revision::St);
-    let super_move = matches!(name, "Shinku Hadoken" | "Shoryureppa" | "Tiger Genocide");
-    let present = match name {
-        "Shakunetsu Hadoken" => fighter == TournamentFighter::Ryu && matches!(revision, Revision::Super | Revision::St),
-        "Shinku Hadoken" => fighter == TournamentFighter::Ryu && sf2,
-        "Shoryureppa" => fighter == TournamentFighter::Ken && sf2,
-        "Tiger Genocide" => fighter == TournamentFighter::Sagat && sf2,
-        "High Tiger Shot" | "Tiger Knee" => fighter == TournamentFighter::Sagat,
-        "Hadoken" | "Shoryuken" | "Tatsumaki" => matches!(fighter, TournamentFighter::Ryu | TournamentFighter::Ken),
-        "stand LP" => true,
-        _ => false,
-    };
-    if !present {
-        return None;
-    }
-    Some(MoveStat { name: leak_name(name), startup, hitstun, damage, hits, air_ok, super_move })
-}
-
-fn leak_name(name: &str) -> &'static str {
-    match name {
-        "stand LP" => "stand LP",
-        "Hadoken" => "Hadoken",
-        "Shoryuken" => "Shoryuken",
-        "Tatsumaki" => "Tatsumaki",
-        "High Tiger Shot" => "High Tiger Shot",
-        "Tiger Knee" => "Tiger Knee",
-        "Shakunetsu Hadoken" => "Shakunetsu Hadoken",
-        "Shinku Hadoken" => "Shinku Hadoken",
-        "Shoryureppa" => "Shoryureppa",
-        "Tiger Genocide" => "Tiger Genocide",
-        _ => "",
-    }
-}
-
-pub fn noted_special_gain(kind: MoveKind) -> u8 {
-    match kind {
-        MoveKind::Special => 32,
-        _ => 16,
     }
 }

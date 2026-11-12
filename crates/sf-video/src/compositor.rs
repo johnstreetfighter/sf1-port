@@ -58,7 +58,11 @@ pub struct PaletteTint {
 }
 
 impl PaletteTint {
+    /// Luminance greyscale for native fighter sprites during Burnout.
+    pub const GREY: Self = Self { color: 0, strength: 0 };
+
     pub fn apply(self, pixel: u32) -> u32 {
+        if self == Self::GREY { return callouts::grey(pixel); }
         let alpha = u32::from(self.strength);
         let channel = |shift: u32| {
             let original = (pixel >> shift) & 0xffu32;
@@ -71,9 +75,10 @@ impl PaletteTint {
 
 /// Three recent presented poses, newest first. The caller controls the
 /// sampling interval and clears the trail when the action ends.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AfterimageTrail {
     poses: [Vec<IndexedSprite>; 3],
+    color: Option<u32>,
 }
 
 impl AfterimageTrail {
@@ -83,15 +88,22 @@ impl AfterimageTrail {
         self.poses[0].extend_from_slice(sprites);
     }
 
+    pub fn record_colored(&mut self, sprites: Vec<IndexedSprite>, color: u32) {
+        self.poses.rotate_right(1);
+        self.poses[0] = sprites;
+        self.color = Some(color);
+    }
+
     pub fn clear(&mut self) {
+        self.color = None;
         self.poses.iter_mut().for_each(Vec::clear);
     }
 
-    fn draw(&self, argb: &mut [u32]) {
+    fn draw(&self, argb: &mut [u32], stage: Option<&[bool]>) {
         for (pose, strength) in self.poses.iter().zip([144, 96, 48]).rev() {
             for sprite in pose {
-                blit_sprite_with(argb, sprite, |color, behind| PaletteTint {
-                    color: callouts::grey(color),
+                blit_sprite_with(argb, sprite, stage, |color, behind| PaletteTint {
+                    color: self.color.unwrap_or_else(|| callouts::grey(color)),
                     strength,
                 }.apply(behind));
             }
@@ -164,7 +176,7 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
         blit_sprite(&mut argb, sprite);
     }
     for trail in scene.afterimages.iter().flatten() {
-        trail.draw(&mut argb);
+        trail.draw(&mut argb, scene.stage);
     }
     for (side, fighter) in scene.fighters.iter().enumerate() {
         let greyed = scene.callouts.sides[side].greyed;
@@ -192,12 +204,13 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
 }
 
 fn blit_sprite(argb: &mut [u32], sprite: &IndexedSprite) {
-    blit_sprite_with(argb, sprite, |color, _| color);
+    blit_sprite_with(argb, sprite, None, |color, _| color);
 }
 
 fn blit_sprite_with(
     argb: &mut [u32],
     sprite: &IndexedSprite,
+    mask: Option<&[bool]>,
     shade: impl Fn(u32, u32) -> u32,
 ) {
     for py in 0..16 {
@@ -209,8 +222,10 @@ fn blit_sprite_with(
             let x = sprite.x + px as i32;
             let y = sprite.y + py as i32;
             if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
-                let pixel = &mut argb[y as usize * WIDTH + x as usize];
-                *pixel = shade(sprite.palette[pen as usize], *pixel);
+                let index = y as usize * WIDTH + x as usize;
+                if mask.is_none_or(|mask| mask[index]) {
+                    argb[index] = shade(sprite.palette[pen as usize], argb[index]);
+                }
             }
         }
     }

@@ -9,7 +9,7 @@
 //!   cargo run -p sf-dev --release -- cpu     # one-player: Ryu (P1) vs Retsu
 //!   cargo run -p sf-dev --release -- power-on # power-on: warning screen & title (#55)
 //!   cargo run -p sf-dev --release -- select   # portrait character select (overhaul)
-//!   cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era] # two era sessions under the era HUD (#217)
+//!   cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era] [art] # preview the HUD in a native fight
 //!   cargo run -p sf-dev --release -- smoke   # the host smoke check
 //!   cargo run -p sf-dev --release -- kit     # fixed-fight listening kit (#49)
 //!   cargo run -p sf-dev --release -- music   # the round music phrase (#11)
@@ -65,6 +65,7 @@
 //! either profile.)
 
 mod combo_sweep;
+mod era_hud;
 mod session;
 
 use minifb::{Key, Window};
@@ -121,7 +122,7 @@ fn main() {
         Some("cpu") => run_cpu(),
         Some("power-on") => run_power_on(),
         Some("select") => run_select(),
-        Some("era-hud") => std::process::exit(run_era_hud(&args[2..])),
+        Some("era-hud") => std::process::exit(era_hud::run(&args[2..])),
         Some("music") => play_music_phrase(),
         Some("smoke") => std::process::exit(smoke()),
         Some("kit") => std::process::exit(listening_kit()),
@@ -174,81 +175,6 @@ fn run_select() {
         let frame = screen.portrait_frame();
         present(&mut window, &mut buf, &frame);
     }
-}
-
-/// Two era sessions under the era HUD (spec #216, EH1), Ryu on each side.
-/// The eras are `sf1`, `st`, `alpha`, `sf3`, `sf4`, `sf5` and `sf6`
-/// (default `sf6` against `alpha`). Per side, LP lands a hit, HP spends the
-/// super, LK is the era's other gauge action (Custom Combo, next Super Art,
-/// damage taken, V-Trigger, Drive Rush), MP is the era's call-out moment
-/// (Alpha Counter, Crush Counter, perfect parry), MK fires the next fixture
-/// call-out (EH4) and HK moves to the next era. G cycles the gauge art
-/// (`ruled`, `blocks`, `plate`; an optional third argument starts it).
-fn run_era_hud(args: &[String]) -> i32 {
-    use sf_engine::era_preview::{EraPreview, PreviewEra, PreviewSide};
-    use sf_video::callouts::Side;
-    use sf_video::era_hud::GaugeArt;
-
-    let pick = |i: usize, default: PreviewEra| match args.get(i) {
-        None => Some(default),
-        Some(slug) => PreviewEra::from_slug(slug),
-    };
-    let (Some(p1), Some(p2)) = (pick(0, PreviewEra::Sf6), pick(1, PreviewEra::Alpha)) else {
-        let slugs: Vec<_> = PreviewEra::ALL.iter().map(|era| era.slug()).collect();
-        eprintln!("era-hud: the eras are {}", slugs.join(", "));
-        return 2;
-    };
-    let mut art = match args.get(2) {
-        None => GaugeArt::Ruled,
-        Some(slug) => match GaugeArt::from_slug(slug) {
-            Some(art) => art,
-            None => {
-                eprintln!("era-hud: the gauge arts are ruled, blocks, plate");
-                return 2;
-            }
-        },
-    };
-    let assets = load_assets(resolve_local(ROMS), resolve_local(MANIFEST)).expect("local ROM set assembles");
-    let font = sf_video::compositor::RomFont::new(&assets.gfx4, &assets.maincpu);
-    let mut preview = EraPreview::new(p1, p2);
-    let mut art_held = false;
-    let mut window = open_window("sf-dev era HUD");
-    let mut buf = vec![0u32; WIDTH * SCALE * HEIGHT * SCALE];
-    let keys = [
-        (Key::A, Key::D, Key::Z, Key::C, Key::S, Key::X),
-        (Key::U, Key::O, Key::J, Key::L, Key::I, Key::K),
-    ];
-    let mut prev = [[false; 6]; 2];
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        for (side, (hit, spend, alt, next, moment, fixture)) in keys.iter().enumerate() {
-            let held = &mut prev[side];
-            if poll_key_edge(&mut window, *fixture, &mut held[5]) {
-                preview.fixture(if side == 0 { Side::P1 } else { Side::P2 });
-            }
-            let target = if side == 0 { &mut preview.p1 } else { &mut preview.p2 };
-            if poll_key_edge(&mut window, *hit, &mut held[0]) {
-                target.hit();
-            }
-            if poll_key_edge(&mut window, *spend, &mut held[1]) {
-                target.spend();
-            }
-            if poll_key_edge(&mut window, *alt, &mut held[2]) {
-                target.alt();
-            }
-            if poll_key_edge(&mut window, *moment, &mut held[4]) {
-                target.moment();
-            }
-            if poll_key_edge(&mut window, *next, &mut held[3]) {
-                *target = PreviewSide::new(target.era().next());
-            }
-        }
-        if poll_key_edge(&mut window, Key::G, &mut art_held) {
-            art = art.next();
-        }
-        preview.tick();
-        present(&mut window, &mut buf, &preview.frame(art, Some(&font)));
-    }
-    0
 }
 
 /// The sound's start for a fixture frame: both sound ROMs and the

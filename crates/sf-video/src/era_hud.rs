@@ -71,6 +71,8 @@ pub enum GaugeRow {
     /// One long bar with `level` beside it: `fill` of the bar lit, the bar
     /// `length` of a full-length bar long.
     Level { level: u8, fill: Fill, length: Fill, state: GaugeState },
+    /// One continuous bar without a level number.
+    Bar { fill: Fill, length: Fill, state: GaugeState },
 }
 
 impl GaugeRow {
@@ -88,10 +90,17 @@ impl GaugeRow {
         GaugeRow::Level { level, fill, length: Fill::FULL, state }
     }
 
-    /// The same row `length` of a full-length bar long (level bars only).
+    /// An unnumbered bar with the given fill and width.
+    pub fn bar(fill: Fill, length: Fill) -> Self {
+        let state = if fill.den != 0 && fill.num >= fill.den { GaugeState::Full } else { GaugeState::Normal };
+        GaugeRow::Bar { fill, length, state }
+    }
+
+    /// The same continuous row `length` of a full-length bar long.
     pub fn with_length(self, length: Fill) -> Self {
         match self {
             GaugeRow::Level { level, fill, state, .. } => GaugeRow::Level { level, fill, length, state },
+            GaugeRow::Bar { fill, state, .. } => GaugeRow::Bar { fill, length, state },
             row => row,
         }
     }
@@ -101,12 +110,13 @@ impl GaugeRow {
         match self {
             GaugeRow::Stock { cells, full, part, .. } => GaugeRow::Stock { cells, full, part, state },
             GaugeRow::Level { level, fill, length, .. } => GaugeRow::Level { level, fill, length, state },
+            GaugeRow::Bar { fill, length, .. } => GaugeRow::Bar { fill, length, state },
         }
     }
 
-    fn state(self) -> GaugeState {
+    pub(crate) fn state(self) -> GaugeState {
         match self {
-            GaugeRow::Stock { state, .. } | GaugeRow::Level { state, .. } => state,
+            GaugeRow::Stock { state, .. } | GaugeRow::Level { state, .. } | GaugeRow::Bar { state, .. } => state,
         }
     }
 }
@@ -402,11 +412,11 @@ fn draw_row(
                 columns.extend((0..cell_w).map(|i| Some(i < lit)));
             }
         }
-        GaugeRow::Level { level, fill, length, .. } => {
+        GaugeRow::Level { fill, length, .. } | GaugeRow::Bar { fill, length, .. } => {
             let width = length.px(BAR_WIDTH).max(1);
             let lit = fill.px(width);
             columns.extend((0..width).map(|i| Some(i < lit)));
-            if let Some(font) = font {
+            if let (GaugeRow::Level { level, .. }, Some(font)) = (row, font) {
                 // The ROM's 8×8 digit (tiles `0x00`–`0x09`), bottom-aligned
                 // with the row: a second row's number reaches up into the gap.
                 let digit_pens = if state == GaugeState::Greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD };
@@ -528,6 +538,14 @@ fn draw_blocks_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, ink: Ink, f
                 }
             }
         }
+        GaugeRow::Bar { fill, length, .. } => {
+            let width = length.px(at.avail - 3).max(1);
+            let lit = fill.px(width);
+            let border = if state == GaugeState::Full { lit_bevel } else { dark_bevel };
+            bevel_box(corner, (at.x0, at.y0), (width + 3, at.height), border, |dx, fy| {
+                if dx < lit { lit_pen(state, ink, fy) } else { empty }
+            });
+        }
         GaugeRow::Level { level, fill, length, .. } => {
             let bottom = at.y0 + at.height;
             let top = bottom.saturating_sub(LEVEL_BOX).max(at.floor);
@@ -624,11 +642,11 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
                 columns.extend((0..cell_w).map(|i| Some(i < lit)));
             }
         }
-        GaugeRow::Level { level, fill, length, .. } => {
+        GaugeRow::Level { fill, length, .. } | GaugeRow::Bar { fill, length, .. } => {
             let width = length.px(inner).max(1);
             let lit = fill.px(width);
             columns.extend((0..width).map(|i| Some(i < lit)));
-            if let Some(font) = font {
+            if let (GaugeRow::Level { level, .. }, Some(font)) = (row, font) {
                 let digit_pens = if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD };
                 let text = format!("LV{}", level.min(9));
                 let x = corner.text_x(0, 8 * text.len());

@@ -27,7 +27,7 @@
 use std::collections::VecDeque;
 
 use crate::compositor::{header_glyph, RomFont};
-use crate::era_hud::{self, EraHud, GaugeRow, GaugeState};
+use crate::era_hud::{self, EraHud, GaugeState};
 use crate::render::{HEIGHT, WIDTH};
 
 /// A side of the screen: the earner of a call-out.
@@ -74,9 +74,8 @@ pub enum CalloutKind {
     Reversal,
     /// A round won without taking damage.
     Perfect,
-    /// Training's Try (spec #226, ML5): the move the player was trying came
-    /// out, named in `word` (`HADOKEN!`). It is the player's own, so the
-    /// announcer says nothing for it, and [`CalloutKind::all`] leaves it out.
+    /// Text-only feedback such as a successful Training move or a guard
+    /// crush. The announcer says nothing and [`CalloutKind::all`] leaves it out.
     Move { word: &'static str },
     /// Training's coach after a missed attempt (spec #226, ML6): the short
     /// fix (`TOO SLOW`, `MISSED ↘`), worded in the chosen notation. It is
@@ -244,9 +243,7 @@ impl CalloutFrame {
         let flash = |gauge: Option<era_hud::EraGauge>, side: &SideCallouts| {
             gauge.map(|mut gauge| {
                 if let Some(lit) = side.flash {
-                    if !matches!(gauge.main, GaugeRow::Stock { state: GaugeState::Greyed, .. }
-                        | GaugeRow::Level { state: GaugeState::Greyed, .. })
-                    {
+                    if gauge.main.state() != GaugeState::Greyed {
                         gauge.main = gauge.main.with_state(GaugeState::Flashing { lit });
                     }
                 }

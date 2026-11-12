@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use sf_video::compositor::{present, OverhaulScene, PresentMode, RomFont};
 use sf_video::era_hud::{
     pens, EraGauge, EraHud, Fill, GaugeArt, GaugeRow, GaugeState, CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT,
-    CORNER_WIDTH,
+    CORNER_WIDTH, SECOND_ROW,
 };
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 use sf_video::romset::{load_assets, Assets};
@@ -235,6 +235,33 @@ fn a_side_with_no_gauge_draws_nothing() {
             assert!(frame.argb[y * WIDTH..y * WIDTH + WIDTH / 2].iter().all(|p| *p == BACKDROP));
         }
         assert!(frame.argb.iter().any(|p| *p != BACKDROP), "{}", art.label());
+    }
+}
+
+#[test]
+fn a_continuous_second_row_keeps_its_width_when_drained_and_shrinks_with_its_maximum() {
+    let rom = assets();
+    let font = rom.as_ref().map(|rom| RomFont::new(&rom.gfx4, &rom.maincpu));
+    let y = HEIGHT - CORNER_BOTTOM - SECOND_ROW;
+    let occupied = |frame: &Frame| {
+        frame.argb[y * WIDTH + CORNER_EDGE..y * WIDTH + CORNER_EDGE + CORNER_WIDTH]
+            .iter()
+            .filter(|&&pixel| pixel != BACKDROP)
+            .count()
+    };
+    for art in GaugeArt::ALL {
+        let render_guard = |fill, length, font: Option<&RomFont<'_>>| {
+            let gauge = EraGauge::two(GaugeRow::stock(3, 1, Fill::EMPTY), GaugeRow::bar(fill, length));
+            draw_in(art, EraHud { p1: Some(gauge), p2: None }, font)
+        };
+        let full = render_guard(Fill::FULL, Fill::FULL, None);
+        let drained = render_guard(Fill::of(1, 2), Fill::FULL, None);
+        let reduced = render_guard(Fill::FULL, Fill::of(1, 2), None);
+        let with_font = render_guard(Fill::FULL, Fill::of(1, 2), font.as_ref());
+        assert_eq!(occupied(&drained), occupied(&full), "{art:?}");
+        assert_ne!(drained.argb, full.argb, "{art:?}");
+        assert!(occupied(&reduced) < occupied(&full), "{art:?}");
+        assert_eq!(reduced.argb, with_font.argb, "{art:?}");
     }
 }
 

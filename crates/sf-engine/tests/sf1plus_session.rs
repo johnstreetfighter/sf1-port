@@ -1,527 +1,254 @@
-//! SF1+ combat session for all twelve tournament fighters (`#101`, `O10`; `#102`, `O11`).
+//! SF1+ defensive moves on the native fight path (ADR-0015).
 
-use sf_engine::config::{MatchConfig, RulesetPreset};
-use sf_engine::roster::TournamentFighter;
-use sf_engine::sf1plus::{
-    hud_cells, CombatEvent, CombatSession, EraStyle, Guard, MoveKind, Pad, Sf1PlusRules,
-    CLASSIC_SPECIAL_DAMAGE, HEALTH_MAX,
-};
-use sf_video::asset_pack::{validate_adpcm, validate_fm_patch, validate_tile};
+#[allow(dead_code)]
+#[path = "support/alpha.rs"]
+mod alpha;
 
-fn expected_specials(fighter: TournamentFighter) -> &'static [&'static str] {
-    match fighter {
-        TournamentFighter::Lee => &["Zesshouohken", "Double Kick"],
-        TournamentFighter::Gen => &["Hyakurenko", "Gekiro"],
-        TournamentFighter::Birdie => &["Bull Head", "Bull Horn"],
-        TournamentFighter::Eagle => &["Manchester Black", "St. Andrew's Green"],
-        TournamentFighter::Adon => &["Jaguar Kick", "Rising Jaguar"],
-        TournamentFighter::Sagat => &["High Tiger Shot", "Low Tiger Shot", "Tiger Knee"],
-        _ => &[],
+use std::path::Path;
+use std::sync::{Arc, OnceLock};
+
+use alpha::{pad, DOWN, LEFT, LP, MANIFEST, RIGHT, ROMS};
+use sf_engine::combo::throw::{RANGE, THROWN_MOVE, THROW_MOVE};
+use sf_engine::config::MatchConfig;
+use sf_engine::data_bank::DataBank;
+use sf_engine::front::cabinet::{flow_position, Players};
+use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup};
+use sf_engine::front::PlayerInputs;
+use sf_engine::roster::{PlayMode, TournamentFighter};
+use sf_video::art::{load_art_from, ArtSources};
+use sf_video::art_pack::ArtPack;
+use sf_video::romset::{load_assets, Assets};
+
+const MP: usize = 1;
+const HP: usize = 2;
+const LK: usize = 3;
+const MK: usize = 4;
+const ART_PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const FIGHT_LOOP: u32 = 0x3eafa;
+
+fn assets_and_bank() -> Option<&'static (Assets, Arc<DataBank>)> {
+    static FIXTURE: OnceLock<(Assets, Arc<DataBank>)> = OnceLock::new();
+    if !Path::new(ROMS).is_dir() || !Path::new(ART_PACK).is_dir() {
+        eprintln!("skipping: local ROMs or art pack are absent");
+        return None;
     }
+    Some(FIXTURE.get_or_init(|| {
+        let assets = load_assets(ROMS, MANIFEST).expect("local ROMs assemble");
+        let read = |directory| {
+            TournamentFighter::ALL.map(|fighter| {
+                let slug = fighter.name().to_ascii_lowercase();
+                std::fs::read_to_string(format!("../../art/{directory}/{slug}.json"))
+                    .expect("fighter art manifest")
+            })
+        };
+        let recipes = read("recipes");
+        let reviews = read("review");
+        let pack = ArtPack::open(Path::new(ART_PACK)).expect("local art pack opens");
+        let art = load_art_from(
+            &assets,
+            &ArtSources {
+                recipes: &recipes.each_ref().map(String::as_str),
+                reviews: Some(&reviews.each_ref().map(String::as_str)),
+                pack: Ok(&pack),
+            },
+        )
+        .expect("approved art loads");
+        let data = Arc::new(DataBank::build(&assets.maincpu, &art.catalogues));
+        (assets.with_sprite_bank(&art.bank), data)
+    }))
 }
 
-fn started(events: &[CombatEvent], name: &str) -> bool {
-    events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Started(got) if *got == name))
+fn local(
+    assets: &Assets,
+    bank: &Arc<DataBank>,
+    fighter: TournamentFighter,
+    mut config: MatchConfig,
+) -> Fight {
+    config.roster.mode = PlayMode::Versus;
+    config.roster.p1 = fighter;
+    config.roster.p2 = TournamentFighter::Ken;
+    let mut fight = Fight::start_banked(
+        &assets.maincpu,
+        FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        },
+        Some(0),
+        None,
+        Some(Arc::clone(bank)),
+    )
+    .expect("native local fight");
+    for _ in 0..1_500 {
+        step(&mut fight, assets, pad(0, None), pad(0, None));
+        if flow_position(fight.machine()) == FIGHT_LOOP {
+            return fight;
+        }
+    }
+    panic!("the native fight did not reach its first round");
+}
+
+fn step(fight: &mut Fight, assets: &Assets, p1: PlayerInputs, p2: PlayerInputs) {
+    fight.step(assets, p1, p2, false);
+}
+
+fn stand_close(fight: &mut Fight, assets: &Assets) {
+    for _ in 0..100 {
+        let telemetry = fight.machine().diagnostic_telemetry();
+        if telemetry.p1.center_x.abs_diff(telemetry.p2.center_x) <= 41 {
+            for _ in 0..8 {
+                step(fight, assets, pad(0, None), pad(0, None));
+            }
+            return;
+        }
+        step(fight, assets, pad(RIGHT, None), pad(LEFT, None));
+    }
+    panic!("the fighters did not enter close range");
 }
 
 #[test]
-fn every_tournament_fighter_plays_the_full_kit_and_cancels() {
+fn all_twelve_fighters_block_high_and_low_and_tech_on_the_native_engine() {
+    let Some((assets, bank)) = assets_and_bank() else {
+        return;
+    };
     for fighter in TournamentFighter::ALL {
-        let mut session = CombatSession::new(
-            fighter,
-            TournamentFighter::Ken,
-            Sf1PlusRules::for_preset(RulesetPreset::DefinitiveOverhaul),
-        );
-        let kit = session.p1_kit().clone();
-        assert!(validate_adpcm(&kit.voice).is_ok(), "{fighter:?} voice");
-        assert_eq!(kit.voice.sample_rate, 4_000);
-        assert!(validate_fm_patch(&kit.patch).is_ok(), "{fighter:?} FM cue");
-        assert!(kit
-            .moves
-            .iter()
-            .any(|mv| mv.kind == MoveKind::CommandNormal));
-        assert!(kit.moves.iter().any(|mv| mv.kind == MoveKind::Throw));
-        assert!(kit.moves.iter().any(|mv| mv.kind == MoveKind::Special));
-        for posture in ["stand", "crouch", "jump"] {
-            for button in ["LP", "MP", "HP", "LK", "MK", "HK"] {
-                let name = format!("{posture} {button}");
-                assert!(
-                    kit.moves
-                        .iter()
-                        .any(|mv| mv.name == name && mv.kind == MoveKind::Normal),
-                    "{fighter:?} missing {name}"
-                );
-            }
-        }
-        assert!(kit.moves.iter().any(|mv| mv.guard == Guard::High));
-        assert!(kit.moves.iter().any(|mv| mv.guard == Guard::Low));
-        for name in expected_specials(fighter) {
-            assert!(
-                kit.moves
-                    .iter()
-                    .any(|mv| mv.name == *name && mv.kind == MoveKind::Special),
-                "{fighter:?} missing {name}"
-            );
-        }
-        if fighter == TournamentFighter::Gen {
-            assert!(kit
-                .moves
-                .iter()
-                .all(|mv| !mv.name.to_ascii_lowercase().contains("stance")));
-        }
-        for mv in &kit.moves {
-            validate_tile(&kit.tiles[mv.tile]).unwrap();
-            session.events.clear();
-            session.play(&mv.rehearsal());
-            assert!(
-                started(&session.events, mv.name),
-                "{fighter:?} did not start {} from {:?}",
-                mv.name,
-                mv.rehearsal()
-            );
-            assert_eq!(session.p1_audio(), Some(mv.audio_latch));
-            assert!(session.p1_tile().is_some());
-            if mv.kind == MoveKind::Special {
-                let mut poses = vec![session.p1_tile().unwrap().pixels];
-                for _ in 0..8 {
-                    session.step(Pad::default(), Pad::default());
-                    if let Some(tile) = session.p1_tile() {
-                        poses.push(tile.pixels);
+        let mut fight = local(assets, bank, fighter, MatchConfig::definitive());
+        assert_eq!(fight.player_fighter(0), fighter);
+        stand_close(&mut fight, assets);
+        let close = fight.save_netplay_snapshot(0);
+        let life = fight.fight_read().fighters[0].health;
+
+        for (direction, buttons, guard) in
+            [(0, &[HP, MP, MK][..], LEFT), (DOWN, &[LK][..], LEFT | DOWN)]
+        {
+            fight.restore_netplay_snapshot(&close);
+            let mut blocked = false;
+            for _ in 0..12 {
+                for &button in buttons {
+                    let mut attempt = fight.clone();
+                    step(
+                        &mut attempt,
+                        assets,
+                        pad(guard, None),
+                        pad(direction, Some(button)),
+                    );
+                    for _ in 0..26 {
+                        step(&mut attempt, assets, pad(guard, None), pad(0, None));
+                        let defender = attempt.fight_read().fighters[0];
+                        assert_eq!(
+                            defender.health, life,
+                            "{fighter:?} lost life holding {guard}"
+                        );
+                        blocked |= defender.blockstun;
+                        if blocked {
+                            break;
+                        }
+                    }
+                    if blocked {
+                        break;
                     }
                 }
-                let mut distinct = poses.clone();
-                distinct.dedup();
-                assert!(
-                    distinct.len() >= 2,
-                    "{fighter:?} {} held one pose across {:?}",
-                    mv.name,
-                    poses.len()
-                );
+                if blocked {
+                    break;
+                }
+                step(&mut fight, assets, pad(0, None), pad(LEFT, None));
             }
-            session = CombatSession::new(
-                fighter,
-                TournamentFighter::Ken,
-                Sf1PlusRules::for_preset(RulesetPreset::DefinitiveOverhaul),
+            assert!(blocked, "{fighter:?} never blocked while holding {guard}");
+        }
+
+        fight.restore_netplay_snapshot(&close);
+        for _ in 0..17 {
+            let mut attempt = fight.clone();
+            step(&mut attempt, assets, pad(0, None), pad(LEFT, Some(HP)));
+            if attempt.fight_read().fighters[1].move_id == THROW_MOVE {
+                fight = attempt;
+                break;
+            }
+            step(&mut fight, assets, pad(0, None), pad(LEFT, None));
+        }
+        assert_eq!(
+            fight.fight_read().fighters[1].move_id,
+            THROW_MOVE,
+            "{fighter:?}"
+        );
+        assert_eq!(
+            fight.fight_read().fighters[0].move_id,
+            THROWN_MOVE,
+            "{fighter:?}"
+        );
+        let mut tech = pad(0, Some(LP));
+        tech.buttons[LK] = true;
+        step(&mut fight, assets, tech, pad(0, None));
+        assert_eq!(
+            fight.fight_read().fighters.map(|side| side.move_id),
+            [1, 1],
+            "{fighter:?}"
+        );
+        assert_eq!(fight.fight_read().fighters[0].health, life, "{fighter:?}");
+    }
+}
+
+#[test]
+fn corner_throw_setting_changes_spacing_after_get_up() {
+    let Some((assets, bank)) = assets_and_bank() else {
+        return;
+    };
+    let spacing = |allow_loops| {
+        let mut config = MatchConfig::definitive();
+        config.sf1plus.allow_corner_throw_loops = allow_loops;
+        let mut fight = local(assets, bank, TournamentFighter::Retsu, config);
+        // Retsu's forward throw is a front slam, so Ken stays at the right wall.
+        for frame in 0..720 {
+            let t = fight.machine().diagnostic_telemetry();
+            if t.p2.center_x >= 0x184 && t.p1.center_x.abs_diff(t.p2.center_x) <= 39 {
+                break;
+            }
+            let together = t.p1.center_x.abs_diff(t.p2.center_x) <= u32::from(RANGE);
+            let moving = frame % 4 != 3;
+            step(
+                &mut fight,
+                assets,
+                pad(if moving { RIGHT } else { 0 }, None),
+                pad(if moving && together { RIGHT } else { 0 }, None),
             );
         }
-        let lp = kit.moves.iter().find(|mv| mv.name == "stand LP").unwrap();
-        let special = kit
-            .moves
-            .iter()
-            .find(|mv| mv.kind == MoveKind::Special)
-            .unwrap();
-        let mut cancel = lp.rehearsal();
-        cancel.extend(special.rehearsal());
-        session.play(&cancel);
+        stand_close(&mut fight, assets);
+        let before = fight.machine().diagnostic_telemetry();
         assert!(
-            session
-                .events
-                .iter()
-                .any(|event| matches!(event, CombatEvent::Canceled(name) if *name == special.name)),
-            "{fighter:?} did not cancel stand LP into {} events={:?}",
-            special.name,
-            session.events
+            before.p2.center_x >= 0x17a,
+            "Ken reached the corner: {}",
+            before.p2.center_x
         );
-    }
-}
-
-#[test]
-fn throws_tech_window_corner_push_and_damage_rules() {
-    let rules = Sf1PlusRules::for_preset(RulesetPreset::ClassicCompetitive);
-    let mut session = CombatSession::new(TournamentFighter::Ryu, TournamentFighter::Retsu, rules);
-    let throw = session
-        .p1_kit()
-        .moves
-        .iter()
-        .find(|mv| mv.kind == MoveKind::Throw)
-        .unwrap()
-        .rehearsal();
-    session.play(&throw);
-    let mut tech = Pad::default();
-    tech.lp = true;
-    tech.lk = true;
-    session.step(Pad::default(), tech);
-    assert!(session.events.contains(&CombatEvent::ThrowTech));
-    assert_eq!(session.p2_health(), HEALTH_MAX);
-
-    let mut late = CombatSession::new(TournamentFighter::Ryu, TournamentFighter::Retsu, rules);
-    late.play(&throw);
-    for _ in 0..7 {
-        late.step(Pad::default(), Pad::default());
-    }
-    late.step(Pad::default(), tech);
-    assert!(late
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::ThrowConnect { .. })));
-    assert!(late.p2_health() < HEALTH_MAX);
-
-    let mut untech = rules;
-    untech.untechable_sf2_throws = true;
-    let mut locked = CombatSession::new(TournamentFighter::Mike, TournamentFighter::Joe, untech);
-    locked.play(
-        &locked
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.kind == MoveKind::Throw)
-            .unwrap()
-            .rehearsal(),
-    );
-    locked.step(Pad::default(), tech);
-    assert!(!locked.events.contains(&CombatEvent::ThrowTech));
-    assert!(locked
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::ThrowConnect { .. })));
-
-    let mut corner = CombatSession::new(TournamentFighter::Geki, TournamentFighter::Joe, rules);
-    corner.place(340, 360);
-    corner.play(
-        &corner
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.kind == MoveKind::Throw)
-            .unwrap()
-            .rehearsal(),
-    );
-    for _ in 0..30 {
-        corner.step(Pad::default(), Pad::default());
-    }
-    assert!(corner.events.contains(&CombatEvent::WakePush));
-    assert!(corner.p2_x() < 360);
-
-    let mut loops = rules;
-    loops.allow_corner_throw_loops = true;
-    let mut stay = CombatSession::new(TournamentFighter::Geki, TournamentFighter::Joe, loops);
-    stay.place(340, 360);
-    stay.play(
-        &stay
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.kind == MoveKind::Throw)
-            .unwrap()
-            .rehearsal(),
-    );
-    for _ in 0..30 {
-        stay.step(Pad::default(), Pad::default());
-    }
-    assert!(!stay.events.contains(&CombatEvent::WakePush));
-    assert_eq!(stay.p2_x(), 360);
-}
-
-#[test]
-fn cross_era_guard_hitstun_freeze_buffer_and_hud() {
-    assert_eq!(hud_cells(HEALTH_MAX), 11);
-    assert_eq!(hud_cells(0), 0);
-    assert_eq!(hud_cells(1), 1);
-
-    let rules = Sf1PlusRules::for_preset(RulesetPreset::DefinitiveOverhaul);
-    let mut modern = CombatSession::with_eras(
-        TournamentFighter::Ryu,
-        TournamentFighter::Ken,
-        rules,
-        EraStyle::Sf1Plus,
-        EraStyle::Sf1Plus,
-    );
-    let low = modern
-        .p1_kit()
-        .moves
-        .iter()
-        .find(|mv| mv.name == "crouch LK")
-        .unwrap()
-        .rehearsal();
-    let block = Pad {
-        down: true,
-        right: true,
-        ..Pad::default()
-    };
-    for pad in &low {
-        modern.step(*pad, block);
-    }
-    for _ in 0..8 {
-        modern.step(Pad::default(), block);
-    }
-    assert!(
-        modern
-            .events
-            .iter()
-            .any(|event| matches!(event, CombatEvent::Blocked { .. })),
-        "{:?}",
-        modern.events
-    );
-
-    let mut classic_guard = CombatSession::with_eras(
-        TournamentFighter::Ryu,
-        TournamentFighter::Ken,
-        rules,
-        EraStyle::Sf1Plus,
-        EraStyle::Sf1987,
-    );
-    for pad in &low {
-        classic_guard.step(*pad, block);
-    }
-    for _ in 0..8 {
-        classic_guard.step(Pad::default(), block);
-    }
-    assert!(classic_guard
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Hit { .. })));
-
-    let mut old_attacker = CombatSession::with_eras(
-        TournamentFighter::Ryu,
-        TournamentFighter::Ken,
-        rules,
-        EraStyle::Sf1987,
-        EraStyle::Sf1Plus,
-    );
-    let lp = old_attacker
-        .p1_kit()
-        .moves
-        .iter()
-        .find(|mv| mv.name == "stand LP")
-        .unwrap();
-    let special = old_attacker
-        .p1_kit()
-        .moves
-        .iter()
-        .find(|mv| mv.name == "Hadoken")
-        .unwrap();
-    let mut seq = lp.rehearsal();
-    seq.extend(special.rehearsal());
-    old_attacker.play(&seq);
-    assert!(!old_attacker
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Canceled(_))));
-    assert!(old_attacker
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Hit { hitstun: 5, .. })));
-
-    let mut scaled = CombatSession::from_config(
-        TournamentFighter::Ryu,
-        TournamentFighter::Ken,
-        &MatchConfig::definitive(),
-    );
-    scaled.play(
-        &scaled
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "Hadoken")
-            .unwrap()
-            .rehearsal(),
-    );
-    for _ in 0..20 {
-        scaled.step(Pad::default(), Pad::default());
-    }
-    let scaled_hit = scaled.events.iter().find_map(|event| match event {
-        CombatEvent::Hit { damage, .. } => Some(*damage),
-        _ => None,
-    });
-    assert_ne!(scaled_hit, Some(CLASSIC_SPECIAL_DAMAGE));
-
-    let mut classic = CombatSession::from_config(
-        TournamentFighter::Ryu,
-        TournamentFighter::Ken,
-        &MatchConfig::faithful(),
-    );
-    classic.play(
-        &classic
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "Hadoken")
-            .unwrap()
-            .rehearsal(),
-    );
-    for _ in 0..20 {
-        classic.step(Pad::default(), Pad::default());
-    }
-    assert!(
-        classic.events.contains(&CombatEvent::Hit {
-            damage: CLASSIC_SPECIAL_DAMAGE,
-            hitstun: classic
-                .events
-                .iter()
-                .find_map(|e| match e {
-                    CombatEvent::Hit { hitstun, .. } => Some(*hitstun),
-                    _ => None,
-                })
-                .unwrap_or(0)
-        }) || classic.events.iter().any(|e| matches!(
-            e,
-            CombatEvent::Hit {
-                damage: CLASSIC_SPECIAL_DAMAGE,
-                ..
+        step(&mut fight, assets, pad(RIGHT, Some(HP)), pad(0, None));
+        assert_eq!(fight.fight_read().fighters[1].move_id, THROWN_MOVE);
+        for _ in 0..120 {
+            step(&mut fight, assets, pad(RIGHT, None), pad(0, None));
+            if fight.machine().toggle_state().throw.wakeup_invuln[1] > 0 {
+                let telemetry = fight.machine().diagnostic_telemetry();
+                return (telemetry.p1.center_x, telemetry.p2.center_x);
             }
-        ))
-    );
-
-    let mut lp_pad = Pad::default();
-    lp_pad.lp = true;
-    let mut buffered = CombatSession::from_config(
-        TournamentFighter::Ken,
-        TournamentFighter::Ryu,
-        &MatchConfig::definitive(),
-    );
-    buffered.play(
-        &buffered
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "stand LP")
-            .unwrap()
-            .rehearsal(),
-    );
-    while !buffered
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Hit { .. }))
-    {
-        buffered.step(Pad::default(), Pad::default());
-    }
-    buffered.step(lp_pad, Pad::default());
-    for _ in 0..24 {
-        buffered.step(Pad::default(), Pad::default());
-    }
-    let started_lps = buffered
-        .events
-        .iter()
-        .filter(|event| matches!(event, CombatEvent::Started("stand LP")))
-        .count();
+        }
+        panic!("Ken did not get up from the throw");
+    };
+    let allowed = spacing(true);
+    let prevented = spacing(false);
     assert!(
-        started_lps >= 2,
-        "buffered light punch should come out after hitstop: {:?}",
-        buffered.events
+        allowed.0.abs_diff(allowed.1) <= u32::from(RANGE),
+        "allowing loops leaves Retsu within throw range: {allowed:?}"
     );
-
-    let mut locked = CombatSession::from_config(
-        TournamentFighter::Ken,
-        TournamentFighter::Ryu,
-        &MatchConfig::faithful(),
+    assert!(
+        prevented.0.abs_diff(prevented.1) > u32::from(RANGE),
+        "the default opens space at the wall: {prevented:?}"
     );
-    locked.play(
-        &locked
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "stand LP")
-            .unwrap()
-            .rehearsal(),
-    );
-    while !locked
-        .events
-        .iter()
-        .any(|event| matches!(event, CombatEvent::Hit { .. }))
-    {
-        locked.step(Pad::default(), Pad::default());
-    }
-    locked.step(lp_pad, Pad::default());
-    for _ in 0..24 {
-        locked.step(Pad::default(), Pad::default());
-    }
-    let locked_lps = locked
-        .events
-        .iter()
-        .filter(|event| matches!(event, CombatEvent::Started("stand LP")))
-        .count();
-    assert_eq!(
-        locked_lps, 1,
-        "faithful lockout dropped the freeze input: {:?}",
-        locked.events
-    );
-
-    let round = MatchConfig::from_toml(&MatchConfig::definitive().to_toml()).unwrap();
-    assert!(!round.sf1plus.classic_1987_special_damage);
-    assert!(round.sf1plus.disable_freeze_input_lockout);
-    assert!(!round.sf1plus.untechable_sf2_throws);
-    assert!(!round.sf1plus.allow_corner_throw_loops);
 }
 
 #[test]
-fn every_fighter_blocks_high_and_low_and_techs_a_throw() {
-    let rules = Sf1PlusRules::for_preset(RulesetPreset::DefinitiveOverhaul);
-    for fighter in TournamentFighter::ALL {
-        let mut low = CombatSession::new(TournamentFighter::Ryu, fighter, rules);
-        let crouch_lk = low
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "crouch LK")
-            .unwrap()
-            .rehearsal();
-        let guard_low = Pad {
-            down: true,
-            right: true,
-            ..Pad::default()
-        };
-        for pad in &crouch_lk {
-            low.step(*pad, guard_low);
-        }
-        for _ in 0..8 {
-            low.step(Pad::default(), guard_low);
-        }
-        assert!(
-            low.events
-                .iter()
-                .any(|event| matches!(event, CombatEvent::Blocked { .. })),
-            "{fighter:?} did not low-block: {:?}",
-            low.events
-        );
-
-        let mut high = CombatSession::new(TournamentFighter::Ryu, fighter, rules);
-        let stand_hp = high
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.name == "stand HP")
-            .unwrap()
-            .rehearsal();
-        let guard_high = Pad {
-            right: true,
-            ..Pad::default()
-        };
-        for pad in &stand_hp {
-            high.step(*pad, guard_high);
-        }
-        for _ in 0..10 {
-            high.step(Pad::default(), guard_high);
-        }
-        assert!(
-            high.events
-                .iter()
-                .any(|event| matches!(event, CombatEvent::Blocked { .. })),
-            "{fighter:?} did not high-block: {:?}",
-            high.events
-        );
-
-        let mut teching = CombatSession::new(fighter, TournamentFighter::Ken, rules);
-        let throw = teching
-            .p1_kit()
-            .moves
-            .iter()
-            .find(|mv| mv.kind == MoveKind::Throw)
-            .unwrap()
-            .rehearsal();
-        teching.play(&throw);
-        let tech = Pad {
-            lp: true,
-            lk: true,
-            ..Pad::default()
-        };
-        teching.step(Pad::default(), tech);
-        assert!(
-            teching.events.contains(&CombatEvent::ThrowTech),
-            "{fighter:?} throw was not techable: {:?}",
-            teching.events
-        );
-        assert_eq!(teching.p2_health(), HEALTH_MAX);
-    }
+fn arcade_rules_for_classic_damage_and_throw_tech_survive_settings_reload() {
+    let config = MatchConfig::from_toml(&MatchConfig::definitive().to_toml()).unwrap();
+    assert!(!config.sf1plus.classic_1987_special_damage);
+    assert!(config.sf1plus.disable_freeze_input_lockout);
+    assert!(!config.sf1plus.untechable_sf2_throws);
+    assert!(!config.sf1plus.allow_corner_throw_loops);
 }

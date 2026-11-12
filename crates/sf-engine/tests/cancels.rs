@@ -608,7 +608,7 @@ fn with_the_switch_off_no_cancel_happens() {
 }
 
 #[test]
-fn ken_retsu_and_geki_follow_the_same_rule() {
+fn ken_cancels_crouching_short_into_hadoken() {
     // Ken on P1 against Ryu: his crouching short cancels into his Hadoken.
     let Some(mut s) = shotos(
         MatchConfig::from_preset(MODERN),
@@ -627,7 +627,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         o.special.is_none_or(|sp| sp >= o.end),
         "Ken's heavy punch is not cancelable: {o:?}"
     );
+}
 
+#[test]
+fn retsu_cancels_jab_into_kiai_shot() {
     // Retsu: his jab cancels into the Kiai Shot, on hit and on Ken's
     // standing guard (a crouching Ken ducks it).
     let Some(mut s) = boss(TournamentFighter::Retsu) else {
@@ -652,7 +655,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         "Retsu's heavy punch is not cancelable: {o:?}"
     );
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn geki_cancels_crouching_jab_into_shuriken() {
     // Geki: his crouching jab cancels into the Shuriken on hit and on
     // Ken's crouching guard (the window closing is `outside_the_window_*`).
     let Some(mut s) = boss(TournamentFighter::Geki) else {
@@ -668,7 +674,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn joe_cancels_crouching_jab_into_dynamite_straight() {
     // Joe: his crouching jab (`0x11`, body punch) cancels into the Dynamite
     // Straight (`0x19`) on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Joe) else {
@@ -690,7 +699,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn mike_cancels_crouching_jab_into_bison_rush() {
     // Mike: his crouching jab (`0x11`, ducking punch) cancels into the
     // Bison Rush (`0x1a`) on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Mike) else {
@@ -706,7 +718,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn lee_cancels_crouching_jab_into_zesshouohken() {
     // Lee: his crouching jab (`0x11`) cancels into the Zesshouohken (`0x1a`)
     // on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Lee) else {
@@ -722,7 +737,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn gen_cancels_crouching_jab_into_hyakurenko() {
     // Gen: his crouching jab (`0x11`) cancels into the Hyakurenko (`0x1a`)
     // on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Gen) else {
@@ -738,7 +756,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn birdie_cancels_crouching_jab_into_bull_head() {
     // Birdie: his crouching jab (`0x11`) cancels into the Bull Head (`0x1a`)
     // on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Birdie) else {
@@ -754,7 +775,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn eagle_cancels_crouching_jab_into_manchester_black() {
     // Eagle: his crouching jab (`0x11`, his 1987 low stick thrust) cancels
     // into the Manchester Black (`0x1a`) on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Eagle) else {
@@ -770,7 +794,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn adon_cancels_crouching_jab_into_rising_jaguar() {
     // Adon: his crouching jab (`0x11`) cancels into the Rising Jaguar (`0x19`)
     // on hit and on Ken's crouching guard.
     let Some(mut s) = boss(TournamentFighter::Adon) else {
@@ -792,7 +819,10 @@ fn ken_retsu_and_geki_follow_the_same_rule() {
         );
     }
     assert!(s.fight_machine().unwrap().unrecovered().is_empty());
+}
 
+#[test]
+fn sagat_cancels_crouching_jab_into_tiger_shots_and_knee() {
     // Sagat: his crouching jab (`0x11`) cancels into the High Tiger Shot
     // (`0x1a`), the Low Tiger Shot (`0x1b`) and the Tiger Knee (`0x19`) on
     // hit and on Ken's crouching guard.

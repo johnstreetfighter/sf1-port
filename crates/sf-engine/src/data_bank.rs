@@ -97,6 +97,7 @@
 
 use sf_video::art::Catalogue;
 
+use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 
 /// The first address of the bank.
@@ -111,6 +112,12 @@ pub const PLAYER_MOVES: u8 = 0x40;
 pub const SF2_SPECIAL_SLOT: u8 = 0x1f;
 /// The fighter's Super Combo in the SF2 kit.
 pub const SF2_SUPER_SLOT: u8 = 0x29;
+/// The Alpha shotos' second Super Combo (Metsu Shoryuken / Shinryuken).
+pub const ALPHA_SUPER_SECOND_SLOT: u8 = 0x2a;
+/// The Alpha shotos' third Super Combo (Shinkuu Tatsumaki / Shippu Jinraikyaku).
+pub const ALPHA_SUPER_THIRD_SLOT: u8 = 0x2b;
+/// The native Alpha guard-cancel attack. Reaction ids start at `0x30`.
+pub const ALPHA_COUNTER_SLOT: u8 = 0x2e;
 const MOVE_HEADER_SIZE: u32 = 0x30;
 /// Where, from a bank table, the long naming its jump-apex record sits
 /// (just after the table), for the anytime jump attacks.
@@ -123,6 +130,22 @@ pub const SPECIAL_SLOT_SIZE: u32 = 8;
 /// The special slots, the move ids a command tracker starts.
 pub const SPECIAL_SLOTS: [u8; 3] = [0x19, 0x1a, 0x1b];
 const MOVE_HEADERS: u32 = SPECIALS + SPECIAL_SLOTS.len() as u32 * SPECIAL_SLOT_SIZE;
+const ERA_HEADERS: u32 = MOVE_HEADERS + PLAYER_MOVES as u32 * MOVE_HEADER_SIZE;
+const ERA_HEADER_TABLES: u32 = 6;
+
+fn era_header_offset(family: EraFamily, slot: u8) -> Option<u32> {
+    let family_index = match family {
+        EraFamily::Sf3 => 0,
+        EraFamily::Sf4 => 1,
+        EraFamily::Sf5 => 2,
+        EraFamily::Sf6 => 3,
+        EraFamily::SfZ => 4,
+        EraFamily::Sf2 => 5,
+        _ => return None,
+    };
+    (slot < PLAYER_MOVES).then_some(ERA_HEADERS + (family_index * u32::from(PLAYER_MOVES) + u32::from(slot)) * 4)
+}
+
 /// A special slot's flag: it lands by its own hit function (melee).
 pub const SPECIAL_MELEE: u8 = 1;
 /// A special slot's flag: guarded crouching even in the air.
@@ -176,6 +199,27 @@ pub const ROUTINE_THROW_ARC: u8 = 11;
 /// A pose-origin conversion immediately before the next frame loads:
 /// kind, sound, signed vertical offset. It never presents the old pose shifted.
 pub const ROUTINE_POSE_ORIGIN: u8 = 12;
+/// A command grab attempt: +4 range in pixels, +5 throw damage.
+pub const ROUTINE_ALPHA_CATCH: u8 = 13;
+/// Replay the retreat stream at +4 until the fighter reaches the rear edge.
+pub const ROUTINE_ALPHA_WALL_REBOUND: u8 = 14;
+/// Continue Gekirou on a fresh kick press, or land via the stream at +4.
+pub const ROUTINE_ALPHA_REPEAT_K: u8 = 15;
+/// Replay the windup at +4 for at most +1 frames while punch is held.
+pub const ROUTINE_ALPHA_HOLD_P: u8 = 16;
+/// Sagat's Tiger Nexus follow-up, selected after hit or guard contact.
+pub const ROUTINE_SF6_TIGER_NEXUS: u8 = 17;
+
+mod alpha_england;
+mod alpha_gen;
+mod alpha_thailand;
+mod sf3;
+mod sf4;
+mod sf5;
+mod sf6;
+mod what_if;
+mod what_if_others;
+
 
 /// Addresses of a fighter's `"throw"` and `"thrown"` (`0x30`-byte) move
 /// headers in the extended data bank (SP19, `#263`).
@@ -386,6 +430,20 @@ impl DataBank {
         )
     }
 
+    /// Resolve a family-specific header without replacing the SF1+ or Alpha slot.
+    pub fn era_move_header(&self, fighter: TournamentFighter, family: EraFamily, slot: u8) -> Option<u32> {
+        let table = table_address(fighter);
+        let pointer = table + era_header_offset(family, slot)?;
+        let header = u32::from_be_bytes(std::array::from_fn(|byte| self.rb(pointer + byte as u32)));
+        let offset = header.checked_sub(table)?;
+        (ERA_HEADERS..=FIGHTER_SPAN - MOVE_HEADER_SIZE).contains(&offset).then_some(header)
+    }
+
+    pub(crate) fn alpha_move_header(&self, fighter: TournamentFighter, slot: u8) -> Option<u32> {
+        self.era_move_header(fighter, EraFamily::SfZ, slot)
+            .or_else(|| self.move_header(fighter, slot))
+    }
+
     /// `fighter`'s `"throw"` and `"thrown"` headers in the bank (SP19, `#263`).
     pub fn throw_entry(&self, fighter: TournamentFighter) -> Option<ThrowEntry> {
         let idx = TournamentFighter::ALL.iter().position(|&f| f == fighter)?;
@@ -428,6 +486,14 @@ impl DataBank {
                 let mut region = new_slot(fighter);
                 if rom.len() >= 0x40000 {
                     build_shoto_sf2_moves(rom, &mut region, fighter);
+                    write_alpha_counter(rom, &mut region, fighter);
+                    write_alpha_custom(rom, &mut region, fighter);
+                    build_shoto_alpha_supers(rom, &mut region, fighter);
+                    write_alpha_shoto_overhead(rom, &mut region, fighter);
+                    sf3::build(rom, &mut region, fighter);
+                    sf4::build(rom, &mut region, fighter);
+                    sf5::build(rom, &mut region, fighter);
+                    sf6::build(rom, &mut region, fighter);
                 }
                 let entry = match catalogue {
                     Some(cat) => build_throws(rom, &mut region, fighter, cat).ok(),
@@ -453,6 +519,22 @@ impl DataBank {
                 .and_then(|region| validate_specials(&region).map(|()| region))
                 .and_then(|mut region| {
                     let entry = build_throws(rom, &mut region, fighter, catalogue)?;
+                    write_alpha_counter(rom, &mut region, fighter);
+                    write_alpha_custom(rom, &mut region, fighter);
+                    match fighter {
+                        TournamentFighter::Adon => alpha_thailand::write_adon(rom, &mut region),
+                        TournamentFighter::Birdie => alpha_england::build_birdie(rom, &mut region),
+                        TournamentFighter::Eagle => alpha_england::build_eagle(rom, &mut region, catalogue)?,
+                        TournamentFighter::Gen => alpha_gen::build(rom, &mut region),
+                        TournamentFighter::Sagat => alpha_thailand::write_sagat(rom, &mut region),
+                        _ => {}
+                    }
+                    sf4::build(rom, &mut region, fighter);
+                    sf5::build(rom, &mut region, fighter);
+                    sf6::build(rom, &mut region, fighter);
+                    what_if::build(rom, &mut region, fighter);
+                    what_if_others::build(rom, &mut region, fighter);
+                    what_if::build_systems(rom, &mut region, fighter);
                     fits(region).map(|region| (region, entry))
                 });
             match built {
@@ -1003,6 +1085,24 @@ fn put_header(region: &mut Region, base: u32, id: u8, h: &[u8]) {
     region.patch(address, h);
 }
 
+fn put_era_header(region: &mut Region, family: EraFamily, slot: u8, header: &[u8; 0x30]) {
+    let offset = era_header_offset(family, slot).expect("extended era move slot");
+    let address = region.put(header);
+    region.patch(region.base + offset, &address.to_be_bytes());
+}
+
+/// Share a stream with a base or Alpha move while retaining the new move ID.
+fn alias_era_header(region: &mut Region, family: EraFamily, slot: u8, existing_slot: u8) {
+    let pointer = usize::from(existing_slot) * 4;
+    if region.bytes[pointer..pointer + 4] == [0; 4] {
+        return;
+    }
+    let start = bank_header_offset(existing_slot) as usize;
+    let mut header: [u8; 0x30] = region.bytes[start..start + 0x30].try_into().unwrap();
+    header[0x0a] = slot;
+    put_era_header(region, family, slot, &header);
+}
+
 /// Copy move `id`'s ROM header from `rom_table` into the table at `base`.
 fn keep_rom_header(region: &mut Region, rom: &[u8], rom_table: u32, base: u32, id: u8) {
     let h: Vec<u8> = (0..0x30).map(|i| rom_b(rom, rom_table + id as u32 * 0x30 + i)).collect();
@@ -1447,6 +1547,257 @@ fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFig
     }
 }
 
+fn build_shoto_alpha_supers(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+    const CLOSE_REACTION: u32 = 0x45b6e;
+    const PUNCH_REACTION: u32 = 0x45c88;
+    const RISING_REACTION: u32 = 0x45f52;
+    if rom.len() < (RISING_REACTION + 8) as usize {
+        return;
+    }
+
+    let strike_entry = |region: &mut Region, source, damage| {
+        let mut entry: [u8; 8] = std::array::from_fn(|i| rom_b(rom, source + i as u32));
+        entry[1] = damage;
+        region.put(&entry)
+    };
+    let hit = strike_entry(region, PUNCH_REACTION, 4);
+    let finish = strike_entry(region, RISING_REACTION, 5);
+    let rising_hit = if fighter == TournamentFighter::Ken {
+        strike_entry(region, CLOSE_REACTION, 4)
+    } else {
+        hit
+    };
+    write_alpha_rising_super(rom, region, fighter, rising_hit, finish);
+    match fighter {
+        TournamentFighter::Ryu => write_shinkuu_tatsumaki(rom, region, hit, finish),
+        TournamentFighter::Ken => write_shippu_jinraikyaku(rom, region, hit, finish),
+        _ => unreachable!("only Ryu and Ken have Alpha shoto Supers"),
+    }
+}
+
+fn write_alpha_rising_super(
+    rom: &[u8],
+    region: &mut Region,
+    fighter: TournamentFighter,
+    hit: u32,
+    finish: u32,
+) {
+    // Metsu advances into the rising fist. Shinryuken rises in place.
+    let (launch_frame, lift_frame, fall_frame, forward) = match fighter {
+        TournamentFighter::Ryu => (0x1200, 0x1220, 0x12c0, 2),
+        TournamentFighter::Ken => (0x32de, 0x32fe, 0x339e, 0),
+        _ => unreachable!("only Ryu and Ken have Alpha shoto Supers"),
+    };
+    let source = fighter.move_table() + 0x19 * MOVE_HEADER_SIZE;
+    let (crouch, crouch_boxes) = header_pose(rom, source);
+    let launch = rom_pose(rom, launch_frame);
+    let lift = rom_pose(rom, lift_frame);
+    let fall = rom_pose(rom, fall_frame);
+    let mut launch_boxes = rom_boxes(rom, launch_frame);
+    let mut lift_boxes = rom_boxes(rom, lift_frame);
+    // Cover a grounded opponent directly under the uppercut as the fighter rises.
+    lift_boxes[12..16].copy_from_slice(&[0, 28, 20, 20]);
+    if fighter == TournamentFighter::Ken {
+        // The vertical Shinryuken's spin reaches past the first hit's recoil.
+        launch_boxes[12..16].copy_from_slice(&[12, 20, 26, 26]);
+        lift_boxes[12..16].copy_from_slice(&[0xf8, 32, 28, 28]);
+    }
+    let (launch_origin, launch_dy) = ground_origin_record(region, crouch, launch);
+    let (lift_origin, lift_dy) = ground_origin_record(region, launch, lift);
+    let stream = region.here();
+    let mut s = Stream::new(region, crouch, crouch.top_on_ground());
+    s.change_origin(launch_origin, launch_dy);
+    s.call(routine::RISING, 0);
+    s.strike(launch, 3, (-4, forward), launch_boxes, 0x88, hit);
+    s.strike(launch, 3, (-4, forward), launch_boxes, 0x88, hit);
+    s.change_origin(lift_origin, lift_dy);
+    s.strike(lift, 4, (-4, forward), lift_boxes, 0x88, hit);
+    s.strike(lift, 4, (-3, forward), lift_boxes, 0x88, hit);
+    s.strike(lift, 4, (-2, forward), lift_boxes, 0x88, finish);
+    s.call(routine::FALLING, 0);
+    let fall_boxes = rom_boxes(rom, fall_frame);
+    s.travel(fall, fall.top_on_ground() - 60, 5, (2, 0), fall_boxes, 0, 0);
+    s.travel(fall, fall.top_on_ground() - 50, 5, (4, 0), fall_boxes, 0, 0);
+    s.travel(fall, fall.top_on_ground() - 30, 6, (5, 0), fall_boxes, 0, 0);
+    s.call(routine::TOUCHDOWN, 0);
+    s.hold(crouch, crouch.top_on_ground(), 3, crouch_boxes, 0, 0);
+    s.call(routine::LANDING, 0);
+    s.hold(crouch, crouch.top_on_ground(), 12, crouch_boxes, 0, 0);
+    s.end();
+
+    let mut first = still(crouch, 4, crouch_boxes);
+    first.flags = 0x08;
+    let sounds = std::array::from_fn(|i| rom_b(rom, source + 0x10 + i as u32));
+    let id = ALPHA_SUPER_SECOND_SLOT;
+    let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, id, sounds, stream);
+    put_header(region, region.base, id, &h);
+}
+
+fn write_shinkuu_tatsumaki(rom: &[u8], region: &mut Region, hit: u32, finish: u32) {
+    let source = TournamentFighter::Ryu.move_table() + 0x1b * MOVE_HEADER_SIZE;
+    let (crouch, crouch_boxes) = header_pose(rom, source);
+    let chamber = rom_pose(rom, 0x13ea);
+    let spin = rom_pose(rom, 0x14b0);
+    let turn = rom_pose(rom, 0x14d6);
+    let fall = rom_pose(rom, 0x14f6);
+    let mut spin_boxes = rom_boxes(rom, 0x14b0);
+    // Give the spinning leg a useful close hitbox throughout the low hover.
+    spin_boxes[12..16].copy_from_slice(&[0xf2, 18, 16, 36]);
+    let stream = region.here();
+    let mut s = Stream::new(region, crouch, crouch.top_on_ground());
+    s.call(routine::RISING, 0);
+    s.travel(chamber, chamber.top_on_ground(), 4, (-4, 1), rom_boxes(rom, 0x13ea), 0, 0);
+    for spin_index in 0..5 {
+        let entry = if spin_index == 4 { finish } else { hit };
+        s.strike(spin, 3, (0, 1), spin_boxes, 0x80, entry);
+        if spin_index < 4 {
+            s.hold(turn, turn.top_on_ground() - 16, 3, rom_boxes(rom, 0x14d6), 0, 0);
+        }
+    }
+    s.call(routine::FALLING, 0);
+    s.travel(fall, fall.top_on_ground() - 16, 4, (4, 0), rom_boxes(rom, 0x14f6), 0, 0);
+    s.call(routine::TOUCHDOWN, 0);
+    s.hold(crouch, crouch.top_on_ground(), 3, crouch_boxes, 0, 0);
+    s.call(routine::LANDING, 0);
+    s.hold(crouch, crouch.top_on_ground(), 12, crouch_boxes, 0, 0);
+    s.end();
+
+    let first = still(crouch, 4, crouch_boxes);
+    let id = ALPHA_SUPER_THIRD_SLOT;
+    let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, id, [0x8b, 0, 0x19], stream);
+    put_header(region, region.base, id, &h);
+}
+
+fn write_shippu_jinraikyaku(rom: &[u8], region: &mut Region, hit: u32, finish: u32) {
+    let windup = rom_pose(rom, 0x2f40);
+    let windup_boxes = rom_boxes(rom, 0x2f40);
+    let chamber = rom_pose(rom, 0x2f60);
+    let spin = rom_pose(rom, 0x358e);
+    let stream = region.here();
+    let mut s = Stream::new(region, windup, windup.top_on_ground());
+    for frame in [0x30ca, 0x2f80, 0x30ca, 0x2f80] {
+        let pose = rom_pose(rom, frame);
+        let mut boxes = rom_boxes(rom, frame);
+        boxes[12..16].copy_from_slice(&[20, 22, 15, 32]);
+        s.strike(pose, 3, (0, 2), boxes, 0x80, hit);
+        s.travel(chamber, chamber.top_on_ground(), 3, (0, 2), rom_boxes(rom, 0x2f60), 0, 0);
+    }
+    s.call(routine::RISING, 0);
+    let mut finisher_boxes = rom_boxes(rom, 0x358e);
+    finisher_boxes[12..16].copy_from_slice(&[0, 28, 24, 34]);
+    s.strike(spin, 4, (-4, 2), finisher_boxes, 0x80, finish);
+    s.call(routine::FALLING, 0);
+    s.travel(chamber, chamber.top_on_ground() - 16, 4, (4, 1), rom_boxes(rom, 0x2f60), 0, 0);
+    s.call(routine::TOUCHDOWN, 0);
+    s.hold(windup, windup.top_on_ground(), 3, windup_boxes, 0, 0);
+    s.call(routine::LANDING, 0);
+    s.hold(windup, windup.top_on_ground(), 12, windup_boxes, 0, 0);
+    s.end();
+
+    let first = still(windup, 4, windup_boxes);
+    let id = ALPHA_SUPER_THIRD_SLOT;
+    let h = header(&first.bytes(), windup.top_on_ground(), 0xc2, id, [0x82, 0x05, 0x19], stream);
+    put_header(region, region.base, id, &h);
+}
+
+/// Reuse each Alpha fighter's own 1987 ground attack poses for his counter.
+/// Its active frame points at a banked hit entry in the same format as the
+/// ROM's, so the native collision handler can use the existing reactions.
+fn write_alpha_shoto_overhead(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+    let [windup, strike, retract] = match fighter {
+        TournamentFighter::Ryu => [0x0af0, 0x0b30, 0x0b50],
+        TournamentFighter::Ken => [0x2f40, 0x2f80, 0x2f60],
+        _ => return,
+    };
+    let [ready, active, recovery] = [windup, strike, retract].map(|at| rom_pose(rom, at));
+    let mut boxes = rom_boxes(rom, strike);
+    boxes[12..16].copy_from_slice(&[2, 24, 21, 30]);
+    let entry = region.put(&std::array::from_fn::<_, 8, _>(|i| rom_b(rom, 0x45c88 + i as u32)));
+    let (origin, shift) = ground_origin_record(region, ready, active);
+    let stream = region.here();
+    let mut s = Stream::new(region, ready, ready.top_on_ground());
+    s.travel(ready, ready.top_on_ground(), 4, (0, 2), rom_boxes(rom, windup), 0, 0);
+    s.change_origin(origin, shift);
+    s.call(routine::SOUND, 0xa2);
+    s.hold(active, active.top_on_ground(), 5, boxes, 0x80, entry);
+    s.hold(recovery, recovery.top_on_ground(), 12, rom_boxes(rom, retract), 0, 0);
+    s.end();
+    let first = still(ready, 11, rom_boxes(rom, windup));
+    let slot = 0x1c;
+    let h = header(&first.bytes(), ready.top_on_ground(), 0xc2, slot, [0; 3], stream);
+    put_header(region, region.base, slot, &h);
+}
+
+fn write_alpha_custom(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+    let (pose, boxes) = header_pose(rom, fighter.move_table() + MOVE_HEADER_SIZE);
+    let first = still(pose, 6, boxes);
+    let stream = region.end();
+    let slot = ALPHA_COUNTER_SLOT;
+    let move_header = header(&first.bytes(), pose.top_on_ground(), 0xc2, slot, [0; 3], stream);
+    put_era_header(region, EraFamily::SfZ, slot, &move_header);
+}
+
+fn write_alpha_counter(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
+    // The 1987 push check uses the drawn center. A compact windup keeps it
+    // on the fighter's side of a close opponent when the guard pose changes.
+    let (windup_frame, strike_frame, retract_frame) = match fighter {
+        TournamentFighter::Ryu => (0x0af0, 0x0b30, 0x0b50), // straight punch
+        TournamentFighter::Ken => (0x2bce, 0x2c0e, 0x2c2e), // straight punch
+        TournamentFighter::Gen => (0x103b0, 0x103d6, 0x103f6), // palm strike
+        TournamentFighter::Birdie => (0x1151c, 0x11562, 0x115a2), // hammer punch
+        TournamentFighter::Eagle => (0x12408, 0x1242e, 0x124ae), // stick swing
+        TournamentFighter::Adon => (0x1336c, 0x13392, 0x133b2), // body punch
+        TournamentFighter::Sagat => (0x14030, 0x14056, 0x14096), // knee strike
+        _ => match what_if::alpha_counter_frames(fighter) {
+            Some(frames) => frames,
+            None => return,
+        },
+    };
+    let windup = rom_pose(rom, windup_frame);
+    let strike = rom_pose(rom, strike_frame);
+    let retract = rom_pose(rom, retract_frame);
+    let mut strike_boxes = rom_boxes(rom, strike_frame);
+    const SHORYUKEN_HIT_ENTRY: u32 = 0x45f52;
+    if strike_boxes[15] == 0 || rom.len() < (SHORYUKEN_HIT_ENTRY + 8) as usize {
+        return;
+    }
+
+    // Keep the strike's original tip and widen the box back toward the body
+    // and down toward a crouched attacker. The fighter does not slide.
+    let origin_x = i32::from(strike.x_offset());
+    let origin_height = strike.half().1;
+    let tip = origin_x + i32::from(strike_boxes[14] as i8) + i32::from(strike_boxes[15]);
+    let top = origin_height + i32::from(strike_boxes[12] as i8) + i32::from(strike_boxes[13]);
+    let near = 8;
+    let bottom = 24;
+    let half_width = (tip - near + 1) / 2;
+    let half_height = (top - bottom + 1) / 2;
+    strike_boxes[12..16].copy_from_slice(&[
+        (bottom + half_height - origin_height) as i8 as u8,
+        half_height as u8,
+        (near + half_width - origin_x) as i8 as u8,
+        half_width as u8,
+    ]);
+
+    let mut entry: [u8; 8] = std::array::from_fn(|i| rom_b(rom, SHORYUKEN_HIT_ENTRY + i as u32));
+    entry[1] = 5; // Five of the 48 original health points.
+    entry[3] = entry[2]; // Crouching targets also get the standing blowback.
+    let hit = region.put(&entry);
+
+    const INVULNERABLE: u8 = 0x08;
+    const ACTIVE: u8 = 0x80;
+    let mut first = still(windup, 3, rom_boxes(rom, windup_frame));
+    first.flags = INVULNERABLE;
+    let stream = region.here();
+    let mut s = Stream::new(region, windup, windup.top_on_ground());
+    s.hold(strike, strike.top_on_ground(), 4, strike_boxes, ACTIVE | INVULNERABLE, hit);
+    s.hold(retract, retract.top_on_ground(), 16, rom_boxes(rom, retract_frame), 0, 0);
+    s.end();
+
+    let h = header(&first.bytes(), windup.top_on_ground(), 0xc2, ALPHA_COUNTER_SLOT, [0; 3], stream);
+    put_header(region, region.base, ALPHA_COUNTER_SLOT, &h);
+}
+
 fn write_shoryureppa(rom: &[u8], rom_table: u32, region: &mut Region) {
     let source = rom_table + 0x19 * MOVE_HEADER_SIZE;
     let (crouch, crouch_boxes) = header_pose(rom, source);
@@ -1552,7 +1903,7 @@ fn write_rising_special(
 /// special slots' records (patched by [`set_special`]).
 fn new_slot(fighter: TournamentFighter) -> Region {
     let mut region = Region::new(table_address(fighter));
-    region.put(&[0; (MOVE_HEADERS + PLAYER_MOVES as u32 * MOVE_HEADER_SIZE) as usize]);
+    region.put(&[0; (ERA_HEADERS + ERA_HEADER_TABLES * PLAYER_MOVES as u32 * 4) as usize]);
     region
 }
 
@@ -5765,6 +6116,130 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn canonical_alpha_fighters_have_grounded_invulnerable_counter_streams() {
+        use sf_video::art::{load_art_from, ArtSources};
+        use sf_video::art_pack::ArtPack;
+        use sf_video::romset::load_assets;
+        use std::path::Path;
+
+        let roms = Path::new("../../tools/reference/local/roms/sf");
+        let pack_path = Path::new("../../tools/reference/local/roms/sf1-port-art");
+        if !roms.is_dir() || !pack_path.is_dir() {
+            eprintln!("skipping: local ROM or art pack is missing");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let pack = ArtPack::open(pack_path).unwrap();
+        let recipes = [
+            include_str!("../../../art/recipes/adon.json"),
+            include_str!("../../../art/recipes/birdie.json"),
+            include_str!("../../../art/recipes/eagle.json"),
+            include_str!("../../../art/recipes/gen.json"),
+            include_str!("../../../art/recipes/sagat.json"),
+        ];
+        let reviews = [
+            include_str!("../../../art/review/adon.json"),
+            include_str!("../../../art/review/birdie.json"),
+            include_str!("../../../art/review/eagle.json"),
+            include_str!("../../../art/review/gen.json"),
+            include_str!("../../../art/review/sagat.json"),
+        ];
+        let sources = ArtSources { recipes: &recipes, reviews: Some(&reviews), pack: Ok(&pack) };
+        let art = load_art_from(&assets, &sources).unwrap();
+        let bank = DataBank::build(&assets.maincpu, &art.catalogues);
+        let long = |at| u32::from_be_bytes(std::array::from_fn(|i| bank.rb(at + i as u32)));
+        for fighter in TournamentFighter::ALL {
+            let header = bank.move_header(fighter, ALPHA_COUNTER_SLOT);
+            if crate::era::what_if_sfz(fighter) {
+                assert_eq!(header, None, "{fighter:?}");
+                continue;
+            }
+            let header = header.unwrap_or_else(|| panic!("missing {fighter:?} counter"));
+            assert_eq!(bank.rb(header + 0xa), ALPHA_COUNTER_SLOT);
+            assert_eq!(bank.rb(header + 0xe), 2, "{fighter:?} startup");
+            assert_eq!(bank.rb(header + 0xf), 0x08, "{fighter:?} startup invulnerability");
+            let active = long(header + 0x2c);
+            let recovery = active + 0x20;
+            assert_eq!(bank.rb(active + 1), 3, "{fighter:?} active duration");
+            assert_eq!(bank.rb(active + 0x1a), 0x88, "{fighter:?} active invulnerability");
+            let hit = long(active + 0x1c);
+            assert_eq!(bank.rb(hit + 1), 5, "{fighter:?} damage");
+            assert_eq!(bank.rb(hit + 2), 0x35, "{fighter:?} standing blowback");
+            assert_eq!(bank.rb(hit + 3), 0x35, "{fighter:?} crouching blowback");
+            assert_eq!(bank.rb(recovery + 0x1a), 0, "{fighter:?} vulnerable recovery");
+
+            let (windup, _) = header_pose(&bank.bytes, header - DATA_BANK_BASE);
+            let strike = rom_pose(&bank.bytes, active - DATA_BANK_BASE);
+            let retract = rom_pose(&bank.bytes, recovery - DATA_BANK_BASE);
+            assert_eq!(windup.top_on_ground() + windup.height(), GROUND, "{fighter:?} startup");
+            assert_eq!(windup.half().1 - strike.half().1, i32::from(bank.rb(active + 6) as i8));
+            assert_eq!(strike.half().1 - retract.half().1, i32::from(bank.rb(recovery + 6) as i8));
+        }
+    }
+
+    #[test]
+    fn alpha_shoto_super_streams_have_five_hits_and_land_on_the_floor() {
+        use sf_video::romset::load_assets;
+        use std::path::Path;
+
+        let roms = Path::new("../../tools/reference/local/roms/sf");
+        if !roms.is_dir() {
+            eprintln!("skipping: local ROM set is missing");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let bank = DataBank::build(&assets.maincpu, &[]);
+        let long = |at| u32::from_be_bytes(std::array::from_fn(|i| bank.rb(at + i as u32)));
+        for fighter in [TournamentFighter::Ryu, TournamentFighter::Ken] {
+            for slot in [ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT] {
+                let h = bank.move_header(fighter, slot).unwrap();
+                assert_eq!(bank.rb(h + 0xa), slot);
+                let (mut pose, _) = header_pose(&bank.bytes, h - DATA_BANK_BASE);
+                let mut center = pose.top_on_ground() + pose.half().1;
+                let mut frame = long(h + 0x2c);
+                let mut hit_count = 0;
+                for _ in 0..64 {
+                    match bank.rb(frame) {
+                        0xfd => break,
+                        0xff => {
+                            let call = long(frame + 2);
+                            if in_bank(call) {
+                                assert_eq!(bank.rb(call), ROUTINE_POSE_ORIGIN);
+                                let dy = i16::from_be_bytes([bank.rb(call + 2), bank.rb(call + 3)]);
+                                center += i32::from(dy);
+                            }
+                            frame += 6;
+                        }
+                        hold => {
+                            pose = rom_pose(&bank.bytes, frame - DATA_BANK_BASE);
+                            let dy = i32::from(bank.rb(frame + 6) as i8);
+                            for _ in 0..=hold {
+                                center += dy;
+                                assert!(
+                                    center + pose.half().1 <= GROUND,
+                                    "{fighter:?} {slot:#04x} frame {frame:#x} places bottom at {} (dy {dy}, hold {hold})",
+                                    center + pose.half().1,
+                                );
+                            }
+                            if bank.rb(frame + 0x1a) & 0x80 != 0 {
+                                let hit = long(frame + 0x1c);
+                                assert!(in_bank(hit));
+                                assert_ne!(bank.rb(frame + 0x19), 0);
+                                hit_count += 1;
+                                assert_eq!(bank.rb(hit + 1), if hit_count == 5 { 5 } else { 4 });
+                            }
+                            frame += 0x20;
+                        }
+                    }
+                }
+                assert_eq!(bank.rb(frame), 0xfd, "{fighter:?} {slot:#04x} ends");
+                assert_eq!(hit_count, 5);
+                assert_eq!(center + pose.half().1, GROUND, "{fighter:?} {slot:#04x} landing");
+            }
+        }
+    }
 
     /// A table with the three special slots present and their records.
     fn table(slots: [[u8; SPECIAL_SLOT_SIZE as usize]; 3]) -> Region {

@@ -18,7 +18,7 @@ ROM set and reference captures are relative to it):
 cargo run -p sf-dev --release            # versus: Ryu (P1) vs Ken (P2)
 cargo run -p sf-dev --release -- cpu     # one-player: Ryu (P1) vs Retsu
 cargo run -p sf-dev --release -- power-on # power-on: frame 0 through warning, attract, coin/start, country select, and fight with no fixture (tickets #55, #89)
-cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era] # two era sessions under the era HUD (ticket #217)
+cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era] [art] # preview the HUD in a native fight
 cargo run -p sf-dev --release -- smoke   # the host smoke check
 cargo run -p sf-dev --release -- kit     # fixed-fight listening kit (ticket #49)
 cargo run -p sf-dev --release -- music   # the round music phrase (ticket #11)
@@ -236,21 +236,17 @@ and verdict table.
 
 ## The era HUD preview (ticket #217, EH1)
 
-`cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era]` runs two era
-models (`sf_engine::era_preview`), Ryu on each side, under the era HUD in
-Ruled gauge art, with the level numbers in the ROM's 8×8 digits. The eras are
-`sf1` (no gauge), `st`, `alpha`, `sf3`, `sf4`, `sf5` and `sf6`; the default is
-`sf6` against `alpha`. Each side's attack keys drive its model: LP lands a
-hit, HP spends the super, LK is the era's other gauge action (an Alpha Custom
-Combo, the next SF3 Super Art, SF4 damage taken, an SF5 V-Trigger, an SF6 raw
-Drive Rush or, in Burnout, the next round's refill), MP is the era's call-out
-moment (an Alpha Counter, an SF5 Crush Counter, an SF6 perfect parry), MK
-fires the next fixture call-out (COUNTER, PUNISH COUNTER, FIRST ATTACK,
-REVERSAL, PERFECT in turn) and HK moves that side to the next era. Each
-model's own events show as call-outs on its side (ticket #220): a super's
-SUPER, name and stage dim, and a Burnout's grey on the side's stand-in
-fighter. The era models are standalone: no real fight draws gauges until
-project 4 moves the eras onto the 1987 fighters.
+`cargo run -p sf-dev --release -- era-hud [p1-era] [p2-era] [art]` starts a
+native local fight with Ryu on P1 and Ken on P2. Use the regular keyboard or
+pad controls to earn and spend meter and see call-outs from the fight. The
+eras are `sf1` (no gauge), `st`, `alpha`, `sf3`, `sf4`, `sf5` and `sf6`.
+The default is `sf6` against `alpha` in `ruled` gauge art. Use `blocks` or
+`plate` as the third argument to start with that gauge art.
+
+F5 and F6 cycle the style on P1 and P2 respectively and restart the fight.
+Tab cycles the gauge art. F7 and F8 cycle each side through the developer
+call-out fixtures, including Alpha Counter gauge flash and Super stage dim.
+Esc closes the preview.
 
 ## Session recording, scenario conversion, and reference verification (ticket #50, F10)
 

@@ -57,6 +57,7 @@ impl MoveKind {
 /// the opponent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dir {
+    Neutral,
     Forward,
     Back,
     Up,
@@ -65,19 +66,54 @@ pub enum Dir {
     UpBack,
     DownForward,
     DownBack,
+    ChargeBack,
+    ChargeDown,
+    Jump,
 }
 
+pub(crate) const CHARGE_FRAMES: usize = 40;
+
 impl Dir {
+    /// The facing-right input nibble used by the native fight loop.
+    pub(crate) const fn bits(self) -> u8 {
+        match self {
+            Dir::Neutral => 0,
+            Dir::Forward => 1,
+            Dir::Back => 2,
+            Dir::Down => 4,
+            Dir::Up | Dir::Jump => 8,
+            Dir::DownForward => 5,
+            Dir::DownBack => 6,
+            Dir::UpForward => 9,
+            Dir::UpBack => 10,
+            Dir::ChargeBack => 2,
+            Dir::ChargeDown => 4,
+        }
+    }
+
+    pub(crate) const fn is_charge(self) -> bool {
+        matches!(self, Self::ChargeBack | Self::ChargeDown)
+    }
+
+    const fn frames(self) -> usize {
+        match self {
+            Self::ChargeBack | Self::ChargeDown => CHARGE_FRAMES,
+            Self::Jump => 12,
+            _ => STEP_FRAMES,
+        }
+    }
+
     /// The stick's right, left, down and up for this direction when the
     /// fighter faces right (`facing_right`) or left.
     fn pressed(self, facing_right: bool) -> [bool; 4] {
         let (forward, back) = if facing_right { (0, 1) } else { (1, 0) };
         let mut d = [false; 4];
         match self {
+            Dir::Neutral => {},
             Dir::Forward => d[forward] = true,
-            Dir::Back => d[back] = true,
-            Dir::Up => d[3] = true,
-            Dir::Down => d[2] = true,
+            Dir::Back | Dir::ChargeBack => d[back] = true,
+            Dir::Up | Dir::Jump => d[3] = true,
+            Dir::Down | Dir::ChargeDown => d[2] = true,
             Dir::UpForward => (d[3], d[forward]) = (true, true),
             Dir::UpBack => (d[3], d[back]) = (true, true),
             Dir::DownForward => (d[2], d[forward]) = (true, true),
@@ -87,37 +123,119 @@ impl Dir {
     }
 }
 
-/// Which buttons bring a move out: any punch or any kick (the strength
-/// only changes the move's feel).
+/// The button or chord that completes a move command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ButtonClass {
     Punch,
     Kick,
+    Either,
+    MashPunch,
+    TriplePunch,
+    TripleKick,
+    ReleasePair,
+    PairPunch,
+    PairKick,
+    MediumPair,
+    HeavyPair,
+    ShiftPair,
+    RedFocus,
+    SameStrength,
+    LightPair,
+    MediumPunch,
+    MediumKick,
 }
 
 impl ButtonClass {
     /// The letter the move list writes.
     pub const fn letter(self) -> char {
         match self {
-            ButtonClass::Punch => 'P',
-            ButtonClass::Kick => 'K',
+            Self::Kick | Self::TripleKick | Self::PairKick | Self::MediumKick => 'K',
+            _ => 'P',
         }
+    }
+
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::Punch => "P",
+            Self::Kick => "K",
+            Self::Either => "P/K",
+            Self::MashPunch => "TAP P",
+            Self::TriplePunch => "PPP",
+            Self::TripleKick => "KKK",
+            Self::ReleasePair => "HOLD PP/KK, RELEASE",
+            Self::PairPunch => "PP",
+            Self::PairKick => "KK",
+            Self::MediumPair => "MP+MK",
+            Self::HeavyPair => "HP+HK",
+            Self::ShiftPair => "HP+MK",
+            Self::RedFocus => "LP+MP+MK",
+            Self::SameStrength => "P+K",
+            Self::LightPair => "LP+LK",
+            Self::MediumPunch => "MP",
+            Self::MediumKick => "MK",
+        }
+    }
+
+    pub const fn kick(self) -> bool {
+        matches!(self, Self::Kick | Self::TripleKick | Self::PairKick | Self::MediumKick)
     }
 
     /// The other class.
     pub const fn other(self) -> ButtonClass {
+        if self.kick() { Self::Punch } else { Self::Kick }
+    }
+
+    /// Whether the required buttons are down (LP, MP, HP, LK, MK, HK).
+    pub fn down(self, buttons: [bool; 6]) -> bool {
+        self.held(buttons.into_iter().enumerate().fold(0, |mask, (index, down)| {
+            mask | (u8::from(down) << index)
+        }))
+    }
+
+    /// Whether the required buttons are held in the native six-bit pad mask.
+    pub(crate) fn held(self, buttons: u8) -> bool {
+        let punches = buttons & 0b000111;
+        let kicks = buttons >> 3 & 0b000111;
         match self {
-            ButtonClass::Punch => ButtonClass::Kick,
-            ButtonClass::Kick => ButtonClass::Punch,
+            Self::Punch | Self::MashPunch => punches != 0,
+            Self::Kick => kicks != 0,
+            Self::Either => punches | kicks != 0,
+            Self::TriplePunch => punches == 7,
+            Self::TripleKick => kicks == 7,
+            Self::PairPunch => punches.count_ones() >= 2,
+            Self::PairKick => kicks.count_ones() >= 2,
+            Self::ReleasePair => punches.count_ones() >= 2 || kicks.count_ones() >= 2,
+            Self::SameStrength => punches & kicks != 0,
+            chord => {
+                let required = chord.fixed_mask();
+                buttons & required == required
+            }
         }
     }
 
-    /// Whether a button of the class is down in `buttons` (LP, MP, HP, LK,
-    /// MK, HK).
-    pub fn down(self, buttons: [bool; 6]) -> bool {
+    pub(crate) const fn fixed_mask(self) -> u8 {
         match self {
-            ButtonClass::Punch => buttons[..3].iter().any(|&b| b),
-            ButtonClass::Kick => buttons[3..].iter().any(|&b| b),
+            Self::MediumPair => 0b010010,
+            Self::HeavyPair => 0b100100,
+            Self::ShiftPair => 0b010100,
+            Self::RedFocus => 0b010011,
+            Self::LightPair => 0b001001,
+            Self::MediumPunch => 0b000010,
+            Self::MediumKick => 0b010000,
+            _ => 0,
+        }
+    }
+
+    fn press_mask(self, level: usize) -> u8 {
+        let strength = 1 << level;
+        let adjacent = 1 << ((level + 1) % 3);
+        match self {
+            Self::PairPunch => strength | adjacent,
+            Self::PairKick => (strength | adjacent) << 3,
+            Self::SameStrength => strength | (strength << 3),
+            Self::Kick => strength << 3,
+            Self::Punch | Self::Either => strength,
+            chord => chord.fixed_mask(),
         }
     }
 }
@@ -266,14 +384,18 @@ impl MoveInput {
     /// The input as the list writes it until arrows arrive: motion word,
     /// plus, button class (`QCF+P`).
     pub fn words(&self) -> String {
-        format!("{}+{}", self.motion_word(), self.button.letter())
+        if self.motion.is_empty() {
+            self.button.label().to_owned()
+        } else {
+            format!("{}+{}", self.motion_word(), self.button.label())
+        }
     }
 
     /// The input's steps as the Show strip labels them: each direction's
     /// initials, then the button's letter (`D`, `DF`, `F`, `P`).
     pub fn strip_steps(&self) -> Vec<String> {
         let mut steps: Vec<String> = self.motion.iter().map(|d| d.initials().to_owned()).collect();
-        steps.push(self.button.letter().to_string());
+        steps.push(self.button.label().to_owned());
         steps
     }
 
@@ -281,10 +403,27 @@ impl MoveInput {
     /// [`Self::frames`] is: a motion step from its first frame, the button
     /// from the frame it is pressed.
     pub fn lit_at(&self, frame: usize) -> usize {
-        let steps = self.motion.len();
-        let motion = (frame / STEP_FRAMES + 1).min(steps);
-        let pressed = frame > STEP_FRAMES * steps.saturating_sub(1);
-        motion + usize::from(pressed)
+        let mut until = 0;
+        for (index, direction) in self.motion.iter().take(self.motion.len().saturating_sub(1)).enumerate() {
+            until += direction.frames();
+            if frame < until {
+                return index + 1;
+            }
+        }
+        if self.motion.last() == Some(&Dir::Jump) { until += Dir::Jump.frames(); }
+        let pressed = match self.button {
+            ButtonClass::ReleasePair => frame >= CHARGE_FRAMES,
+            ButtonClass::MashPunch => frame >= 12,
+            _ => frame >= until + self.button_offset(),
+        };
+        self.motion.len() + usize::from(pressed)
+    }
+
+    fn button_offset(&self) -> usize {
+        // A raw up input can start a jump immediately. Complete the
+        // grounded command on that same frame.
+        let dash = self.motion.ends_with(&[Dir::Neutral, Dir::Forward]);
+        usize::from(!dash && !matches!(self.motion.last(), Some(Dir::Up | Dir::UpForward)))
     }
 
     /// The input written in `notation`. Arrows are drawn for a fighter
@@ -294,12 +433,12 @@ impl MoveInput {
     pub fn write(&self, notation: InputNotation, facing_right: bool) -> Vec<InputPiece> {
         match notation {
             InputNotation::Arrows => vec![
-                InputPiece::Text(self.motion.iter().map(|d| d.arrow(facing_right)).collect()),
+                InputPiece::Text(self.motion.iter().map(|d| d.written(notation, facing_right)).collect()),
                 InputPiece::Text(" ".to_owned()),
-                InputPiece::Button(self.button.letter().to_string()),
+                InputPiece::Button(self.button.label().to_owned()),
             ],
             InputNotation::Numpad => {
-                vec![InputPiece::Text(format!("{} {}", self.motion.iter().map(|d| d.numpad()).collect::<String>(), self.button.letter()))]
+                vec![InputPiece::Text(format!("{} {}", self.motion.iter().map(|d| d.written(notation, facing_right)).collect::<String>(), self.button.label()))]
             }
             InputNotation::Words => vec![InputPiece::Text(self.words())],
         }
@@ -307,31 +446,48 @@ impl MoveInput {
 
     /// The player inputs that perform the input, one entry a frame, for a
     /// fighter facing right or left: each step but the last held for
-    /// [`STEP_FRAMES`] frames, the last for [`HOLD_FRAMES`], and the button
-    /// pressed on the last step's second frame. This is what a pad gives
+    /// [`STEP_FRAMES`] frames, with additional time for charge or jump setup.
+    /// The button is pressed on the last direction. This is what a pad gives
     /// the machine, and what Show feeds ([`crate::front::show`]).
     pub fn frames(&self, facing_right: bool, strength: Strength) -> Vec<PlayerInputs> {
-        let steps = self.motion.len();
-        let last_from = STEP_FRAMES * steps.saturating_sub(1);
-        let button = match (self.button, strength) {
-            (ButtonClass::Punch, Strength::Light) => 0,
-            (ButtonClass::Punch, Strength::Medium) => 1,
-            (ButtonClass::Punch, Strength::Heavy) => 2,
-            (ButtonClass::Kick, Strength::Light) => 3,
-            (ButtonClass::Kick, Strength::Medium) => 4,
-            (ButtonClass::Kick, Strength::Heavy) => 5,
+        let level = match strength {
+            Strength::Light => 0,
+            Strength::Medium => 1,
+            Strength::Heavy => 2,
         };
-        (0..last_from + HOLD_FRAMES)
-            .map(|f| {
-                let step = (f / STEP_FRAMES).min(steps.saturating_sub(1));
-                let mut inputs = PlayerInputs::default();
-                if let Some(dir) = self.motion.get(step) {
-                    inputs.directions = dir.pressed(facing_right);
+        let mut frames = Vec::new();
+        for direction in self.motion.iter().take(self.motion.len().saturating_sub(1)) {
+            frames.extend(std::iter::repeat_n(PlayerInputs {
+                directions: direction.pressed(facing_right),
+                ..PlayerInputs::default()
+            }, direction.frames()));
+        }
+        let directions = self.motion.last().map_or([false; 4], |d| d.pressed(facing_right));
+        let button = level + if self.button.kick() { 3 } else { 0 };
+        let hold = if self.button == ButtonClass::ReleasePair {
+            CHARGE_FRAMES
+        } else if self.motion.last() == Some(&Dir::Jump) {
+            Dir::Jump.frames()
+        } else {
+            0
+        };
+        let press = hold + self.button_offset();
+        frames.extend((0..hold + HOLD_FRAMES).map(|frame| {
+            let mut inputs = PlayerInputs { directions, ..PlayerInputs::default() };
+            match self.button {
+                ButtonClass::ReleasePair => inputs.buttons[..2].fill(frame < hold),
+                ButtonClass::MashPunch => inputs.buttons[button] = frame <= 12 && frame % 4 == 0,
+                ButtonClass::TriplePunch => inputs.buttons[..3].fill(frame == 1),
+                ButtonClass::TripleKick => inputs.buttons[3..].fill(frame == 1),
+                _ if (press..press + BUTTON_FRAMES).contains(&frame) => {
+                    let mask = self.button.press_mask(level);
+                    inputs.buttons = std::array::from_fn(|index| mask & (1 << index) != 0);
                 }
-                inputs.buttons[button] = (last_from + 1..last_from + 1 + BUTTON_FRAMES).contains(&f);
-                inputs
-            })
-            .collect()
+                _ => {}
+            }
+            inputs
+        }));
+        frames
     }
 }
 
@@ -361,11 +517,13 @@ impl Dir {
     /// left: an arrow, a numpad digit (always facing right) or the
     /// direction's initials (`DF`).
     pub fn written(self, notation: InputNotation, facing_right: bool) -> String {
-        match notation {
+        if self == Self::Jump { return self.initials().to_owned(); }
+        let value = match notation {
             InputNotation::Arrows => self.arrow(facing_right).to_string(),
             InputNotation::Numpad => self.numpad().to_string(),
-            InputNotation::Words => self.initials().to_owned(),
-        }
+            InputNotation::Words => return self.initials().to_owned(),
+        };
+        if self.is_charge() { format!("[{value}]") } else { value }
     }
 
     /// The arrow that draws the direction for a fighter facing right or
@@ -373,10 +531,11 @@ impl Dir {
     /// fighter faces right.
     pub const fn arrow(self, facing_right: bool) -> char {
         match (self, facing_right) {
-            (Dir::Forward, true) | (Dir::Back, false) => '\u{2192}',
-            (Dir::Forward, false) | (Dir::Back, true) => '\u{2190}',
-            (Dir::Up, _) => '\u{2191}',
-            (Dir::Down, _) => '\u{2193}',
+            (Dir::Neutral, _) => '.',
+            (Dir::Forward, true) | (Dir::Back | Dir::ChargeBack, false) => '\u{2192}',
+            (Dir::Forward, false) | (Dir::Back | Dir::ChargeBack, true) => '\u{2190}',
+            (Dir::Up | Dir::Jump, _) => '\u{2191}',
+            (Dir::Down | Dir::ChargeDown, _) => '\u{2193}',
             (Dir::UpForward, true) | (Dir::UpBack, false) => '\u{2197}',
             (Dir::UpForward, false) | (Dir::UpBack, true) => '\u{2196}',
             (Dir::DownForward, true) | (Dir::DownBack, false) => '\u{2198}',
@@ -388,10 +547,11 @@ impl Dir {
     /// 4 back, 2 down, 8 up, the corners 1 3 7 9.
     pub const fn numpad(self) -> char {
         match self {
+            Dir::Neutral => '5',
             Dir::Forward => '6',
-            Dir::Back => '4',
-            Dir::Up => '8',
-            Dir::Down => '2',
+            Dir::Back | Dir::ChargeBack => '4',
+            Dir::Up | Dir::Jump => '8',
+            Dir::Down | Dir::ChargeDown => '2',
             Dir::UpForward => '9',
             Dir::UpBack => '7',
             Dir::DownForward => '3',
@@ -420,14 +580,18 @@ impl Dir {
     /// The direction's initials (`DF`).
     pub const fn initials(self) -> &'static str {
         match self {
+            Dir::Neutral => "N",
             Dir::Forward => "F",
             Dir::Back => "B",
             Dir::Up => "U",
+            Dir::Jump => "JUMP",
             Dir::Down => "D",
             Dir::UpForward => "UF",
             Dir::UpBack => "UB",
             Dir::DownForward => "DF",
             Dir::DownBack => "DB",
+            Dir::ChargeBack => "[B]",
+            Dir::ChargeDown => "[D]",
         }
     }
 }
@@ -569,6 +733,12 @@ pub enum Recognizer {
     Tracker(Tracker1987),
     /// A separate native era command tracked outside 1987 work RAM.
     EraMotion { super_move: bool },
+    /// The Alpha motion tracked during ground blockstun.
+    AlphaCounter,
+    /// A native Alpha command tracked for this move's slot.
+    AlphaMove,
+    /// An era-family command tracked outside native work RAM.
+    FamilyMove,
 }
 
 impl Recognizer {
@@ -584,7 +754,7 @@ impl Recognizer {
                     done: work[at + 2] != 0,
                 }
             }
-            Recognizer::EraMotion { .. } => RecognizerState { stage: 0, frames: 0, done: false },
+            Recognizer::EraMotion { .. } | Recognizer::AlphaCounter | Recognizer::AlphaMove | Recognizer::FamilyMove => RecognizerState::default(),
         }
     }
 
@@ -781,17 +951,26 @@ impl MoveEntry {
         toggles: &CoreToggles,
         era: &crate::era_fight::EraFighterState,
     ) -> RecognizerView {
-        let Recognizer::EraMotion { super_move } = self.recognizer else {
-            return self.recognizer.view(machine, player_struct, toggles);
+        let (stage, remaining) = match self.recognizer {
+            Recognizer::EraMotion { super_move } => era.command_progress(super_move),
+            Recognizer::AlphaCounter => era.alpha_counter_progress(),
+            Recognizer::AlphaMove => era.alpha_move_progress(self.produces),
+            Recognizer::FamilyMove => era.family_move_progress(self.produces),
+            Recognizer::Tracker(_) => return self.recognizer.view(machine, player_struct, toggles),
         };
-        let (stage, remaining) = era.command_progress(super_move);
         let state = RecognizerState {
             stage,
             frames: if stage == 0 { 0 } else { 32u8.saturating_sub(remaining) },
             done: usize::from(stage) == self.input.motion.len(),
         };
         let next = self.input.motion.get(usize::from(stage)).copied();
-        recognizer_view(machine, player_struct, toggles, state, remaining, [next, None], 32)
+        let mut view = recognizer_view(machine, player_struct, toggles, state, remaining, [next, None], 32);
+        if self.recognizer == Recognizer::AlphaCounter {
+            view.gate_free = stage != 0
+                && matches!(view.current_move, 4 | 8)
+                && era.super_meter >= crate::era::STOCK_AT;
+        }
+        view
     }
 }
 
@@ -1136,14 +1315,21 @@ pub fn move_list(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<&'sta
     REGISTRY.iter().filter(|e| e.available.includes(fighter, preset)).collect()
 }
 
-const DOUBLE_QCF: &[Dir] = &[
-    Dir::Down, Dir::DownForward, Dir::Forward, Dir::Down, Dir::DownForward, Dir::Forward,
-];
 const HALF_CIRCLE_FORWARD: &[Dir] = &[
     Dir::Back, Dir::DownBack, Dir::Down, Dir::DownForward, Dir::Forward,
 ];
 const TIGER_KNEE: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::UpForward];
 const UPPERCUT: &[Dir] = &[Dir::Forward, Dir::Down, Dir::DownForward];
+const ALPHA_COUNTER_INPUT: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down];
+const ALPHA_FIGHTERS: &[TournamentFighter] = &[
+    TournamentFighter::Ryu,
+    TournamentFighter::Ken,
+    TournamentFighter::Sagat,
+    TournamentFighter::Birdie,
+    TournamentFighter::Adon,
+    TournamentFighter::Gen,
+    TournamentFighter::Eagle,
+];
 
 pub(crate) fn live_move_list(
     fighter: TournamentFighter,
@@ -1151,12 +1337,72 @@ pub(crate) fn live_move_list(
     player_table: bool,
     era: &crate::era_fight::EraFighterState,
 ) -> Vec<MoveEntry> {
-    use crate::data_bank::{SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
+    use crate::data_bank::{ALPHA_COUNTER_SLOT, SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
     use crate::era::Revision;
+    use crate::era_fight::DOUBLE_QUARTER_CIRCLE;
     use TournamentFighter::{Ken, Ryu, Sagat};
 
     let mut entries: Vec<_> = move_list(fighter, preset).into_iter()
         .filter(|entry| player_table || !entry.available.player_table).copied().collect();
+    if era.fighter == Some(fighter) {
+        entries.retain(|entry| !era.replaces_special(entry.produces));
+        let family_moves = era.family_moves();
+        entries.retain(|entry| !family_moves.iter().any(|other| {
+            other.kind == MoveKind::Special && (entry.produces == other.produces || entry.name == other.name)
+        }));
+        entries.extend(family_moves.into_iter().filter(|entry| player_table || !entry.available.player_table));
+        for entry in era.alpha_moves().filter(|_| fighter.is_shoto() || player_table) {
+            entries.push(MoveEntry {
+                name: entry.name,
+                kind: entry.kind,
+                input: entry.input,
+                recognizer: Recognizer::AlphaMove,
+                produces: entry.slot,
+                call_out: entry.call_out,
+                available: Availability {
+                    fighters: ALPHA_FIGHTERS,
+                    presets: OVERHAUL_PRESETS,
+                    player_table: !fighter.is_shoto(),
+                },
+            });
+        }
+    }
+    if era.fighter == Some(fighter) && era.custom_combo_available() && (fighter.is_shoto() || player_table) {
+        entries.push(MoveEntry {
+            name: "CUSTOM COMBO",
+            kind: MoveKind::System,
+            input: MoveInput { motion: &[], button: ButtonClass::SameStrength },
+            recognizer: Recognizer::AlphaMove,
+            produces: ALPHA_COUNTER_SLOT,
+            call_out: "CUSTOM COMBO!",
+            available: Availability {
+                fighters: ALPHA_FIGHTERS,
+                presets: OVERHAUL_PRESETS,
+                player_table: !fighter.is_shoto(),
+            },
+        });
+    }
+    if era.fighter == Some(fighter) && era.alpha_counter_enabled() && (fighter.is_shoto() || player_table) {
+        let available = Availability {
+            fighters: ALPHA_FIGHTERS,
+            presets: OVERHAUL_PRESETS,
+            player_table: !fighter.is_shoto(),
+        };
+        for (name, button) in [
+            ("ALPHA COUNTER (P)", ButtonClass::Punch),
+            ("ALPHA COUNTER (K)", ButtonClass::Kick),
+        ] {
+            entries.push(MoveEntry {
+                name,
+                kind: MoveKind::System,
+                input: MoveInput { motion: ALPHA_COUNTER_INPUT, button },
+                recognizer: Recognizer::AlphaCounter,
+                produces: ALPHA_COUNTER_SLOT,
+                call_out: "ALPHA COUNTER!",
+                available,
+            });
+        }
+    }
     if !era.is_sf2() || era.fighter != Some(fighter) {
         return entries;
     }
@@ -1205,7 +1451,7 @@ pub(crate) fn live_move_list(
         entries.push(MoveEntry {
             name,
             kind: MoveKind::Super,
-            input: MoveInput { motion: DOUBLE_QCF, button },
+            input: MoveInput { motion: DOUBLE_QUARTER_CIRCLE, button },
             recognizer: Recognizer::EraMotion { super_move: true },
             produces: SF2_SUPER_SLOT,
             call_out,

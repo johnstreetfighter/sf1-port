@@ -6,7 +6,7 @@ use crate::era::{
     listed_families, listed_revisions, loadouts, EraFamily, Loadout, Revision, StylePick,
 };
 use crate::roster::{MenuInput, TournamentFighter};
-use crate::sf3::{super_art_name, super_art_stock_limit};
+use crate::era_fight::sf3::style_art;
 
 use super::draw::fit;
 
@@ -242,12 +242,14 @@ fn summary(fighter: TournamentFighter, pick: StylePick) -> String {
         (EraFamily::SfZ, Loadout::XIsm) => "1-LEVEL SUPER GAUGE",
         (EraFamily::SfZ, _) => "3-LEVEL SUPER GAUGE",
         (EraFamily::Sf3, art) => {
-            let name = super_art_name(fighter, art).unwrap_or("SUPER ART");
-            let stocks = super_art_stock_limit(art);
+            let (name, stocks) = style_art(fighter, pick.revision, art).unwrap_or(("SUPER ART", 3));
             let unit = if stocks == 1 { "STOCK" } else { "STOCKS" };
             let full = format!("{name} ({stocks} {unit})");
-            // Keep long Super Art names legible without squeezing the text.
-            return if full.len() <= 24 { full } else { name.into() };
+            if full.len() <= 24 {
+                return full;
+            }
+            let short = format!("{name} ({stocks} STK)");
+            return if short.len() <= 24 { short } else { name.into() };
         }
         (EraFamily::Sf4, _) => "SUPER / REVENGE GAUGES",
         (EraFamily::Sf5, _) => "EX / V-GAUGE",

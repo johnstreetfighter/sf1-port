@@ -3,13 +3,18 @@
 use std::collections::HashSet;
 
 use sf_engine::arcade::{
-    clear_route, ending_for, player_intro, press_at, release_at, rival_taunt, route_from,
-    win_quote, BonusKind, BonusStage, Country, Sample, ROUTE,
+    ending_for, player_intro, press_at, release_at, rival_taunt, route_from, win_quote, BonusKind,
+    BonusStage, Country, Sample, ROUTE,
 };
 use sf_engine::config::MatchConfig;
-use sf_engine::roster::TournamentFighter;
-use sf_engine::sf1plus::kit_for;
-use sf_video::asset_pack::{validate_adpcm, validate_fm_patch, validate_tile};
+use sf_engine::fighter::CPU_STRUCT;
+use sf_engine::front::cabinet::{flow_position, Players};
+use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup};
+use sf_engine::front::PlayerInputs;
+use sf_engine::roster::{PlayMode, TournamentFighter};
+use sf_engine::tasks::TIME_DIGITS;
+use sf_video::asset_pack::validate_tile;
+use sf_video::romset::{load_assets, Assets};
 
 #[test]
 fn positive_edge_scores_the_press_and_release_mode_scores_the_let_go() {
@@ -71,109 +76,166 @@ fn positive_edge_scores_the_press_and_release_mode_scores_the_let_go() {
 }
 
 #[test]
-fn any_fighter_clears_five_countries_and_sees_an_ending() {
-    let overhaul = MatchConfig::definitive();
-    assert!(overhaul.toggles.positive_edge_attacks);
-    let faithful = MatchConfig::faithful();
-    assert!(!faithful.toggles.positive_edge_attacks);
-
+fn all_fighters_have_distinct_arcade_lines_and_ending_panels() {
     let mut intros = HashSet::new();
     let mut taunts = HashSet::new();
     let mut wins = HashSet::new();
     let mut first_panels = HashSet::new();
 
     for fighter in TournamentFighter::ALL {
-        intros.insert(player_intro(fighter));
-        taunts.insert(rival_taunt(fighter));
-        wins.insert(win_quote(fighter));
+        assert!(intros.insert(player_intro(fighter)));
+        assert!(taunts.insert(rival_taunt(fighter)));
+        assert!(wins.insert(win_quote(fighter)));
 
-        let kit = kit_for(fighter);
-        assert!(validate_adpcm(&kit.voice).is_ok());
-        assert!(validate_fm_patch(&kit.patch).is_ok());
-        for tile in &kit.tiles {
-            validate_tile(tile).unwrap();
+        let ending = ending_for(fighter);
+        assert_eq!(ending.panels.len(), 4);
+        for panel in &ending.panels {
+            validate_tile(panel).unwrap();
         }
-
-        for config in [&overhaul, &faithful] {
-            let clear = clear_route(fighter, config, Country::Japan);
-            assert_eq!(clear.stops.len(), ROUTE.len(), "{fighter:?}");
-            assert_eq!(
-                clear
-                    .stops
-                    .iter()
-                    .map(|stop| stop.country)
-                    .collect::<Vec<_>>(),
-                ROUTE.to_vec()
-            );
-            let names: Vec<&str> = kit
-                .moves
-                .iter()
-                .filter(|mv| mv.kind == sf_engine::sf1plus::MoveKind::Special)
-                .map(|mv| mv.name)
-                .collect();
-            assert_eq!(
-                clear.stops[0].specials, names,
-                "{fighter:?} specials on the Japan stop"
-            );
-            for stop in &clear.stops {
-                assert_ne!(stop.rival, fighter);
-                assert_eq!(stop.player_line, player_intro(fighter));
-                assert_eq!(stop.rival_line, rival_taunt(stop.rival));
-                assert_eq!(stop.win_line, win_quote(fighter));
-                assert!(
-                    stop.bonus.hits > 0,
-                    "{fighter:?} {:?} bonus missed",
-                    stop.country
-                );
-                assert!(stop.bonus.points > 0);
-            }
-            let ending = clear.ending.expect("Thailand ending");
-            assert_eq!(ending.panels.len(), 4);
-            for panel in &ending.panels {
-                validate_tile(panel).unwrap();
-            }
-            assert_ne!(ending.panels[0].pixels, ending.panels[1].pixels);
-            assert!(ending.credits.iter().any(|line| line == fighter.name()));
-            assert!(ending.credits.iter().any(|line| line == "Thailand"));
-            assert!(ending.credits.iter().any(|line| line == "The end"));
-            first_panels.insert(ending.panels[0].pixels);
-        }
+        assert_ne!(ending.panels[0].pixels, ending.panels[1].pixels);
+        assert!(first_panels.insert(ending.panels[0].pixels));
+        assert!(ending.credits.iter().any(|line| line == fighter.name()));
+        assert!(ending.credits.iter().any(|line| line == "Thailand"));
+        assert!(ending.credits.iter().any(|line| line == "The end"));
     }
-
-    assert_eq!(intros.len(), 12);
-    assert_eq!(taunts.len(), 12);
-    assert_eq!(wins.len(), 12);
-    assert_eq!(first_panels.len(), 12, "ending pictures collided");
-
-    let from_england = clear_route(TournamentFighter::Ken, &overhaul, Country::England);
-    assert_eq!(
-        from_england
-            .stops
-            .iter()
-            .map(|stop| stop.country)
-            .collect::<Vec<_>>(),
-        route_from(Country::England)
-    );
-    assert!(from_england.ending.is_some());
-
-    let as_sagat = clear_route(TournamentFighter::Sagat, &overhaul, Country::Thailand);
-    assert_eq!(as_sagat.stops.len(), 1);
-    assert_eq!(as_sagat.stops[0].rival, TournamentFighter::Adon);
-    assert_eq!(
-        as_sagat.stops[0].specials,
-        vec!["High Tiger Shot", "Low Tiger Shot", "Tiger Knee"]
-    );
-
-    let as_lee = clear_route(TournamentFighter::Lee, &overhaul, Country::China);
-    assert_eq!(as_lee.stops[0].rival, TournamentFighter::Gen);
-    assert_eq!(
-        as_lee.stops[0].specials,
-        vec!["Zesshouohken", "Double Kick"]
-    );
-
-    let ending = ending_for(TournamentFighter::Eagle);
-    assert!(ending
+    assert!(ending_for(TournamentFighter::Eagle)
         .credits
         .iter()
         .any(|line| line.contains("Sticks back in the case")));
+    assert_eq!(route_from(Country::Japan), ROUTE);
+    assert_eq!(
+        route_from(Country::England),
+        &[Country::England, Country::Thailand]
+    );
+    assert_eq!(route_from(Country::Thailand), &[Country::Thailand]);
+}
+
+const FIGHT_LOOP: u32 = 0x3eafa;
+const STAGE_NUMBER: usize = 0x4003;
+const MATCH_IN_STAGE: usize = 0x4004;
+const BONUS_ENTRIES: [u32; 4] = [0x40dd4, 0x41814, 0x41aa6, 0x420cc];
+const ENDING_START: u32 = 0x44a60;
+const ENDING_FINAL_HOLD: u32 = 0x44c04;
+const WORK_BASE: u32 = 0xff8000;
+
+fn roms() -> Option<Assets> {
+    let roms = "../../tools/reference/local/roms/sf";
+    if !std::path::Path::new(roms).is_dir() {
+        eprintln!("skipping: local ROM set is absent");
+        return None;
+    }
+    Some(load_assets(roms, "../../tools/reference/rom-manifest.json").expect("local ROMs assemble"))
+}
+
+fn arcade(assets: &Assets, flag: u8, mut config: MatchConfig) -> Fight {
+    config.roster.mode = PlayMode::Arcade;
+    config.roster.p1 = TournamentFighter::Ken;
+    Fight::start(
+        &assets.maincpu,
+        FightSetup {
+            kind: FightKind::Arcade,
+            players: Players::One,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        },
+        Some(flag),
+        None,
+    )
+    .expect("native flag selection")
+}
+
+fn step(fight: &mut Fight, assets: &Assets) {
+    fight.step(
+        assets,
+        PlayerInputs::default(),
+        PlayerInputs::default(),
+        false,
+    );
+}
+
+fn win_on_time(fight: &mut Fight) {
+    // Start at the round's timeout with P1 ahead on life. The native scheduler
+    // must still award the round and handle every match/bonus transition.
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    let time = (TIME_DIGITS - WORK_BASE) as usize;
+    let cpu_life = (CPU_STRUCT - WORK_BASE) as usize + 6;
+    snapshot.machine.work[time..time + 3].fill(0);
+    snapshot.machine.work[cpu_life..cpu_life + 2].copy_from_slice(&[1, 0]);
+    snapshot.machine.toggle_state.era.fighters[1].sub_hp = 20;
+    fight.restore_netplay_snapshot(&snapshot);
+}
+
+#[test]
+fn native_arcade_runs_ten_opponents_four_bonuses_and_the_ending() {
+    use TournamentFighter::*;
+    let Some(assets) = roms() else { return };
+    let mut fight = arcade(&assets, 0, MatchConfig::definitive());
+    let mut visited = Vec::new();
+    let mut bonus_entries = Vec::new();
+    let mut ending = None;
+    for _ in 0..30_000 {
+        step(&mut fight, &assets);
+        let machine = fight.machine();
+        let flow = flow_position(machine);
+        if flow == FIGHT_LOOP {
+            let stage = usize::from(machine.work_ram()[STAGE_NUMBER]);
+            let match_in_stage = usize::from(machine.work_ram()[MATCH_IN_STAGE]);
+            let step = stage * 2 + match_in_stage;
+            let opponent = machine.arcade_opponent().expect("native ladder opponent");
+            if visited.len() == step {
+                visited.push(opponent);
+            } else {
+                assert_eq!(visited.get(step), Some(&opponent), "unexpected ladder jump");
+            }
+            win_on_time(&mut fight);
+        }
+        if BONUS_ENTRIES.contains(&flow) && bonus_entries.last() != Some(&flow) {
+            bonus_entries.push(flow);
+        }
+        if flow == ENDING_START && ending.is_none() {
+            ending = Some(fight.save_netplay_snapshot(0));
+        }
+        if flow == ENDING_FINAL_HOLD {
+            break;
+        }
+    }
+    assert_eq!(
+        visited,
+        [Retsu, Geki, Joe, Mike, Lee, Gen, Birdie, Eagle, Adon, Sagat]
+    );
+    assert_eq!(bonus_entries, BONUS_ENTRIES);
+    assert_eq!(flow_position(fight.machine()), ENDING_FINAL_HOLD);
+    assert!(fight.machine().unrecovered().is_empty());
+
+    // Save/restore from the actual ending preserves its scheduler and work RAM.
+    let ending = ending.expect("the Thailand victory entered the ending");
+    fight.restore_netplay_snapshot(&ending);
+    for _ in 0..150 {
+        step(&mut fight, &assets);
+    }
+    let checksum = fight.state_checksum();
+    fight.restore_netplay_snapshot(&ending);
+    for _ in 0..150 {
+        step(&mut fight, &assets);
+    }
+    assert_eq!(fight.state_checksum(), checksum);
+}
+
+#[test]
+fn other_flags_start_the_native_ladder_with_their_local_rival() {
+    use TournamentFighter::*;
+    let Some(assets) = roms() else { return };
+    for (flag, opponent) in [(1, Lee), (2, Joe), (3, Birdie)] {
+        let mut fight = arcade(&assets, flag, MatchConfig::definitive());
+        for _ in 0..1_500 {
+            step(&mut fight, &assets);
+            if flow_position(fight.machine()) == FIGHT_LOOP {
+                break;
+            }
+        }
+        assert_eq!(flow_position(fight.machine()), FIGHT_LOOP);
+        assert_eq!(fight.country(), Some(flag));
+        assert_eq!(fight.machine().arcade_opponent(), Some(opponent));
+    }
 }

@@ -71,7 +71,10 @@ fn select(session: &mut GameSession, side: usize, style: Option<(Revision, Loado
     );
     if let Some((revision, loadout)) = style {
         side_tap(session, side, 1, false); // SF2 ST
-        if revision != Revision::St {
+        if revision == Revision::Sfz3 {
+            assert_eq!(loadout, Loadout::AIsm);
+            side_tap(session, side, 1, false); // SFZ3 A-ISM
+        } else if revision != Revision::St {
             side_tap(session, side, 4, false); // REV
             let count = [Revision::Ww, Revision::Ce, Revision::Hf, Revision::Super]
                 .iter()
@@ -292,6 +295,15 @@ fn training_full_meter_drives_a_native_super_freeze_and_refills_after_recovery()
     }
     let activation = fight.step(&assets, pad(1, true), pad(0, false), false);
     assert!(activation.announcements.contains(&AnnouncerLine::Super));
+    use sf_video::callouts::{CalloutKind, Side};
+    let callouts = fight.callouts().frame();
+    assert!(callouts.dim);
+    assert_eq!(
+        callouts.side(Side::P1).words[0],
+        Some(CalloutKind::Super {
+            name: "Shinku Hadoken"
+        })
+    );
     assert_eq!(fight.fight_read().fighters[0].move_id, SF2_SUPER);
     assert_eq!(fight.machine().era_super_freeze(), SUPER_FREEZE_FRAMES - 1);
     assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
@@ -340,6 +352,64 @@ fn training_full_meter_drives_a_native_super_freeze_and_refills_after_recovery()
     let (_, old) = native_fight([Some((Revision::St, Loadout::Old)), None], true);
     assert_eq!(old.machine().era_fighters()[0].style.loadout, Loadout::Old);
     assert!(old.machine().era_fighters()[0].gauge().is_none());
+}
+
+#[test]
+fn left_facing_supers_mirror_the_opening_grid_before_the_freeze() {
+    if !Path::new(ROMS).is_dir() {
+        eprintln!("skipping: local ROM set not present");
+        return;
+    }
+
+    let grid = |fight: &Fight| {
+        let machine = fight.machine();
+        let entity = usize::from(machine.diagnostic_telemetry().p2.entity_offset);
+        let obj = &machine.state.objectram;
+        assert_ne!(obj[entity + 0x37] & 4, 0, "Ken faces left");
+        let count = (usize::from(obj[entity + 0xc]) + 1) * (usize::from(obj[entity + 0xd]) + 1);
+        (0..count)
+            .map(|index| {
+                let tile = entity + index * 0x40;
+                (
+                    u16::from_be_bytes([obj[tile], obj[tile + 1]]),
+                    u16::from_be_bytes([obj[tile + 2], obj[tile + 3]]),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+
+    let cases: [(Revision, Loadout, &[u8]); 2] = [
+        (Revision::St, Loadout::Standard, &[4, 6, 2, 4, 6, 2]),
+        (Revision::Sfz3, Loadout::AIsm, &[4, 6, 2, 4, 6]),
+    ];
+    let observed = cases.map(|(revision, loadout, motion)| {
+        let (assets, mut fight) = native_fight([None, Some((revision, loadout))], false);
+        let mut stocked = fight.save_netplay_snapshot(0);
+        stocked.machine.toggle_state.era.fighters[1].super_meter = GAUGE_FULL;
+        fight.restore_netplay_snapshot(&stocked);
+
+        let (&last, prefix) = motion.split_last().unwrap();
+        for &direction in prefix {
+            fight.step(&assets, pad(0, false), pad(direction, false), false);
+        }
+        let activation = fight.step(&assets, pad(0, false), pad(last, true), false);
+        assert!(activation.announcements.contains(&AnnouncerLine::Super));
+        assert_eq!(fight.machine().era_super_freeze(), SUPER_FREEZE_FRAMES - 1);
+        let opening = grid(&fight);
+        for _ in 0..SUPER_FREEZE_FRAMES {
+            fight.step(&assets, pad(0, false), pad(0, false), false);
+        }
+        let first_running = grid(&fight);
+        (
+            revision,
+            opening.iter().all(|&(_, attr)| attr & 0x100 != 0),
+            opening == first_running,
+        )
+    });
+    assert_eq!(
+        observed,
+        [(Revision::St, true, true), (Revision::Sfz3, true, true)]
+    );
 }
 
 #[test]
@@ -458,5 +528,107 @@ fn sf2_throw_tech_follows_the_attacker_switch() {
             untechable
         );
         assert_eq!(fight.machine().era_fighters()[1].sub_hp, FULL_SUB_HP);
+    }
+}
+
+#[test]
+fn air_tatsumaki_is_available_in_hyper_fighting_and_absent_in_world_warrior() {
+    if !Path::new(ROMS).is_dir() {
+        return;
+    }
+    for (revision, allowed) in [(Revision::Ww, false), (Revision::Hf, true)] {
+        let (assets, mut fight) = native_fight([Some((revision, Loadout::Standard)), None], false);
+        let idle = PlayerInputs::default();
+        fight.step(&assets, pad(8, false), idle, false);
+        for _ in 0..10 {
+            fight.step(&assets, idle, idle, false);
+        }
+        for dir in [4, 6, 2] {
+            let mut input = pad(dir, false);
+            input.buttons[3] = dir == 2;
+            fight.step(&assets, input, idle, false);
+        }
+        assert_eq!(
+            fight.fight_read().fighters[0].move_id == 0x20,
+            allowed,
+            "{revision:?}"
+        );
+    }
+}
+
+#[test]
+fn no_gauges_suppresses_st_super_even_with_fill_meters() {
+    use sf_engine::era::GaugeMode;
+    if !Path::new(ROMS).is_dir() {
+        return;
+    }
+    let mut config = MatchConfig::default();
+    config.gauge_mode = GaugeMode::NoGauges;
+    let (assets, mut fight) = native_fight_with_config(
+        [Some((Revision::St, Loadout::Standard)), None],
+        true,
+        config,
+    );
+    let idle = PlayerInputs::default();
+    assert!(fight.machine().era_fighters()[0].gauge().is_none());
+    for (index, dir) in [4, 5, 1, 4, 5, 1].into_iter().enumerate() {
+        let frame = fight.step(&assets, pad(dir, index == 5), idle, false);
+        assert!(!frame.announcements.contains(&AnnouncerLine::Super));
+    }
+    assert_eq!(fight.machine().era_super_freeze(), 0);
+    assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
+}
+
+#[test]
+fn super_freeze_attack_buffer_respects_the_match_setting() {
+    if !Path::new(ROMS).is_dir() {
+        return;
+    }
+    let style = Some((Revision::St, Loadout::Standard));
+    let idle = PlayerInputs::default();
+    for keep_inputs in [true, false] {
+        let mut config = MatchConfig::default();
+        config.sf1plus.disable_freeze_input_lockout = keep_inputs;
+        let (assets, mut fight) = native_fight_with_config([style, style], false, config);
+        let mut snapshot = fight.save_netplay_snapshot(0);
+        snapshot.machine.toggle_state.era.fighters[0].super_meter = GAUGE_FULL;
+        fight.restore_netplay_snapshot(&snapshot);
+        for (index, dir) in [4, 5, 1, 4, 5, 1].into_iter().enumerate() {
+            fight.step(&assets, pad(dir, index == 5), idle, false);
+        }
+        assert_eq!(fight.machine().era_super_freeze(), SUPER_FREEZE_FRAMES - 1);
+        fight.step(&assets, idle, pad(0, true), false);
+        assert!(!fight.fight_read().fighters[1].attacking());
+        for _ in 0..SUPER_FREEZE_FRAMES {
+            fight.step(&assets, idle, idle, false);
+        }
+        assert_eq!(fight.fight_read().fighters[1].attacking(), keep_inputs);
+    }
+}
+
+#[test]
+fn classic_special_damage_uses_the_original_hadoken_value() {
+    if !Path::new(ROMS).is_dir() {
+        return;
+    }
+    let idle = PlayerInputs::default();
+    for classic in [false, true] {
+        let mut config = MatchConfig::default();
+        config.sf1plus.classic_1987_special_damage = classic;
+        let (assets, mut fight) = native_fight_with_config([None, None], false, config);
+        for dir in [4, 5, 1] {
+            fight.step(&assets, pad(dir, dir == 1), idle, false);
+        }
+        for _ in 0..120 {
+            fight.step(&assets, idle, idle, false);
+            if fight.machine().era_fighters()[1].sub_hp != FULL_SUB_HP {
+                break;
+            }
+        }
+        let expected = if classic { 20 } else { 9 };
+        assert_eq!(
+            fight.machine().era_fighters()[1].sub_hp,
+            FULL_SUB_HP - expected * 20
+        );
     }
 }

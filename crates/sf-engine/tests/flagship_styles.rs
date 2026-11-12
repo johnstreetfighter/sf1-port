@@ -1,7 +1,6 @@
 //! What-if SF3, USF4, SF5 CE, and SF6 for the rest of the cast (`#116`, `M3`).
 
-use sf_engine::era::{listed_families, listed_revisions, EraFamily, Loadout, Revision};
-use sf_engine::flagship::{FlagshipEvent, FlagshipSession};
+use sf_engine::era::{listed_families, listed_revisions, EraFamily, Revision};
 use sf_engine::roster::{CharacterSelectScreen, MenuInput, PlayMode, RosterSettings, TournamentFighter};
 use sf_engine::config::RulesetPreset;
 
@@ -58,76 +57,4 @@ fn forgotten_five_and_veterans_get_the_flagship_revisions() {
     assert!(listed_revisions(TournamentFighter::Birdie, EraFamily::Sf4, false).is_empty());
     assert_eq!(listed_revisions(TournamentFighter::Birdie, EraFamily::Sf4, true), vec![Revision::Usf4]);
     assert!(listed_revisions(TournamentFighter::Geki, EraFamily::Sf6, false).is_empty());
-}
-
-#[test]
-fn gauges_finishers_and_validated_assets() {
-    let mut joe = FlagshipSession::new(TournamentFighter::Joe, EraFamily::Sf6, Loadout::Standard, true);
-    assert!(joe.available());
-    assert_eq!(joe.drive_bars(), 6);
-    assert!(joe.overdrive("Slash Kick"));
-    assert_eq!(joe.drive_bars(), 4);
-    assert!(joe.drive_parry(1));
-    assert!(matches!(joe.events.last(), Some(FlagshipEvent::DriveParry { perfect: true })));
-    assert!(joe.drive_impact());
-    joe.land_hit(false);
-    joe.land_hit(false);
-    joe.land_hit(false);
-    assert!(joe.level_super(3));
-    assert!(matches!(joe.events.last(), Some(FlagshipEvent::Super { name: "Meteor Kick", level: 3 })));
-
-    let mut lee = FlagshipSession::new(TournamentFighter::Lee, EraFamily::Sf6, Loadout::Standard, false);
-    assert!(!lee.available());
-    assert!(!lee.level_super(3));
-    lee.what_if = true;
-    lee.land_hit(false);
-    lee.land_hit(false);
-    lee.land_hit(false);
-    assert!(lee.level_super(3));
-    assert!(matches!(lee.events.last(), Some(FlagshipEvent::Super { name: "One Man Army", .. })));
-
-    let mut mike = FlagshipSession::new(TournamentFighter::Mike, EraFamily::Sf5, Loadout::Skill2Trigger2, true);
-    assert!(mike.punch(0) && mike.punch(5));
-    assert!(!mike.punch(6));
-    mike.land_hit(true);
-    assert!(mike.events.iter().any(|event| matches!(event, FlagshipEvent::CrushCounter)));
-    mike.block();
-    assert!(mike.v_reversal());
-    mike.land_hit(false);
-    mike.land_hit(false);
-    mike.land_hit(false);
-    assert!(mike.v_trigger());
-    assert!(matches!(mike.events.last(), Some(FlagshipEvent::VTrigger("V-Trigger II"))));
-    mike.land_hit(false);
-    mike.land_hit(false);
-    mike.land_hit(false);
-    assert!(mike.critical_art());
-
-    let mut retsu = FlagshipSession::new(TournamentFighter::Retsu, EraFamily::Sf3, Loadout::Art3, true);
-    assert!(retsu.parry());
-    assert!(retsu.overhead());
-    retsu.land_hit(false);
-    assert!(retsu.ex_special("Tobi Geri"));
-    retsu.land_hit(false);
-    retsu.land_hit(false);
-    retsu.land_hit(false);
-    assert!(retsu.super_art(3));
-
-    let mut birdie = FlagshipSession::new(TournamentFighter::Birdie, EraFamily::Sf4, Loadout::UltraDouble, true);
-    birdie.land_hit(false);
-    birdie.land_hit(false);
-    birdie.land_hit(false);
-    birdie.land_hit(false);
-    assert!(birdie.focus(21, true));
-    assert!(birdie.fadc());
-    birdie.knock_down();
-    assert!(birdie.delayed_wakeup(2));
-    birdie.land_hit(false);
-    birdie.land_hit(false);
-    assert!(birdie.ultra());
-    assert!(matches!(birdie.events.last(), Some(FlagshipEvent::Ultra("Ultra Double"))));
-
-    let hidden = FlagshipSession::new(TournamentFighter::Eagle, EraFamily::Sf6, Loadout::Standard, false);
-    assert!(!hidden.available());
-    assert!(!hidden.tiles.is_empty());
 }

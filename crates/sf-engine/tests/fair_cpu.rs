@@ -134,7 +134,13 @@ fn session(a: Assets, art: Option<&Art>, preset: RulesetPreset, difficulty: u8) 
 
 /// Training against the CPU: P1 `p1`, the CPU `cpu`, from the Main Menu
 /// to where the fighters take control.
-fn cpu_fight(mut s: GameSession, p1: TournamentFighter, cpu: TournamentFighter) -> GameSession {
+fn cpu_fight(s: GameSession, p1: TournamentFighter, cpu: TournamentFighter) -> GameSession {
+    cpu_fight_with_era(s, p1, cpu, None)
+}
+
+fn cpu_fight_with_era(
+    mut s: GameSession, p1: TournamentFighter, cpu: TournamentFighter, style_steps: Option<usize>,
+) -> GameSession {
     for _ in 0..200 {
         s.step(idle());
     }
@@ -167,7 +173,15 @@ fn cpu_fight(mut s: GameSession, p1: TournamentFighter, cpu: TournamentFighter) 
             tap(&mut s, stick(RIGHT));
         }
     }
-    let out = select::confirm_fighter(&mut s, confirm(), GameSession::step);
+    let out = if let Some(steps) = style_steps {
+        assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::StyleOpened));
+        for _ in 0..steps {
+            tap(&mut s, stick(RIGHT));
+        }
+        s.step(confirm())
+    } else {
+        select::confirm_fighter(&mut s, confirm(), GameSession::step)
+    };
     assert_eq!(out.transition, Some(Transition::Fighters(p1, cpu)));
     s.step(idle());
     let mut f = 0;
@@ -1015,3 +1029,26 @@ fn under_the_modern_rules_the_cpu_uses_combos_cancels_throws_and_throw_techs_and
 }
 
 
+
+#[test]
+fn sf6_cpu_spends_drive_through_native_pad_inputs_and_keeps_a_reserve() {
+    let Some(a) = assets() else { return };
+    let mut s = cpu_fight_with_era(
+        session(a, None, RulesetPreset::DefinitiveOverhaul, 2),
+        TournamentFighter::Ryu, TournamentFighter::Ken, Some(6),
+    );
+    let machine = s.fight_machine().unwrap();
+    assert_eq!(machine.era_fighters()[1].style.revision, sf_engine::era::Revision::Sf6);
+    let mut seen = std::collections::BTreeSet::new();
+    let mut least_drive = machine.era_fighters()[1].sf6_drive_points().unwrap();
+    for tick in 0..1800 {
+        let p1 = if tick % 80 < 25 { stick(LEFT) } else { idle() };
+        s.step(p1);
+        let [_, cpu] = fighters(&s);
+        seen.insert(cpu.move_id);
+        let points = s.fight_machine().unwrap().era_fighters()[1].sf6_drive_points().unwrap();
+        least_drive = least_drive.min(points);
+    }
+    assert!(seen.iter().any(|&id| matches!(id, 0x2c..=0x2f)), "Drive commands: {seen:x?}");
+    assert!(least_drive >= 72, "Drive reserve dipped to {least_drive}");
+}

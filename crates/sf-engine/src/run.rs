@@ -1551,6 +1551,11 @@ impl PowerOnMachine {
     /// Advance the machine by one 60 Hz frame: the fair CPU's pad first,
     /// when one plays, then the frame, then the CPU's look at it.
     pub fn step(&mut self) {
+        self.step_with_training_pad(false);
+    }
+
+    /// A Training drill can supply P2's pad for this frame.
+    pub(crate) fn step_with_training_pad(&mut self, scripted_p2: bool) {
         if let Some(rules) = self.program.match_config.dramatic {
             self.fair_cpu = None;
             self.dramatic_cpu_press(rules);
@@ -1559,7 +1564,7 @@ impl PowerOnMachine {
             return;
         }
         self.dramatic_cpu = None;
-        let cpu = self.fair_cpu_press();
+        let cpu = !scripted_p2 && self.fair_cpu_press();
         self.step_frame();
         if cpu {
             self.fair_cpu_observe();
@@ -1608,14 +1613,45 @@ impl PowerOnMachine {
     }
 
     fn fair_cpu_context(&self, fighter: crate::roster::TournamentFighter) -> crate::fair_cpu::Context {
-        use crate::fair_cpu::{Context, Kit, Level};
+        use crate::fair_cpu::{Context, EraControl, Kit, Level};
         let cfg = self.program.match_config;
         let slots = match self.program.data_bank.as_deref().and_then(|b| b.table(fighter).map(|t| (b, t))) {
             Some((bank, table)) => Some([0x19, 0x1a, 0x1b].map(|slot| crate::data_bank::special_slot(|a| bank.rb(a), table, slot))),
             None if fighter.is_shoto() => Some([0x19, 0x1a, 0x1b].map(crate::data_bank::SpecialSlot::ryu)),
             None => None,
         };
-        Context::new(Level::from_difficulty(cfg.difficulty), Kit::of(fighter, cfg.preset, slots), &cfg.toggles)
+        let era = &self.era_fighters()[1];
+        let level = Level::from_difficulty(cfg.difficulty);
+        if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
+            && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
+        {
+            use crate::fighter::{CPU_STRUCT, P2_STRUCT, WORK_BASE};
+            let game_mode = self.program.work[0x4002];
+            let ps = if game_mode == 2 { CPU_STRUCT } else { P2_STRUCT };
+            let entity_word = (ps + 0x10 - WORK_BASE) as usize;
+            let entity = u16::from_be_bytes(self.program.work[entity_word..entity_word + 2].try_into().unwrap()) as usize;
+            let control = self.state.objectram.get(entity..entity + 0x40).map(|obj| {
+                let slot = crate::combo::slot_in_fight(ps, game_mode, false);
+                let combo = &self.program.toggle_state.combo;
+                let cancel = &self.program.toggle_state.cancel;
+                let move_id = obj[0xa];
+                let posture = obj[9];
+                let airborne = posture & 1 != 0 || matches!(move_id, 9..=0x0b);
+                EraControl {
+                    free: obj[8] == 2 && !airborne && combo.blockstun[slot] == 0
+                        && (posture & 0x80 == 0 || cfg.toggles.interruptible_walk_cycle && matches!(move_id, 2 | 3)),
+                    blockstun: combo.blockstun[slot] != 0,
+                    airborne,
+                    cancel: !airborne && cancel.window[slot] != 0 && cancel.move_id[slot] == move_id,
+                    special: posture & 0xc0 == 0xc0
+                        && (matches!(move_id, 0x19..=0x1b) || era.sf4_special_active(move_id)),
+                    waking: matches!(move_id, 0x28 | 0x35..=0x3f),
+                }
+            }).unwrap_or_default();
+            Context::with_era(level, fighter, slots, cfg, era, control)
+        } else {
+            Context::new(level, Kit::of(fighter, cfg.preset, slots), &cfg.toggles)
+        }
     }
 
     pub(crate) fn seed_dramatic_cpu(&mut self, seed: u64) {
@@ -1885,6 +1921,11 @@ impl PowerOnMachine {
     }
 
     /// Fill Player 1's Training gauge, or restore the supplied meter amount.
+    pub(crate) fn training_era_fighter_mut(&mut self) -> Option<&mut crate::era_fight::EraFighterState> {
+        (self.program.match_config.roster.mode == crate::roster::PlayMode::Training)
+            .then_some(&mut self.program.toggle_state.era.fighters[0])
+    }
+
     pub fn training_super_meter(&mut self, value: Option<u8>) {
         if self.program.match_config.roster.mode == crate::roster::PlayMode::Training {
             self.program.toggle_state.era.fighters[0].set_super_meter(value);
@@ -1899,6 +1940,22 @@ impl PowerOnMachine {
     /// Consume presentation events earned by the native fight's pad inputs.
     pub fn take_era_super_events(&mut self) -> [Option<crate::roster::TournamentFighter>; 2] {
         std::mem::take(&mut self.program.toggle_state.era.super_events)
+    }
+
+    pub(crate) fn take_alpha_super_events(&mut self) -> [Option<&'static str>; 2] {
+        std::mem::take(&mut self.program.toggle_state.era.alpha_super_events)
+    }
+
+    pub(crate) fn take_alpha_counter_events(&mut self) -> [bool; 2] {
+        std::mem::take(&mut self.program.toggle_state.era.alpha_counter_events)
+    }
+
+    pub(crate) fn take_era_style_callouts(&mut self) -> [Option<sf_video::callouts::CalloutKind>; 2] {
+        std::mem::take(&mut self.program.toggle_state.era.style_callouts)
+    }
+
+    pub(crate) fn take_guard_crush_events(&mut self) -> [bool; 2] {
+        std::mem::take(&mut self.program.toggle_state.era.guard_crush_events)
     }
 
     /// Take the stage tune command a stand-in fight fell back to when Ryu's

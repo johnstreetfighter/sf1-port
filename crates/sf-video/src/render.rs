@@ -14,7 +14,7 @@
 
 use crate::background_bank::PAGE_BYTES;
 use crate::decode::{decode_char_tile, decode_sprite_tile};
-use crate::compositor::PaletteTint;
+use crate::compositor::{IndexedSprite, PaletteTint};
 use crate::palette::Palette;
 use crate::romset::Assets;
 use crate::scene::SceneState;
@@ -346,54 +346,70 @@ fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState, tints: &[
         let tint_tag = tints.iter().position(|tint| tint.entries.contains(&(2 * offs)))
             .map_or(0, |index| (index + 1) << TINT_SHIFT);
         let palette_base = (GFX3_PALETTE_BASE + usize::from(attr & 0x000f) * 16) | tint_tag;
-        let mut flipx = attr & 0x0100 != 0;
-        let mut flipy = attr & 0x0200 != 0;
-
-        if attr & 0x400 != 0 {
-            // Large sprite: a 2x2 block of 16px tiles.
-            let (mut sx, mut sy) = (sx, sy);
-            if scene.flip_screen {
-                sx = 480 - sx;
-                sy = 224 - sy;
-                flipx = !flipx;
-                flipy = !flipy;
-            }
-            let mut quad = [code, code + 1, code + 16, code + 17];
-            if flipx {
-                quad.swap(0, 1);
-                quad.swap(2, 3);
-            }
-            if flipy {
-                quad.swap(0, 2);
-                quad.swap(1, 3);
-            }
-            for (i, c) in quad.iter().enumerate() {
-                let dx = (i % 2) as i32 * 16;
-                let dy = (i / 2) as i32 * 16;
-                draw_sprite_tile(
-                    pens,
-                    assets,
-                    invert(*c),
-                    palette_base,
-                    (flipx, flipy),
-                    (sx + dx, sy + dy),
-                );
-            }
-        } else {
-            let (mut sx, mut sy) = (sx, sy);
-            if scene.flip_screen {
-                sx = 496 - sx;
-                sy = 240 - sy;
-                flipx = !flipx;
-                flipy = !flipy;
-            }
-            draw_sprite_tile(pens, assets, invert(code), palette_base, (flipx, flipy), (sx, sy));
-        }
+        sprite_tiles(code, attr, (sx, sy), scene.flip_screen, |code, flip, pos| {
+            draw_sprite_tile(pens, assets, code, palette_base, flip, pos);
+        });
         if offs == 0 {
             break;
         }
         offs -= 0x20;
     }
+}
+
+fn sprite_tiles(
+    code: u16, attr: u16, pos: (i32, i32), flip_screen: bool,
+    mut tile: impl FnMut(u16, (bool, bool), (i32, i32)),
+) {
+    let (mut sx, mut sy) = pos;
+    let mut flipx = attr & 0x0100 != 0;
+    let mut flipy = attr & 0x0200 != 0;
+    let large = attr & 0x400 != 0;
+    if flip_screen {
+        sx = if large { 480 } else { 496 } - sx;
+        sy = if large { 224 } else { 240 } - sy;
+        flipx = !flipx;
+        flipy = !flipy;
+    }
+    if large {
+        let mut quad = [code, code + 1, code + 16, code + 17];
+        if flipx {
+            quad.swap(0, 1);
+            quad.swap(2, 3);
+        }
+        if flipy {
+            quad.swap(0, 2);
+            quad.swap(1, 3);
+        }
+        for (i, code) in quad.into_iter().enumerate() {
+            tile(invert(code), (flipx, flipy), (sx + (i % 2) as i32 * 16, sy + (i / 2) as i32 * 16));
+        }
+    } else {
+        tile(invert(code), (flipx, flipy), (sx, sy));
+    }
+}
+
+/// Copy the visible tiles in a native sprite grid for a presentation trail.
+pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, cells: usize) -> Vec<IndexedSprite> {
+    let Some(entries) = scene.objectram.get(first..first + cells * 0x40) else { return Vec::new() };
+    let palette = Palette::from_ram(&scene.paletteram);
+    let tile_count = assets.gfx3.len() / 128;
+    let mut pose = Vec::new();
+    for entry in entries.chunks_exact(0x40).rev() {
+        let word = |i: usize| u16::from_be_bytes([entry[i], entry[i + 1]]);
+        let (code, attr, sy, sx) = (word(0), word(2), word(4), word(6));
+        let color = GFX3_PALETTE_BASE + usize::from(attr & 15) * 16;
+        let colors = std::array::from_fn(|pen| if pen == 0 { 0 } else { palette.argb(color + pen - 1) });
+        sprite_tiles(code, attr, (i32::from(sx), i32::from(sy)), scene.flip_screen, |code, (fx, fy), (x, y)| {
+            let tile = decode_sprite_tile(&assets.gfx3, usize::from(code) % tile_count);
+            let pixels = std::array::from_fn(|i| {
+                let (x, y) = (i % 16, i / 16);
+                let pen = tile[if fy { 15 - y } else { y }][if fx { 15 - x } else { x }];
+                (pen + 1) & 15
+            });
+            pose.push(IndexedSprite { x: x - VISAREA_X as i32, y: y - VISAREA_Y as i32, pixels, palette: colors });
+        });
+    }
+    pose
 }
 
 fn draw_sprite_tile(
