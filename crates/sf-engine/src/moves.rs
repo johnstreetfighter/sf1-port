@@ -143,6 +143,7 @@ pub enum ButtonClass {
     LightPair,
     MediumPunch,
     MediumKick,
+    DirectionOnly,
 }
 
 impl ButtonClass {
@@ -173,6 +174,7 @@ impl ButtonClass {
             Self::LightPair => "LP+LK",
             Self::MediumPunch => "MP",
             Self::MediumKick => "MK",
+            Self::DirectionOnly => "",
         }
     }
 
@@ -206,6 +208,7 @@ impl ButtonClass {
             Self::PairKick => kicks.count_ones() >= 2,
             Self::ReleasePair => punches.count_ones() >= 2 || kicks.count_ones() >= 2,
             Self::SameStrength => punches & kicks != 0,
+            Self::DirectionOnly => false,
             chord => {
                 let required = chord.fixed_mask();
                 buttons & required == required
@@ -384,7 +387,9 @@ impl MoveInput {
     /// The input as the list writes it until arrows arrive: motion word,
     /// plus, button class (`QCF+P`).
     pub fn words(&self) -> String {
-        if self.motion.is_empty() {
+        if self.button == ButtonClass::DirectionOnly {
+            self.motion_word()
+        } else if self.motion.is_empty() {
             self.button.label().to_owned()
         } else {
             format!("{}+{}", self.motion_word(), self.button.label())
@@ -395,7 +400,9 @@ impl MoveInput {
     /// initials, then the button's letter (`D`, `DF`, `F`, `P`).
     pub fn strip_steps(&self) -> Vec<String> {
         let mut steps: Vec<String> = self.motion.iter().map(|d| d.initials().to_owned()).collect();
-        steps.push(self.button.label().to_owned());
+        if self.button != ButtonClass::DirectionOnly {
+            steps.push(self.button.label().to_owned());
+        }
         steps
     }
 
@@ -412,6 +419,7 @@ impl MoveInput {
         }
         if self.motion.last() == Some(&Dir::Jump) { until += Dir::Jump.frames(); }
         let pressed = match self.button {
+            ButtonClass::DirectionOnly => false,
             ButtonClass::ReleasePair => frame >= CHARGE_FRAMES,
             ButtonClass::MashPunch => frame >= 12,
             _ => frame >= until + self.button_offset(),
@@ -431,6 +439,14 @@ impl MoveInput {
     /// held; numpad numbers are always written facing right; words are the
     /// guides' motion words.
     pub fn write(&self, notation: InputNotation, facing_right: bool) -> Vec<InputPiece> {
+        if self.button == ButtonClass::DirectionOnly {
+            let text = if notation == InputNotation::Words {
+                self.motion_word()
+            } else {
+                self.motion.iter().map(|d| d.written(notation, facing_right)).collect()
+            };
+            return vec![InputPiece::Text(text)];
+        }
         match notation {
             InputNotation::Arrows => vec![
                 InputPiece::Text(self.motion.iter().map(|d| d.written(notation, facing_right)).collect()),
@@ -463,6 +479,10 @@ impl MoveInput {
             }, direction.frames()));
         }
         let directions = self.motion.last().map_or([false; 4], |d| d.pressed(facing_right));
+        if self.button == ButtonClass::DirectionOnly {
+            frames.push(PlayerInputs { directions, ..PlayerInputs::default() });
+            return frames;
+        }
         let button = level + if self.button.kick() { 3 } else { 0 };
         let hold = if self.button == ButtonClass::ReleasePair {
             CHARGE_FRAMES

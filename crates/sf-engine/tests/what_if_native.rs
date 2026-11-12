@@ -3,7 +3,8 @@
 mod alpha;
 
 use sf_engine::era::{EraFamily, GaugeMode, Loadout, Revision};
-use sf_engine::front::{fight::Fight, PlayerInputs};
+use sf_engine::front::{fight::Fight, FrameInputs, PlayerInputs};
+use sf_engine::moves::{ButtonClass, Strength};
 use sf_engine::roster::TournamentFighter::{self, Geki, Joe, Lee, Mike, Retsu};
 use sf_video::romset::Assets;
 
@@ -167,6 +168,53 @@ fn training_show_advances_after_geki_air_utsusemi_recovers() {
         return;
     };
     assert_training_show(&mut session, "AIR UTSUSEMI", 0x21);
+}
+
+#[test]
+fn sf6_what_if_overdrive_spends_drive_and_training_uses_its_od_name() {
+    let Some(mut session) = training_fight_with_fighter(Geki, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = session.assets();
+    let mut fight = session.fight().unwrap().clone();
+    let initial_drive = fight.machine().era_fighters()[0].sf6_drive_points().unwrap();
+    motion(&mut fight, assets, &[DOWN, DOWN | RIGHT, RIGHT], &[LP, MP]);
+    assert_eq!(fight.fight_read().fighters[0].move_id, 0x24);
+    assert_eq!(fight.machine().era_fighters()[0].sf6_drive_points(), Some(initial_drive - 96));
+
+    assert_training_move_demo(&mut session, "OD SHURIKEN FAN", 0x24, false);
+}
+
+#[test]
+fn try_distinguishes_a_what_if_overdrive_from_its_shared_slot_special() {
+    for (name, alternate) in [
+        ("OD SHOCKWAVE", ButtonClass::Kick),
+        ("SHOCKWAVE", ButtonClass::PairKick),
+    ] {
+        let Some(mut session) = training_fight_with_fighter(Joe, Revision::Sf6, Loadout::Standard)
+        else {
+            return;
+        };
+        assert_training_show(&mut session, name, 0x1a);
+        let entry = *session.coach().unwrap().entry();
+        for (button, expected) in [(alternate, 0), (entry.input.button, 1)] {
+            let positions = session.fight_machine().unwrap().diagnostic_telemetry();
+            let facing_right = positions.p1.center_x <= positions.p2.center_x;
+            let input = sf_engine::moves::MoveInput { button, ..entry.input };
+            for p1 in input.frames(facing_right, Strength::Medium) {
+                session.step(FrameInputs { p1, ..FrameInputs::default() });
+            }
+            assert_eq!(session.fight().unwrap().fight_read().fighters[0].move_id, entry.produces);
+            assert_eq!(session.coach().unwrap().successes(), expected, "{button:?} in {name} Try");
+            for _ in 0..100 {
+                if session.fight().unwrap().fight_read().fighters[0].move_id == 1 {
+                    break;
+                }
+                session.step(FrameInputs::default());
+            }
+        }
+    }
 }
 
 #[test]

@@ -25,14 +25,17 @@ fn mixed_sfz3_and_sf6_use_their_own_rows_or_one_unified_row() {
         };
         let native = local_fight(&session, Revision::Sf6, Loadout::Standard);
         let mut fight = native.fight().expect("local fight").clone();
-        let states = fight.machine().era_fighters();
+        let hud = fight.era_hud();
         if mode == GaugeMode::NoGauges {
-            assert!(states.iter().all(|state| state.gauge().is_none()));
+            assert_eq!([hud.p1, hud.p2], [None, None]);
         } else {
             let secondary = mode == GaugeMode::EraDefault;
-            assert!(states.iter().all(|state| state
-                .gauge()
-                .is_some_and(|gauge| gauge.second.is_some() == secondary)));
+            for gauge in [hud.p1, hud.p2].map(Option::unwrap) {
+                assert_eq!(gauge.second.is_some(), secondary);
+                if mode == GaugeMode::Unified {
+                    assert!(matches!(gauge.main, sf_video::era_hud::GaugeRow::Stock { cells: 3, .. }));
+                }
+            }
         }
         let mut snapshot = fight.save_netplay_snapshot(0);
         snapshot.machine.toggle_state.era.fighters[0].super_meter =
@@ -62,6 +65,8 @@ fn mixed_sfz3_and_sf6_use_their_own_rows_or_one_unified_row() {
         );
         if mode == GaugeMode::Unified {
             assert_eq!(fight.machine().era_fighters()[1].super_meter, 96);
+            alpha::round_two_after_timeout(&mut fight, native.assets());
+            assert_eq!(fight.machine().era_fighters().map(|state| state.super_meter), [48, 96]);
         } else if mode == GaugeMode::EraDefault {
             assert_eq!(
                 fight.machine().era_fighters()[1].sf6_drive_points(),
@@ -69,6 +74,48 @@ fn mixed_sfz3_and_sf6_use_their_own_rows_or_one_unified_row() {
             );
         }
     }
+}
+
+#[test]
+fn no_gauges_hides_era_system_drills_and_keeps_specials_in_training() {
+    use alpha::{open_training_moves, training_fight_with_gauges};
+    use sf_engine::roster::TournamentFighter::Ryu;
+
+    for (revision, loadout, hidden) in [
+        (Revision::Sfz3, Loadout::VIsm, &["CUSTOM COMBO"][..]),
+        (Revision::Sf3ThreeS, Loadout::Art1, &["UNIVERSAL OVERHEAD", "PARRY"]),
+        (Revision::Usf4, Loadout::Ultra1, &["FOCUS ATTACK"]),
+        (Revision::Sf5Ce, Loadout::Skill1Trigger1, &["DENJIN RENKI", "MIND'S EYE"]),
+        (Revision::Sf6, Loadout::Standard, &["DRIVE IMPACT"]),
+    ] {
+        let Some(mut session) =
+            training_fight_with_gauges(Ryu, revision, loadout, GaugeMode::NoGauges, true)
+        else {
+            return;
+        };
+        assert!(session.fight_machine().unwrap().era_fighters()[0].gauge().is_none());
+        open_training_moves(&mut session);
+        let moves = session.move_list().unwrap().text();
+        assert!(moves.iter().any(|row| row.starts_with("HADOKEN")), "{revision:?}");
+        for name in hidden {
+            assert!(!moves.iter().any(|row| row.contains(name)), "{revision:?} {name}");
+        }
+    }
+}
+
+#[test]
+fn unified_training_shows_and_coaches_drive_impact_from_empty_meter() {
+    use alpha::{assert_training_move_demo, training_fight_with_gauges};
+    use sf_engine::roster::TournamentFighter::Ryu;
+
+    let Some(mut session) =
+        training_fight_with_gauges(Ryu, Revision::Sf6, Loadout::Standard, GaugeMode::Unified, false)
+    else {
+        return;
+    };
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 0);
+    assert_training_move_demo(&mut session, "DRIVE IMPACT", 0x2f, false);
+    assert_eq!(session.fight_machine().unwrap().era_fighters()[0].super_meter, 96);
 }
 
 #[test]
@@ -98,45 +145,53 @@ fn classic_style_uses_release_and_later_style_uses_press_in_the_same_match() {
 fn late_drive_impact_replays_with_the_same_mixed_style_state() {
     use sf_engine::netplay::{encode_inputs, RollbackEngine};
 
-    let Some(session) = local_select_with_p1(GaugeMode::EraDefault, Revision::Sfz3, Loadout::VIsm)
-    else {
-        return;
-    };
-    let native = local_fight(&session, Revision::Sf6, Loadout::Standard);
-    let mut expected = native.fight().expect("local fight").clone();
-    let mut replayed = expected.clone();
-    let mut rollback = RollbackEngine::new(0, 0, 8);
-    let assets = native.assets();
-    let idle = PlayerInputs::default();
-    for tick in 0u32..48 {
-        if let Some(frame) = tick.checked_sub(4) {
-            let remote = if frame == 5 { chord(2, 5) } else { idle };
-            rollback.apply_remote_inputs(&mut replayed, assets, frame, &[encode_inputs(remote)]);
+    for mode in [GaugeMode::EraDefault, GaugeMode::Unified, GaugeMode::NoGauges] {
+        let Some(session) = local_select_with_p1(mode, Revision::Sfz3, Loadout::VIsm) else {
+            return;
+        };
+        let native = local_fight(&session, Revision::Sf6, Loadout::Standard);
+        let mut expected = native.fight().expect("local fight").clone();
+        if mode == GaugeMode::Unified {
+            let mut snapshot = expected.save_netplay_snapshot(0);
+            snapshot.machine.toggle_state.era.fighters[1].super_meter = 144;
+            expected.restore_netplay_snapshot(&snapshot);
         }
-        if tick < 44 {
-            let remote = if tick == 5 { chord(2, 5) } else { idle };
-            expected.step(assets, idle, remote, false);
-            rollback
-                .step(&mut replayed, assets, idle)
-                .expect("within rollback limit");
+        let mut replayed = expected.clone();
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        let assets = native.assets();
+        let idle = PlayerInputs::default();
+        for tick in 0u32..48 {
+            if let Some(frame) = tick.checked_sub(4) {
+                let remote = if frame == 5 { chord(2, 5) } else { idle };
+                rollback.apply_remote_inputs(&mut replayed, assets, frame, &[encode_inputs(remote)]);
+            }
+            if tick < 44 {
+                let remote = if tick == 5 { chord(2, 5) } else { idle };
+                expected.step(assets, idle, remote, false);
+                rollback
+                    .step(&mut replayed, assets, idle)
+                    .expect("within rollback limit");
+            }
+        }
+        assert_eq!(rollback.confirmed_inputs().len(), 44);
+        assert_eq!(expected.state_checksum(), replayed.state_checksum(), "{mode:?}");
+        assert_eq!(
+            expected.machine().era_fighters(),
+            replayed.machine().era_fighters()
+        );
+        let state = replayed.machine().era_fighters()[1];
+        match mode {
+            GaugeMode::EraDefault => assert_eq!(state.sf6_drive_points(), Some(240)),
+            GaugeMode::Unified => assert_eq!(state.super_meter, 96),
+            GaugeMode::NoGauges => assert!(state.gauge().is_none()),
         }
     }
-    assert_eq!(rollback.confirmed_inputs().len(), 44);
-    assert_eq!(expected.state_checksum(), replayed.state_checksum());
-    assert_eq!(
-        expected.machine().era_fighters(),
-        replayed.machine().era_fighters()
-    );
-    assert_eq!(
-        replayed.machine().era_fighters()[1].sf6_drive_points(),
-        Some(240)
-    );
 }
 
 #[test]
 fn every_fighter_can_start_a_real_bout_in_all_eight_era_families() {
     use alpha::local_select_with_fighter;
-    use sf_engine::roster::TournamentFighter;
+    use sf_engine::roster::TournamentFighter::{self, Adon, Birdie, Geki, Gen, Mike, Sagat};
 
     let styles = [
         (Revision::Arcade1987, Loadout::Standard),
@@ -158,6 +213,17 @@ fn every_fighter_can_start_a_real_bout_in_all_eight_era_families() {
             let native = local_fight(&session, Revision::Sf1Plus, Loadout::Standard);
             let fight = native.fight().expect("local fight");
             let state = fight.machine().era_fighters()[0];
+            let vitality = match (index, fighter) {
+                (4.., Gen) => 864,
+                (4.., Adon | Geki) => 912,
+                (4.., Sagat | Mike | Birdie) => 1008,
+                _ => 960,
+            };
+            assert_eq!(
+                (state.sub_hp, state.max_sub_hp),
+                (vitality, vitality),
+                "{fighter:?} {revision:?}"
+            );
             assert_eq!(state.fighter, Some(fighter), "{revision:?}");
             assert_eq!(
                 (state.style.revision, state.style.loadout),

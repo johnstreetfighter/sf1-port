@@ -577,9 +577,13 @@ impl EraFighterState {
 
     pub(crate) fn fill_sf5_practice(&mut self, slot: u8) {
         let Some(fighter) = self.fighter else { return };
-        if slot != trigger_slot(fighter, self.style.loadout)
-            && matches!(slot, TRIGGER_ATTACK | TRIGGER_FORWARD | COUNTER_STRIKE)
-        {
+        if slot == trigger_slot(fighter, self.style.loadout) {
+            // SHOW and TRY lend the original meter, so a completed activation
+            // can be repeated as soon as its own move recovers.
+            self.sf5.trigger_left = 0;
+            self.sf5.trigger_total = 0;
+            self.sf5.meter = self.sf5.capacity;
+        } else if matches!(slot, TRIGGER_ATTACK | TRIGGER_FORWARD | COUNTER_STRIKE) {
             let (_, duration) = trigger(fighter, self.style.loadout);
             self.sf5.trigger_total = duration;
             self.sf5.trigger_left = duration;
@@ -607,6 +611,14 @@ impl EraFighterState {
 
     pub(crate) fn sf5_afterimages(&self) -> bool {
         self.sf5.evading()
+    }
+
+    pub(crate) fn v_trigger_cost(&self, mode: GaugeMode) -> u8 {
+        if mode == GaugeMode::Unified {
+            2 * STOCK_AT
+        } else {
+            self.sf5.capacity
+        }
     }
 
     fn can_spend_v(&self, mode: GaugeMode, amount: u8) -> bool {
@@ -705,7 +717,7 @@ impl Bus<'_> {
 
             Action::Trigger(_) => {
                 let (_, duration) = trigger(fighter, state.style.loadout);
-                state.spend_v(mode, state.sf5.capacity);
+                state.spend_v(mode, state.v_trigger_cost(mode));
                 state.sf5.trigger_left = duration;
                 state.sf5.trigger_total = duration;
                 self.toggle_state.era.freeze = self.toggle_state.era.freeze.max(15);
@@ -896,7 +908,7 @@ fn sf5_action(
             ) {
                 return Some(Action::TriggerFollowUp(slot));
             }
-        } else if state.can_spend_v(mode, state.sf5.capacity) {
+        } else if state.can_spend_v(mode, state.v_trigger_cost(mode)) {
             return Some(Action::Trigger(trigger_slot(fighter, state.style.loadout)));
         }
     }

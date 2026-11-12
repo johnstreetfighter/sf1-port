@@ -121,6 +121,12 @@ const UNIVERSAL_OVERHEAD: Command = Command {
     motion: &[],
     button: ButtonClass::MediumPair,
 };
+const STANDING_PARRY: Command = Command {
+    slot: PARRY,
+    name: "PARRY",
+    motion: &[Dir::Forward],
+    button: ButtonClass::DirectionOnly,
+};
 const AIR_HURRICANE: Command = Command {
     slot: AIR_TATSU,
     name: "AIR TATSUMAKI",
@@ -321,6 +327,15 @@ impl EraFighterState {
         })
     }
 
+    pub(crate) fn sf3_super_art_cost(&self) -> Option<u8> {
+        let stock = self.sf3_stock_cost()?;
+        if self.sf3.unified {
+            Some(stock * (art_index(self.style.loadout)? as u8 + 1))
+        } else {
+            Some(stock)
+        }
+    }
+
     pub(crate) fn sf3_capacity(&self) -> Option<u8> {
         self.is_sf3().then(|| {
             self.sf3_art()
@@ -363,6 +378,7 @@ impl EraFighterState {
         };
         let mut moves = Vec::new();
         if self.super_capacity != 0 {
+            moves.push(move_entry(STANDING_PARRY, MoveKind::System, "PARRY!", fighter));
             moves.push(move_entry(
                 UNIVERSAL_OVERHEAD,
                 MoveKind::System,
@@ -415,6 +431,12 @@ impl EraFighterState {
     }
 
     pub(crate) fn sf3_progress(&self, slot: u8) -> (u8, u8) {
+        if slot == PARRY {
+            let state = &self.sf3;
+            let high = !state.parry_low && !state.parry_airborne
+                && (state.parry_left != 0 || state.parry_flash != 0);
+            return (u8::from(high), state.parry_left);
+        }
         let (tracker, air) = match slot {
             ART_1..=ART_3 => (self.sf3.super_motion, false),
             JOUDAN | EX_JOUDAN => (self.sf3.special_motions[3], false),
@@ -568,6 +590,7 @@ impl Bus<'_> {
         };
         let meter = state.super_meter;
         let ex_cost = if state.sf3.unified { STOCK_AT } else { EX_COST };
+        let super_cost = state.sf3_super_art_cost().unwrap_or_default();
         let (slot, cost, level, call_out) = if airborne {
             if state.style.revision == Revision::Sf3Ng
                 || fresh & KICK_MASK == 0
@@ -583,14 +606,9 @@ impl Bus<'_> {
         } else if state.super_capacity != 0
             && art.button.held(fresh)
             && state.sf3.super_motion.ready(DOUBLE_QUARTER_CIRCLE)
-            && meter >= state.sf3_stock_cost().unwrap_or_default()
+            && meter >= super_cost
         {
-            (
-                art.slot,
-                state.sf3_stock_cost().unwrap_or_default(),
-                1,
-                Some(art.name),
-            )
+            (art.slot, super_cost, 1, Some(art.name))
         } else if let Some((_, command)) = state.sf3_ex_commands().find(|&(index, command)| {
             state.sf3_ex_enabled()
                 && meter >= ex_cost

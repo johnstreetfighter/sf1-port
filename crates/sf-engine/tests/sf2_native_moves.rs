@@ -1,10 +1,14 @@
 //! Native SF2 commands from real Character Select and two-player pads.
 
+#[allow(dead_code)]
+#[path = "support/alpha.rs"]
+mod support;
+
 use std::path::Path;
 
 use sf_engine::config::MatchConfig;
 use sf_engine::data_bank::{SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
-use sf_engine::era::Revision;
+use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::{FrameInputs, FrameOutput, GameSession, PlayerInputs, Transition};
 use sf_engine::front::settings::Settings;
 use sf_engine::roster::TournamentFighter::{self, Ken, Ryu, Sagat};
@@ -172,6 +176,66 @@ fn command(session: &mut GameSession, directions: &[u8], button: usize) {
 
 fn p1_meter(session: &GameSession) -> u8 {
     session.fight_machine().unwrap().era_fighters()[0].super_meter
+}
+
+#[test]
+fn all_three_sf2_fighters_use_their_projectile_in_each_revision() {
+    for fighter in [Ryu, Ken, Sagat] {
+        let mut damages = std::collections::BTreeSet::new();
+        for (revision, loadout) in [
+            (Revision::Ww, Loadout::Standard),
+            (Revision::Ce, Loadout::Standard),
+            (Revision::Hf, Loadout::Standard),
+            (Revision::Super, Loadout::Standard),
+            (Revision::St, Loadout::Standard),
+            (Revision::St, Loadout::Old),
+        ] {
+            let Some(select) = support::local_select_with_fighter(
+                GaugeMode::EraDefault, fighter, revision, loadout,
+            ) else {
+                return;
+            };
+            let mut session = support::local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+            let state = session.fight_machine().unwrap().era_fighters()[0];
+            assert_eq!((state.style.revision, state.style.loadout), (revision, loadout));
+            assert_eq!(state.gauge().is_some(), (revision, loadout) == (Revision::St, Loadout::Standard));
+            let initial_health = session.fight_machine().unwrap().era_fighters()[1].sub_hp;
+            command(&mut session, &[2, 3, 6], LP);
+            assert_eq!(session.fight().unwrap().fight_read().fighters[0].move_id, 0x1a);
+            let damage = (0..120)
+                .find_map(|_| {
+                    session.step(idle());
+                    let health = session.fight_machine().unwrap().era_fighters()[1].sub_hp;
+                    (health < initial_health).then(|| initial_health - health)
+                })
+                .unwrap_or_else(|| panic!("{fighter:?} {revision:?} {loadout:?} projectile did not connect"));
+            assert!(damages.insert(damage), "{fighter:?} {revision:?} {loadout:?} revision damage");
+        }
+    }
+}
+
+#[test]
+fn all_three_super_turbo_supers_work_in_training_show_and_try() {
+    for (fighter, name) in [
+        (Ryu, "SHINKU HADOKEN"),
+        (Ken, "SHORYUREPPA"),
+        (Sagat, "TIGER GENOCIDE"),
+    ] {
+        let Some(mut session) =
+            support::training_fight_with_fighter(fighter, Revision::St, Loadout::Standard)
+        else {
+            return;
+        };
+        assert_eq!(p1_meter(&session), 48);
+        support::assert_training_move_demo(&mut session, name, SF2_SUPER_SLOT, false);
+        assert!(
+            (0..200).any(|_| {
+                session.step(idle());
+                p1_meter(&session) == 48
+            }),
+            "{name} refills after Try recovers"
+        );
+    }
 }
 
 #[test]

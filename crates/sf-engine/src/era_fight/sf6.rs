@@ -544,7 +544,7 @@ impl Bus<'_> {
         for (i, (name, button, index)) in arts(fighter).into_iter().enumerate().rev() {
             let level = i as u8 + 1;
             let cost = level * STOCK_AT;
-            if state.super_meter >= STOCK_AT
+            if state.super_meter >= cost
                 && button.held(fresh)
                 && state.sf6.motions[index].ready(motion(index))
             {
@@ -700,6 +700,7 @@ impl Bus<'_> {
                     state.sf6.charged_move == slot,
                 )
             });
+        let punish = !chip && self.sf6_is_punish(owner, target);
         if let Some((level, perfect, charged)) = attack {
             if charged && !chip {
                 damage += damage / 3;
@@ -733,18 +734,14 @@ impl Bus<'_> {
             if !chip {
                 state.sf6.recoverable_hp = 0;
             }
-            if state.sf6.enabled
-                && !state.sf6.burnout
-                && (chip || (attack.is_some() && slot == IMPACT))
-            {
-                let drain = if chip { 16 } else { 48 };
-                state.sf6.points = state.sf6.points.saturating_sub(drain);
-                state.sf6.regen_delay = 90;
-                if state.sf6.points == 0 {
-                    state.sf6.burnout = true;
-                    self.era_emit_callout(target, CalloutKind::Burnout);
-                }
-            }
+        }
+        if chip {
+            self.sf6_drain_drive(target, 16);
+        } else if punish || (attack.is_some() && slot == IMPACT) {
+            self.sf6_drain_drive(target, STOCK_AT);
+        }
+        if punish {
+            self.era_emit_callout(owner, CalloutKind::PunishCounter);
         }
         Some(damage)
     }
@@ -757,7 +754,9 @@ impl Bus<'_> {
 
     pub(crate) fn sf6_started(&mut self, ps: u32, slot: u8) {
         if let Some(side) = self.era_side(ps) {
-            let drive = &mut self.toggle_state.era.fighters[side].sf6;
+            let fighter = &mut self.toggle_state.era.fighters[side];
+            fighter.attack_reached_active = false;
+            let drive = &mut fighter.sf6;
             if drive.installed
                 && matches!(slot, 0x1a | EXTRA | OD_PROJECTILE | OD_EXTRA | SA1 | SA2)
             {
@@ -793,11 +792,21 @@ impl Bus<'_> {
         }
     }
 
+    fn sf6_is_punish(&self, owner: u32, target: u32) -> bool {
+        if self.era_rules.gauge_mode == GaugeMode::NoGauges
+            || !self.era_state(owner).is_some_and(EraFighterState::is_sf6)
+            || !self.era_state(target).is_some_and(|state| state.attack_reached_active)
+        {
+            return false;
+        }
+        let entity = self.rw(target + 0x10);
+        self.eb(entity, 9) & 0xc0 == 0xc0 && self.eb(entity, 0xf) & 0x80 == 0
+    }
+
     pub(crate) fn sf6_impact_punish(&mut self, owner: u32, target: u32, slot: u8) -> bool {
         if slot != IMPACT
-            || !self
-                .era_state(owner)
-                .is_some_and(|state| state.is_sf6() && state.alpha_move_active(slot))
+            || !self.era_state(owner).is_some_and(|state| state.alpha_move_active(slot))
+            || !self.sf6_is_punish(owner, target)
         {
             return false;
         }
@@ -805,7 +814,6 @@ impl Bus<'_> {
             return false;
         };
         self.toggle_state.era.fighters[side].sf6.wall_left = 28;
-        self.era_emit_callout(owner, CalloutKind::PunishCounter);
         true
     }
 
@@ -814,7 +822,7 @@ impl Bus<'_> {
             .is_some_and(|state| state.sf6.wall_left != 0)
     }
 
-    pub(crate) fn sf6_block_drain(&mut self, ps: u32, amount: u8) {
+    pub(crate) fn sf6_drain_drive(&mut self, ps: u32, amount: u8) {
         let Some(side) = self.era_side(ps) else {
             return;
         };

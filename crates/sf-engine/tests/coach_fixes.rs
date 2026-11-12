@@ -512,6 +512,7 @@ fn put_right(entry: &MoveEntry, fix: FixKind, run: &Run) -> Vec<FrameInputs> {
             let start = run.first(|x| x.dir == m0).unwrap();
             [&f[..start], &vec![idle(); 60][..], &f[start..]].concat()
         }
+        FixKind::TimeParry => unreachable!("three-direction commands do not parry"),
     }
 }
 
@@ -586,6 +587,7 @@ fn claim_holds(entry: &MoveEntry, fix: FixKind, run: &Run) -> Result<(), String>
                 return Err("no button was pressed on a frame the gate held, and the gate was open".into());
             }
         }
+        FixKind::TimeParry => return Err("three-direction commands do not parry".into()),
     }
     Ok(())
 }

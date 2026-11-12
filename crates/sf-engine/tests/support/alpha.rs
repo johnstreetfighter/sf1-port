@@ -210,8 +210,18 @@ pub fn training_fight_with_fighter(
     revision: Revision,
     loadout: Loadout,
 ) -> Option<GameSession> {
-    let mut session = session_with_art(GaugeMode::EraDefault, fighter)?.with_settings(Settings {
-        fill_meters: true,
+    training_fight_with_gauges(fighter, revision, loadout, GaugeMode::EraDefault, true)
+}
+
+pub fn training_fight_with_gauges(
+    fighter: TournamentFighter,
+    revision: Revision,
+    loadout: Loadout,
+    gauge_mode: GaugeMode,
+    fill_meters: bool,
+) -> Option<GameSession> {
+    let mut session = session_with_art(gauge_mode, fighter)?.with_settings(Settings {
+        fill_meters,
         ..Settings::default()
     });
     open_menu(&mut session);
@@ -238,7 +248,7 @@ pub fn training_fight_with_fighter(
 }
 
 #[allow(dead_code)]
-pub fn assert_training_show(session: &mut GameSession, name: &str, slot: u8) {
+pub fn open_training_moves(session: &mut GameSession) {
     let key = |direction, button| FrameInputs {
         p1: pad(direction, button),
         ..FrameInputs::default()
@@ -255,6 +265,15 @@ pub fn assert_training_show(session: &mut GameSession, name: &str, slot: u8) {
         tap(session, key(DOWN, None));
     }
     tap(session, key(0, Some(LP)));
+}
+
+#[allow(dead_code)]
+pub fn assert_training_show(session: &mut GameSession, name: &str, slot: u8) {
+    let key = |direction, button| FrameInputs {
+        p1: pad(direction, button),
+        ..FrameInputs::default()
+    };
+    open_training_moves(session);
     assert!(
         (0..48).any(|_| {
             if session.move_list().unwrap().selected().unwrap().name == name {
@@ -444,4 +463,31 @@ fn wait_for_fight(session: &mut GameSession) {
         session.step(FrameInputs::default());
     }
     panic!("the native fight loop did not open");
+}
+
+#[allow(dead_code)]
+pub fn round_two_after_timeout(fight: &mut sf_engine::front::fight::Fight, assets: &Assets) {
+    use sf_engine::fighter::{P2_STRUCT, WORK_BASE};
+    use sf_engine::tasks::TIME_DIGITS;
+
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    let health = (P2_STRUCT + 6 - WORK_BASE) as usize;
+    snapshot.machine.work[health] = 1;
+    snapshot.machine.work[health + 1] = 0;
+    snapshot.machine.toggle_state.era.fighters[1].sub_hp = 20;
+    let timer = (TIME_DIGITS - WORK_BASE) as usize;
+    snapshot.machine.work[timer..timer + 3].fill(0);
+    fight.restore_netplay_snapshot(&snapshot);
+
+    for _ in 0..900 {
+        fight.step(assets, PlayerInputs::default(), PlayerInputs::default(), false);
+        let fighters = fight.fight_read().fighters;
+        if fight.machine().work_ram()[0x400a] == 1
+            && fighters[0].move_id == 1
+            && fighters[1].health > 1
+        {
+            return;
+        }
+    }
+    panic!("round two did not reach idle");
 }

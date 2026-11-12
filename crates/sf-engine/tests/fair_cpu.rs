@@ -1049,6 +1049,81 @@ fn sf6_cpu_spends_drive_through_native_pad_inputs_and_keeps_a_reserve() {
         let points = s.fight_machine().unwrap().era_fighters()[1].sf6_drive_points().unwrap();
         least_drive = least_drive.min(points);
     }
-    assert!(seen.iter().any(|&id| matches!(id, 0x2c..=0x2f)), "Drive commands: {seen:x?}");
+    assert!(seen.contains(&0x2c), "CPU Drive Rush, seen slots: {seen:x?}");
     assert!(least_drive >= 72, "Drive reserve dipped to {least_drive}");
+}
+
+
+#[test]
+fn a_hard_training_cpu_executes_era_supers_through_the_native_pad() {
+    use sf_engine::era::Revision;
+    use sf_engine::front::settings::Settings;
+
+    let cases: [(Revision, &[u8]); 6] = [
+        (Revision::St, &[0x29]),
+        (Revision::Sfz3, &[0x29, 0x2a, 0x2b]),
+        (Revision::Sf3ThreeS, &[0x29]),
+        (Revision::Usf4, &[0x29, 0x2a]),
+        (Revision::Sf5Ce, &[0x29]),
+        (Revision::Sf6, &[0x29, 0x2a, 0x2b]),
+    ];
+    for (index, (revision, super_slots)) in cases.into_iter().enumerate() {
+        let Some(a) = assets() else { return };
+        let mut game = cpu_fight_with_era(
+            session(a, None, RulesetPreset::DefinitiveOverhaul, 4)
+                .with_settings(Settings {
+                    fill_meters: true,
+                    ..Settings::default()
+                }),
+            TournamentFighter::Ryu,
+            TournamentFighter::Ken,
+            Some(index + 1),
+        );
+        assert_eq!(game.fight_machine().unwrap().era_fighters()[1].style.revision, revision);
+        let mut seen = std::collections::BTreeSet::new();
+        for tick in 0..1800 {
+            let input = match tick % 80 {
+                0..=19 => stick(RIGHT),
+                20 => with(|i| i.p1.buttons[0] = true),
+                _ => idle(),
+            };
+            game.step(input);
+            seen.insert(fighters(&game)[1].move_id);
+        }
+        assert!(
+            super_slots.iter().any(|slot| seen.contains(slot)),
+            "{revision:?} CPU move slots: {seen:x?}"
+        );
+    }
+}
+
+
+#[test]
+fn gen_cpu_switches_both_stances_with_the_what_if_sf6_kit() {
+    use sf_engine::era::Revision;
+    use TournamentFighter::{Gen, Ryu};
+
+    let Some(a) = assets() else { return };
+    let Some(art) = art(&a) else { return };
+    let mut game = cpu_fight_with_era(
+        session(a, Some(&art), RulesetPreset::DefinitiveOverhaul, 4),
+        Ryu,
+        Gen,
+        Some(6),
+    );
+    assert_eq!(game.fight_machine().unwrap().era_fighters()[1].style.revision, Revision::Sf6);
+    let mut switches = [false; 2];
+    assert_eq!(game.fight_machine().unwrap().era_fighters()[1].fighter, Some(Gen));
+    for _ in 0..1200 {
+        game.step(stick(LEFT));
+        if fighters(&game)[1].move_id == 0x1f {
+            let (_, buttons) = game.fight_machine().unwrap().fair_cpu_pad().unwrap();
+            switches[0] |= buttons[..3].iter().all(|&pressed| pressed);
+            switches[1] |= buttons[3..].iter().all(|&pressed| pressed);
+        }
+        if switches == [true; 2] {
+            return;
+        }
+    }
+    panic!("Gen CPU must switch to both stances. Observed {switches:?}");
 }

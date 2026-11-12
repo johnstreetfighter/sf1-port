@@ -219,6 +219,8 @@ pub struct CalloutFrame {
     pub sides: [SideCallouts; 2],
     /// The super dim: one level, on while any super runs.
     pub dim: bool,
+    /// The lighter stage dim used when every active Super calls for 25% darkening.
+    pub dim_quarter: bool,
     /// Pixels the call-out columns sit lower than their usual place: 0 in
     /// every fight but a Training Try, which needs the room under the health
     /// block for the strip's second line ([`regions::TRY_DROP`], ML6).
@@ -226,7 +228,7 @@ pub struct CalloutFrame {
 }
 
 impl CalloutFrame {
-    pub const NONE: CalloutFrame = CalloutFrame { sides: [SideCallouts::NONE; 2], dim: false, drop: 0 };
+    pub const NONE: CalloutFrame = CalloutFrame { sides: [SideCallouts::NONE; 2], dim: false, dim_quarter: false, drop: 0 };
 
     pub fn side(&self, side: Side) -> &SideCallouts {
         &self.sides[side.index()]
@@ -364,7 +366,14 @@ impl CalloutBoard {
 
     /// What to draw this frame.
     pub fn frame(&self) -> CalloutFrame {
+        self.frame_with_quarter_dim([false; 2])
+    }
+
+    /// Select the lighter Super dim for each side. An overlapping stronger
+    /// Super still darkens the stage just once.
+    pub fn frame_with_quarter_dim(&self, quarter: [bool; 2]) -> CalloutFrame {
         let mut out = CalloutFrame { drop: self.drop, ..CalloutFrame::NONE };
+        let mut half = false;
         for side in Side::BOTH {
             let column = &self.columns[side.index()];
             let shown = &mut out.sides[side.index()];
@@ -376,8 +385,11 @@ impl CalloutBoard {
             shown.greyed = column.greyed;
             shown.flash =
                 (column.flash_left > 0).then(|| ((FLASH_FRAMES - column.flash_left) / FLASH_PHASE).is_multiple_of(2));
-            out.dim = out.dim || column.dim_left > 0;
+            let active = column.dim_left > 0;
+            out.dim |= active;
+            half |= active && !quarter[side.index()];
         }
+        out.dim_quarter = out.dim && !half;
         out
     }
 }
@@ -717,9 +729,21 @@ fn draw_combo(argb: &mut [u32], side: Side, combo: ComboCount, drop: usize, font
 /// The super dim: one level (half brightness) over the pixels `stage` marks,
 /// or over the whole frame when there is no mask.
 pub fn dim(argb: &mut [u32], stage: Option<&[bool]>) {
-    for (i, p) in argb.iter_mut().enumerate().take(WIDTH * HEIGHT) {
+    dim_pixels(argb, stage, |pixel| 0xff00_0000 | ((pixel >> 1) & 0x007f_7f7f));
+}
+
+pub(crate) fn dim_quarter(argb: &mut [u32], stage: Option<&[bool]>) {
+    let shade = |channel: u8| (u16::from(channel) * 3 / 4) as u8;
+    dim_pixels(argb, stage, |pixel| {
+        let [b, g, r, _] = pixel.to_le_bytes();
+        u32::from_le_bytes([shade(b), shade(g), shade(r), 0xff])
+    });
+}
+
+fn dim_pixels(argb: &mut [u32], stage: Option<&[bool]>, shade: impl Fn(u32) -> u32) {
+    for (i, pixel) in argb.iter_mut().enumerate().take(WIDTH * HEIGHT) {
         if stage.is_none_or(|stage| stage.get(i).copied().unwrap_or(false)) {
-            *p = 0xff00_0000 | ((*p >> 1) & 0x007f_7f7f);
+            *pixel = shade(*pixel);
         }
     }
 }

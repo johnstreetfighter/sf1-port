@@ -8,10 +8,10 @@ use alpha::{local_fight, local_select_with_fighter, pad, DOWN, RIGHT};
 use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::{Fight, FightFrame};
 use sf_engine::front::show::ready;
-use sf_engine::front::{GameSession, PlayerInputs};
+use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
 use sf_engine::roster::TournamentFighter;
 use sf_video::callouts::{CalloutKind, Side};
-use sf_video::era_hud::{GaugeRow, GaugeState};
+use sf_video::era_hud::{Fill, GaugeRow, GaugeState};
 use sf_video::romset::Assets;
 
 const STOCK_AT: u8 = 48;
@@ -204,6 +204,115 @@ fn ultra_double_offers_both_ryu_ultras_and_spends_revenge() {
             Some(GaugeRow::Bar { fill, .. }) if fill.num == 0)
         );
     }
+}
+
+fn metsu_shoryuken(fight: &mut Fight, assets: &Assets) -> u16 {
+    let before = fight.machine().era_fighters()[1].sub_hp;
+    for direction in [DOWN, DOWN | RIGHT, RIGHT, DOWN, DOWN | RIGHT] {
+        step(fight, assets, pad(direction, None), pad(0, None));
+    }
+    step(fight, assets, held(RIGHT, &[3, 4, 5]), pad(0, None));
+    assert_eq!(p1_slot(fight), 0x2b, "Metsu Shoryuken starts");
+    for _ in 0..90 {
+        step(fight, assets, pad(0, None), pad(0, None));
+        let after = fight.machine().era_fighters()[1].sub_hp;
+        if after < before {
+            return before - after;
+        }
+    }
+    panic!("Metsu Shoryuken does not connect");
+}
+
+#[test]
+fn ultra_double_deals_three_quarters_of_the_same_ultra_hit() {
+    let mut ordinary_damage = [0; 2];
+    for (index, disable_comeback) in [false, true].into_iter().enumerate() {
+        let mut damage = [0; 2];
+        for (value, loadout) in damage.iter_mut().zip([Loadout::Ultra2, Loadout::UltraDouble]) {
+            let Some(session) = alpha::training_fight_with_fighter(
+                TournamentFighter::Ryu, Revision::Usf4, loadout,
+            ) else {
+                return;
+            };
+            let assets = session.assets();
+            let mut fight = session.fight().unwrap().clone();
+            let mut snapshot = fight.save_netplay_snapshot(0);
+            snapshot.setup.config.disable_comeback_scaling = disable_comeback;
+            snapshot.machine.match_config.disable_comeback_scaling = disable_comeback;
+            fight.restore_netplay_snapshot(&snapshot);
+            close_range(&mut fight, assets);
+            *value = metsu_shoryuken(&mut fight, assets);
+        }
+        let [single, double] = damage;
+        assert!(double.abs_diff(single * 3 / 4) <= 1, "single={single}, double={double}");
+        ordinary_damage[index] = single;
+    }
+    assert!(ordinary_damage[1] < ordinary_damage[0], "the safety switch removes the Revenge bonus");
+}
+
+#[test]
+fn a_special_focus_dash_cancel_can_follow_the_crumple_with_an_ultra() {
+    let Some(session) = alpha::training_fight_with_fighter(
+        TournamentFighter::Ryu, Revision::Usf4, Loadout::Ultra2,
+    ) else {
+        return;
+    };
+    let assets = session.assets();
+    let mut fight = session.fight().unwrap().clone();
+    close_range(&mut fight, assets);
+    fight.set_fill_meters(false);
+    step(&mut fight, assets, pad(DOWN, None), pad(0, None));
+    step(&mut fight, assets, pad(DOWN | RIGHT, None), pad(0, None));
+    step(&mut fight, assets, pad(RIGHT, Some(0)), pad(0, None));
+    assert_eq!(p1_slot(&fight), 0x1a);
+    let mut red = fight.clone();
+    run_focus(&mut red, assets, true, 1, pad(0, None));
+    assert_eq!(p1_slot(&red), FOCUS_CHARGE);
+    assert_eq!(red.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+
+    run_focus(&mut fight, assets, false, 22, pad(0, None));
+    assert_eq!(p1_slot(&fight), FOCUS_CHARGE);
+    assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+    let before = fight.machine().era_fighters()[1].sub_hp;
+    assert!((0..25).any(|_| {
+        step(&mut fight, assets, pad(0, None), pad(0, None));
+        fight.machine().era_fighters()[1].sub_hp < before
+    }), "level two Focus connects");
+    for direction in [RIGHT, 0, RIGHT] {
+        step(&mut fight, assets, pad(direction, None), pad(0, None));
+    }
+    assert_eq!(p1_slot(&fight), DASH);
+    assert!((0..24).any(|_| {
+        step(&mut fight, assets, pad(0, None), pad(0, None));
+        ready(&fight.fight_read().fighters[0])
+    }), "Ryu finishes the dash");
+    assert!(fight.fight_read().fighters[1].reacting(), "the opponent is still crumpling");
+    assert!(metsu_shoryuken(&mut fight, assets) > 0);
+}
+
+#[test]
+fn the_super_gauge_carries_while_revenge_resets_for_round_two() {
+    let Some(select) = select(Revision::Usf4, Loadout::Ultra1, TournamentFighter::Ryu) else {
+        return;
+    };
+    let assets = select.assets();
+    let mut fight = bout(&select);
+    close_range(&mut fight, assets);
+    let initial_hp = fight.machine().era_fighters()[0].sub_hp;
+    step(&mut fight, assets, pad(0, None), pad(0, Some(HP)));
+    assert!((0..30).any(|_| {
+        step(&mut fight, assets, pad(0, None), pad(0, None));
+        fight.machine().era_fighters()[0].sub_hp < initial_hp
+    }));
+    assert!(matches!(
+        fight.era_hud().p1.unwrap().second,
+        Some(GaugeRow::Bar { fill, .. }) if fill.num > 0
+    ));
+    set_super(&mut fight, 2 * STOCK_AT);
+    alpha::round_two_after_timeout(&mut fight, assets);
+    let gauge = fight.era_hud().p1.unwrap();
+    assert_eq!(gauge.main, GaugeRow::stock(4, 2, Fill::of(0, STOCK_AT.into())));
+    assert!(matches!(gauge.second, Some(GaugeRow::Bar { fill, .. }) if fill.num == 0));
 }
 
 #[test]
@@ -473,26 +582,62 @@ fn each_canonical_sf4_fighter_starts_a_metered_super_in_native_play() {
 }
 
 #[test]
-fn ex_special_spends_one_stock_and_its_focus_cancel_spends_two() {
+fn training_fills_and_coaches_each_canonical_ultra_loadout() {
+    use TournamentFighter::{Adon, Gen, Ken, Ryu, Sagat};
+
+    for (fighter, first, second) in [
+        (Ryu, "METSU HADOKEN", ("METSU SHORYUKEN", 0x2b)),
+        (Ken, "SHINRYUKEN", ("GUREN SENPUKYAKU", 0x2b)),
+        (Sagat, "TIGER DESTRUCTION", ("TIGER CANNON", 0x2b)),
+        (Gen, "ZETSUEI", ("SHITENKETSU", 0x2c)),
+        (Adon, "JAGUAR REVOLVER", ("JAGUAR AVALANCHE", 0x2b)),
+    ] {
+        for (loadout, (name, slot)) in [
+            (Loadout::Ultra1, (first, 0x2a)),
+            (Loadout::Ultra2, second),
+            (Loadout::UltraDouble, second),
+        ] {
+            let Some(mut session) =
+                alpha::training_fight_with_fighter(fighter, Revision::Usf4, loadout)
+            else {
+                return;
+            };
+            session.step(FrameInputs::default());
+            let state = session.fight().unwrap().machine().era_fighters()[0];
+            assert_eq!(state.super_meter, 4 * STOCK_AT, "{fighter:?} {loadout:?}");
+            assert!(matches!(
+                state.gauge().unwrap().second,
+                Some(GaugeRow::Bar { fill, .. }) if fill.num == fill.den
+            ));
+            alpha::assert_training_move_demo(&mut session, name, slot, false);
+        }
+    }
+}
+
+#[test]
+fn ex_special_spends_one_stock_and_either_focus_cancel_spends_two() {
     let Some(select) = select(Revision::Usf4, Loadout::Ultra1, TournamentFighter::Ryu) else {
         return;
     };
-    let mut fight = bout(&select);
     let assets = select.assets();
-    set_super(&mut fight, 3 * STOCK_AT);
-    for direction in [DOWN, DOWN | RIGHT] {
-        step(&mut fight, assets, pad(direction, None), pad(0, None));
+    let base = bout(&select);
+    for red in [false, true] {
+        let mut fight = base.clone();
+        set_super(&mut fight, 3 * STOCK_AT);
+        for direction in [DOWN, DOWN | RIGHT] {
+            step(&mut fight, assets, pad(direction, None), pad(0, None));
+        }
+        step(&mut fight, assets, held(RIGHT, &[0, MP]), pad(0, None));
+        assert_eq!(p1_slot(&fight), 0x1a);
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+        run_focus(&mut fight, assets, red, 1, pad(0, None));
+        assert_eq!(p1_slot(&fight), FOCUS_CHARGE, "red={red}");
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
+        for direction in [RIGHT, 0, RIGHT] {
+            step(&mut fight, assets, held(direction, &[MP, MK]), pad(0, None));
+        }
+        assert_eq!(p1_slot(&fight), DASH);
     }
-    step(&mut fight, assets, held(RIGHT, &[0, MP]), pad(0, None));
-    assert_eq!(p1_slot(&fight), 0x1a);
-    assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
-    run_focus(&mut fight, assets, false, 1, pad(0, None));
-    assert_eq!(p1_slot(&fight), FOCUS_CHARGE);
-    assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
-    for direction in [RIGHT, 0, RIGHT] {
-        step(&mut fight, assets, held(direction, &[MP, MK]), pad(0, None));
-    }
-    assert_eq!(p1_slot(&fight), DASH);
 }
 
 #[test]

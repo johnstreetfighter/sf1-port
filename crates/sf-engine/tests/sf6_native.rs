@@ -5,10 +5,12 @@ mod alpha;
 use alpha::{local_fight, local_select_with_fighter, local_select_with_p1, pad, DOWN, LEFT, RIGHT};
 use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::Fight;
-use sf_engine::front::{GameSession, PlayerInputs};
+use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
 use sf_engine::moves::{ButtonClass, Dir, MoveInput, Strength};
 use sf_engine::roster::TournamentFighter;
 use sf_video::announcer::AnnouncerLine;
+use sf_video::callouts::{CalloutKind, Side};
+use sf_video::era_hud::{GaugeRow, GaugeState};
 use sf_video::romset::Assets;
 
 const IDLE: PlayerInputs = PlayerInputs {
@@ -69,7 +71,28 @@ fn drive_impact_spends_one_bar_and_burnout_recovers_to_six() {
         rest(&mut fight, assets, 40);
     }
     assert_eq!(drive(&fight), 0);
+    assert!(matches!(
+        fight.era_hud().p1.unwrap().main,
+        GaugeRow::Stock { cells: 6, state: GaugeState::Greyed, .. }
+    ));
     rest(&mut fight, assets, 450);
+    assert_eq!(drive(&fight), 288);
+}
+
+#[test]
+fn super_art_meter_carries_while_drive_resets_for_round_two() {
+    let Some(session) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = session.assets();
+    let mut fight = bout(&session);
+    meter(&mut fight, 96);
+    fight.step(assets, pair(2, 5), IDLE, false);
+    assert_eq!(drive(&fight), 240);
+    alpha::round_two_after_timeout(&mut fight, assets);
+    assert_eq!(fight.machine().era_fighters()[0].super_meter, 96);
     assert_eq!(drive(&fight), 288);
 }
 
@@ -95,6 +118,57 @@ fn raw_rush_uses_a_forward_double_tap_and_advances() {
     assert!(started, "the Show input starts Rush");
     assert_eq!(drive(&fight), 240);
     assert!(fight.machine().diagnostic_telemetry().p1.center_x >= start + 30);
+
+    let mut disabled = bout(&session);
+    let mut snapshot = disabled.save_netplay_snapshot(0);
+    snapshot.setup.config.disable_raw_drive_rush = true;
+    snapshot.machine.match_config.disable_raw_drive_rush = true;
+    disabled.restore_netplay_snapshot(&snapshot);
+    for pad in input.frames(true, Strength::Medium) {
+        disabled.step(assets, pad, IDLE, false);
+        assert_ne!(disabled.fight_read().fighters[0].move_id, 0x2c);
+    }
+}
+
+#[test]
+fn cancel_rush_spends_three_bars_and_adds_four_frames_to_a_landed_normal() {
+    let Some(session) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = session.assets();
+    let mut fight = bout(&session);
+    for _ in 0..100 {
+        let position = fight.machine().diagnostic_telemetry();
+        if position.p1.center_x.abs_diff(position.p2.center_x) <= 30 {
+            break;
+        }
+        fight.step(assets, pad(RIGHT, None), IDLE, false);
+    }
+    rest(&mut fight, assets, 8);
+    fight.step(assets, pad(0, Some(1)), IDLE, false);
+    assert!((0..35).any(|_| {
+        fight.step(assets, IDLE, IDLE, false);
+        fight.machine().toggle_state().cancel.window[0] != 0
+    }), "the first medium punch opens a real cancel window");
+    fight.step(assets, pair(1, 4), IDLE, false);
+    assert_eq!(fight.fight_read().fighters[0].move_id, 0x2c);
+    assert_eq!(drive(&fight), 144);
+
+    assert!((0..18).any(|_| {
+        fight.step(assets, IDLE, IDLE, false);
+        fight.fight_read().fighters[0].move_id != 0x2c
+    }), "Drive Rush ends in time for a follow-up");
+    let before = fight.machine().era_fighters()[1].sub_hp;
+    fight.step(assets, pad(0, Some(1)), IDLE, false);
+    let follow_up = fight.fight_read().fighters[0].move_id;
+    assert!((0..20).any(|_| {
+        fight.step(assets, IDLE, IDLE, false);
+        fight.machine().era_fighters()[1].sub_hp < before
+    }), "the follow-up medium punch lands");
+    let ordinary = sf_engine::combo::move_stun(Some(TournamentFighter::Ryu), follow_up, 2).hit;
+    assert_eq!(fight.machine().toggle_state().combo.hitstun[1], ordinary + 4);
 }
 
 fn attack(fight: &mut Fight, assets: &Assets, directions: &[u8], button: usize) {
@@ -156,6 +230,61 @@ fn ryu_can_use_all_three_super_arts_and_overdrive() {
 }
 
 #[test]
+fn higher_super_arts_require_their_full_stock_cost() {
+    let Some(session) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = session.assets();
+    let base = bout(&session);
+    let forward = [DOWN, DOWN | RIGHT, RIGHT, DOWN, DOWN | RIGHT, RIGHT];
+    let back = [DOWN, DOWN | LEFT, LEFT, DOWN, DOWN | LEFT, LEFT];
+    for (slot, motion, button, cost) in [(0x2a, back, 0, 96), (0x2b, forward, 3, 144)] {
+        let mut short = base.clone();
+        meter(&mut short, cost - 1);
+        attack(&mut short, assets, &motion, button);
+        assert_ne!(short.fight_read().fighters[0].move_id, slot);
+        assert!(short.machine().era_fighters()[0].super_meter >= cost - 1);
+
+        let mut funded = base.clone();
+        meter(&mut funded, cost);
+        attack(&mut funded, assets, &motion, button);
+        assert_eq!(funded.fight_read().fighters[0].move_id, slot);
+        assert_eq!(funded.machine().era_fighters()[0].super_meter, 0);
+    }
+}
+
+#[test]
+fn the_critical_art_threshold_includes_exactly_one_quarter_health() {
+    let Some(session) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let assets = session.assets();
+    let base = bout(&session);
+    let threshold = base.machine().era_fighters()[0].max_sub_hp / 4;
+    for (health, disable_comeback, name) in [
+        (threshold + 1, false, "SHIN SHORYUKEN"),
+        (threshold, false, "CRITICAL ART"),
+        (threshold, true, "SHIN SHORYUKEN"),
+    ] {
+        let mut fight = base.clone();
+        let mut snapshot = fight.save_netplay_snapshot(0);
+        snapshot.setup.config.disable_comeback_scaling = disable_comeback;
+        snapshot.machine.match_config.disable_comeback_scaling = disable_comeback;
+        let state = &mut snapshot.machine.toggle_state.era.fighters[0];
+        state.sub_hp = health;
+        state.super_meter = 144;
+        fight.restore_netplay_snapshot(&snapshot);
+        attack(&mut fight, assets, &[DOWN, DOWN | RIGHT, RIGHT, DOWN, DOWN | RIGHT, RIGHT], 3);
+        assert_eq!(fight.fight_read().fighters[0].move_id, 0x2b);
+        assert!(fight.callouts().frame().side(Side::P1).words.contains(&Some(CalloutKind::Super { name })));
+    }
+}
+
+#[test]
 fn retsu_uses_native_shot_and_arts_with_the_drive_gauge() {
     let Some(session) = local_select_with_fighter(
         GaugeMode::EraDefault,
@@ -176,6 +305,28 @@ fn retsu_uses_native_shot_and_arts_with_the_drive_gauge() {
     );
     assert_eq!(fight.fight_read().fighters[0].move_id, 0x2b);
     assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
+}
+
+#[test]
+fn training_fills_and_coaches_each_canonical_sf6_fighter() {
+    use TournamentFighter::{Ken, Retsu, Ryu};
+
+    for (fighter, name, slot) in [
+        (Ryu, "SHINKU HADOKEN", 0x29),
+        (Ken, "SHIPPU JINRAIKYAKU", 0x2a),
+        (Retsu, "TENCHI SHORINJI DROP", 0x2b),
+    ] {
+        let Some(mut session) =
+            alpha::training_fight_with_fighter(fighter, Revision::Sf6, Loadout::Standard)
+        else {
+            return;
+        };
+        session.step(FrameInputs::default());
+        let fight = session.fight().unwrap();
+        assert_eq!(drive(fight), 288, "{fighter:?} full Drive");
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, 144);
+        alpha::assert_training_move_demo(&mut session, name, slot, false);
+    }
 }
 
 #[test]
@@ -286,6 +437,64 @@ fn drive_impact_armor_holds_through_two_hits_of_an_overdrive_projectile() {
         return;
     }
     panic!("Ken's overdrive projectile never reached Ryu");
+}
+
+#[test]
+fn an_sf6_punish_counter_drains_drive_even_without_drive_impact() {
+    let Some(select) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
+    else {
+        return;
+    };
+    let session = local_fight(&select, Revision::Sf6, Loadout::Standard);
+    let assets = session.assets();
+    let mut base = session.fight().unwrap().clone();
+    for _ in 0..65 {
+        base.step(assets, pad(LEFT, None), pad(RIGHT, None), false);
+    }
+    rest(&mut base, assets, 5);
+    attack(&mut base, assets, &[DOWN, DOWN | RIGHT, RIGHT], 0);
+    let initial_hp = base.machine().era_fighters()[1].sub_hp;
+    let mut idle_defender = base.clone();
+    let contact_frame = (0_u8..100)
+        .find(|_| {
+            idle_defender.step(assets, IDLE, IDLE, false);
+            idle_defender.machine().era_fighters()[1].sub_hp < initial_hp
+        })
+        .expect("the Hadoken reaches the defender");
+    assert_eq!(idle_defender.machine().era_fighters()[1].sf6_drive_points(), Some(288));
+
+    let mut startup = base.clone();
+    let start_frame = contact_frame.saturating_sub(4);
+    assert!((0..=contact_frame + 12).any(|frame| {
+        let p2 = if frame == start_frame { pad(0, Some(2)) } else { IDLE };
+        let before = startup.fight_read().fighters[1];
+        let output = startup.step(assets, IDLE, p2, false);
+        if startup.machine().era_fighters()[1].sub_hp == initial_hp {
+            return false;
+        }
+        assert!(before.attacking() && !before.attack_active, "hit interrupts startup");
+        assert!(!output.announcements.contains(&AnnouncerLine::PunishCounter));
+        assert_eq!(startup.machine().era_fighters()[1].sf6_drive_points(), Some(288));
+        true
+    }), "Hadoken also reaches an opponent during startup");
+
+    let whiff = contact_frame.checked_sub(39).expect("room to whiff a standing heavy kick");
+    let mut fight = base;
+    let mut was_active = false;
+    for frame in 0..=contact_frame + 20 {
+        let before = fight.fight_read().fighters[1];
+        was_active |= before.attack_active;
+        let p2 = if frame == whiff { pad(0, Some(5)) } else { IDLE };
+        let output = fight.step(assets, IDLE, p2, false);
+        if fight.machine().era_fighters()[1].sub_hp < initial_hp {
+            assert!(was_active && before.attacking() && !before.attack_active);
+            assert!(output.announcements.contains(&AnnouncerLine::PunishCounter));
+            assert_eq!(fight.machine().era_fighters()[1].sf6_drive_points(), Some(240));
+            return;
+        }
+    }
+    panic!("the projectile never caught the end of the defender's whiff");
 }
 
 #[test]

@@ -160,6 +160,43 @@ fn selectable_super_arts_spend_one_stock_and_keep_their_own_bars() {
 }
 
 #[test]
+fn each_canonical_super_art_lands_multiple_native_hits() {
+    for (art, cost, slot, ken_button) in [
+        (Loadout::Art1, [112, 96], 0x29, LP),
+        (Loadout::Art2, [128, 112], 0x2a, LK),
+        (Loadout::Art3, [96, 80], 0x2b, LK),
+    ] {
+        let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::Sf3ThreeS, art)
+        else {
+            return;
+        };
+        let session = local_fight(&select, Revision::Sf3ThreeS, art);
+        let assets = session.assets();
+        let mut base = session.fight().unwrap().clone();
+        approach(&mut base, assets);
+        for (side, button) in [(0, LP), (1, ken_button)] {
+            let mut fight = base.clone();
+            set_meter(&mut fight, side, cost[side]);
+            command(&mut fight, assets, side, QCF_TWICE, &[button]);
+            assert_eq!(fight.fight_read().fighters[side].move_id, slot);
+            let defender = 1 - side;
+            let mut previous_health = hp(&fight, defender);
+            let mut hits = 0;
+            for _ in 0..150 {
+                idle(&mut fight, assets, 1);
+                let health = hp(&fight, defender);
+                hits += usize::from(health < previous_health);
+                previous_health = health;
+            }
+            assert!(hits > 1, "{art:?} for side {side} landed {hits} hits");
+            if side == 0 && art == Loadout::Art1 {
+                assert_eq!(hits, 5, "a point-blank Shinkuu Hadoken lands all five hits");
+            }
+        }
+    }
+}
+
+#[test]
 fn super_art_stocks_and_partial_meter_carry_into_the_next_round() {
     use sf_engine::fighter::{P2_STRUCT, WORK_BASE};
     use sf_engine::tasks::TIME_DIGITS;
@@ -206,6 +243,35 @@ fn unified_sf3_ex_uses_one_standard_stock() {
     command(&mut fight, session.assets(), 0, QCF, &[LP, MP]);
     assert_eq!(fight.fight_read().fighters[0].move_id, 0x24);
     assert_eq!(meter(&fight, 0), 48);
+}
+
+#[test]
+fn unified_sf3_super_arts_use_one_two_or_three_stocks() {
+    for (art, slot, cost, ken_button) in [
+        (Loadout::Art1, 0x29, 48, LP),
+        (Loadout::Art2, 0x2a, 96, LK),
+        (Loadout::Art3, 0x2b, 144, LK),
+    ] {
+        let Some(select) = local_select_with_p1(GaugeMode::Unified, Revision::Sf3ThreeS, art)
+        else {
+            return;
+        };
+        let session = local_fight(&select, Revision::Sf3ThreeS, art);
+        let base = session.fight().unwrap();
+        for (side, button) in [(0, LP), (1, ken_button)] {
+            let mut short = base.clone();
+            set_meter(&mut short, side, cost - 1);
+            command(&mut short, session.assets(), side, QCF_TWICE, &[button]);
+            assert_ne!(short.fight_read().fighters[side].move_id, slot, "{art:?}");
+            assert_eq!(meter(&short, side), cost - 1);
+
+            let mut full = base.clone();
+            set_meter(&mut full, side, 144);
+            command(&mut full, session.assets(), side, QCF_TWICE, &[button]);
+            assert_eq!(full.fight_read().fighters[side].move_id, slot);
+            assert_eq!(meter(&full, side), 144 - cost, "{art:?}");
+        }
+    }
 }
 
 #[test]
@@ -259,8 +325,19 @@ fn high_and_low_parry_use_the_correct_tap_and_cancel_damage() {
                     "tap {tap:#04x} for {attack:?} at impact {impact}"
                 );
                 assert_eq!(fight.fight_read().fighters[0].move_id, 0x2e);
+                assert!(!fight.fight_read().fighters[0].blockstun);
                 assert!(meter(&fight, 0) > 0);
-                assert!(fight.machine().era_super_freeze() > 0);
+                assert_eq!(fight.machine().era_super_freeze(), 6);
+                idle(&mut fight, assets, 6);
+                let gate_free = sf_engine::front::show::gate_free;
+                assert!(
+                    (0..12).any(|_| {
+                        idle(&mut fight, assets, 1);
+                        let [defender, attacker] = fight.fight_read().fighters;
+                        gate_free(&defender) && !gate_free(&attacker)
+                    }),
+                    "the parry recovers ahead of the attacking move"
+                );
             } else {
                 assert!(hp(&fight, 0) < starting_hp);
             }
@@ -480,23 +557,30 @@ fn third_strike_red_parries_a_second_projectile_hit_from_blockstun() {
                 hp(&probe, 0) < after_first
             })
             .expect("the next fireball hit would chip the guard");
-        assert!(next_hit > 0);
+        assert!(next_hit >= 2);
 
-        for frame in 0..=next_hit {
-            let direction = if frame + 1 == next_hit { RIGHT } else { LEFT };
-            step(
-                &mut fight,
-                assets,
-                pad(direction, None),
-                PlayerInputs::default(),
+        for lead in [1, 2] {
+            let mut attempt = fight.clone();
+            for frame in 0..=next_hit {
+                let direction = if frame + lead == next_hit { RIGHT } else { LEFT };
+                step(
+                    &mut attempt,
+                    assets,
+                    pad(direction, None),
+                    PlayerInputs::default(),
+                );
+            }
+            let red_enabled = revision == Revision::Sf3ThreeS && lead == 1;
+            assert_eq!(
+                hp(&attempt, 0) == after_first,
+                red_enabled,
+                "{revision:?} lead {lead}"
             );
-        }
-        let red_enabled = revision == Revision::Sf3ThreeS;
-        assert_eq!(hp(&fight, 0) == after_first, red_enabled, "{revision:?}");
-        assert_eq!(fight.fight_read().fighters[0].blockstun, !red_enabled);
-        if red_enabled {
-            assert_eq!(fight.fight_read().fighters[0].move_id, 0x2e);
-            assert!(meter(&fight, 0) >= 8);
+            assert_eq!(attempt.fight_read().fighters[0].blockstun, !red_enabled);
+            if red_enabled {
+                assert_eq!(attempt.fight_read().fighters[0].move_id, 0x2e);
+                assert!(meter(&attempt, 0) >= 8);
+            }
         }
     }
 }
@@ -628,6 +712,111 @@ fn a_late_parry_input_replays_the_same_freeze_health_and_meter() {
     assert_eq!(hp(&reference, 0), before);
     assert_eq!(meter(&reference, 0), 8);
     assert_eq!(predicted.state_checksum(), reference.state_checksum());
+}
+
+#[test]
+fn late_sf3_ex_and_super_art_inputs_replay_the_same_meter_and_projectiles() {
+    use sf_engine::netplay::{encode_inputs, RollbackEngine};
+
+    let Some(select) =
+        local_select_with_p1(GaugeMode::EraDefault, Revision::Sf3ThreeS, Loadout::Art1)
+    else {
+        return;
+    };
+    let session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+    let assets = session.assets();
+    let mut reference = session.fight().unwrap().clone();
+    set_meter(&mut reference, 0, 152);
+    let mut predicted = reference.clone();
+    let mut net = RollbackEngine::new(1, 0, 8);
+    const DELAY: u32 = 4;
+    const SUPER_START: u32 = 90;
+    const FRAMES: u32 = 180;
+    let remote = |frame: u32| {
+        if let Some(&direction) = QCF.get(frame as usize) {
+            return inputs(direction, if frame == 2 { &[LP, MP] } else { &[] });
+        }
+        if let Some(index) = frame.checked_sub(SUPER_START).map(|index| index as usize) {
+            if let Some(&direction) = QCF_TWICE.get(index) {
+                return inputs(direction, if index + 1 == QCF_TWICE.len() { &[LP] } else { &[] });
+            }
+        }
+        PlayerInputs::default()
+    };
+    let mut checksums = Vec::new();
+    let mut ex_projectile = false;
+    let mut art_projectile = false;
+    for tick in 0..FRAMES + DELAY {
+        if let Some(frame) = tick.checked_sub(DELAY) {
+            net.apply_remote_inputs(&mut predicted, assets, frame, &[encode_inputs(remote(frame))]);
+            assert_eq!(net.confirmed_checksum(frame), Some(checksums[frame as usize]));
+        }
+        if tick >= FRAMES {
+            continue;
+        }
+        let before = meter(&reference, 0);
+        step(&mut reference, assets, remote(tick), PlayerInputs::default());
+        net.step(&mut predicted, assets, PlayerInputs::default())
+            .expect("prediction stays within eight frames");
+        if tick == 2 {
+            assert_eq!(reference.fight_read().fighters[0].move_id, 0x24);
+            assert_eq!(before - meter(&reference, 0), 40);
+        }
+        if tick == SUPER_START + QCF_TWICE.len() as u32 - 1 {
+            assert_eq!(reference.fight_read().fighters[0].move_id, 0x29);
+            assert_eq!(before - meter(&reference, 0), 112);
+        }
+        for projectile in reference.machine().toggle_state().era.projectiles() {
+            ex_projectile |= projectile.move_id == 0x24 && projectile.hits_remaining == 2;
+            art_projectile |= projectile.move_id == 0x29 && projectile.hits_remaining == 5;
+        }
+        checksums.push(reference.state_checksum());
+    }
+    assert!(ex_projectile && art_projectile, "both multi-hit projectiles were live");
+    assert_eq!(predicted.state_checksum(), reference.state_checksum());
+}
+
+#[test]
+fn training_parry_uses_a_forward_tap_and_real_contact() {
+    use sf_engine::front::FrameInputs;
+    use sf_engine::moves::Strength;
+    use sf_engine::roster::TournamentFighter::{Ken, Ryu};
+
+    for fighter in [Ryu, Ken] {
+        let Some(mut session) =
+            support::training_fight_with_fighter(fighter, Revision::Sf3ThreeS, Loadout::Art1)
+        else {
+            return;
+        };
+        support::assert_training_show(&mut session, "PARRY", 0x2e);
+        let entry = *session.coach().unwrap().entry();
+        assert_eq!(entry.input.words(), "F");
+        assert_eq!(entry.input.strip_steps(), ["F"]);
+        assert_eq!(entry.input.frames(true, Strength::Medium), [pad(RIGHT, None)]);
+        assert_eq!(entry.input.frames(false, Strength::Medium), [pad(LEFT, None)]);
+
+        for attacking in [false, true] {
+            assert!((0..120).any(|_| {
+                if session.fight().unwrap().fight_read().fighters[1].attacking() == attacking {
+                    return true;
+                }
+                session.step(FrameInputs::default());
+                false
+            }), "the dummy reaches attack state {attacking}");
+        }
+        let positions = session.fight_machine().unwrap().diagnostic_telemetry();
+        let direction = if positions.p1.center_x < positions.p2.center_x { RIGHT } else { LEFT };
+        let health = hp(session.fight().unwrap(), 0);
+        session.step(FrameInputs { p1: pad(direction, None), ..FrameInputs::default() });
+        assert!((0..12).any(|_| {
+            if session.coach().unwrap().successes() == 1 {
+                return true;
+            }
+            session.step(FrameInputs::default());
+            false
+        }), "Try records {fighter:?}'s timed parry");
+        assert_eq!(hp(session.fight().unwrap(), 0), health);
+    }
 }
 
 #[test]

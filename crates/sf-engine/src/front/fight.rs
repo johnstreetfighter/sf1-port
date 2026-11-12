@@ -1013,7 +1013,12 @@ impl Fight {
             // V-Shift Break needs a strike that reaches the fighter as they step back.
             let long_strike = contact == PracticeContact::Guard
                 || entry.input.button == crate::moves::ButtonClass::ShiftPair;
-            pad.buttons[if long_strike { 5 } else { 1 }] = true;
+            let button = match entry.input.button {
+                crate::moves::ButtonClass::DirectionOnly => 0,
+                _ if long_strike => 5,
+                _ => 1,
+            };
+            pad.buttons[button] = true;
         }
         Some(pad)
     }
@@ -1340,7 +1345,8 @@ impl Fight {
     fn render_scene(&self, assets: &Assets) -> Frame {
         let scene = self.machine.state.scene();
         let layout = self.layout(&scene);
-        let callouts = self.callouts.frame();
+        let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
+        let callouts = self.callouts.frame_with_quarter_dim(quarter_dim);
         let era_hud = self.era_hud();
         let tints = self.era_sprite_tints(&scene);
         let (boxes, meter) = self.overlay.parts();
@@ -1417,7 +1423,16 @@ impl Fight {
             let in_fight = self.last_flow == FIGHT_LOOP;
             let p1 = match self.show.as_mut().map(|show| {
                 let facing = p1_facing_right(&self.machine);
-                show.input(&self.read.fighters[0], &self.read.fighters[1], facing, p1, in_fight)
+                let input = show.input(&self.read.fighters[0], &self.read.fighters[1], facing, p1, in_fight);
+                // Custom Combo cannot be activated again until its install expires.
+                if input.is_none() && show.completed()
+                    && show.entry().input.button == crate::moves::ButtonClass::SameStrength
+                    && self.machine.era_fighters()[0].custom_combo_active()
+                {
+                    Some(PlayerInputs::default())
+                } else {
+                    input
+                }
             }) {
                 Some(Some(fed)) => fed,
                 Some(None) => {
@@ -1525,11 +1540,13 @@ impl Fight {
             if let Some(coach) = &mut self.coach {
                 let machine = MachineRead { rom: self.machine.program_rom(), work: self.machine.work_ram(), obj: &self.machine.state.objectram, bank: self.machine.data_bank() };
                 let toggles = &self.setup.config.toggles;
-                let view = coach.entry().live_recognizer(machine, P1_STRUCT, toggles, &self.machine.era_fighters()[0]);
+                let fighter = &self.machine.era_fighters()[0];
+                let view = coach.entry().live_recognizer(machine, P1_STRUCT, toggles, fighter);
+                let matches_variant = fighter.what_if_variant_matches(coach.entry());
                 // The recovery input buffer can bring the move out a few
                 // frames after the tracker is gone: a miss is held that long.
                 let settle = if toggles.recovery_input_buffer { u32::from(toggles.recovery_buffer_window) + 1 } else { 0 };
-                if let Some(Outcome::Success) = coach.observe(&view, &self.read, flow == FIGHT_LOOP, settle) {
+                if let Some(Outcome::Success) = coach.observe_command(&view, &self.read, flow == FIGHT_LOOP, settle, matches_variant) {
                     let word = coach.entry().call_out;
                     self.pending_callouts.push(CalloutEvent::new(Side::P1, CalloutKind::Move { word }));
                 }

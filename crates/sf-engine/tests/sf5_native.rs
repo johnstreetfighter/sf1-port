@@ -9,7 +9,7 @@ use alpha::{
 };
 use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::{Fight, FightFrame};
-use sf_engine::front::{GameSession, PlayerInputs};
+use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
 use sf_engine::netplay::{encode_inputs, RollbackEngine};
 use sf_engine::roster::TournamentFighter::{self, Birdie, Ryu, Sagat};
 use sf_video::announcer::AnnouncerLine;
@@ -38,6 +38,35 @@ fn training_show_evades_an_attack_before_v_shift_break() {
             return;
         };
         alpha::assert_training_show(&mut session, name, 0x2f);
+    }
+}
+
+#[test]
+fn training_fills_and_coaches_each_canonical_v_system_loadout() {
+    use TournamentFighter::Ken;
+
+    for (fighter, first, second) in [
+        (Ryu, "DENJIN RENKI", ("KAKKO FUBATSU", 0x2a)),
+        (Ken, "HEAT RUSH", ("SHINRYUKEN", 0x24)),
+        (Birdie, "ENJOY TIME", ("BIRDIE TIME", 0x2a)),
+        (Sagat, "TIGER CHARGE", ("TIGER ASSAULT", 0x2a)),
+    ] {
+        for (loadout, (name, slot), stocks) in [
+            (Loadout::Skill1Trigger1, (first, 0x2a), 2),
+            (Loadout::Skill1Trigger2, second, 3),
+            (Loadout::Skill2Trigger1, (first, 0x2a), 2),
+            (Loadout::Skill2Trigger2, second, 3),
+        ] {
+            let Some(mut session) = training_fight_with_fighter(fighter, Revision::Sf5Ce, loadout)
+            else {
+                return;
+            };
+            session.step(FrameInputs::default());
+            let fight = session.fight().unwrap();
+            assert_eq!(fight.machine().era_fighters()[0].super_meter, 3 * STOCK);
+            assert_eq!(v_gauge(fight), GaugeRow::stock(stocks, stocks, Fill::of(0, STOCK.into())));
+            alpha::assert_training_move_demo(&mut session, name, slot, false);
+        }
     }
 }
 
@@ -194,6 +223,28 @@ fn whiffed_v_shift_spends_a_stock_and_does_not_open_a_break() {
         v_gauge(&fight),
         GaugeRow::stock(2, 1, Fill::of(0, STOCK.into()))
     );
+}
+
+#[test]
+fn unified_v_trigger_two_costs_two_stocks() {
+    let Some(select) = local_select_with_fighter(
+        GaugeMode::Unified,
+        Ryu,
+        Revision::Sf5Ce,
+        Loadout::Skill1Trigger2,
+    ) else {
+        return;
+    };
+    let session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+    let base = session.fight().expect("local fight");
+    for (stocks, activates) in [(1, false), (2, true), (3, true)] {
+        let mut fight = base.clone();
+        set_ex(&mut fight, stocks * STOCK);
+        step(&mut fight, session.assets(), input(0, &[HP, HK]));
+        assert_eq!(move_id(&fight) == 0x2a, activates, "{stocks} stocks");
+        let remaining = if activates { stocks - 2 } else { stocks };
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, remaining * STOCK);
+    }
 }
 
 #[test]
@@ -438,8 +489,6 @@ fn a_designated_heavy_counter_hit_announces_crush_counter() {
 
 #[test]
 fn v_trigger_and_v_gauge_reset_while_ex_carries_into_the_next_round() {
-    use sf_engine::fighter::{P2_STRUCT, WORK_BASE};
-    use sf_engine::tasks::TIME_DIGITS;
     let Some((session, mut fight)) = bout(Birdie, Revision::Sf5Ce, Loadout::Skill1Trigger1) else {
         return;
     };
@@ -448,29 +497,9 @@ fn v_trigger_and_v_gauge_reset_while_ex_carries_into_the_next_round() {
     set_ex(&mut fight, 2 * STOCK);
     step(&mut fight, assets, input(0, &[HP, HK]));
     wait(&mut fight, assets, 30);
-    let mut snapshot = fight.save_netplay_snapshot(0);
-    let health = (P2_STRUCT + 6 - WORK_BASE) as usize;
-    snapshot.machine.work[health] = 1;
-    snapshot.machine.work[health + 1] = 0;
-    snapshot.machine.toggle_state.era.fighters[1].sub_hp = 20;
-    let timer = (TIME_DIGITS - WORK_BASE) as usize;
-    snapshot.machine.work[timer..timer + 3].fill(0);
-    fight.restore_netplay_snapshot(&snapshot);
-    for _ in 0..900 {
-        step(&mut fight, assets, PlayerInputs::default());
-        if fight.machine().work_ram()[0x400a] == 1
-            && move_id(&fight) == 1
-            && fight.fight_read().fighters[1].health > 1
-        {
-            assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK);
-            assert_eq!(
-                v_gauge(&fight),
-                GaugeRow::stock(2, 0, Fill::of(0, STOCK.into()))
-            );
-            return;
-        }
-    }
-    panic!("round two did not reach idle");
+    alpha::round_two_after_timeout(&mut fight, assets);
+    assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK);
+    assert_eq!(v_gauge(&fight), GaugeRow::stock(2, 0, Fill::of(0, STOCK.into())));
 }
 
 #[test]

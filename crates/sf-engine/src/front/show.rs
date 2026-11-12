@@ -72,12 +72,14 @@ pub(super) enum PracticeContact {
 }
 
 pub(super) fn practice_contact(entry: &MoveEntry) -> Option<PracticeContact> {
-    use crate::era_fight::sf5;
+    use crate::era_fight::{sf3, sf5, what_if_others::EAGLE_RIPOSTE};
+    use crate::roster::TournamentFighter::Eagle;
     if entry.recognizer == Recognizer::AlphaCounter {
         return Some(PracticeContact::Guard);
     }
     if entry.recognizer == Recognizer::FamilyMove
-        && matches!(entry.name, "ST ANDREWS GREEN" | "EX ST ANDREWS GREEN")
+        && entry.produces == EAGLE_RIPOSTE
+        && entry.available.fighters == [Eagle]
     {
         return Some(PracticeContact::Counter);
     }
@@ -85,6 +87,7 @@ pub(super) fn practice_contact(entry: &MoveEntry) -> Option<PracticeContact> {
         return None;
     }
     match (entry.produces, entry.input.button) {
+        (sf3::PARRY, ButtonClass::DirectionOnly) => Some(PracticeContact::Counter),
         (sf5::REVERSAL, ButtonClass::TriplePunch | ButtonClass::TripleKick) => Some(PracticeContact::Guard),
         (sf5::SHIFT_BREAK, ButtonClass::ShiftPair) => Some(PracticeContact::Strike),
         _ if entry.name == "DRIVE REVERSAL" => Some(PracticeContact::Guard),

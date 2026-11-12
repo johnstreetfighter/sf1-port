@@ -25,6 +25,11 @@ const QCB2: &[Dir] = super::DOUBLE_QUARTER_CIRCLE_BACK;
 const MAX_SPECIALS: usize = 12;
 const FINISHER_SLOTS: [u8; 3] = [0x29, 0x2a, 0x2b];
 
+macro_rules! enhanced_names {
+    ($name:literal) => { (concat!("EX ", $name), concat!("OD ", $name)) };
+}
+pub(super) use enhanced_names;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct WhatIfState {
     specials: [MotionTracker; MAX_SPECIALS],
@@ -49,10 +54,17 @@ pub(crate) struct WhatIfMove {
     slot: u8,
     name: &'static str,
     input: MoveInput,
-    ex: Option<(u8, &'static str)>,
+    enhancement: Option<Enhancement>,
     air: bool,
     overhead: bool,
     crane: Option<bool>,
+}
+
+#[derive(Clone, Copy)]
+struct Enhancement {
+    slot: u8,
+    ex_name: &'static str,
+    od_name: &'static str,
 }
 
 impl WhatIfMove {
@@ -66,19 +78,19 @@ impl WhatIfMove {
             slot,
             name,
             input: MoveInput { motion, button },
-            ex: None,
+            enhancement: None,
             air: false,
             overhead: false,
             crane: None,
         }
     }
 
-    pub(crate) const fn ex(self, name: &'static str) -> Self {
-        self.ex_at(self.slot, name)
+    pub(crate) const fn enhanced(self, names: (&'static str, &'static str)) -> Self {
+        self.enhanced_at(self.slot, names)
     }
 
-    pub(crate) const fn ex_at(mut self, slot: u8, name: &'static str) -> Self {
-        self.ex = Some((slot, name));
+    pub(crate) const fn enhanced_at(mut self, slot: u8, (ex_name, od_name): (&'static str, &'static str)) -> Self {
+        self.enhancement = Some(Enhancement { slot, ex_name, od_name });
         self
     }
 
@@ -112,8 +124,12 @@ impl WhatIfMove {
         }
     }
 
+    fn enhanced_input(self) -> MoveInput {
+        MoveInput { button: self.ex_button(), ..self.input }
+    }
+
     fn matches_slot(self, slot: u8) -> bool {
-        self.slot == slot || self.ex.is_some_and(|(ex, _)| ex == slot)
+        self.slot == slot || self.enhancement.is_some_and(|enhancement| enhancement.slot == slot)
     }
 }
 
@@ -126,12 +142,12 @@ pub(crate) struct WhatIfKit {
 
 const RETSU: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x1a, "KIAI SHOT", QCF, Punch).ex("EX KIAI SHOT"),
-        WhatIfMove::new(0x19, "SHORYUKEN", DP, Punch).ex("EX SHORYUKEN"),
+        WhatIfMove::new(0x1a, "KIAI SHOT", QCF, Punch).enhanced(enhanced_names!("KIAI SHOT")),
+        WhatIfMove::new(0x19, "SHORYUKEN", DP, Punch).enhanced(enhanced_names!("SHORYUKEN")),
         // The half circle also completes Tobi Geri's quarter circle.
         WhatIfMove::new(0x21, "IZUNA SHOULDER THROW", HCF, Kick),
-        WhatIfMove::new(0x1b, "TOBI GERI", QCF, Kick).ex("EX TOBI GERI"),
-        WhatIfMove::new(0x1f, "SENPUU KYAKU", QCB, Kick).ex("EX SENPUU KYAKU"),
+        WhatIfMove::new(0x1b, "TOBI GERI", QCF, Kick).enhanced(enhanced_names!("TOBI GERI")),
+        WhatIfMove::new(0x1f, "SENPUU KYAKU", QCB, Kick).enhanced(enhanced_names!("SENPUU KYAKU")),
         WhatIfMove::new(0x20, "HUNDRED MONK SLAPS", &[], MashPunch),
     ],
     supers: ["SHIN KIAIHOU", "KIAI BAKUSAI", "TENSEI RENGE"],
@@ -140,13 +156,13 @@ const RETSU: WhatIfKit = WhatIfKit {
 };
 const GEKI: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x1a, "SHURIKEN", QCF, Punch).ex_at(0x24, "EX SHURIKEN FAN"),
+        WhatIfMove::new(0x1a, "SHURIKEN", QCF, Punch).enhanced_at(0x24, enhanced_names!("SHURIKEN FAN")),
         WhatIfMove::new(0x1b, "UTSUSEMI", QCB, Punch),
-        WhatIfMove::new(0x19, "GEKI-ZAN", DP, Punch).ex("EX GEKI-ZAN"),
+        WhatIfMove::new(0x19, "GEKI-ZAN", DP, Punch).enhanced(enhanced_names!("GEKI-ZAN")),
         WhatIfMove::new(0x1f, "AIR SLASH", AIR_QCF, Kick)
             .air()
             .overhead()
-            .ex("EX AIR SLASH"),
+            .enhanced(enhanced_names!("AIR SLASH")),
         WhatIfMove::new(0x20, "EXECUTION DROP", HCB, Kick),
         WhatIfMove::new(0x21, "AIR UTSUSEMI", AIR_QCB, Punch).air(),
         WhatIfMove::new(0x22, "UTSUSEMI FEINT", QCB, Kick),
@@ -157,13 +173,13 @@ const GEKI: WhatIfKit = WhatIfKit {
 };
 const JOE: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x1a, "SHOCKWAVE", QCF, Kick).ex("EX SHOCKWAVE"),
-        WhatIfMove::new(0x1b, "ROLLING SOBAT", QCB, Kick).ex("EX ROLLING SOBAT"),
-        WhatIfMove::new(0x19, "CORKSCREW CROSS", DP, Punch).ex("EX CORKSCREW CROSS"),
-        WhatIfMove::new(0x1f, "KNEE BASH", DP, Kick).ex("EX KNEE BASH"),
+        WhatIfMove::new(0x1a, "SHOCKWAVE", QCF, Kick).enhanced(enhanced_names!("SHOCKWAVE")),
+        WhatIfMove::new(0x1b, "ROLLING SOBAT", QCB, Kick).enhanced(enhanced_names!("ROLLING SOBAT")),
+        WhatIfMove::new(0x19, "CORKSCREW CROSS", DP, Punch).enhanced(enhanced_names!("CORKSCREW CROSS")),
+        WhatIfMove::new(0x1f, "KNEE BASH", DP, Kick).enhanced(enhanced_names!("KNEE BASH")),
         WhatIfMove::new(0x20, "STEP HIGH KICK", &[Forward], Kick),
         WhatIfMove::new(0x21, "FIST COMBINATION", QCF, Punch),
-        WhatIfMove::new(0x22, "DUCKING RUSH", QCB, Punch).ex("EX DUCKING RUSH"),
+        WhatIfMove::new(0x22, "DUCKING RUSH", QCB, Punch).enhanced(enhanced_names!("DUCKING RUSH")),
     ],
     supers: ["SUPER SOBAT RUSH", "DOUBLE CYCLONE", "FINAL DYNAMITE"],
     v_skills: ["DUCKING RUSH", "KNEE BASH"],
@@ -171,9 +187,9 @@ const JOE: WhatIfKit = WhatIfKit {
 };
 const MIKE: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x1a, "MURDER STRAIGHT", QCF, Punch).ex("EX MURDER STRAIGHT"),
-        WhatIfMove::new(0x19, "WEAVING UPPER", DP, Punch).ex("EX WEAVING UPPER"),
-        WhatIfMove::new(0x1b, "ROLLING BLOW", QCB, Punch).ex("EX ROLLING BLOW"),
+        WhatIfMove::new(0x1a, "MURDER STRAIGHT", QCF, Punch).enhanced(enhanced_names!("MURDER STRAIGHT")),
+        WhatIfMove::new(0x19, "WEAVING UPPER", DP, Punch).enhanced(enhanced_names!("WEAVING UPPER")),
+        WhatIfMove::new(0x1b, "ROLLING BLOW", QCB, Punch).enhanced(enhanced_names!("ROLLING BLOW")),
         WhatIfMove::new(0x1f, "DUCKING SWAY", QCB, Kick),
     ],
     supers: ["CRAZY RUSH", "LETHAL KNOCKOUT", "CRAZY RUSH FINAL"],
@@ -182,11 +198,11 @@ const MIKE: WhatIfKit = WhatIfKit {
 };
 const LEE: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x1a, "OPEN CANVAS PUNCH", QCF, Punch).ex("EX OPEN CANVAS PUNCH"),
-        WhatIfMove::new(0x1f, "OPEN CANVAS KICK", QCF, Kick).ex("EX OPEN CANVAS KICK"),
-        WhatIfMove::new(0x19, "UPWARD LANCE", DP, Kick).ex("EX UPWARD LANCE"),
-        WhatIfMove::new(0x1b, "HURRICANE KICK", QCB, Kick).ex("EX HURRICANE KICK"),
-        WhatIfMove::new(0x20, "FIREWATER", CHARGE_BF, Punch).ex("EX FIREWATER"),
+        WhatIfMove::new(0x1a, "OPEN CANVAS PUNCH", QCF, Punch).enhanced(enhanced_names!("OPEN CANVAS PUNCH")),
+        WhatIfMove::new(0x1f, "OPEN CANVAS KICK", QCF, Kick).enhanced(enhanced_names!("OPEN CANVAS KICK")),
+        WhatIfMove::new(0x19, "UPWARD LANCE", DP, Kick).enhanced(enhanced_names!("UPWARD LANCE")),
+        WhatIfMove::new(0x1b, "HURRICANE KICK", QCB, Kick).enhanced(enhanced_names!("HURRICANE KICK")),
+        WhatIfMove::new(0x20, "FIREWATER", CHARGE_BF, Punch).enhanced(enhanced_names!("FIREWATER")),
         WhatIfMove::new(0x21, "STAB KICK", RDP, Kick),
     ],
     supers: ["HUNDRED SPEARS", "FIERY BREATH", "ONE MAN ARMY"],
@@ -260,7 +276,7 @@ impl EraFighterState {
             }
             (EraFamily::Sf3, 0, Loadout::Art1)
             | (EraFamily::Sf3, 1, Loadout::Art2)
-            | (EraFamily::Sf3, 2, Loadout::Art3) => Spend::Super(self.sf3_stock_cost()?),
+            | (EraFamily::Sf3, 2, Loadout::Art3) => Spend::Super(self.sf3_super_art_cost()?),
             (EraFamily::Sf4, 0, _) => Spend::Super(self.super_capacity),
             (EraFamily::Sf4, 1, Loadout::Ultra1 | Loadout::UltraDouble)
             | (EraFamily::Sf4, 2, Loadout::Ultra2 | Loadout::UltraDouble) => {
@@ -307,12 +323,13 @@ impl EraFighterState {
             return Vec::new();
         };
         let mut entries = Vec::new();
-        let outcome = |slot| {
+        let special_entry = |slot, name, input, kind| {
+            let mut item = entry(slot, name, input, kind);
             if self.fighter == Some(TournamentFighter::Eagle) && slot == EAGLE_COUNTER {
-                EAGLE_RIPOSTE
-            } else {
-                slot
+                item.produces = EAGLE_RIPOSTE;
+                item.available.fighters = &[TournamentFighter::Eagle];
             }
+            item
         };
         for special in kit.specials {
             let kind = if special.crane.is_some() {
@@ -320,15 +337,17 @@ impl EraFighterState {
             } else {
                 MoveKind::Special
             };
-            entries.push(entry(outcome(special.slot), special.name, special.input, kind));
-            if let Some((slot, name)) = special.ex.filter(|_| self.what_if_ex_spend().is_some()) {
-                entries.push(entry(
-                    outcome(slot),
+            entries.push(special_entry(special.slot, special.name, special.input, kind));
+            if let Some(enhancement) = special.enhancement.filter(|_| self.what_if_ex_spend().is_some()) {
+                let name = if self.style.family == EraFamily::Sf6 {
+                    enhancement.od_name
+                } else {
+                    enhancement.ex_name
+                };
+                entries.push(special_entry(
+                    enhancement.slot,
                     name,
-                    MoveInput {
-                        button: special.ex_button(),
-                        ..special.input
-                    },
+                    special.enhanced_input(),
                     MoveKind::Special,
                 ));
             }
@@ -347,8 +366,6 @@ impl EraFighterState {
     }
 
     pub(crate) fn what_if_progress(&self, slot: u8) -> (u8, u8) {
-        use super::what_if_others::{EAGLE_COUNTER, EAGLE_RIPOSTE};
-
         let Some(kit) = self.what_if_kit() else {
             return (0, 0);
         };
@@ -356,11 +373,7 @@ impl EraFighterState {
             let tracker = self.what_if_kit.supers[index];
             return (tracker.position, tracker.remaining);
         }
-        let command_slot = if self.fighter == Some(TournamentFighter::Eagle) && slot == EAGLE_RIPOSTE {
-            EAGLE_COUNTER
-        } else {
-            slot
-        };
+        let command_slot = self.what_if_command_slot(slot);
         kit.specials
             .iter()
             .enumerate()
@@ -370,6 +383,36 @@ impl EraFighterState {
                 let jump = u8::from(special.air && tracker.position != 0);
                 (tracker.position + jump, tracker.remaining)
             })
+    }
+
+    fn what_if_command_slot(&self, slot: u8) -> u8 {
+        use super::what_if_others::{EAGLE_COUNTER, EAGLE_RIPOSTE};
+
+        if self.fighter == Some(TournamentFighter::Eagle) && slot == EAGLE_RIPOSTE {
+            EAGLE_COUNTER
+        } else {
+            slot
+        }
+    }
+
+    pub(crate) fn what_if_variant_matches(&self, entry: &MoveEntry) -> bool {
+        if entry.recognizer != Recognizer::FamilyMove || entry.kind != MoveKind::Special {
+            return true;
+        }
+        let Some(kit) = self.what_if_kit() else {
+            return true;
+        };
+        let slot = self.what_if_command_slot(entry.produces);
+        let shared = kit.specials.iter().find(|special| {
+            special.slot == slot
+                && special.enhancement.is_some_and(|enhancement| enhancement.slot == slot)
+                && (entry.input == special.input || entry.input == special.enhanced_input())
+        });
+        // The native recognizer records the actual enhancement, including
+        // whether it could spend meter and whether a counter later landed.
+        shared.is_none_or(|special| {
+            (entry.input == special.enhanced_input()) == (self.what_if_kit.ex_slot == slot)
+        })
     }
 
     pub(crate) fn what_if_airborne(&self, slot: u8) -> bool {
@@ -621,11 +664,11 @@ impl Bus<'_> {
                 if !state.what_if_kit.specials[index].ready(special.motion()) {
                     return None;
                 }
-                if let Some((slot, spend)) = special.ex.and_then(|(slot, _)| {
+                if let Some((slot, spend)) = special.enhancement.and_then(|enhancement| {
                     let spend = state.what_if_ex_spend()?;
                     (button_fired(special.ex_button(), held, fresh)
                         && self.what_if_can_spend(ps, state, spend))
-                    .then_some((slot, spend))
+                    .then_some((enhancement.slot, spend))
                 }) {
                     return Some((special, slot, spend, true));
                 }

@@ -347,14 +347,15 @@ pub struct EraFighterState {
     guard_power: GuardPower,
     pub(crate) move_hits: u8,
     pub(crate) juggle_count: u8,
+    attack_reached_active: bool,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v6", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v7", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark_frames, dizzy_frames,
-    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count,
+    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active,
 });
 
 impl EraFighterState {
@@ -419,7 +420,7 @@ impl EraFighterState {
         } else if self.sf4_dash_trail() {
             Some(0xffded8c5)
         } else if self.sf5_afterimages() {
-            Some(0xffc94527)
+            Some(0xfff4f4f4)
         } else if self.sf6_trail() {
             Some(0xff59d97d)
         } else {
@@ -796,6 +797,8 @@ impl crate::canonical::Canonical for EraCombatState {
 
 impl Bus<'_> {
     pub(crate) fn era_begin_round(&mut self) {
+        use TournamentFighter::{Adon, Birdie, Geki, Gen, Mike, Sagat};
+
         if !self.era_rules.enabled || self.rb(0xff8003) == 0 {
             return;
         }
@@ -832,6 +835,15 @@ impl Bus<'_> {
             } else {
                 state.selections[index]
             };
+            let hp = match (style.family, fighter) {
+                (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
+                    Some(Gen) => 864,
+                    Some(Adon | Geki) => 912,
+                    Some(Sagat | Mike | Birdie) => 1008,
+                    _ => FULL_SUB_HP,
+                },
+                _ => FULL_SUB_HP,
+            };
             let mut next = EraFighterState {
                 style,
                 fighter,
@@ -839,15 +851,10 @@ impl Bus<'_> {
                     !matches!(style.family, EraFamily::Sf1987 | EraFamily::Sf1Plus)
                         && !crate::era::revisions(fighter, style.family).contains(&style.revision)
                 }),
-                sub_hp: FULL_SUB_HP,
-                max_sub_hp: FULL_SUB_HP,
+                sub_hp: hp,
+                max_sub_hp: hp,
                 ..EraFighterState::default()
             };
-            if next.is_sf4() {
-                let hp = fighter.map_or(FULL_SUB_HP, sf4::vitality);
-                next.sub_hp = hp;
-                next.max_sub_hp = hp;
-            }
             next.set_gauge_mode(self.era_rules.gauge_mode);
             let previous = state.fighters[index];
             next.super_meter = if self.era_rules.fill_meters {
@@ -954,7 +961,14 @@ impl Bus<'_> {
         }
     }
 
+    pub(crate) fn era_mark_attack_active(&mut self, ps: u32) {
+        if let Some(side) = self.era_side(ps) {
+            self.toggle_state.era.fighters[side].attack_reached_active = true;
+        }
+    }
+
     pub(crate) fn era_spawn_projectile(&mut self, slot: u16, ps: u32, move_id: u8) {
+        self.era_mark_attack_active(ps);
         self.era_clear_projectile(slot);
         let Some(era) = self.era_state(ps).filter(|state| state.is_sf2() || state.is_alpha() || state.uses_family_bank()) else {
             return;

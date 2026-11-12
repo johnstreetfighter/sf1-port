@@ -307,6 +307,24 @@ fn training_full_meter_drives_a_native_super_freeze_and_refills_after_recovery()
     assert_eq!(fight.fight_read().fighters[0].move_id, SF2_SUPER);
     assert_eq!(fight.machine().era_super_freeze(), SUPER_FREEZE_FRAMES - 1);
     assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
+    let mut without_callout = fight.clone();
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    snapshot.callouts = sf_video::callouts::CalloutBoard::new();
+    without_callout.restore_netplay_snapshot(&snapshot);
+    let bright = without_callout.render(&assets);
+    let quarter_dimmed = bright
+        .argb
+        .iter()
+        .zip(&activation.frame.argb)
+        .filter(|(base, shown)| {
+            let [b, g, r, alpha] = base.to_le_bytes();
+            let quarter = |channel: u8| (u16::from(channel) * 3 / 4) as u8;
+            let expected = u32::from_le_bytes([quarter(b), quarter(g), quarter(r), alpha]);
+            let half = u32::from_le_bytes([b / 2, g / 2, r / 2, alpha]);
+            expected != **base && expected != half && expected == **shown
+        })
+        .count();
+    assert!(quarter_dimmed >= sf_video::render::WIDTH);
     let frozen = fight.machine().state.objectram.clone();
     for left in (0..SUPER_FREEZE_FRAMES - 1).rev() {
         fight.step(&assets, pad(0, false), pad(2, true), false);

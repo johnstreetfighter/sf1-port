@@ -2157,6 +2157,9 @@ impl Bus<'_> {
     // ---- collision and hit handling ---------------------------------------
 
     fn judge_targets(&mut self, me: u16, other: u16) {
+        if self.eb(me, 0xf) & 0x80 != 0 {
+            self.era_mark_attack_active(self.el(me, 0x38));
+        }
         if let Some(rules) = self.dramatic_rules() {
             let owner = self.el(me, 0x38);
             if self.eb(me, 0xf) & 0x80 == 0 || !self.dramatic_alive(owner) {
@@ -2608,9 +2611,7 @@ impl Bus<'_> {
         // Balanced roster's chip rule (whose branches never reach here
         // with it off) and the combo scaling read the flag.
         let chip = is_chip || src == HitSource::Chip;
-        let punish = !chip && self.eb(other, 9) & 0xc0 == 0xc0
-            && self.eb(other, 0x30) >= 6 && self.eb(other, 0xf) & 0x80 == 0
-            && self.sf6_impact_punish(ps, defender, self.eb(me, 0xa));
+        let punish = !chip && self.sf6_impact_punish(ps, defender, self.eb(me, 0xa));
         let crush = self.sf5_strike(me, other, self.eb(me, 0xa), chip);
         self.damage_with_chip(me, dmg, chip);
         self.react_as(me, other, if punish { 0x45b6e } else if crush { 0x45f52 } else { entry }, src);
@@ -6979,7 +6980,10 @@ impl Bus<'_> {
     /// else is the 1987 reaction. A hit ends blockstun.
     fn combo_react(&mut self, me: u16, other: u16, te: u32, src: HitSource) {
         let stun = match src {
-            HitSource::Melee => self.move_stun_of(me).hit,
+            HitSource::Melee => {
+                let owner = self.el(me, 0x38);
+                self.move_stun_of(me).hit.saturating_add(self.sf6_take_rush_bonus(owner))
+            }
             HitSource::Projectile => {
                 let delta = self.sf2_state(self.el(me, 0x38))
                     .and_then(|era| crate::era_fight::RevisionDelta::of(era.style))
@@ -7028,7 +7032,7 @@ impl Bus<'_> {
             return;
         }
         let owner = self.el(me, 0x38);
-        self.sf6_block_drain(defender, pressure.saturating_add(12));
+        self.sf6_drain_drive(defender, pressure.saturating_add(12));
         let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
         let center = self.center_x(other);
         if self.sf6_impact_block(owner, defender, !(0x86..=0x17a).contains(&center)) {

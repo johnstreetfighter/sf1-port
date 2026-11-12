@@ -149,15 +149,6 @@ impl Sf4State {
     }
 }
 
-pub(super) const fn vitality(fighter: TournamentFighter) -> u16 {
-    match fighter {
-        Gen => 864,
-        Adon | TournamentFighter::Geki => 912,
-        Sagat | TournamentFighter::Mike | TournamentFighter::Birdie => 1008,
-        _ => FULL_SUB_HP,
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Cost {
     Special,
@@ -427,8 +418,12 @@ impl EraFighterState {
         } else {
             self.sf4.revenge
         };
-        let mut scale = 90 + (40 * u32::from(revenge) / u32::from(REVENGE_MAX)) as u8;
-        if self.style.loadout == Loadout::UltraDouble && !disable_comeback_scaling {
+        let mut scale = if disable_comeback_scaling {
+            100
+        } else {
+            90 + (40 * u32::from(revenge) / u32::from(REVENGE_MAX)) as u8
+        };
+        if self.style.loadout == Loadout::UltraDouble {
             scale = (u16::from(scale) * 75 / 100) as u8;
         }
         self.sf4.revenge = 0;
@@ -539,9 +534,9 @@ impl Bus<'_> {
         let rising_chord = focus.held(held) && !focus.held(held & !fresh);
         if rising_chord && (actionable || special_active) {
             let cost = match (red, special_active && !actionable) {
-                (true, true) => 3 * STOCK_AT,
+                (true, true) if state.unified_gauge => 3 * STOCK_AT,
+                (true, _) => 2 * STOCK_AT,
                 (false, true) => fadc_cost,
-                (true, false) => 2 * STOCK_AT,
                 _ => 0,
             };
             if state.super_meter >= cost {

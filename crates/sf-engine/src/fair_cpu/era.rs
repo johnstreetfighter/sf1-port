@@ -55,14 +55,7 @@ impl Tactics {
             v_state.map_or(0, |(points, _, _)| points)
         };
         let v_trigger_active = v_state.is_some_and(|(_, timer, _)| timer != 0);
-        let v_cost = if matches!(
-            era.style.loadout,
-            Loadout::Skill1Trigger2 | Loadout::Skill2Trigger2
-        ) {
-            3 * STOCK_AT
-        } else {
-            2 * STOCK_AT
-        };
+        let v_cost = era.v_trigger_cost(mode);
         let drive = if unified {
             u16::from(ex)
         } else {
@@ -73,8 +66,10 @@ impl Tactics {
         } else {
             0
         };
-        let can_drive =
-            |cost: u8| enabled && !era.sf6_burnout() && drive >= reserve + u16::from(cost);
+        let can_drive = |native_cost| {
+            let cost = if unified { STOCK_AT } else { native_cost };
+            enabled && !era.sf6_burnout() && drive >= reserve + u16::from(cost)
+        };
         let entry = |slot| {
             moves
                 .iter()
@@ -87,14 +82,15 @@ impl Tactics {
                 return false;
             }
             match family {
-                Sf2 => ex >= STOCK_AT,
+                Sf2 => ex >= if unified { 3 * STOCK_AT } else { STOCK_AT },
                 SfZ if era.style.loadout != Loadout::XIsm
                     && matches!(m.name, "METSU SHORYUKEN" | "SHIPPU JINRAIKYAKU") =>
                 {
                     ex >= 3 * STOCK_AT
                 }
+                SfZ if era.style.loadout == Loadout::XIsm && unified => ex >= 3 * STOCK_AT,
                 SfZ => ex >= STOCK_AT,
-                Sf3 => ex >= era.sf3_stock_cost().unwrap_or(STOCK_AT),
+                Sf3 => era.sf3_super_art_cost().is_some_and(|cost| ex >= cost),
                 Sf4 if matches!(
                     m.input.button,
                     ButtonClass::TriplePunch | ButtonClass::TripleKick
@@ -138,11 +134,12 @@ impl Tactics {
         let enhanced = if family == Sf6 {
             can_drive(2 * STOCK_AT) && drive >= 3 * u16::from(STOCK_AT)
         } else {
-            ex >= 2 * if family == Sf3 {
+            let stock = if family == Sf3 {
                 era.sf3_stock_cost().unwrap_or(STOCK_AT)
             } else {
                 STOCK_AT
-            }
+            };
+            u16::from(ex) >= 2 * u16::from(stock)
         };
         let enhanced = (enabled && enhanced)
             .then(|| {
@@ -203,7 +200,7 @@ impl Tactics {
                             sf5::TRIGGER_ATTACK | sf5::TRIGGER_FORWARD | sf5::COUNTER_STRIKE
                         )
                 }),
-                Sf5 if v >= v_cost => moves.iter().copied().find(|m| {
+                Sf5 if v_state.is_some() && v >= v_cost => moves.iter().copied().find(|m| {
                     m.input.button == ButtonClass::HeavyPair
                         && matches!(m.produces, sf5::TRIGGER | sf5::TRIGGER_ATTACK)
                 }),
@@ -220,7 +217,7 @@ impl Tactics {
                 && era.is_alpha()
                 && era.style.loadout != Loadout::XIsm,
             can_parry: enabled && family == Sf3 && era.sf3_stock_cost().is_some(),
-            fadc: enabled && family == Sf4 && ex >= 2 * STOCK_AT,
+            fadc: enabled && family == Sf4 && ex >= if unified { STOCK_AT } else { 2 * STOCK_AT },
             super_move,
             enhanced,
             guard_cancel,
@@ -239,11 +236,7 @@ impl Tactics {
             } else {
                 named("MURDERER CHAIN")
             },
-            stance: if family == SfZ {
-                named("SWITCH TO CRANE").or_else(|| named("SWITCH TO MANTIS"))
-            } else {
-                None
-            },
+            stance: named("SWITCH TO CRANE").or_else(|| named("SWITCH TO MANTIS")),
         }
     }
 
@@ -251,11 +244,16 @@ impl Tactics {
         self.control.airborne || self.control.cancel || self.control.special
     }
 
-    fn pad(entry: &MoveEntry, view: Percept, strength: usize) -> Plan {
-        Plan::of(
-            PlanKind::Act,
-            &alpha_motion(entry, view.toward() > 0, strength, true),
-        )
+    fn pad(&self, entry: &MoveEntry, view: Percept, strength: usize) -> Plan {
+        let mut frames = alpha_motion(entry, view.toward() > 0, strength, true);
+        if self.family == EraFamily::Sf6
+            && entry.kind == MoveKind::System
+            && entry.produces == sf6::RUSH
+        {
+            // The preceding plan may have left Forward held.
+            frames.insert(0, 0);
+        }
+        Plan::of(PlanKind::Act, &frames)
     }
 
     /// Reactions use the delayed opponent view. The current local state is
@@ -276,7 +274,7 @@ impl Tactics {
         }
         if self.control.blockstun && (view.me.guarding() || threatened) {
             if let Some(entry) = self.guard_cancel.filter(|_| rng.chance(level.guard() / 2)) {
-                return Some(Self::pad(&entry, view, 2));
+                return Some(self.pad(&entry, view, 2));
             }
             return None;
         }
@@ -288,7 +286,7 @@ impl Tactics {
             && rng.chance(level.quality())
         {
             if let Some((entry, strength)) = self.super_move {
-                return Some(Self::pad(&entry, view, strength));
+                return Some(self.pad(&entry, view, strength));
             }
         }
         if self.fadc
@@ -318,7 +316,7 @@ impl Tactics {
         }
         self.evade
             .or(self.armor)
-            .map(|entry| Self::pad(&entry, view, 1))
+            .map(|entry| self.pad(&entry, view, 1))
     }
 
     pub(super) fn neutral(self, rng: &mut Rng, level: Level, view: Percept) -> Option<Plan> {
@@ -330,6 +328,9 @@ impl Tactics {
             return None;
         }
         let gap = view.gap();
+        if let Some(entry) = self.stance.filter(|_| gap >= 56 && rng.chance(level.quality() / 4)) {
+            return Some(self.pad(&entry, view, 1));
+        }
         let choice = if view.foe.guarding() && gap < 56 {
             self.mix_up.or(self.armor)
         } else if gap < 85 {
@@ -343,7 +344,7 @@ impl Tactics {
         } else {
             self.enhanced
         };
-        choice.map(|entry| Self::pad(&entry, view, 1))
+        choice.map(|entry| self.pad(&entry, view, 1))
     }
 }
 
@@ -423,6 +424,11 @@ mod tests {
         };
         let easy = Tactics::of(&state, &moves, config, Level::Easy, control);
         assert!(easy.rush.is_some());
+        assert!(easy.enhanced.is_some());
+        assert!(easy.guard_cancel.is_some());
+        let below_reserve = fighter(Revision::Sf6, Loadout::Standard, 2 * STOCK_AT);
+        let easy = Tactics::of(&below_reserve, &moves, config, Level::Easy, control);
+        assert!(easy.rush.is_none());
         assert!(easy.enhanced.is_none());
         assert!(easy.guard_cancel.is_none());
         let hard = Tactics::of(&state, &moves, config, Level::Hard, control);
@@ -434,6 +440,51 @@ mod tests {
                 .rush
                 .is_none()
         );
+    }
+
+    #[test]
+    fn unified_cpu_requires_three_stocks_for_st_supers_and_x_ism() {
+        use crate::era::Revision;
+
+        let mut config = MatchConfig::definitive();
+        config.gauge_mode = GaugeMode::Unified;
+        let moves = [entry(
+            "SHINKUU HADOKEN",
+            0x29,
+            MoveKind::Super,
+            crate::era_fight::DOUBLE_QUARTER_CIRCLE,
+            ButtonClass::Punch,
+        )];
+        for (revision, loadout) in [(Revision::St, Loadout::Standard), (Revision::Sfz3, Loadout::XIsm)] {
+            for (points, can_super) in [(3 * STOCK_AT - 1, false), (3 * STOCK_AT, true)] {
+                let state = fighter(revision, loadout, points);
+                let tactics = Tactics::of(&state, &moves, config, Level::Normal, EraControl::default());
+                assert_eq!(tactics.super_move.is_some(), can_super, "{revision:?} {points}");
+            }
+        }
+    }
+
+    #[test]
+    fn native_art_with_one_long_bar_does_not_meet_the_two_stock_ex_threshold() {
+        use crate::era::Revision;
+
+        let state = fighter(Revision::Sf3ThreeS, Loadout::Art2, 128);
+        let moves = [entry(
+            "EX HADOKEN",
+            0x24,
+            MoveKind::Special,
+            QCF,
+            ButtonClass::PairPunch,
+        )];
+        let tactics = Tactics::of(
+            &state,
+            &moves,
+            MatchConfig::definitive(),
+            Level::Hard,
+            EraControl::default(),
+        );
+        assert_eq!(state.sf3_stock_cost(), Some(128));
+        assert!(tactics.enhanced.is_none());
     }
 
     #[test]

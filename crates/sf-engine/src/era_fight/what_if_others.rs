@@ -1,6 +1,6 @@
 //! Post-1987 What-If commands for fighters with existing Alpha streams.
 
-use super::what_if::{WhatIfKit, WhatIfMove};
+use super::what_if::{enhanced_names, WhatIfKit, WhatIfMove};
 use super::{EraFighterState, DOUBLE_QUARTER_CIRCLE, HALF_CIRCLE};
 use crate::era::EraFamily;
 use crate::moves::{ButtonClass, Dir, MoveInput};
@@ -30,13 +30,13 @@ const SPIN: &[Dir] = &[Forward, Down, Back, Up];
 
 const GEN_MANTIS: &[WhatIfMove] = &[
     WhatIfMove::new(0x1a, "HYAKU RENKOU", &[], MashPunch),
-    WhatIfMove::new(0x1b, "GEKIROU", DP, Kick).ex("EX GEKIROU"),
+    WhatIfMove::new(0x1b, "GEKIROU", DP, Kick).enhanced(enhanced_names!("GEKIROU")),
     WhatIfMove::new(0x1f, "SWITCH TO CRANE", &[], TripleKick).stance(true),
 ];
 const GEN_CRANE: &[WhatIfMove] = &[
-    WhatIfMove::new(0x20, "JASEN", CHARGED_FORWARD, Punch).ex("EX JASEN"),
+    WhatIfMove::new(0x20, "JASEN", CHARGED_FORWARD, Punch).enhanced(enhanced_names!("JASEN")),
     WhatIfMove::new(0x21, "OUGA", CHARGED_UP, Kick)
-        .ex("EX OUGA")
+        .enhanced(enhanced_names!("OUGA"))
         .overhead(),
     WhatIfMove::new(0x1f, "SWITCH TO MANTIS", &[], TriplePunch).stance(false),
 ];
@@ -55,11 +55,11 @@ const GEN_MANTIS_KIT: WhatIfKit = gen_kit(GEN_MANTIS, "RYUKOHA");
 const GEN_CRANE_KIT: WhatIfKit = gen_kit(GEN_CRANE, "RYUKOHA");
 
 const BIRDIE_SPECIALS: &[WhatIfMove] = &[
-    WhatIfMove::new(0x19, "BULL HEAD", CHARGED_FORWARD, Punch).ex("EX BULL HEAD"),
+    WhatIfMove::new(0x19, "BULL HEAD", CHARGED_FORWARD, Punch).enhanced(enhanced_names!("BULL HEAD")),
     WhatIfMove::new(0x1a, "BULL HORN", &[], ReleasePair),
-    WhatIfMove::new(0x1b, "MURDERER CHAIN", SPIN, Punch).ex("EX MURDERER CHAIN"),
+    WhatIfMove::new(0x1b, "MURDERER CHAIN", SPIN, Punch).enhanced(enhanced_names!("MURDERER CHAIN")),
     WhatIfMove::new(0x20, "BAD HAMMER", &[DownForward], Punch).overhead(),
-    WhatIfMove::new(0x21, "HANGING CHAIN", QCF, Kick).ex("EX HANGING CHAIN"),
+    WhatIfMove::new(0x21, "HANGING CHAIN", QCF, Kick).enhanced(enhanced_names!("HANGING CHAIN")),
 ];
 
 const BIRDIE_KIT: WhatIfKit = WhatIfKit {
@@ -80,11 +80,12 @@ const BIRDIE_SF6: WhatIfKit = WhatIfKit {
 const EAGLE_KIT: WhatIfKit = WhatIfKit {
     specials: &[
         WhatIfMove::new(0x19, "CLOBBERING", HALF_CIRCLE, Punch),
-        WhatIfMove::new(0x1a, "MANCHESTER BLACK", QCB, Punch).ex("EX MANCHESTER BLACK"),
-        WhatIfMove::new(0x20, "CANTERBURY BLUE", QCF, Punch).ex("EX CANTERBURY BLUE"),
-        WhatIfMove::new(0x21, "OXFORD RED", HALF_CIRCLE, Kick).ex("EX OXFORD RED"),
+        WhatIfMove::new(0x1a, "MANCHESTER BLACK", QCB, Punch).enhanced(enhanced_names!("MANCHESTER BLACK")),
+        WhatIfMove::new(0x20, "CANTERBURY BLUE", QCF, Punch).enhanced(enhanced_names!("CANTERBURY BLUE")),
+        WhatIfMove::new(0x21, "OXFORD RED", HALF_CIRCLE, Kick).enhanced(enhanced_names!("OXFORD RED")),
         WhatIfMove::new(0x22, "LIVERPOOL WHITE", QCB, Kick).overhead(),
-        WhatIfMove::new(EAGLE_COUNTER, "ST ANDREWS GREEN", DP, Punch).ex("EX ST ANDREWS GREEN"),
+        WhatIfMove::new(EAGLE_COUNTER, "ST ANDREWS GREEN", DP, Punch)
+            .enhanced(enhanced_names!("ST ANDREWS GREEN")),
     ],
     supers: ["MANCHESTER GOLD", "UNION JACK", "ALBION TEMPEST"],
     v_skills: ["CANTERBURY BLUE", "ST ANDREWS GREEN"],
@@ -93,9 +94,9 @@ const EAGLE_KIT: WhatIfKit = WhatIfKit {
 
 const ADON_KIT: WhatIfKit = WhatIfKit {
     specials: &[
-        WhatIfMove::new(0x19, "RISING JAGUAR", DP, Kick).ex("EX RISING JAGUAR"),
-        WhatIfMove::new(0x1b, "JAGUAR KICK", RDP, Kick).ex("EX JAGUAR KICK"),
-        WhatIfMove::new(0x20, "JAGUAR TOOTH", HCB, Kick).ex("EX JAGUAR TOOTH"),
+        WhatIfMove::new(0x19, "RISING JAGUAR", DP, Kick).enhanced(enhanced_names!("RISING JAGUAR")),
+        WhatIfMove::new(0x1b, "JAGUAR KICK", RDP, Kick).enhanced(enhanced_names!("JAGUAR KICK")),
+        WhatIfMove::new(0x20, "JAGUAR TOOTH", HCB, Kick).enhanced(enhanced_names!("JAGUAR TOOTH")),
         WhatIfMove::new(0x21, "AIR JAGUAR KICK", &[Jump], Kick)
             .air()
             .overhead(),
@@ -109,13 +110,14 @@ const ADON_KIT: WhatIfKit = WhatIfKit {
     v_triggers: ["JAGUAR REVOLVER", "JAGUAR AVALANCHE"],
 };
 
-const TIGER_SHOT: WhatIfMove = WhatIfMove::new(0x1a, "TIGER SHOT", QCF, Punch).ex("EX TIGER SHOT");
+const TIGER_SHOT: WhatIfMove =
+    WhatIfMove::new(0x1a, "TIGER SHOT", QCF, Punch).enhanced(enhanced_names!("TIGER SHOT"));
 const LOW_TIGER_SHOT: WhatIfMove =
-    WhatIfMove::new(0x1b, "GROUND TIGER SHOT", QCF, Kick).ex("EX GROUND TIGER SHOT");
+    WhatIfMove::new(0x1b, "GROUND TIGER SHOT", QCF, Kick).enhanced(enhanced_names!("GROUND TIGER SHOT"));
 const TIGER_UPPERCUT: WhatIfMove =
-    WhatIfMove::new(0x1f, "TIGER UPPERCUT", DP, Punch).ex("EX TIGER UPPERCUT");
+    WhatIfMove::new(0x1f, "TIGER UPPERCUT", DP, Punch).enhanced(enhanced_names!("TIGER UPPERCUT"));
 const TIGER_CRUSH: WhatIfMove =
-    WhatIfMove::new(0x19, "TIGER KNEE CRUSH", DP, Kick).ex("EX TIGER KNEE CRUSH");
+    WhatIfMove::new(0x19, "TIGER KNEE CRUSH", DP, Kick).enhanced(enhanced_names!("TIGER KNEE CRUSH"));
 
 const SAGAT_KIT: WhatIfKit = WhatIfKit {
     specials: &[TIGER_SHOT, LOW_TIGER_SHOT, TIGER_UPPERCUT, TIGER_CRUSH],
@@ -129,7 +131,8 @@ const SAGAT_SF6: WhatIfKit = WhatIfKit {
         LOW_TIGER_SHOT,
         TIGER_UPPERCUT,
         TIGER_CRUSH,
-        WhatIfMove::new(NEXUS, "TIGER NEXUS", QCB, Kick).ex_at(OD_NEXUS, "OD TIGER NEXUS"),
+        WhatIfMove::new(NEXUS, "TIGER NEXUS", QCB, Kick)
+            .enhanced_at(OD_NEXUS, enhanced_names!("TIGER NEXUS")),
     ],
     supers: ["TIGER CANNON", "SAVAGE TIGER", "TIGER VANQUISHER"],
     ..SAGAT_KIT

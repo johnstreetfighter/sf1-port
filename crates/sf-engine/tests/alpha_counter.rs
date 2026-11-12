@@ -9,7 +9,7 @@ use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::{Fight, FightFrame};
 use sf_engine::front::PlayerInputs;
 use sf_engine::netplay::{encode_inputs, RollbackEngine};
-use sf_engine::roster::TournamentFighter::{Geki, Sagat};
+use sf_engine::roster::TournamentFighter::{Adon, Birdie, Eagle, Geki, Gen, Ken, Ryu, Sagat};
 use sf_video::announcer::AnnouncerLine;
 use sf_video::callouts::{CalloutKind, Side};
 use sf_video::romset::{load_assets, Assets};
@@ -31,6 +31,46 @@ fn training_alpha_counters_work_from_each_fighters_push_range() {
             ALPHA_COUNTER_SLOT,
             true,
         );
+    }
+}
+
+#[test]
+fn custom_combo_show_hands_off_after_the_install() {
+    let Some(mut session) = alpha::training_fight_with_fighter(Ryu, Revision::Sfz3, Loadout::VIsm)
+    else {
+        return;
+    };
+    alpha::assert_training_show(&mut session, "CUSTOM COMBO", ALPHA_COUNTER_SLOT);
+    let state = session.fight_machine().unwrap().era_fighters()[0];
+    assert!(!state.custom_combo_active(), "Try waits for a fresh activation");
+    assert_eq!(state.super_meter, 2 * STOCK);
+}
+
+#[test]
+fn every_canonical_alpha_fighter_can_practice_each_ism() {
+    for (fighter, super_name) in [
+        (Ryu, "SHINKUU HADOKEN"),
+        (Ken, "SHORYUREPPA"),
+        (Sagat, "TIGER GENOCIDE"),
+        (Birdie, "THE BIRDIE"),
+        (Adon, "JAGUAR VARIED ASSAULT"),
+        (Gen, "ZAN'EI"),
+        (Eagle, "MANCHESTER GOLD"),
+    ] {
+        for (loadout, stocks, name, slot, needs_contact) in [
+            (Loadout::AIsm, 3, "ALPHA COUNTER (P)", ALPHA_COUNTER_SLOT, true),
+            (Loadout::VIsm, 2, "CUSTOM COMBO", ALPHA_COUNTER_SLOT, false),
+            (Loadout::XIsm, 1, super_name, 0x29, false),
+        ] {
+            let Some(mut session) = alpha::training_fight_with_fighter(fighter, Revision::Sfz3, loadout)
+            else {
+                return;
+            };
+            let state = session.fight_machine().unwrap().era_fighters()[0];
+            assert_eq!(state.style.loadout, loadout, "{fighter:?}");
+            assert_eq!(state.super_meter, stocks * STOCK, "{fighter:?} {loadout:?}");
+            alpha::assert_training_move_demo(&mut session, name, slot, needs_contact);
+        }
     }
 }
 

@@ -275,6 +275,51 @@ fn guard_crush_locks_the_defender_shrinks_the_bar_and_resets_next_round() {
 }
 
 #[test]
+fn v_ism_carries_meter_and_resets_the_active_combo() {
+    let Some((assets, mut fight)) =
+        start_fight(GaugeMode::EraDefault, Revision::Sfz3, Loadout::VIsm)
+    else {
+        return;
+    };
+    let full_guard = guard(&fight);
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    snapshot.machine.toggle_state.era.fighters[1].super_meter = 96;
+    fight.restore_netplay_snapshot(&snapshot);
+    let mut custom = pad(0, Some(LP));
+    custom.buttons[3] = true;
+    fight.step(&assets, IDLE, custom, false);
+    assert!(fight.machine().era_fighters()[1].custom_combo_active());
+
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    let round = snapshot.machine.work[ROUND_COUNTER];
+    let time = (TIME_DIGITS - 0xff8000) as usize;
+    snapshot.machine.work[time..time + 3].fill(0);
+    fight.restore_netplay_snapshot(&snapshot);
+    let mut carried = None;
+    for _ in 0..1500 {
+        let before = fight.machine().era_fighters()[1];
+        fight.step(&assets, IDLE, IDLE, false);
+        let after = fight.machine().era_fighters()[1];
+        if before.custom_combo_active() && !after.custom_combo_active() {
+            assert_eq!(after.super_meter, before.super_meter);
+            carried = Some(after.super_meter);
+        }
+        if fight.machine().work_ram()[ROUND_COUNTER] != round
+            && flow_position(fight.machine()) == FIGHT_LOOP
+        {
+            break;
+        }
+    }
+    assert_ne!(fight.machine().work_ram()[ROUND_COUNTER], round);
+    assert_eq!(flow_position(fight.machine()), FIGHT_LOOP);
+    let state = fight.machine().era_fighters()[1];
+    assert!(!state.custom_combo_active());
+    assert!(state.super_meter > 0);
+    assert_eq!(Some(state.super_meter), carried);
+    assert_eq!(guard(&fight), full_guard);
+}
+
+#[test]
 fn blocked_hadoken_drains_guard_power_on_the_ground_and_in_the_air() {
     for airborne in [false, true] {
         let Some((assets, mut fight)) =

@@ -169,7 +169,9 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
         };
     }
     let mut argb = hardware.argb.clone();
-    if scene.callouts.dim {
+    if scene.callouts.dim_quarter {
+        callouts::dim_quarter(&mut argb, scene.stage);
+    } else if scene.callouts.dim {
         callouts::dim(&mut argb, scene.stage);
     }
     for sprite in scene.sprites {

@@ -157,6 +157,8 @@ pub enum FixKind {
     ButtonTooEarly,
     /// Motion and button were right, but the busy gate held the fighter.
     WaitToRecover,
+    /// The directional Parry window expired without contact.
+    TimeParry,
 }
 
 /// The coach's fix: what to say, and the way the fighter faced when it was
@@ -179,6 +181,7 @@ impl Fix {
             FixKind::WrongButton(class) => format!("PRESS {} NOT {}", class.letter(), class.other().letter()),
             FixKind::ButtonTooEarly => "BUTTON TOO EARLY".to_owned(),
             FixKind::WaitToRecover => "WAIT TO RECOVER".to_owned(),
+            FixKind::TimeParry => "TAP AT IMPACT".to_owned(),
         }
     }
 }
@@ -465,8 +468,21 @@ impl Coach {
     /// open (`settle`: the recovery buffer's window plus one, or 0 without
     /// one). Returns how an attempt ended on this frame, if one did.
     pub fn observe(&mut self, view: &RecognizerView, read: &FightRead, in_fight: bool, settle: u32) -> Option<Outcome> {
+        self.observe_command(view, read, in_fight, settle, true)
+    }
+
+    pub(super) fn observe_command(
+        &mut self,
+        view: &RecognizerView,
+        read: &FightRead,
+        in_fight: bool,
+        settle: u32,
+        matches_variant: bool,
+    ) -> Option<Outcome> {
         let [me, foe] = read.fighters;
         let complete = self.entry.input.motion.len() as u8;
+        let direction_only = self.entry.input.button == ButtonClass::DirectionOnly;
+        let attempt_stage = if direction_only { 1 } else { ATTEMPT_STAGE };
         let stage = view.state.counted_for(complete);
         if !in_fight || !me.present {
             // Between rounds, or before a fighter stands: nothing is
@@ -518,7 +534,9 @@ impl Coach {
         // native move transition and the selected button, including moves
         // that start on release rather than while the chord is held.
         let button_only = self.entry.recognizer == Recognizer::FamilyMove && complete == 0;
-        let recognized = if button_only {
+        let recognized = if direction_only {
+            stage >= attempt_stage
+        } else if button_only {
             let release_command = self.entry.input.button == ButtonClass::ReleasePair
                 || (self.entry.produces == crate::era_fight::sf4::FOCUS
                     && matches!(self.entry.input.button, ButtonClass::MediumPair | ButtonClass::RedFocus));
@@ -527,10 +545,10 @@ impl Coach {
         } else {
             self.entry.recognizer == Recognizer::AlphaMove
                 || self.attempting()
-                || self.last_stage >= ATTEMPT_STAGE
+                || self.last_stage >= attempt_stage
         };
-        if came_out && recognized {
-            if button_only && !self.attempting() {
+        if came_out && recognized && matches_variant {
+            if (button_only || direction_only) && !self.attempting() {
                 self.attempts += 1;
             }
             self.attempt = None;
@@ -561,7 +579,7 @@ impl Coach {
             }
         }
         let mut started = false;
-        if self.attempt.is_none() && stage >= ATTEMPT_STAGE && self.last_stage < ATTEMPT_STAGE && !interrupted {
+        if self.attempt.is_none() && stage >= attempt_stage && self.last_stage < attempt_stage && !interrupted {
             // A new attempt settles the old miss at once.
             if let Some(settling) = self.settling.take() {
                 if ended.is_none() {
@@ -584,7 +602,7 @@ impl Coach {
             if interrupted {
                 ended = Some(Outcome::Interrupted);
                 self.attempt = None;
-            } else if stage < ATTEMPT_STAGE {
+            } else if stage < attempt_stage {
                 let miss = Miss {
                     stage: attempt.reached,
                     awaited: attempt.awaited,
@@ -682,7 +700,9 @@ impl Coach {
             let lead = self.history.iter().filter(|f| f.no < span.first && f.no + EARLY_LOOKBACK >= span.first);
             lead.chain(frames.iter()).filter(|f| f.no <= span.fall && f.no < first_done).any(Frame::took_any)
         };
-        let kind = if miss.stage >= complete {
+        let kind = if class == ButtonClass::DirectionOnly {
+            Some(FixKind::TimeParry)
+        } else if miss.stage >= complete {
             // The motion was done: what the engine took, and the gate, say why
             // the move never came out.
             // The frames of the command's done window, the one the tracker was

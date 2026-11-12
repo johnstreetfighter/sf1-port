@@ -130,6 +130,11 @@ fn gen_can_switch_stances_use_crane_charge_and_activate_genei_jin() {
         active |= gen.fight_read().fighters[0].attack_active;
     }
     assert!(!active, "Genei-Jin activation deals no damage");
+    assert_ne!(
+        gen.save_netplay_snapshot(0).trails[0],
+        Default::default(),
+        "the native fight records Genei-Jin afterimages"
+    );
     assert_eq!(
         gen.fight_read().fighters[0].state & 0x80,
         0,
@@ -149,6 +154,11 @@ fn gen_can_switch_stances_use_crane_charge_and_activate_genei_jin() {
         "Genei-Jin allows immediate normal cancels"
     );
     hold(&mut gen, assets, PlayerInputs::default(), 130);
+    assert_eq!(
+        gen.save_netplay_snapshot(0).trails[0],
+        Default::default(),
+        "Genei-Jin clears the trail when it expires"
+    );
     assert!(!can_chain_normals(gen), "the timed cancel window expires");
 }
 
@@ -404,6 +414,13 @@ fn training_lists_shows_and_coaches_a_native_what_if_move_for_each_fighter() {
             0x23,
         ),
         (
+            Eagle,
+            Revision::Sf6,
+            Loadout::Standard,
+            "OD ST ANDREWS GREEN",
+            0x23,
+        ),
+        (
             Adon,
             Revision::Sf5Ce,
             Loadout::Skill1Trigger1,
@@ -425,6 +442,6 @@ fn training_lists_shows_and_coaches_a_native_what_if_move_for_each_fighter() {
             meter(session.fight().unwrap()) > 0,
             "Fill Meters for {fighter:?}"
         );
-        assert_training_move_demo(&mut session, name, shown_slot, name == "ST ANDREWS GREEN");
+        assert_training_move_demo(&mut session, name, shown_slot, name.ends_with("ST ANDREWS GREEN"));
     }
 }

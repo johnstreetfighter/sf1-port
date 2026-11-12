@@ -474,6 +474,28 @@ fn a_full_column_drops_its_oldest_word_and_never_the_count() {
 }
 
 #[test]
+fn a_lighter_super_dims_only_the_stage_by_one_quarter() {
+    let stage_color = 0xff80_6030;
+    let hardware = Frame { argb: vec![stage_color; WIDTH * HEIGHT] };
+    let stage = [true, false];
+    let mut board = CalloutBoard::new();
+    let super_move = CalloutKind::Super { name: NAME };
+    board.step(&[CalloutEvent::new(Side::P1, super_move)]);
+    let draw = |board: &CalloutBoard| present(
+        PresentMode::Overhaul,
+        &hardware,
+        &OverhaulScene {
+            callouts: board.frame_with_quarter_dim([true, false]),
+            stage: Some(&stage),
+            ..OverhaulScene::EMPTY
+        },
+    );
+    assert_eq!(draw(&board).argb[..2], [0xff60_4824, stage_color]);
+    board.step(&[CalloutEvent::new(Side::P2, super_move)]);
+    assert_eq!(draw(&board).argb[..2], [half(stage_color), stage_color]);
+}
+
+#[test]
 fn the_super_dim_stays_one_level_with_two_supers_and_each_name_on_its_side() {
     let Some(assets) = assets() else { return };
     let font = RomFont::new(&assets.gfx4, &assets.maincpu);
