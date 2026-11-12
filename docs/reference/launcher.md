@@ -91,6 +91,47 @@ Pass any replay filename from the report to `combo-replay` or
 `combo-verify`. Both use the exact recorded inputs and verify the build,
 assets, setup, player table, opener hits and the signature's combo hit.
 
+### Designer-authored commands
+
+To test a different input cadence or fixed button sequence, save a JSON
+command file and pass it with `--command` in place of the move-name list.
+
+```text
+cargo run -p sf-dev --release -- combo-sweep Ryu tools/reference/local/combo-authored --command tools/reference/local/hadoken-command.json
+```
+
+This command reproduces the original crouching light kick into light Hadoken.
+
+```json
+{
+  "move": "Hadoken",
+  "strength": "light",
+  "inputs": {
+    "fixed": [4, 4, 5, 5, 1],
+    "activation": { "button": "LP", "frame": 7, "hold": 1 }
+  }
+}
+```
+
+`move` names an available SF1+ signature move. `strength` is `light`,
+`medium`, or `heavy`. Each entry in `fixed` is one frame of P1 pad bits,
+beginning on the frame after the normal input. The example holds Down for two
+frames, Down+Right for two frames, then Right. The command lasts 90 frames.
+After the listed inputs, it holds the last direction and releases any fixed
+buttons. Keep the movable button out of `fixed`.
+
+`activation.frame` is the zero-based press frame for the standalone check.
+`hold` counts held frames and must leave room for a release. In the sweep,
+the press and release move together from immediately after the normal input
+through the opener's hitstun. All fixed pads stay on their original frames.
+A successful press before first contact is reported as a negative offset.
+
+The report and replay embed the authored input data. A fresh `combo-verify`
+uses that data and the recorded pads. The report marks an input sequence as
+`unsupported` if the movable button fails to start the declared move and
+strength. A playable command that finds no verified timing window is
+reported as `no_success`.
+
 ## Remappable keyboard bindings (ticket #76, F36)
 
 `crates/sf-host/src/bindings.rs` maps all 25 logical inputs of the cabinet's

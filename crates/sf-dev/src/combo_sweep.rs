@@ -153,6 +153,7 @@ pub(super) fn run(command: &str, args: &[String]) -> i32 {
     if args == ["--help"] || args.is_empty() {
         println!("sf-dev combo-sweep <replay.json>   Measure the Ryu route and save a replay");
         println!("sf-dev combo-sweep <fighter> <output-folder> <signature>...");
+        println!("sf-dev combo-sweep <fighter> <output-folder> --command <command.json>");
         println!("sf-dev combo-replay <replay.json>  Watch the recorded inputs in a window");
         println!("sf-dev combo-verify <replay.json>  Verify the recorded inputs headlessly");
         return if args.is_empty() { 2 } else { 0 };

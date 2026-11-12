@@ -1,4 +1,4 @@
-//! Coverage sweeps with built-in SF1+ inputs (#118).
+//! Coverage sweeps with built-in and authored SF1+ inputs.
 //!
 //! The menu/setup and every saved replay use GameSession. Search attempts
 //! branch from its settled native machine and drive the same logical pads
@@ -10,7 +10,7 @@ use super::{
     FIGHT_LOOP, LEFT, P1_STRUCT, P2_STRUCT, PRESET, RIGHT, UP, WORK_BASE,
 };
 use serde::{Deserialize, Serialize};
-use sf_engine::data_bank::{in_bank, special_slot, FIGHTER_SPAN};
+use sf_engine::data_bank::{in_bank, special_slot, FIGHTER_SPAN, SPECIAL_SLOTS};
 use sf_engine::fight_reader::{FightRead, FightReader};
 use sf_engine::moves::{move_list, MoveEntry, MoveKind, Strength};
 use sf_engine::run::PowerOnMachine;
@@ -226,7 +226,7 @@ struct Command {
 }
 
 impl Command {
-    fn from_move(entry: &MoveEntry, strength: Strength) -> Result<Self> {
+    fn from_move(entry: &MoveEntry, strength: Strength) -> Result<(Self, Vec<u16>)> {
         let frames: Vec<_> = entry
             .input
             .frames(true, strength)
@@ -246,25 +246,28 @@ impl Command {
             .find(|&bits| bits != 0)
             .ok_or("built-in command has no activation button")?;
         let hold = frames.iter().filter(|&&bits| bits & button != 0).count();
-        Ok(Self {
-            frames,
+        let command = Self {
+            frames: frames.iter().map(|bits| bits & 0xf).collect(),
             button,
             hold,
-        })
+        };
+        Ok((command, frames))
+    }
+
+    fn fixed_frames(&self) -> impl Iterator<Item = u16> + '_ {
+        let final_direction = self.frames.last().copied().unwrap_or(0) & 0xf;
+        self.frames
+            .iter()
+            .copied()
+            .chain(std::iter::repeat(final_direction))
+            .take(FRAMES_AFTER_OPENER)
     }
 
     fn recipe(&self, opener: &[u16], stance: Stance) -> Vec<Input> {
-        let final_direction = self.frames.last().copied().unwrap_or(0) & 0xf;
-        let direction_frames = self
-            .frames
-            .iter()
-            .map(|bits| bits & 0xf)
-            .chain(std::iter::repeat(final_direction))
-            .take(FRAMES_AFTER_OPENER);
         opener
             .iter()
             .copied()
-            .chain(direction_frames)
+            .chain(self.fixed_frames())
             .map(|p1| Input {
                 p1,
                 p2: stance.pad(),
@@ -328,6 +331,8 @@ struct Trace {
     previous_move: u8,
     opener: Option<u8>,
     special_start: Option<usize>,
+    special_strength: Option<Strength>,
+    other_attack_start: Option<usize>,
     cancelled: bool,
     stun_end: Option<usize>,
     hits: Vec<Hit>,
@@ -343,20 +348,27 @@ impl Trace {
         special: u8,
     ) {
         let current_move = read.fighter(Side::P1).move_id;
-        if opener.contains(&current_move) {
+        let is_opener = opener.contains(&current_move);
+        if current_move != special
+            && current_move != self.previous_move
+            && (SPECIAL_SLOTS.contains(&current_move) || (is_opener && self.opener.is_some()))
+        {
+            self.other_attack_start.get_or_insert(frame);
+        }
+        if is_opener {
             self.opener.get_or_insert(current_move);
         }
         if current_move == special && self.special_start.is_none() {
             self.special_start = Some(frame);
+            let latched = m.diagnostic_telemetry().p1.punch_latch.buffered_strength;
+            let level = sf_engine::combo::level(latched);
+            self.special_strength = Some(STRENGTHS[usize::from(level - 1)]);
             self.cancelled = m.toggle_state().cancel.count[0] > 0;
-        }
-        if m.toggle_state().combo.hitstun[1] > 0 {
-            self.stun_end = Some(frame);
         }
         if let Some(hit) = read.landed_by(Side::P1) {
             let projectile = self.special_start.is_some() && projectile_impact(m, special);
             let move_id = if projectile {
-                // This built-in recipe can fire only the selected signature.
+                // Confirmation rules out other specials before this impact.
                 special
             } else if read.fighter(Side::P1).attacking() {
                 current_move
@@ -373,6 +385,19 @@ impl Trace {
                 into_hitstun: hit.into_hitstun,
             });
         }
+        // Once the first opener's stun ends, later fixed attacks cannot
+        // create more eligible activation frames for that opener.
+        if m.toggle_state().combo.hitstun[1] > 0
+            && self.other_attack_start.is_none()
+            && self.hits.first().is_some_and(|hit| {
+                opener.contains(&hit.move_id)
+                    && !hit.chip
+                    && !hit.projectile
+                    && frame == self.stun_end.map_or(hit.frame, |end| end + 1)
+            })
+        {
+            self.stun_end = Some(frame);
+        }
         self.previous_move = current_move;
     }
 
@@ -385,9 +410,13 @@ impl Trace {
             || !opener_hits
                 .iter()
                 .all(|hit| hit.move_id == opener && !hit.projectile && !hit.chip)
+            || opener_hits.iter().skip(1).any(|hit| !hit.into_hitstun)
             || hit.chip
             || !hit.into_hitstun
             || hit.frame < special_start
+            || self
+                .other_attack_start
+                .is_some_and(|frame| frame <= hit.frame)
         {
             return None;
         }
@@ -527,11 +556,117 @@ fn opener_prefix(
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthoredInputs {
+    fixed: Vec<u16>,
+    activation: Activation,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Activation {
+    button: String,
+    frame: usize,
+    hold: usize,
+}
+
+impl AuthoredInputs {
+    fn prepare(&self) -> Result<(Command, Vec<u16>)> {
+        let activation = &self.activation;
+        let index = BUTTON_NAMES
+            .iter()
+            .position(|name| name.eq_ignore_ascii_case(&activation.button))
+            .ok_or("activation.button must be LP, MP, HP, LK, MK or HK")?;
+        let button = 1 << (4 + index);
+        let release = activation
+            .frame
+            .checked_add(activation.hold)
+            .filter(|&frame| frame < FRAMES_AFTER_OPENER && activation.hold > 0)
+            .ok_or("activation.frame and activation.hold must leave a release frame within the 90-frame command")?;
+        if self.fixed.len() > FRAMES_AFTER_OPENER {
+            return Err(format!(
+                "inputs.fixed supports at most {FRAMES_AFTER_OPENER} frames"
+            ));
+        }
+        for (frame, &bits) in self.fixed.iter().enumerate() {
+            if bits > 0x3ff {
+                return Err(format!("inputs.fixed[{frame}] must use pad bits 0-9"));
+            }
+            if bits & button != 0 {
+                return Err(format!(
+                    "inputs.fixed[{frame}] holds {}. Put the movable button only in activation.button",
+                    activation.button
+                ));
+            }
+        }
+
+        let command = Command {
+            frames: self.fixed.clone(),
+            button,
+            hold: activation.hold,
+        };
+        let mut standalone: Vec<_> = command.fixed_frames().collect();
+        for bits in &mut standalone[activation.frame..release] {
+            *bits |= button;
+        }
+        Ok((command, standalone))
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthoredRequest {
+    #[serde(rename = "move")]
+    name: String,
+    strength: String,
+    inputs: AuthoredInputs,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Signature {
     name: String,
     input: String,
     move_id: u8,
     strength: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    authored: Option<AuthoredInputs>,
+}
+
+impl Signature {
+    fn matches_strength(&self, observed: Option<Strength>) -> bool {
+        self.authored.is_none()
+            || observed.is_some_and(|strength| strength_name(strength) == self.strength)
+    }
+}
+
+struct SweepCommand {
+    signature: Signature,
+    command: Command,
+    standalone: Vec<u16>,
+}
+
+impl SweepCommand {
+    fn new(
+        entry: &MoveEntry,
+        strength: Strength,
+        authored: Option<AuthoredInputs>,
+    ) -> Result<Self> {
+        let (input, (command, standalone)) = match &authored {
+            Some(inputs) => ("authored".into(), inputs.prepare()?),
+            None => (entry.input.words(), Command::from_move(entry, strength)?),
+        };
+        Ok(Self {
+            signature: Signature {
+                name: entry.name.into(),
+                input,
+                move_id: entry.produces,
+                strength: strength_name(strength).into(),
+                authored,
+            },
+            command,
+            standalone,
+        })
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -673,34 +808,17 @@ pub(super) fn sweep(fighter: &str, folder: &Path, requested: &[String]) -> Resul
         .into_iter()
         .filter(|entry| matches!(entry.kind, MoveKind::Special | MoveKind::Super))
         .collect();
-    let mut selected = Vec::new();
-    let mut unsupported = Vec::new();
-    for name in requested {
-        match entries
-            .iter()
-            .copied()
-            .find(|entry| slug(entry.name) == slug(name))
-        {
-            Some(entry) if !selected.contains(&entry) => selected.push(entry),
-            Some(_) => {}
-            None => unsupported.push(name.clone()),
+    let (selected, unsupported) = match requested {
+        [flag, path] if flag == "--command" => {
+            (vec![read_authored(Path::new(path), &entries)?], Vec::new())
         }
-    }
-    if !unsupported.is_empty() {
-        let available = entries
-            .iter()
-            .map(|entry| entry.name)
-            .collect::<Vec<_>>()
-            .join(", ");
-        println!(
-            "Unsupported signatures: {}. Available for {}: {available}.",
-            unsupported.join(", "),
-            fighter.name()
-        );
-    }
-    if selected.is_empty() {
-        return Err("select at least one supported built-in signature move".into());
-    }
+        _ if requested.iter().any(|arg| arg == "--command") => {
+            return Err(
+                "use --command <command.json> by itself or list built-in signature moves".into(),
+            );
+        }
+        _ => select_built_in(fighter, &entries, requested)?,
+    };
 
     let mut fixture = load(fighter)?;
     let setup_inputs = drive_local(&mut fixture.session, fighter)?;
@@ -767,6 +885,75 @@ pub(super) fn sweep(fighter: &str, folder: &Path, requested: &[String]) -> Resul
     Ok(())
 }
 
+fn read_authored(path: &Path, entries: &[&MoveEntry]) -> Result<SweepCommand> {
+    let read = || -> Result<_> {
+        let json = fs::read(path).map_err(|err| err.to_string())?;
+        let request: AuthoredRequest =
+            serde_json::from_slice(&json).map_err(|err| err.to_string())?;
+        let entry = entries
+            .iter()
+            .copied()
+            .find(|entry| slug(entry.name) == slug(&request.name))
+            .ok_or_else(|| {
+                format!(
+                    "unknown signature move {:?}. Available moves: {}",
+                    request.name,
+                    entries
+                        .iter()
+                        .map(|entry| entry.name)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })?;
+        let strength = STRENGTHS
+            .into_iter()
+            .find(|&strength| strength_name(strength).eq_ignore_ascii_case(&request.strength))
+            .ok_or("strength must be light, medium or heavy")?;
+        SweepCommand::new(entry, strength, Some(request.inputs))
+    };
+    read().map_err(|err| format!("authored command {}: {err}", path.display()))
+}
+
+fn select_built_in(
+    fighter: TournamentFighter,
+    entries: &[&MoveEntry],
+    requested: &[String],
+) -> Result<(Vec<SweepCommand>, Vec<String>)> {
+    let mut selected = Vec::new();
+    let mut unsupported = Vec::new();
+    for name in requested {
+        match entries
+            .iter()
+            .copied()
+            .find(|entry| slug(entry.name) == slug(name))
+        {
+            Some(entry) if !selected.contains(&entry) => selected.push(entry),
+            Some(_) => {}
+            None => unsupported.push(name.clone()),
+        }
+    }
+    if !unsupported.is_empty() {
+        let available = entries
+            .iter()
+            .map(|entry| entry.name)
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!(
+            "Unsupported signatures: {}. Available for {}: {available}.",
+            unsupported.join(", "),
+            fighter.name()
+        );
+    }
+    if selected.is_empty() {
+        return Err("select at least one supported built-in signature move".into());
+    }
+    let commands = selected
+        .into_iter()
+        .flat_map(|entry| STRENGTHS.map(|strength| SweepCommand::new(entry, strength, None)))
+        .collect::<Result<_>>()?;
+    Ok((commands, unsupported))
+}
+
 struct StanceSweep<'a> {
     folder: &'a Path,
     session: &'a GameSession,
@@ -777,7 +964,7 @@ struct StanceSweep<'a> {
 }
 
 impl StanceSweep<'_> {
-    fn sweep(&self, entries: &[&MoveEntry]) -> Result<Vec<Pair>> {
+    fn sweep(&self, commands: &[SweepCommand]) -> Result<Vec<Pair>> {
         let start = self
             .session
             .fight_machine()
@@ -794,49 +981,61 @@ impl StanceSweep<'_> {
             })
             .collect();
         let mut pairs = Vec::new();
-        for &entry in entries {
-            for strength in STRENGTHS {
-                let command = Command::from_move(entry, strength)?;
-                let signature = Signature {
-                    name: entry.name.into(),
-                    input: entry.input.words(),
-                    move_id: entry.produces,
-                    strength: strength_name(strength).into(),
-                };
-                let standalone: Vec<_> = command
-                    .frames
-                    .iter()
-                    .map(|&p1| Input {
-                        p1,
-                        p2: self.stance.pad(),
-                        start: false,
-                    })
-                    .collect();
-                let supported = probe(start, &standalone, &[], entry.produces)
+        for SweepCommand {
+            signature,
+            command,
+            standalone,
+        } in commands
+        {
+            let standalone: Vec<_> = standalone
+                .iter()
+                .map(|&p1| Input {
+                    p1,
+                    p2: self.stance.pad(),
+                    start: false,
+                })
+                .collect();
+            let observed = probe(start, &standalone, &[], signature.move_id);
+            let supported = observed.special_start.is_some();
+            let unsupported = if signature.authored.is_some() {
+                let fixed = command.recipe(&[], self.stance);
+                if probe(start, &fixed, &[], signature.move_id)
                     .special_start
-                    .is_some();
-                for (normal, prefix) in &openers {
-                    let pair = if let (true, Some(prefix)) = (supported, prefix) {
-                        self.pair(start, *normal, prefix, &command, signature.clone())?
-                    } else {
-                        Pair {
-                            opener: normal.name(),
-                            opener_move_id: None,
-                            signature: signature.clone(),
-                            recipe: prefix.as_ref().map(|prefix| {
-                                Recipe::new(&command.recipe(prefix, self.stance), &command)
-                            }),
-                            outcome: Outcome::Unsupported {
-                                reason: if supported {
-                                    "jump normal did not start during the measured descent"
-                                } else {
-                                    "the standalone built-in command did not start this strength"
-                                },
-                            },
-                        }
-                    };
-                    pairs.push(pair);
+                    .is_some()
+                {
+                    Some("the fixed inputs start the intended move without the movable button")
+                } else if !supported {
+                    Some("the authored command did not start the intended move. Check inputs.fixed and activation.frame")
+                } else if !signature.matches_strength(observed.special_strength) {
+                    Some("the authored command started a different strength. Check strength and the activation button")
+                } else {
+                    None
                 }
+            } else {
+                (!supported)
+                    .then_some("the standalone built-in command did not start this strength")
+            };
+            if let Some(reason) = unsupported.filter(|_| signature.authored.is_some()) {
+                println!("  {} {}: {reason}.", signature.strength, signature.name);
+            }
+            for (normal, prefix) in &openers {
+                let pair = if let (None, Some(prefix)) = (unsupported, prefix) {
+                    self.pair(start, *normal, prefix, command, signature.clone())?
+                } else {
+                    Pair {
+                        opener: normal.name(),
+                        opener_move_id: None,
+                        signature: signature.clone(),
+                        recipe: prefix.as_ref().map(|prefix| {
+                            Recipe::new(&command.recipe(prefix, self.stance), command)
+                        }),
+                        outcome: Outcome::Unsupported {
+                            reason: unsupported
+                                .unwrap_or("jump normal did not start during the measured descent"),
+                        },
+                    }
+                };
+                pairs.push(pair);
             }
         }
         Ok(pairs)
@@ -864,14 +1063,26 @@ impl StanceSweep<'_> {
         let Some(opener) = baseline.opener else {
             return Ok(pair);
         };
+        if pair.signature.authored.is_some() && baseline.special_start.is_some() {
+            pair.outcome = Outcome::Unsupported {
+                reason:
+                    "the opener and fixed inputs start the intended move without the movable button",
+            };
+            return Ok(pair);
+        }
         let first_press = prefix.len();
-        let Some(last_press) = baseline.stun_end.filter(|&end| {
-            first_press <= end
-                && baseline
-                    .hits
-                    .iter()
-                    .any(|hit| hit.move_id == opener && !hit.chip && !hit.projectile)
-        }) else {
+        let last_full_press = fixed.len().saturating_sub(command.hold + 1);
+        let Some(last_press) = baseline
+            .stun_end
+            .map(|end| end.min(last_full_press))
+            .filter(|&end| {
+                first_press <= end
+                    && baseline
+                        .hits
+                        .iter()
+                        .any(|hit| hit.move_id == opener && !hit.chip && !hit.projectile)
+            })
+        else {
             pair.outcome = Outcome::NoSuccess {
                 attempts: 0,
                 reason: "the opener had no clean hitstun window in this setup",
@@ -883,7 +1094,14 @@ impl StanceSweep<'_> {
         for press in first_press..=last_press {
             let input = command.with_press(&fixed, press);
             let trace = probe(start, &input, &[opener], pair.signature.move_id);
-            if let Some(confirmed) = trace.confirmed(opener, pair.signature.move_id) {
+            if let Some(confirmed) =
+                trace
+                    .confirmed(opener, pair.signature.move_id)
+                    .filter(|result| {
+                        result.special_start >= press
+                            && pair.signature.matches_strength(trace.special_strength)
+                    })
+            {
                 let offset = press as i32 - confirmed.opener_hits[0].frame as i32;
                 found.push((offset, press, confirmed));
             }
@@ -984,7 +1202,12 @@ fn verify_route(
             return Ok(false);
         }
     }
-    let actual = trace.confirmed(replay.opener_move_id, replay.signature.move_id);
+    let actual = trace
+        .confirmed(replay.opener_move_id, replay.signature.move_id)
+        .filter(|result| {
+            result.special_start >= replay.press_frame
+                && replay.signature.matches_strength(trace.special_strength)
+        });
     if actual.as_ref() != Some(&replay.expected) {
         return Err(format!(
             "hit mismatch for {} into {} {}: expected {:?}, got {actual:?} (hits {:?})",
@@ -1054,7 +1277,7 @@ fn verify_recipe(fighter: TournamentFighter, replay: &Replay, route: &[Input]) -
         .find(|entry| {
             entry.name == replay.signature.name
                 && entry.produces == replay.signature.move_id
-                && entry.input.words() == replay.signature.input
+                && matches!(entry.kind, MoveKind::Special | MoveKind::Super)
         })
         .ok_or("replay has an unknown signature")?;
     let strength = STRENGTHS
@@ -1069,9 +1292,15 @@ fn verify_recipe(fighter: TournamentFighter, replay: &Replay, route: &[Input]) -
     {
         return Err("recorded route has invalid activation timing".into());
     }
-    let command = Command::from_move(signature, strength)?;
+    let tested = SweepCommand::new(signature, strength, replay.signature.authored.clone())?;
+    if tested.signature.input != replay.signature.input {
+        return Err("replay has an unknown signature input".into());
+    }
+    let command = tested.command;
     let fixed = command.recipe(&normal.prefix(replay.opener_frame), replay.stance);
-    if route != command.with_press(&fixed, replay.press_frame) {
+    if replay.press_frame.saturating_add(command.hold) >= fixed.len()
+        || route != command.with_press(&fixed, replay.press_frame)
+    {
         return Err("recorded route inputs differ from the stated command sequence".into());
     }
     Ok(())
@@ -1123,5 +1352,7 @@ mod tests {
         assert_eq!(combo.opener_hits, [first, second]);
         assert_eq!(combo.follow_up_hit, projectile);
         assert_eq!(combo.transition, TransitionKind::Cancel);
+        trace.hits[1].into_hitstun = false;
+        assert!(trace.confirmed(opener, signature).is_none());
     }
 }
