@@ -45,7 +45,7 @@ fn session() -> GameSession {
                 "../../tools/reference/rom-manifest.json",
             )
             .expect("NP5 roster coverage requires the verified local ROMs");
-            let pack = ArtPack::open(Path::new("../../tools/reference/local/roms/sf1-port-art"))
+            let pack = ArtPack::open(Path::new("../../assets/sf1-port-art"))
                 .expect("NP5 roster coverage requires the approved local art pack");
             let art = load_art_from(
                 &assets,

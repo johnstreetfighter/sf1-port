@@ -23,7 +23,7 @@ const MP: usize = 1;
 const HP: usize = 2;
 const LK: usize = 3;
 const MK: usize = 4;
-const ART_PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const ART_PACK: &str = "../../assets/sf1-port-art";
 const FIGHT_LOOP: u32 = 0x3eafa;
 
 fn assets_and_bank() -> Option<&'static (Assets, Arc<DataBank>)> {

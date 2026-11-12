@@ -16,11 +16,11 @@
 //!
 //! The ROM set (`roms\sf`) is looked up beside the executable, then in
 //! `%APPDATA%\sf1-port\roms\sf`, then in the settings file's folder;
-//! `--roms` names another folder first (a development aid). `--stage`
+//! `--roms` names another folder or archive first. `--stage`
 //! names a stage of the background bank that Local and Training fights
 //! under an overhaul preset are fought on, in place of the stage select
 //! (a development aid: `--stage test-stage`). With none, the
-//! ROM-missing screen offers `RETRY` and `EXIT`. The three settings files
+//! ROM-missing screen offers `RETRY`, browsing on Windows, and `EXIT`. The three settings files
 //! and `sf-game.log` live in `%APPDATA%\sf1-port`. Esc is back on every
 //! screen; the Exit item and the window's close button quit.
 
@@ -51,7 +51,7 @@ use sf_host::shaders::{self, Catalogue};
 use sf_host::themes::{self, Themes};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
-/// The `--roms` folder, when given.
+/// The `--roms` directory or archive, when given.
 fn roms_arg(args: &[String]) -> Option<PathBuf> {
     let i = args.iter().position(|a| a == "--roms")?;
     args.get(i + 1).map(PathBuf::from)
@@ -178,6 +178,7 @@ fn main() {
         bindings,
         pads,
         candidates,
+        selected_rom: None,
         video: video(&settings),
         look: look_request(&catalogue, &settings.crt_look),
         reload_look: false,
@@ -210,6 +211,8 @@ struct Game {
     bindings: BindingsTable,
     pads: PadReader,
     candidates: Vec<Candidate>,
+    /// The latest manually chosen source, including a failed choice to retry.
+    selected_rom: Option<PathBuf>,
     /// The settings as loaded, until the session holds them.
     settings: Settings,
     config: Option<MatchConfig>,
@@ -268,9 +271,22 @@ impl Game {
     fn missing(&mut self, looked: Vec<sf_engine::front::rom_missing::Looked>) {
         self.report(&looked);
         let (set, description) = roms::set_name();
-        let screen = RomMissing::open(&set.to_uppercase(), &description.to_uppercase(), looked);
+        let screen = RomMissing::open(&set.to_uppercase(), &description.to_uppercase(), looked)
+            .with_browse(cfg!(windows));
         self.frame = screen.render();
         self.phase = Phase::Missing(screen);
+    }
+
+    fn start_after_search(&mut self, set: RomSet) {
+        if self.selected_rom.as_ref() == Some(&set.folder) {
+            if let Some(path) = set.folder.to_str() {
+                self.settings.rom_folder = Some(path.to_owned());
+                if let Err(error) = self.settings.save(&files::settings_path(&self.app_dir)) {
+                    self.log.line("settings", &error);
+                }
+            }
+        }
+        self.start(set);
     }
 
     /// Load the art, stages and voice beside `set`, build the session and
@@ -282,15 +298,20 @@ impl Game {
             &format!("{}: all {} files match the manifest", set.folder.display(), set.files),
         );
         let RomSet { folder, assets, audio2, audiocpu, .. } = set;
-        // The art pack beside the ROM set, else beside the other ROM folders.
+        // Local packs beside the ROMs take precedence over bundled assets.
+        let asset_roots: Vec<_> = [exe_dir(), std::env::current_dir().ok()]
+            .into_iter()
+            .flatten()
+            .map(|root| root.join("assets"))
+            .collect();
         let mut rom_folders = vec![folder.as_path()];
         rom_folders.extend(self.candidates.iter().filter_map(|c| c.path.as_deref()));
-        let art = sf_host::art::load(&assets, &rom_folders, log);
+        let art = sf_host::art::load_with_fallbacks(&assets, &rom_folders, &asset_roots, log);
         // The background bank, from the committed stage records and the ROM,
         // with the two-player VS screens built from the ROM.
         let stages = sf_host::stages::load(&assets, log);
         // The announcer's voice pack, looked for as the art pack is.
-        let voice = sf_host::voice::load(&rom_folders, log);
+        let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
 
         let config = self.config.take().unwrap_or_default();
         let mut session = GameSession::new(assets, config)
@@ -387,18 +408,63 @@ impl Driver for Game {
             Phase::Missing(screen) => {
                 let inputs = frame_inputs(keyboard, &self.bindings, self.settings.devices, &pad_frame);
                 match screen.step(inputs) {
-                    Some(Transition::Choose(MenuItem::Retry)) => match roms::find(&self.candidates) {
-                        Ok(set) => {
-                            self.start(set);
-                            return true;
+                    Some(Transition::Choose(MenuItem::Retry)) => {
+                        let mut candidates = self.candidates.clone();
+                        if let Some(path) = &self.selected_rom {
+                            candidates.insert(0, Candidate {
+                                label: path.display().to_string(),
+                                path: Some(path.clone()),
+                            });
                         }
-                        Err(looked) => {
-                            for l in &looked {
-                                self.log.line("roms", &format!("{}: {}", l.folder, l.problem));
+                        match roms::find(&candidates) {
+                            Ok(set) => {
+                                self.start_after_search(set);
+                                return true;
                             }
-                            screen.update(looked);
+                            Err(mut looked) => {
+                                for source in &looked {
+                                    self.log.line("roms", &format!("{}: {}", source.folder, source.problem));
+                                }
+                                let chosen = self.selected_rom.as_ref().map(|_| looked.remove(0));
+                                screen.update(looked);
+                                if let Some(chosen) = chosen {
+                                    screen.failed_choice(chosen);
+                                }
+                            }
                         }
-                    },
+                    }
+                    Some(Transition::Choose(item @ (MenuItem::BrowseRomFolder | MenuItem::BrowseRomArchive))) => {
+                        let kind = if item == MenuItem::BrowseRomFolder {
+                            roms::BrowseKind::Folder
+                        } else {
+                            roms::BrowseKind::Archive
+                        };
+                        match roms::browse(window, kind) {
+                            Ok(Some(path)) => {
+                                let result = roms::load(&path);
+                                self.selected_rom = Some(path.clone());
+                                match result {
+                                    Ok(set) => {
+                                        self.start_after_search(set);
+                                        return true;
+                                    }
+                                    Err(problem) => {
+                                        let folder = path.display().to_string();
+                                        self.log.line("roms", &format!("{folder}: {problem}"));
+                                        screen.failed_choice(sf_engine::front::rom_missing::Looked { folder, problem });
+                                    }
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(problem) => {
+                                self.log.line("roms", &problem);
+                                screen.failed_choice(sf_engine::front::rom_missing::Looked {
+                                    folder: "ROM PICKER".to_owned(),
+                                    problem,
+                                });
+                            }
+                        }
+                    }
                     Some(Transition::Choose(MenuItem::Exit)) => return false,
                     _ => {}
                 }
@@ -422,10 +488,33 @@ impl Driver for Game {
                     play.themes = Some(themes);
                 }
                 let inputs = frame_inputs(keyboard, &self.bindings, session.settings().devices, &pad_frame);
+                #[cfg(windows)]
+                {
+                    use sf_host::keys::RoomCodeShortcut::{Copy, Paste};
+                    match keyboard.take_room_code_shortcut() {
+                        Some(Copy) => {
+                            if let Some(code) = session.room_code_for_copy() {
+                                let copied = window.win32_hwnd()
+                                    .is_some_and(|owner| sf_host::clipboard::write_text(owner, code));
+                                session.room_code_copy_result(copied);
+                            }
+                        }
+                        Some(Paste) if session.accepts_room_code_paste() => {
+                            let code = window.win32_hwnd().and_then(sf_host::clipboard::read_text);
+                            session.paste_room_code(code.as_deref());
+                        }
+                        _ => {}
+                    }
+                }
                 session.type_keys(typed);
                 play.net.set_lobby_url(session.settings().lobby_url.clone());
                 session.set_net_time_ms(play.net.now_ms());
                 let out = session.step(inputs);
+                #[cfg(windows)]
+                keyboard.set_room_code_shortcuts(
+                    session.room_code_for_copy().is_some(),
+                    session.accepts_room_code_paste(),
+                );
                 let commands = session.drain_net_commands();
                 session.push_net_events(&play.net.poll(&commands));
                 for note in play.net.drain_notes() {

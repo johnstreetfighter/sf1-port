@@ -1,0 +1,7 @@
+{
+ "jump_punch_down": [
+  "outside the mask every pixel is the ROM source's; inside, 134 pixels differ from the source, and the 272 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "3 single pixels inside the mask set to the pen around them",
+  "a grey pixel on the sleeve's lower outline (x 50, row 30) and a one-pixel gap in that outline under the shoulder (x 47, row 28) set to the dark purple of the outline"
+ ]
+}

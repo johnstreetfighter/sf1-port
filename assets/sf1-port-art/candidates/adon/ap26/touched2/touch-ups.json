@@ -1,0 +1,9 @@
+{
+ "jump_kick": [
+  "outside the mask every pixel is the source's (his ROM upper body, shorts, rear wrap and foot, and the crouching kick's shin and foot); inside, 6 pixels differ from the source, and the 81 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "2 stray pixels removed (a speck right of the belt's end)",
+  "the rear knee's front edge: four black pixels given his legs' dark brown outline (pen 1) and five skin pixels standing out past it removed (x24-26, rows 59-62)",
+  "the rear knee's underside, where it shows below the kicking thigh, closed with his dark brown outline (x27-32, row 59), and a grey speck in it (26, 56) given the same",
+  "a pale pixel at the shorts' front corner beside the belt (28, 42) given the shorts' black"
+ ]
+}

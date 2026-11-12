@@ -1,0 +1,16 @@
+{
+ "jump_jab": [
+  "his stick jab's strike (0x2980, stream 0x1239e) down to its belt (its rows 0-50, 16 left and 7 up), its own ROM arm thrust out level at head height, on the tuck's legs (0x2a40 from its row 36, 5 right and 8 down: thighs, knees, hanging shins and feet; its stick ends above row 40 left out)",
+  "the waist band (rows 40-51, x0-45) is the approved crouching sweep's (6735d064): the same jab body on the same thighs, its waist inpainted in AP23; no pixel is generated"
+ ],
+ "jump_poke": [
+  "the approved crouching sweep (6735d064) above row 52, and its arm and stick wherever they differ from the approved crouch below it, on the tuck's hanging shins and feet (0x2a40, 5 right and 8 down) in place of the crouch's shins, hems, shoes and shadow; the crouch's thighs and knees are the tuck's own pixels, so the legs join with no seam; no pixel is generated"
+ ],
+ "jump_high": [
+  "the approved rising strike's upper body (295e0a1c: the jab's rows 0-50, its arm turned 35 degrees up, shoulder and upper arm inpainted in AP23) on the tuck's legs (0x2a40, 5 right and 8 down), with the approved crouching sweep's waist band (rows 40-51, x0-45), the same jab body on the same thighs; no pixel is generated"
+ ],
+ "jump_swing": [
+  "inpainting's colours reduced to his nearest pens; 1 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "the inpainting's 96-pixel window laid back at column 18 of the 130-pixel canvas, between the arms' and sticks' ROM pixels outside it"
+ ]
+}

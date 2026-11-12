@@ -1,0 +1,13 @@
+{
+ "jump_kick_high": [
+  "outside the mask every pixel is the source's; inside, 63 pixels differ from the source, and the 426 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ],
+ "jump_kick_down": [
+  "outside the mask every pixel is the source's; inside, 318 pixels differ from the source, and the 482 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ],
+ "bull_horn": [
+  "outside the mask every pixel is the source's; inside, 56 pixels differ from the source, and the 23 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "a hair-yellow pixel on the outline of his near shoulder set to his outline brown, and a one-pixel hole in the top line of his neck filled",
+  "a 5-pixel gap the inpainting left open between the back of his neck and the top of his near arm filled with his skin"
+ ]
+}

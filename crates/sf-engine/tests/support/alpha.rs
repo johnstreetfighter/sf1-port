@@ -19,7 +19,7 @@ use sf_video::romset::{load_assets, Assets};
 
 pub const ROMS: &str = "../../tools/reference/local/roms/sf";
 pub const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
-const ART_PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const ART_PACK: &str = "../../assets/sf1-port-art";
 const FIGHT_LOOP: u32 = 0x3eafa;
 pub const RIGHT: u8 = 1;
 pub const LEFT: u8 = 2;

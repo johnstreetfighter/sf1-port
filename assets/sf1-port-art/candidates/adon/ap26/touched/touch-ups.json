@@ -1,0 +1,14 @@
+{
+ "jump_punch_down": [
+  "outside the mask every pixel is the ROM source's; inside, 71 pixels differ from the source, and the 74 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "a pale skin pixel the inpainting left outside the arm's lower outline at the shoulder (43,29) removed"
+ ],
+ "jump_kick_high": [
+  "outside the mask every pixel is the ROM source's; inside, 97 pixels differ from the source, and the 61 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ],
+ "rj_knee": [
+  "outside the mask every pixel is the ROM source's; inside, 98 pixels differ from the source, and the 163 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "the old thigh's hem left under his shorts' front corner, three pixels hanging below it (x27-29, row 52), removed",
+  "a dark purple speck on the wrap's back edge (34,48) given the wrap's grey outline"
+ ]
+}

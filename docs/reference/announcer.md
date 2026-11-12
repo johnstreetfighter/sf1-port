@@ -24,7 +24,7 @@ One line at a time. The order, highest first: super and PERFECT; Perfect Parry; 
 
 ## The voice pack
 
-A local folder named `sf1-port-voice` beside the ROM set's folder, looked for in the same places as the art pack (`roms\sf` → `roms\sf1-port-voice`). Here it is `tools/reference/local/roms/sf1-port-voice` (gitignored). It is never committed and is backed up like the art pack.
+The bundled voice pack lives at `assets/sf1-port-voice` in the repository and Windows ZIP. A `sf1-port-voice` folder beside the ROM set takes precedence as a local override.
 
 ```
 sf1-port-voice/

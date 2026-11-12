@@ -19,8 +19,9 @@
 //! a channel before a sample); while idle it is held in reset, its output
 //! 0, as an idle channel of the board's is. Its output holds between ticks.
 //!
-//! **The voice pack** ([`VoiceStore`]) is a local folder, [`VOICE_FOLDER`],
-//! beside the ROM set's, like the art pack, and never in the repository:
+//! **The voice pack** ([`VoiceStore`]) is a folder named [`VOICE_FOLDER`].
+//! The game looks beside the ROM set for overrides and falls back to its
+//! bundled pack:
 //!
 //! - `manifest.json`: `{"format": 1, "sample_rate": 4000, "lines": {"super":
 //!   {"nibbles": 2412, "crc32": "1a2b3c4d"}, ...}}`, one entry per line by

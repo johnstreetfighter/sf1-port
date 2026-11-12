@@ -68,7 +68,7 @@ cargo run -p sf-dev --release -- combo-sweep Retsu tools/reference/local/combo-r
 ```
 
 Ryu and Ken use their ROM player tables. Tournament fighters with extended
-tables require the current `sf1-port-art` pack beside the SF1 ROM folder.
+tables load from the bundled `assets/sf1-port-art` pack or a local override beside the SF1 ROM folder.
 The sweep verifies the active player table before measuring any inputs.
 
 Each sweep tries the six buttons while standing, crouching and jumping,

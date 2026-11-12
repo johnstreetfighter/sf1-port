@@ -1,0 +1,24 @@
+{
+  "stem": "counter",
+  "take": 2,
+  "text": "Counter!",
+  "prompt": "COUNTER!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "COUNTER!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "9e01e08e52f239dffc5efaf64d7bda1e4826bf49cd1d49d9074ca76f4b30bc77",
+  "seconds": 1.12,
+  "made": "2026-11-04T19:37:13+00:00"
+}

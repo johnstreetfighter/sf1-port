@@ -17,12 +17,15 @@ import tempfile
 import zipfile
 
 
+from release_packs import RESERVED_NAME, git, require, tagged_pack_files
+
+
 RELEASE_FILES = {"BUILD.txt", "Cargo.lock", "QUICKSTART.txt", "README.md",
                  "THIRD_PARTY_NOTICES.md", "sf-game.exe", "licenses/README.md"}
 PRIVATE_COMPONENTS = {"roms", "captures", "settings.toml", "bindings.toml", "match.toml",
-                      "sf1-port-art", "sf1-port-voice", "sf1-port-music"}
+                      "sf1-port-music"}
+PACK_COMPONENTS = {"sf1-port-art", "sf1-port-voice"}
 PRIVATE_SUFFIXES = {".7z", ".bin", ".exe", ".log", ".pdb", ".rom", ".vox", ".wav", ".zip"}
-RESERVED_NAME = re.compile(r"(?i)(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)")
 PRINTABLE = (
     (re.compile(rb"[\x20-\x7e]{6,}"), "ascii"),
     (re.compile(rb"(?:[\x20-\x7e]\x00){6,}"), "utf-16le"),
@@ -36,15 +39,6 @@ WORKSTATION_PATH = re.compile(
 )
 ROOT_VARIABLES = ("USERPROFILE", "HOME", "LOCALAPPDATA", "TEMP", "TMP", "GITHUB_WORKSPACE",
                   "RUNNER_WORKSPACE", "RUNNER_TEMP", "CARGO_HOME", "RUSTUP_HOME")
-
-
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise ValueError(message)
-
-
-def git(source: Path, *args: str) -> bytes:
-    return subprocess.check_output(["git", *args], cwd=source, stderr=subprocess.PIPE, timeout=30)
 
 
 def tagged_files(source: Path, tag: str, commit: str) -> dict[str, str]:
@@ -167,10 +161,11 @@ def pe_imports(data: bytes) -> list[str]:
 
 
 def archive_contents(raw: bytes, root: str, tracked: dict[str, str], roms: dict[int, set[str]],
-                     prefixes: set[bytes]) -> tuple[bytes, bytes, int]:
-    expected = RELEASE_FILES | set(tracked)
+                     prefixes: set[bytes], packs: dict[str, bytes]) -> tuple[bytes, bytes, int]:
+    expected = RELEASE_FILES | set(tracked) | set(packs)
     dirs = {str(parent) for name in expected for parent in PurePosixPath(name).parents}
     dirs.discard(".")
+    pack_dirs = {str(parent) for name in packs for parent in PurePosixPath(name).parents}
     seen = set()
     files = set()
     notices = 0
@@ -188,8 +183,12 @@ def archive_contents(raw: bytes, root: str, tracked: dict[str, str], roms: dict[
             seen.add(key)
             suffix = Path(path).suffix.casefold()
             dependency = path.startswith("licenses/rust-dependencies/")
-            require(not PRIVATE_COMPONENTS.intersection(key.split("/"))
-                    and (path == "sf-game.exe" or suffix not in PRIVATE_SUFFIXES),
+            components = key.split("/")
+            pack_member = path in packs or (member.is_dir() and path in pack_dirs)
+            require(not PRIVATE_COMPONENTS.intersection(components)
+                    and (pack_member or not PACK_COMPONENTS.intersection(components))
+                    and (path == "sf-game.exe" or suffix not in PRIVATE_SUFFIXES
+                         or (path in packs and suffix == ".vox")),
                     "ZIP contains local data or an unexpected binary")
             if member.is_dir():
                 require(not path or path in dirs or path in ("licenses", "licenses/rust-dependencies")
@@ -215,7 +214,9 @@ def archive_contents(raw: bytes, root: str, tracked: dict[str, str], roms: dict[
             scan_paths(data, prefixes, f"ZIP member {path}")
             files.add(path)
             notices += dependency
-            if path.startswith("shaders/"):
+            if path in packs:
+                require(data == packs[path], f"tagged pack file differs: {path}")
+            elif path.startswith("shaders/"):
                 blob = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
                 require(hashlib.sha1(blob).hexdigest() == tracked[path], f"tagged shader differs: {path}")
             elif path == "sf-game.exe":
@@ -238,12 +239,13 @@ def verify(archive: Path, exe: Path, source: Path, tag: str, commit: str, extra:
     require(sidecar.read_text(encoding="utf-8").strip() == f"{zip_digest}  {archive.name}",
             "ZIP SHA-256 sidecar does not match the archive")
     tracked = tagged_files(source, tag, commit)
+    packs = tagged_pack_files(source, commit)
     roms: dict[int, set[str]] = {}
     manifest = json.loads(git(source, "show", f"{commit}:tools/reference/rom-manifest.json"))
     for row in manifest["entries"]:
         roms.setdefault(row["size"], set()).add(row["sha1"])
     prefixes = private_prefixes(source, exe, extra)
-    game, build, count = archive_contents(archive_bytes, root, tracked, roms, prefixes)
+    game, build, count = archive_contents(archive_bytes, root, tracked, roms, prefixes, packs)
     game_digest = hashlib.sha256(game).hexdigest()
     with exe.open("rb") as stream:
         require(hashlib.file_digest(stream, "sha256").hexdigest() == game_digest,
@@ -262,6 +264,7 @@ def verify(archive: Path, exe: Path, source: Path, tag: str, commit: str, extra:
     print(f"ZIP SHA-256: {zip_digest}")
     print(f"EXE SHA-256: {game_digest}")
     print(f"Verified {count} ZIP files and {sum(p.startswith('shaders/') for p in tracked)} tagged shaders.")
+    print(f"Verified {len(packs)} tagged art and voice pack files.")
     print("Windows x64 GUI imports: " + ", ".join(imports))
     print("Workstation path scan passed.")
 

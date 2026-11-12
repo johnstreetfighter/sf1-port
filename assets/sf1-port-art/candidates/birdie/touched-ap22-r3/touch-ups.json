@@ -1,0 +1,5 @@
+{
+ "jump_kick_high": [
+  "the kicking leg lengthened 5 pixels along its own line, by hand: across the shin at right angles to the leg (through x84, y46) the rest of the shin, the cuff and the boot moved 4 pixels out and 3 up, and the gap filled with the 5 pixels of shin just inside the cut, repeated, so the outline and dither run on; the boot's pixels, the thigh and the hip join are round two's"
+ ]
+}

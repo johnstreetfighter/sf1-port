@@ -1,0 +1,26 @@
+{
+ "crouch-b": [
+  32,
+  73
+ ],
+ "rising-strike": [
+  48,
+  128
+ ],
+ "smash": [
+  32,
+  96
+ ],
+ "crouching-sweep": [
+  32,
+  73
+ ],
+ "crouching-uppercut": [
+  32,
+  117
+ ],
+ "rising": [
+  32,
+  73
+ ]
+}

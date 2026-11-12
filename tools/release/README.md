@@ -35,8 +35,9 @@ rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File tools/release/pack
 ```
 
 The packager reads locked Cargo metadata and copies `sf-game.exe`, the complete
-shader tree, the source README/notices, dependency license texts, `Cargo.lock`,
-launch instructions and source/build identity. It produces a Windows x86_64 ZIP
+shader tree, the playable art and voice packs, the source README/notices,
+dependency license texts, `Cargo.lock`, launch instructions and source/build
+identity. It produces a Windows x86_64 ZIP
 and its SHA-256 sidecar. It rejects a tracked dirty source tree or a checkout that
 does not equal the requested tag. For v1.1.0 onward it also runs the executable's
 version flag and requires both the release version and exact Git revision.
@@ -55,9 +56,9 @@ declaration in its manifest. Its original manifests and full source are retained
 with a transparent provenance note; the packager does not invent a copyright
 notice or grant. An unknown omission remains an error for review.
 
-Before upload, extract the ZIP into a fresh directory. Compare the executable and
-shaders with the tagged build and source, verify ZIP CRC and SHA-256, and inspect
-the Windows x64 GUI executable's runtime imports. Run the available version and
+Before upload, extract the ZIP into a fresh directory. Compare the executable,
+shaders and packs with the tagged build and source, verify ZIP CRC and SHA-256,
+and inspect the Windows x64 GUI executable's runtime imports. Run the available version and
 Windows launch checks from the extracted directory. Scan the executable and ZIP
 for embedded workstation paths. Record the verification actually performed in
 the release notes. Keep packages outside temporary worktrees.
@@ -67,7 +68,10 @@ the Windows ZIP and its SHA-256 sidecar. Mark stable releases as latest. Downloa
 both published assets, compare them with the verified local files, and check the
 ZIP against the downloaded sidecar before reporting the release complete.
 
-The ZIP contains no ROMs, art or voice packs, user settings or logs. Package the
-release with the script above so dependency and shader notices remain beside the
-executable. The quick start links Microsoft's x64 v14 runtime and explains where
-users supply their own ROM set.
+The ZIP includes the playable packs under `assets/sf1-port-art` and
+`assets/sf1-port-voice` beside the executable. The packager uses each tagged
+manifest as its file list and includes the pack README. The verifier checks
+the manifest sizes and CRCs and compares every included pack file with the
+tagged source. ROMs, music packs, raw art candidates, voice archives, settings
+and logs stay outside the ZIP. The quick start links Microsoft's x64 v14
+runtime and explains where users supply their own ROM set.

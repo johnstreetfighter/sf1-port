@@ -1,0 +1,24 @@
+{
+  "stem": "combo_13",
+  "take": 3,
+  "text": "Thirteen hit combo!",
+  "prompt": "THIRTEEN HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "THIRTEEN HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22503
+  },
+  "output_format": "pcm_24000",
+  "take_key": "d1481db088b2b51ca2f1c637d4dab41b400b421578ea11abfcd0110f41308506",
+  "seconds": 2.24,
+  "made": "2026-11-04T19:37:56+00:00"
+}

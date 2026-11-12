@@ -296,7 +296,7 @@ fn arcade_run_win_name_entry_free_continue_expiry_and_back_to_the_menu() {
     assert!(s.attract_machine().unrecovered().is_empty());
 }
 
-const PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const PACK: &str = "../../assets/sf1-port-art";
 const RECIPES: [&str; 11] = [
     include_str!("../../../art/recipes/ryu.json"),
     include_str!("../../../art/recipes/retsu.json"),

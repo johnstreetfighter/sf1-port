@@ -8,7 +8,7 @@ use std::sync::Arc;
 use sf_audio::announcer::{Announcer, VoiceStore};
 use sf_video::announcer::{AnnouncerLine, COMBO_MIN_HITS};
 
-const PACK: &str = "../../tools/reference/local/roms/sf1-port-voice";
+const PACK: &str = "../../assets/sf1-port-voice";
 /// The longest combo the line list voices (`tools/voice/lines.json`).
 const COMBO_CAP: u16 = 15;
 
@@ -32,10 +32,6 @@ fn every_line() -> Vec<AnnouncerLine> {
 
 #[test]
 fn every_line_is_in_the_picked_pack_and_plays_on_his_chip() {
-    if !Path::new(PACK).is_dir() {
-        eprintln!("skipping: voice pack not present");
-        return;
-    }
     let store = Arc::new(VoiceStore::open(Path::new(PACK)).expect("the pack validates"));
     for line in every_line() {
         let nibbles = store.line(line).unwrap_or_else(|| panic!("{line:?} is missing from the pack"));

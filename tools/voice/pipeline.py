@@ -11,10 +11,10 @@
 
 In the repository (tools/voice/): the line list (lines.json), the speaker with
 the voice's description and settings (announcer.json), the maintainer's picks
-(picks.json) and the credit ledger (ledger.json). Generated audio never is:
-it lives in the local voice pack beside the ROM set,
-tools/reference/local/roms/sf1-port-voice, with the archive in its archive/
-folder, which the game ignores (docs/reference/announcer.md).
+(picks.json) and the credit ledger (ledger.json). The playable audio and
+authoring takes live in assets/sf1-port-voice. The pack's archive/ folder
+contains takes, previews and locally generated reference audio
+(docs/reference/announcer.md).
 
 A run:
 
@@ -80,7 +80,7 @@ class Paths:
         self.roms = pathlib.Path(roms) if roms else self.repo / "tools" / "reference" / "local" / "roms"
         self.rom_set = self.roms / "sf"
         self.rom_manifest = self.repo / "tools" / "reference" / "rom-manifest.json"
-        self.pack = self.roms / "sf1-port-voice"
+        self.pack = self.repo / "assets" / "sf1-port-voice"
         self.archive = self.pack / "archive"
         self.design = self.archive / "design"
         self.takes = self.archive / "takes"

@@ -1,0 +1,21 @@
+{
+ "jump_punch": [
+  "outside the mask every pixel is the ROM source's; inside, 181 pixels differ from the source, and the 13 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "8 single pixels inside the mask set to the pen around them"
+ ],
+ "jump_punch_down": [
+  "outside the mask every pixel is the ROM source's; inside, 118 pixels differ from the source, and the 0 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "12 single pixels inside the mask set to the pen around them",
+  "a loose fragment of jacket inpainted below the sleeve, over the knee (9 pixels), removed",
+  "the flying kick's (0x1ec0) outline of the leg under the cuff, left hanging below it (8 ROM pixels), removed; the cuff ends on its own outline"
+ ],
+ "jump_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 191 pixels differ from the source, and the 88 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "2 single pixels inside the mask set to the pen around them",
+  "2 ROM pixels just outside the mask, left as a speck cut off from the body (x36 y58, x36 y60), removed"
+ ],
+ "zessh_strike": [
+  "outside the mask every pixel is the ROM source's; inside, 353 pixels differ from the source, and the 156 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "19 single pixels inside the mask set to the pen around them"
+ ]
+}

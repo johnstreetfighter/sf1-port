@@ -74,6 +74,8 @@ if (Test-Path -LiteralPath $npZip) { throw "Package archive already exists: $npZ
 New-Item -ItemType Directory -Path $npPackage | Out-Null
 Copy-Item -LiteralPath $npExe -Destination $npPackage
 Copy-Item -LiteralPath (Join-Path $npSource 'shaders') -Destination $npPackage -Recurse
+Invoke-ReleaseCommand python (Join-Path $PSScriptRoot 'release_packs.py') $npSource $npHead $npPackage
+if ($LASTEXITCODE -ne 0) { throw 'Cannot stage the tagged art and voice packs.' }
 foreach ($npFile in @('README.md', 'THIRD_PARTY_NOTICES.md', 'Cargo.lock')) {
     Copy-Item -LiteralPath (Join-Path $npSource $npFile) -Destination $npPackage
 }
@@ -210,7 +212,8 @@ $npBuildInfo = @(
     "Packaged (UTC): $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))",
     "sf-game.exe SHA-256: $(Get-Sha256 (Join-Path $npPackage 'sf-game.exe'))",
     '',
-    'Built from the tagged source. No ROMs, art/voice packs, settings or logs are included.',
+    'Built from the tagged source with the playable art and voice packs.',
+    'ROMs, music packs, authoring archives, settings and logs are excluded.',
     'This package does not grant new licenses; existing source/dependency notices are retained.'
 )
 [IO.File]::WriteAllLines((Join-Path $npPackage 'BUILD.txt'), $npBuildInfo)
@@ -218,17 +221,18 @@ $npBuildInfo = @(
 $npQuickStart = @(
     "Street Fighter: The World Tournament - $Tag",
     '',
-    '1. Extract the entire ZIP; keep shaders beside sf-game.exe.',
+    '1. Extract the entire ZIP. Keep shaders and assets beside sf-game.exe.',
     '2. Use 64-bit Windows 10 or 11 with a Vulkan- or Direct3D 12-capable graphics driver.',
     '   If Windows reports a missing VCRUNTIME140.dll or MSVCP140.dll, install the latest Microsoft Visual C++ v14 Redistributable (x64):',
     '   https://aka.ms/vc14/vc_redist.x64.exe',
     '   Microsoft runtime information: https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/',
     '3. Put your legally obtained US set 1 six-button sf ROM files in roms\sf beside the executable.',
-    '   Keep the original ROM filenames. Alternatively run sf-game.exe --roms C:\path\to\sf.',
-    '4. Run sf-game.exe. The ROM-missing screen explains missing or mismatched files.',
+    '   Keep the original ROM filenames.',
+    '4. Run sf-game.exe. If the ROM set is missing, choose BROWSE FOLDER or BROWSE ARCHIVE.',
+    '   Choose your extracted ROM folder, sf.zip or sf.7z. The game remembers a valid choice.',
+    '   The --roms option also accepts a folder or archive path.',
     '',
-    'Optional packs go beside roms\sf as roms\sf1-port-art and roms\sf1-port-voice.',
-    'These packs and the ROMs are separate from this download. SF1+ fighters need their approved art/player tables.',
+    'The playable art and voice packs are included under assets. Each pack has its own README.',
     'Settings and sf-game.log are saved in %APPDATA%\sf1-port. Run sf-game.exe --console to see the log live.',
     'See README.md for controls and features.',
     '',

@@ -1,0 +1,24 @@
+{
+  "stem": "perfect_parry",
+  "take": 2,
+  "text": "Perfect parry!",
+  "prompt": "PERFECT PARRY!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "PERFECT PARRY!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "07546a9cb20d74af744ad7ad7f24dc81c5c07c2637a1244305a5b7ca73499280",
+  "seconds": 1.76,
+  "made": "2026-11-04T19:37:10+00:00"
+}

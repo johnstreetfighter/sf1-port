@@ -1,0 +1,19 @@
+{
+ "crouching_hit": [
+  "outside the mask every pixel is the ROM source's; inside, 89 pixels differ from the source, and the 208 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ],
+ "crouching_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 64 pixels differ from the source, and the 165 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "2 light specks inside his dark jeans set to the pens around them",
+  "a 7-pixel stub of black outline left hanging below the hip, between the thigh and his rear leg, removed"
+ ],
+ "sweep": [
+  "outside the mask every pixel is the ROM source's; inside, 202 pixels differ from the source, and the 48 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "a brown seam the inpainting drew across the thigh (13 pixels) given his jeans' greys"
+ ],
+ "high_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 258 pixels differ from the source, and the 573 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "1 light specks inside his dark jeans set to the pens around them",
+  "a 6-pixel spike of black outline hanging under the raised thigh, beside his standing leg, removed"
+ ]
+}

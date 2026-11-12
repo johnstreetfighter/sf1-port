@@ -17,15 +17,9 @@ It needs Python 3.11, ffmpeg on the PATH and the release `sf-audio` binary (`SF_
 
 ## What is where
 
-| In the repository (`tools/voice/`) | Local, never committed |
-|---|---|
-| `lines.json`: the 22 lines (stem, spoken text, prompt), the takes per line (3) and the combo cap (15) | `tools/reference/local/roms/sf1-port-voice/`: the voice pack the game loads (`manifest.json`, `<stem>.vox`) |
-| `announcer.json`: the voice's description, preview text, models, settings, seed and, once saved, its voice id | `sf1-port-voice/archive/`: every take and design preview, their processed files, the ROM's FIGHT!, the listening sheet |
-| `picks.json`: the maintainer's pick of each line's take | |
-| `ledger.json`: every paid batch, with the vendor's own counter before and after | |
-| the code and its tests | |
+The line list, speaker settings, picks and credit ledger live in `tools/voice/`. The playable voice pack and the archived generated takes and previews live in `assets/sf1-port-voice/`.
 
-The archive lives inside the pack's folder because the game ignores everything there but the manifest and the files it names (`announcer.md`), so one private backup holds both. Update the private backup after each build-pack run and keep the archived files byte-exact.
+`build-pack` writes the runtime manifest and the chosen VOX files in that pack. The locally generated ROM comparison clip and listening sheet stay in the pack's ignored archive paths. The Windows ZIP contains the manifest and approved VOX files.
 
 ## The lines
 

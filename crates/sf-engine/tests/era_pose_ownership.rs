@@ -123,7 +123,7 @@ fn own_rom_shapes(rom: &[u8], fighter: TournamentFighter) -> BTreeSet<Shape> {
 fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let roms = root.join("tools/reference/local/roms/sf");
-    let pack = root.join("tools/reference/local/roms/sf1-port-art");
+    let pack = root.join("assets/sf1-port-art");
     if !roms.is_dir() || !pack.is_dir() {
         eprintln!("skipping: local ROMs and approved art pack required");
         return;

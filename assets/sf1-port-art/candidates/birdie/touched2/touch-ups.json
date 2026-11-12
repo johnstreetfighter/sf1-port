@@ -1,0 +1,11 @@
+{
+ "crouching_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 92 pixels differ from the source, and the 130 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "a 7-pixel stub of black outline left hanging below the hip, between the thigh and his rear leg, removed"
+ ],
+ "rising": [
+  "outside the mask every pixel is the ROM source's; inside, 531 pixels differ from the source, and the 190 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "the rear boot's 9 orange outline pixels given his boots' brown outline",
+  "his two-row black ground shadow carried on under the rear boot (28 pixels); the mask stopped above it"
+ ]
+}

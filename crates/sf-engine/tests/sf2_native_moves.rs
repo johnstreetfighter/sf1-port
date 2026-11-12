@@ -20,7 +20,7 @@ use sf_video::romset::load_assets;
 use sf_video::sprite_bank::{sprite_slot, ROM_SPRITE_TILES};
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
-const PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const PACK: &str = "../../assets/sf1-port-art";
 const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 const FIGHT_LOOP: u32 = 0x3eafa;
 const LP: usize = 0;

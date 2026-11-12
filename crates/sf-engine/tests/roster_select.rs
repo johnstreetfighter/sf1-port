@@ -52,7 +52,7 @@ fn data_bank() -> std::sync::Arc<sf_engine::data_bank::DataBank> {
         root.join("tools/reference/rom-manifest.json"),
     )
     .expect("local ROM set");
-    let pack = ArtPack::open(&root.join("tools/reference/local/roms/sf1-port-art")).expect("local art pack");
+    let pack = ArtPack::open(&root.join("assets/sf1-port-art")).expect("local art pack");
     let art = load_art_from(&assets, &ArtSources { recipes: &RECIPES, reviews: Some(&REVIEWS), pack: Ok(&pack) }).expect("art loads");
     std::sync::Arc::new(sf_engine::data_bank::DataBank::build(&assets.maincpu, &art.catalogues))
 }

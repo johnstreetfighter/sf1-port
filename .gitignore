@@ -1,6 +1,10 @@
 # Original game data stays local.
 /sf.7z
 
+# Original ROM comparison audio and the generated voice listening sheet.
+/assets/sf1-port-voice/archive/rom/
+/assets/sf1-port-voice/archive/sheet.html
+
 # Python bytecode.
 __pycache__/
 

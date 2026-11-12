@@ -25,7 +25,7 @@ fn main() {
     std::fs::create_dir_all(&out).unwrap();
     let assets = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
     let mut log = Log::create(&std::env::temp_dir().join("readme_shots.log"));
-    let art = sf_host::art::load(&assets, &[Path::new(ROMS)], &mut log).expect("the art pack loads");
+    let art = sf_host::art::load_with_fallbacks(&assets, &[Path::new(ROMS)], &[Path::new("assets").to_path_buf()], &mut log).expect("the art pack loads");
 
     let stages = sf_host::stages::load(&assets, &mut log).expect("the background bank builds");
 

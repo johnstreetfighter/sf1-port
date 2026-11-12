@@ -1,0 +1,24 @@
+{
+  "stem": "combo_8",
+  "take": 2,
+  "text": "Eight hit combo!",
+  "prompt": "EIGHT HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "EIGHT HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "9ce797cf7f7155d02c706db0969725f5e3c39686089f830dd422f4c44779d8cf",
+  "seconds": 2.0,
+  "made": "2026-11-04T19:37:40+00:00"
+}

@@ -1,0 +1,10 @@
+{
+ "crouching_punch": [
+  "outside the mask every pixel is the ROM source's; inside, 65 pixels differ from the source, and the 23 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "6 single pixels inside the mask set to the pen around them"
+ ],
+ "crouching_block": [
+  "outside the mask every pixel is the ROM source's; inside, 60 pixels differ from the source, and the 155 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "4 single pixels inside the mask set to the pen around them"
+ ]
+}

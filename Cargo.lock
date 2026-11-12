@@ -310,7 +310,7 @@ dependencies = [
  "arrayvec",
  "cc",
  "cfg-if",
- "constant_time_eq",
+ "constant_time_eq 0.4.2",
  "cpufeatures 0.3.1",
 ]
 
@@ -554,6 +554,15 @@ name = "constant_time_eq"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
+
+[[package]]
+name = "constant_time_eq"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eb6feb175df65d0a3ccd3e73484e940d0ac664e8034f0519fd49a93db3071d9"
+dependencies = [
+ "rustversion",
+]
 
 [[package]]
 name = "core-foundation"
@@ -1157,9 +1166,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 6.0.0",
  "rand_core",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1757,6 +1768,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
+name = "lzma-rust2"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1d73c59a56771343712b22ea5615092c612c16ba291c0979e3105dfeec4890"
+
+[[package]]
 name = "mach2"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1856,7 +1873,7 @@ dependencies = [
 
 [[package]]
 name = "mugen-extract"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "sf-engine",
 ]
@@ -2995,8 +3012,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sevenz-rust2"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5e465701779cbc6d0d10cf907f175035cfdd50b8d3cb628d7f1f435ef02972f"
+dependencies = [
+ "crc32fast",
+ "js-sys",
+ "lzma-rust2",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "sf-art"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "png 0.17.16",
  "serde",
@@ -3007,7 +3036,7 @@ dependencies = [
 
 [[package]]
 name = "sf-audio"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "clap",
  "cxx",
@@ -3021,7 +3050,7 @@ dependencies = [
 
 [[package]]
 name = "sf-compare"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "clap",
  "crc32fast",
@@ -3032,7 +3061,7 @@ dependencies = [
 
 [[package]]
 name = "sf-dev"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "minifb",
  "serde",
@@ -3046,7 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "sf-engine"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "clap",
  "crc32fast",
@@ -3058,7 +3087,7 @@ dependencies = [
 
 [[package]]
 name = "sf-game"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "find-msvc-tools",
  "minifb",
@@ -3070,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "sf-host"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "cpal",
  "gilrs",
@@ -3080,6 +3109,7 @@ dependencies = [
  "png 0.17.16",
  "pollster",
  "serde_json",
+ "sevenz-rust2",
  "sf-audio",
  "sf-engine",
  "sf-openmpt",
@@ -3088,19 +3118,22 @@ dependencies = [
  "symphonia",
  "ureq",
  "wgpu",
+ "windows 0.62.2",
+ "windows-sys 0.61.2",
  "winit",
+ "zip",
 ]
 
 [[package]]
 name = "sf-openmpt"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "sf-video"
-version = "1.3.12"
+version = "1.3.13"
 dependencies = [
  "png 0.17.16",
  "serde",
@@ -3579,6 +3612,12 @@ name = "ttf-parser"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
+
+[[package]]
+name = "typed-path"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ce898823d8cd0f028662d2f349694b1af0a5cc9be83f1d213a00d3147445e1e"
 
 [[package]]
 name = "typenum"
@@ -4625,6 +4664,20 @@ name = "zeroize"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "zigzag"
@@ -4633,6 +4686,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70b40401a28d86ce16a330b863b86fd7dbee4d7c940587ab09ab8c019f9e3fdf"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "zip"
+version = "9.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3476fd497ac8af5b1ec7b51acab7bef380f7e8dd8e0487595bafd839417a302"
+dependencies = [
+ "constant_time_eq 0.6.1",
+ "crc32fast",
+ "flate2",
+ "getrandom 0.4.3",
+ "indexmap",
+ "libc",
+ "memchr",
+ "nix 0.31.3",
+ "typed-path",
+ "windows-sys 0.61.2",
+ "zeroize",
 ]
 
 [[package]]

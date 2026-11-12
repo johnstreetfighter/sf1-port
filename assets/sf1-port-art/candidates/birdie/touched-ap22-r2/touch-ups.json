@@ -1,0 +1,9 @@
+{
+ "jump_kick_high": [
+  "outside the mask every pixel is the source's; inside, 553 pixels differ from the source, and the 754 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "5 studs on his belt the inpainting drew in his light skin colour set to his studs' light grey (pen 6), as his ROM belts are"
+ ],
+ "bull_horn": [
+  "outside the mask every pixel is the source's; inside, 86 pixels differ from the source, and the 35 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ]
+}

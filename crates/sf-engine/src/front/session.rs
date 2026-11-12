@@ -1010,6 +1010,40 @@ impl GameSession {
         self.typed.extend(keys);
     }
 
+    /// The room code shown on the current host screen or selected in Browse.
+    pub fn room_code_for_copy(&self) -> Option<&str> {
+        match (&self.cabinet, &self.play, self.stack.last()) {
+            (None, None, Some(Screen::Online(screen))) => screen.room_code_for_copy(),
+            _ => None,
+        }
+    }
+
+    /// Direct Join can receive a room code from the host clipboard.
+    pub fn accepts_room_code_paste(&self) -> bool {
+        matches!(
+            (&self.cabinet, &self.play, self.stack.last()),
+            (None, None, Some(Screen::Online(screen))) if screen.accepts_room_code_paste()
+        )
+    }
+
+    /// Display the result of a copy on the current lobby screen.
+    pub fn room_code_copy_result(&mut self, copied: bool) {
+        if let (None, None, Some(Screen::Online(screen))) =
+            (&self.cabinet, &self.play, self.stack.last_mut())
+        {
+            screen.set_notice(if copied { "ROOM CODE COPIED" } else { "CLIPBOARD UNAVAILABLE" });
+        }
+    }
+
+    /// Validate and replace the Direct Join entry. Joining still needs Confirm.
+    pub fn paste_room_code(&mut self, text: Option<&str>) {
+        if let (None, None, Some(Screen::Online(screen))) =
+            (&self.cabinet, &self.play, self.stack.last_mut())
+        {
+            screen.paste_room_code(text);
+        }
+    }
+
     /// The host supplies network results; the engine never opens a socket.
     pub fn push_net_events(&mut self, events: &[NetTransportEvent]) {
         let room = 256usize.saturating_sub(self.net_events.len());

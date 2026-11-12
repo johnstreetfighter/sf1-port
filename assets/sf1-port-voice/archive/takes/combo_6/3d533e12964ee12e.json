@@ -1,0 +1,24 @@
+{
+  "stem": "combo_6",
+  "take": 1,
+  "text": "Six hit combo!",
+  "prompt": "SIX HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "SIX HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "take_key": "3d533e12964ee12e5bdabe5f00b80a957a2bf1e3c564ab904b5529e8781012a8",
+  "seconds": 2.0,
+  "made": "2026-11-04T19:37:34+00:00"
+}

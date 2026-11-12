@@ -1,0 +1,6 @@
+{
+ "crouching_kick": [
+  "outside the mask every pixel is the source's (his crouch and round three's leg); inside, 219 pixels differ from the source, and the 311 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "a grey pixel the inpainting left standing off his belly's outline at the hip removed"
+ ]
+}

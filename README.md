@@ -85,13 +85,13 @@ Build the game from the repository root:
 cargo build -p sf-game --release
 ```
 
-The game is one file, `target\release\sf-game.exe`. It looks for the ROM set in three folders, in this order:
+The executable is `target\release\sf-game.exe`. It looks for the ROM set in these locations:
 
 1. `roms\sf` beside the executable
 2. `%APPDATA%\sf1-port\roms\sf`
-3. the folder named by `rom_folder` in `%APPDATA%\sf1-port\settings.toml`
+3. The path saved in `rom_folder` in `%APPDATA%\sf1-port\settings.toml`
 
-To play from anywhere, copy `sf-game.exe` into a folder and put the ROM files in `roms\sf` beside it. When no folder holds a matching set, the game opens on a screen that lists each folder it tried and what was wrong there. Add the files and choose `RETRY` to carry on, or choose `EXIT`. From the repository, `--roms` names a folder to look in first:
+If none of those locations holds a matching set, choose **BROWSE FOLDER** to select the extracted ROM folder or **BROWSE ARCHIVE** to select `sf.zip` or `sf.7z`. The game validates the set before starting and saves the successful path for next time. **RETRY** checks the usual locations again. The `--roms` option checks a folder or archive first:
 
 ```bash
 cargo run -p sf-game --release -- --roms tools/reference/local/roms/sf
@@ -108,9 +108,9 @@ The game draws through the graphics card (Vulkan, or Direct3D 12 without it) and
 
 The game keeps its files in `%APPDATA%\sf1-port`: `settings.toml` (video, sound, devices, ROM folder, the cabinet's DIP switches), `match_config.toml` (preset, toggles, roster, difficulty and round time) and `bindings.toml` (keys and pad buttons). A first launch writes all three with their defaults. `sf-game.log` there records each launch: the settings in force, the ROM folder, the graphics adapter and the display's refresh rate, pads seen or lost, any file that failed to load, and any untranslated-branch notice. The game overwrites the log at every launch.
 
-If a `sf1-port-art` folder sits beside the ROM set's `sf` folder (for example `roms\sf1-port-art`), the game loads the art pack from it: the poses the art pipeline made for fighters whose 1987 art lacks SF1+ moves. The pack is local and not in the repository. Without it, every fighter keeps the ROM's own art, and the log says so.
+The Windows ZIP includes the approved SF1+ art in `assets/sf1-port-art`. A `sf1-port-art` folder beside the ROM set takes precedence as a local override. If the chosen pack cannot be loaded, the game logs the reason and uses ROM art.
 
-A `sf1-port-voice` folder beside it (`roms\sf1-port-voice`) is the voice pack: the overhaul announcer's lines, played on a third emulated MSM5205 beside the board's two so he never cuts off a 1987 sound. The pack is local and not in the repository; its format is in [`docs/reference/announcer.md`](docs/reference/announcer.md). Without it there is no announcer, and the log says so in one line. `ANNOUNCER` on the Sound tab sets his volume (0 is off). He never speaks under the Faithful 1987 preset or on the 1987 cabinet.
+The Windows ZIP includes the overhaul announcer in `assets/sf1-port-voice`. A `sf1-port-voice` folder beside the ROM set takes precedence as a local override. The announcer plays on a third emulated MSM5205, and `ANNOUNCER` on the Sound tab sets his volume. See the [announcer reference](docs/reference/announcer.md) for the pack format and fallback behavior.
 
 ### Tracker modules and the C++ build
 

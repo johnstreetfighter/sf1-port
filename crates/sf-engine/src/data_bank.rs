@@ -6123,7 +6123,7 @@ mod tests {
         use std::path::Path;
 
         let roms = Path::new("../../tools/reference/local/roms/sf");
-        let pack_path = Path::new("../../tools/reference/local/roms/sf1-port-art");
+        let pack_path = Path::new("../../assets/sf1-port-art");
         if !roms.is_dir() || !pack_path.is_dir() {
             eprintln!("skipping: local ROM or art pack is missing");
             return;

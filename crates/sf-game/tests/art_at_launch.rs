@@ -94,8 +94,7 @@ fn the_pack_is_looked_for_beside_each_rom_folder_once() {
     let _ = std::fs::remove_dir_all(none);
 }
 
-/// Ticket #170 (`AP6`): with the approved reviews and the private art pack
-/// on this machine, Ryu's and Ken's throws, thrown sets and get-ups load.
+/// Ticket #170 (`AP6`): with the approved reviews and the bundled art pack, Ryu's and Ken's throws, thrown sets and get-ups load.
 /// Tickets #171 and #172 (`AP7`, `AP8`): so does Sagat's whole set, both
 /// halves approved. Tickets #173 and #174 (`AP9`, `AP10`): so does Retsu's.
 /// Tickets #175 and #176 (`AP11`, `AP12`): so does Geki's. Tickets #177
@@ -105,17 +104,18 @@ fn the_pack_is_looked_for_beside_each_rom_folder_once() {
 /// does Gen's. Tickets #185 and #186 (`AP21`, `AP22`): so does Birdie's.
 /// Tickets #187 and #188 (`AP23`, `AP24`): so does Eagle's. Tickets #189
 /// and #190 (`AP25`, `AP26`): so does Adon's, the last of the twelve.
-/// Skips without the ROMs or the pack.
+/// Skips without the ROMs.
 #[test]
-fn the_local_pack_loads_every_approved_fighter() {
-    let pack = Path::new(ROMS).parent().unwrap().join("sf1-port-art");
-    if !Path::new(ROMS).is_dir() || !pack.is_dir() {
-        eprintln!("skipping: local ROM set or art pack not present");
+fn the_bundled_pack_loads_every_approved_fighter() {
+    if !Path::new(ROMS).is_dir() {
+        eprintln!("skipping: local ROM set not present");
         return;
     }
     let rom = load_assets(ROMS, MANIFEST).unwrap();
-    let (mut log, path) = scratch_log("local-pack");
-    let art = load_from(&rom, &RECIPES, &REVIEWS, find_pack(&[pack]), &mut log).unwrap();
+    let (mut log, path) = scratch_log("bundled-pack");
+    let art = sf_host::art::load_with_fallbacks(
+        &rom, &[], &[PathBuf::from("../../assets")], &mut log,
+    ).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     for who in ["ryu", "ken", "sagat", "retsu", "geki", "joe", "mike", "lee", "gen", "birdie", "eagle", "adon"] {
         assert!(!text.contains(&format!("art: {who} keeps his ROM art")), "{text}");

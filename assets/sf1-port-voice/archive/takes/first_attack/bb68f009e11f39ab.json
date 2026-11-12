@@ -1,0 +1,24 @@
+{
+  "stem": "first_attack",
+  "take": 3,
+  "text": "First attack!",
+  "prompt": "FIRST ATTACK!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "FIRST ATTACK!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22503
+  },
+  "output_format": "pcm_24000",
+  "take_key": "bb68f009e11f39ab1f275e6124ab756ae27747591c3f5d04fed29ae45c1e83e6",
+  "seconds": 1.52,
+  "made": "2026-11-04T19:37:25+00:00"
+}

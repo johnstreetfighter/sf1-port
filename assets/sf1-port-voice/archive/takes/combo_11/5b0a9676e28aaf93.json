@@ -1,0 +1,24 @@
+{
+  "stem": "combo_11",
+  "take": 1,
+  "text": "Eleven hit combo!",
+  "prompt": "ELEVEN HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "ELEVEN HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "take_key": "5b0a9676e28aaf93dd3bf1e35531e45c51c39f6d2a4c25327aa66a5806fc9e60",
+  "seconds": 2.32,
+  "made": "2026-11-04T19:37:48+00:00"
+}

@@ -8,6 +8,7 @@
 //! region (maincpu), whose tables and frame records the native gameplay
 //! translation reads as data.
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::path::Path;
 
@@ -55,15 +56,54 @@ pub struct Assets {
     pub tilerom: Vec<u8>,
 }
 
-fn region(entries: &[Entry], rom_dir: &Path, name: &str) -> Result<Vec<u8>, RomsetError> {
+/// The validated ROM files assembled into all regions the game needs.
+pub struct VerifiedRomSet {
+    pub files: usize,
+    pub assets: Assets,
+    pub audio2: Vec<u8>,
+    pub audiocpu: Vec<u8>,
+}
+
+/// Validate each file once, then assemble the regions from those same bytes.
+/// The reader receives each required name and its declared size.
+pub fn load_verified_set(
+    manifest_json: &str,
+    mut read: impl FnMut(&str, u64) -> Result<Vec<u8>, RomsetError>,
+) -> Result<VerifiedRomSet, RomsetError> {
+    let manifest = parse_manifest(manifest_json)?;
+    let mut files = BTreeMap::new();
+    for entry in &manifest.entries {
+        let bytes = read(&entry.name, entry.size)?;
+        check_entry(entry, &bytes)?;
+        files.insert(entry.name.as_str(), bytes);
+    }
+    let mut part = |entry: &Entry| Ok(&files[entry.name.as_str()]);
+    Ok(VerifiedRomSet {
+        files: manifest.entries.len(),
+        assets: assets(&manifest, &mut part)?,
+        audio2: region(&manifest.entries, "audio2", &mut part)?,
+        audiocpu: region(&manifest.entries, "audiocpu", &mut part)?,
+    })
+}
+
+fn read_part(dir: &Path, part: &Entry) -> Result<Vec<u8>, RomsetError> {
+    std::fs::read(dir.join(&part.name))
+        .map_err(|e| RomsetError(format!("{}: {e} (ROMs stay local; see docs)", part.name)))
+}
+
+fn region<B: AsRef<[u8]>>(
+    entries: &[Entry],
+    name: &str,
+    read: &mut impl FnMut(&Entry) -> Result<B, RomsetError>,
+) -> Result<Vec<u8>, RomsetError> {
     let mut parts: Vec<&Entry> = entries.iter().filter(|e| e.region == name).collect();
     parts.sort_by_key(|e| e.offset);
     let size = parts.iter().map(|e| e.offset + e.size).max().unwrap_or(0) as usize;
     let mut region = vec![0u8; size];
     for part in parts {
-        let bytes = std::fs::read(rom_dir.join(&part.name))
-            .map_err(|e| RomsetError(format!("{}: {e} (ROMs stay local; see docs)", part.name)))?;
-        region[part.offset as usize..part.offset as usize + bytes.len()].copy_from_slice(&bytes);
+        let bytes = read(part)?;
+        let bytes = bytes.as_ref();
+        region[part.offset as usize..part.offset as usize + bytes.len()].copy_from_slice(bytes);
     }
     Ok(region)
 }
@@ -84,7 +124,7 @@ pub fn load_region_from_manifest(
     manifest_json: &str,
     name: &str,
 ) -> Result<Vec<u8>, RomsetError> {
-    region(&parse_manifest(manifest_json)?.entries, rom_dir.as_ref(), name)
+    region(&parse_manifest(manifest_json)?.entries, name, &mut |part| read_part(rom_dir.as_ref(), part))
 }
 
 fn read_manifest(path: &Path) -> Result<String, RomsetError> {
@@ -114,15 +154,27 @@ pub fn check_set(rom_dir: impl AsRef<Path>, manifest_json: &str) -> Result<usize
     for entry in &manifest.entries {
         let bytes = std::fs::read(rom_dir.join(&entry.name))
             .map_err(|_| RomsetError(format!("{} is missing", entry.name)))?;
-        if bytes.len() as u64 != entry.size {
-            return Err(RomsetError(format!("{} is {} bytes, not {}", entry.name, bytes.len(), entry.size)));
-        }
-        let crc = format!("{:08x}", crc32(&bytes));
-        if !entry.crc32.is_empty() && !crc.eq_ignore_ascii_case(&entry.crc32) {
+        check_entry(entry, &bytes)?;
+    }
+    Ok(manifest.entries.len())
+}
+
+fn check_entry(entry: &Entry, bytes: &[u8]) -> Result<(), RomsetError> {
+    if bytes.len() as u64 != entry.size {
+        return Err(RomsetError(format!("{} is {} bytes, not {}", entry.name, bytes.len(), entry.size)));
+    }
+    if !entry.crc32.is_empty() {
+        let crc = format!("{:08x}", crc32(bytes));
+        if !crc.eq_ignore_ascii_case(&entry.crc32) {
             return Err(RomsetError(format!("{} has CRC-32 {crc}, not {}", entry.name, entry.crc32)));
         }
     }
-    Ok(manifest.entries.len())
+    Ok(())
+}
+
+/// The file names and uncompressed sizes in manifest order.
+pub fn file_sizes(manifest_json: &str) -> Result<Vec<(String, u64)>, RomsetError> {
+    Ok(parse_manifest(manifest_json)?.entries.into_iter().map(|e| (e.name, e.size)).collect())
 }
 
 /// The files the manifest lists, in its order.
@@ -166,15 +218,20 @@ pub fn load_assets_from_manifest(
     rom_dir: impl AsRef<Path>,
     manifest_json: &str,
 ) -> Result<Assets, RomsetError> {
-    let manifest = parse_manifest(manifest_json)?;
-    let rom_dir = rom_dir.as_ref();
+    assets(&parse_manifest(manifest_json)?, &mut |part| read_part(rom_dir.as_ref(), part))
+}
+
+fn assets<B: AsRef<[u8]>>(
+    manifest: &Manifest,
+    read: &mut impl FnMut(&Entry) -> Result<B, RomsetError>,
+) -> Result<Assets, RomsetError> {
     Ok(Assets {
-        maincpu: program_rom(&manifest, rom_dir)?,
-        gfx1: region(&manifest.entries, rom_dir, "gfx1")?,
-        gfx2: region(&manifest.entries, rom_dir, "gfx2")?,
-        gfx3: region(&manifest.entries, rom_dir, "gfx3")?,
-        gfx4: region(&manifest.entries, rom_dir, "gfx4")?,
-        tilerom: region(&manifest.entries, rom_dir, "tilerom")?,
+        maincpu: program_rom(manifest, read)?,
+        gfx1: region(&manifest.entries, "gfx1", read)?,
+        gfx2: region(&manifest.entries, "gfx2", read)?,
+        gfx3: region(&manifest.entries, "gfx3", read)?,
+        gfx4: region(&manifest.entries, "gfx4", read)?,
+        tilerom: region(&manifest.entries, "tilerom", read)?,
     })
 }
 
@@ -189,10 +246,13 @@ pub fn load_program_rom(
     manifest_path: impl AsRef<Path>,
 ) -> Result<Vec<u8>, RomsetError> {
     let manifest = parse_manifest(&read_manifest(manifest_path.as_ref())?)?;
-    program_rom(&manifest, rom_dir.as_ref())
+    program_rom(&manifest, &mut |part| read_part(rom_dir.as_ref(), part))
 }
 
-fn program_rom(manifest: &Manifest, rom_dir: &Path) -> Result<Vec<u8>, RomsetError> {
+fn program_rom<B: AsRef<[u8]>>(
+    manifest: &Manifest,
+    read: &mut impl FnMut(&Entry) -> Result<B, RomsetError>,
+) -> Result<Vec<u8>, RomsetError> {
     let parts: Vec<&Entry> = manifest
         .entries
         .iter()
@@ -205,11 +265,10 @@ fn program_rom(manifest: &Manifest, rom_dir: &Path) -> Result<Vec<u8>, RomsetErr
         .unwrap_or(0) as usize;
     let mut region = vec![0u8; size];
     for part in parts {
-        let bytes = std::fs::read(rom_dir.join(&part.name))
-            .map_err(|e| RomsetError(format!("{}: {e} (ROMs stay local; see docs)", part.name)))?;
+        let bytes = read(part)?;
         let base = (part.offset & !1) as usize;
         let lane = (part.offset & 1) as usize;
-        for (i, b) in bytes.iter().enumerate() {
+        for (i, b) in bytes.as_ref().iter().enumerate() {
             region[base + 2 * i + lane] = *b;
         }
     }

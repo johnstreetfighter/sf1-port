@@ -1,0 +1,24 @@
+{
+  "stem": "super",
+  "take": 2,
+  "text": "Super!",
+  "prompt": "SUPER!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "SUPER!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "68cbfcbf8a5ead540b7fbd0fc2976b85b2fabb82fc59da9b4a6c39dd556f3c48",
+  "seconds": 1.2,
+  "made": "2026-11-04T19:37:06+00:00"
+}

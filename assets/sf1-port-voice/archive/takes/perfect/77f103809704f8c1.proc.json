@@ -1,0 +1,18 @@
+{
+  "take_key": "77f103809704f8c1c42f12bd47203aac2c62d44eb5e9e781fb9acca7c10721e3",
+  "proc_key": "86af4a3bd93761039a2aeda37d8295c97a7777eb0ce86340fbb25258cc7bf376",
+  "process": {
+    "version": 1,
+    "trim_below_peak_db": -40.0,
+    "pad_ms": 20,
+    "rate": 4000,
+    "resampler": "ffmpeg -ar (swr, its anti-alias low-pass)",
+    "peak_db": -2.0,
+    "codec": "sf-audio voice-encode (sf_video::asset_pack::encode_adpcm, 16-bit >> 4 to the chip's 12 bits)"
+  },
+  "nibbles": 3832,
+  "crc32": "9e014077",
+  "seconds": 0.958,
+  "seconds_raw": 1.28,
+  "made": "2026-11-04T19:38:10+00:00"
+}

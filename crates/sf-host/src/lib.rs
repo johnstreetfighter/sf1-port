@@ -10,6 +10,8 @@
 pub mod art;
 pub mod audio;
 pub mod bindings;
+#[cfg(windows)]
+pub mod clipboard;
 pub mod files;
 pub mod gpu_window;
 pub mod input;

@@ -1,0 +1,10 @@
+{
+ "sweep": [
+  "outside the mask every pixel is the source's; inside, 182 pixels differ from the source, and the 204 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "two pixels of the belt's top outline jutting out behind his lower back (x10-11, row 47) removed, so his back runs into the seat",
+  "the lowered belt's studs, which the inpainting redrew in bright yellow and purple, given back his crouch's own belt rows (the stance's rows 40-42, 7 lower): 28 pixels"
+ ],
+ "rising": [
+  "outside the mask every pixel is the source's; inside, 51 pixels differ from the source, and the 15 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ]
+}

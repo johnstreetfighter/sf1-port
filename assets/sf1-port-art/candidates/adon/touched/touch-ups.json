@@ -1,0 +1,16 @@
+{
+ "crouching_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 64 pixels differ from the source, and the 34 pixels the inpainting drew off his palette were taken to his nearest pens"
+ ],
+ "sweep": [
+  "outside the mask every pixel is the ROM source's; inside, 105 pixels differ from the source, and the 77 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "the leg beyond the inpainted hip (x 54 on: shin, wrap and foot) moved up a row, so the swept foot's sole rests on his ground line instead of a row below his shadow",
+  "28 black and dark red pixels the inpainting drew along the thigh's outline given his legs' dark brown outline (pen 1)",
+  "a pale and a grey speck in the thigh's underside outline (37,58 and 33,57) given the same dark brown"
+ ],
+ "rising": [
+  "outside the mask every pixel is the ROM source's; inside, 216 pixels differ from the source, and the 155 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "the rear knee's bottom outline, which ran a row below his ground shadow (x15-28), moved up onto the shadow's row",
+  "3 grey wrap-coloured specks inside the rear knee's outline given his legs' dark brown outline (pen 1)"
+ ]
+}

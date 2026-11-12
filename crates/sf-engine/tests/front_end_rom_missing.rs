@@ -114,3 +114,22 @@ fn a_failed_retry_shows_the_new_results_and_long_folders_keep_their_end() {
     assert_eq!(text[4].chars().count(), (WIDTH - 32) / 4 - 2);
     assert_eq!(text[5], "  sfd-22.2c is missing");
 }
+
+#[test]
+fn the_missing_screen_can_browse_for_a_folder_or_an_archive() {
+    let mut s = screen().with_browse(true);
+    assert_eq!(s.cursor(), MenuItem::Retry);
+    tap(&mut s, |i| i.p1.directions[2] = true);
+    assert_eq!(s.cursor(), MenuItem::BrowseRomFolder);
+    assert_eq!(tap(&mut s, |i| i.menu.confirm = true), Some(Transition::Choose(MenuItem::BrowseRomFolder)));
+    tap(&mut s, |i| i.p1.directions[2] = true);
+    assert_eq!(s.cursor(), MenuItem::BrowseRomArchive);
+    assert_eq!(tap(&mut s, |i| i.menu.start = true), Some(Transition::Choose(MenuItem::BrowseRomArchive)));
+    assert!(drawn(&s.render(), (WIDTH - 14 * 8) / 2, HEIGHT - 38, "BROWSE ARCHIVE", SELECT_YELLOW, 2));
+
+    s.failed_choice(Looked { folder: "D:\\sf.7z".into(), problem: "a ROM is missing".into() });
+    assert_eq!(&s.text()[4..6], ["D:\\sf.7z", "  a ROM is missing"]);
+    assert!(s.text().contains(&looked()[0].folder));
+    s.update(looked());
+    assert_eq!(s.text()[4], looked()[0].folder);
+}

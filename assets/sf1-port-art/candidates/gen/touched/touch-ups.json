@@ -1,0 +1,29 @@
+{
+ "crouch": [
+  "outside the mask every pixel is the ROM source's; inside, 144 pixels differ from the source, and the 114 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "4 single pixels inside the mask set to the pen around them",
+  "his left thigh (x < 31) set back to the source's inside the mask: the inpainting had bulged it outward",
+  "his robe's red trim redrawn by hand inside the mask as one line bending over his knee (rows 68-76, x 39 to 45), each row's trim pixel and its dark-purple edges moved onto the line and the robe's colour filled in behind it; the inpainting had left it broken where the two halves of the cut meet"
+ ],
+ "crouching_block": [
+  "outside the mask every pixel is the ROM source's; inside, 145 pixels differ from the source, and the 80 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "5 single pixels inside the mask set to the pen around them",
+  "5 skin pixels in a column under the raised arm's sleeve (x 40, rows 54-58), the edge of his other hand that the standing block's crop took in, set to the sleeve's dark purple around them"
+ ],
+ "crouching_punch": [
+  "outside the mask every pixel is the ROM source's; inside, 95 pixels differ from the source, and the 72 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "7 single pixels inside the mask set to the pen around them"
+ ],
+ "crouching_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 5 pixels differ from the source, and the 78 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "3 single pixels inside the mask set to the pen around them"
+ ],
+ "crouching_hit": [
+  "outside the mask every pixel is the ROM source's; inside, 443 pixels differ from the source, and the 240 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "20 single pixels inside the mask set to the pen around them"
+ ],
+ "low_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 72 pixels differ from the source, and the 51 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "4 single pixels inside the mask set to the pen around them"
+ ]
+}

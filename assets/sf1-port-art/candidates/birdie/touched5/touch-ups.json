@@ -1,0 +1,8 @@
+{
+ "crouching_kick": [
+  "the second front fist, 4 pixels above his own, removed: above the leg (rows 0-49, from x44) the 87 pixels that differed are the approved crouch's again; the leg and its join are round four's, untouched"
+ ],
+ "rising": [
+  "the back of his seat below the belt redrawn as a rounded curve (rows 54-71, rearmost at rows 59-62, rounding in to the kneeling thigh), with his black outline and the jeans' black-and-grey dither inside, as his crouch's seat curves: 57 pixels"
+ ]
+}

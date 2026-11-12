@@ -154,6 +154,12 @@ pub fn key_from_physical(key: PhysicalKey) -> Option<Key> {
     CODES.iter().find(|&&(c, _)| c == code).map(|&(_, k)| k)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoomCodeShortcut {
+    Copy,
+    Paste,
+}
+
 /// The keys held, the first key pressed since the last game frame, and
 /// the window's focus, from the window's events.
 #[derive(Clone, Debug, Default)]
@@ -162,6 +168,9 @@ pub struct Keyboard {
     pressed: Option<Key>,
     typed: Vec<TypedKey>,
     focused: bool,
+    copy_room_code: bool,
+    paste_room_code: bool,
+    room_code_shortcut: Option<RoomCodeShortcut>,
 }
 
 impl Keyboard {
@@ -203,6 +212,39 @@ impl Keyboard {
         self.typed.extend(typed_keys(logical, text, repeat).into_iter().take(room));
     }
 
+    pub fn set_room_code_shortcuts(&mut self, copy: bool, paste: bool) {
+        self.copy_room_code = copy;
+        self.paste_room_code = paste;
+    }
+
+    /// Consume the shortcut only where the current lobby accepts it. Use the
+    /// logical letter so this follows the player's keyboard layout.
+    pub(crate) fn room_code_key(&mut self, logical: &LogicalKey, repeat: bool) -> bool {
+        if !self.focused
+            || !(self.is_down(Key::LeftCtrl) || self.is_down(Key::RightCtrl))
+            || [Key::LeftAlt, Key::RightAlt, Key::LeftSuper, Key::RightSuper]
+                .into_iter().any(|key| self.is_down(key))
+        {
+            return false;
+        }
+        let LogicalKey::Character(letter) = logical else { return false };
+        let shortcut = if self.copy_room_code && letter.eq_ignore_ascii_case("c") {
+            RoomCodeShortcut::Copy
+        } else if self.paste_room_code && letter.eq_ignore_ascii_case("v") {
+            RoomCodeShortcut::Paste
+        } else {
+            return false;
+        };
+        if !repeat {
+            self.room_code_shortcut = Some(shortcut);
+        }
+        true
+    }
+
+    pub fn take_room_code_shortcut(&mut self) -> Option<RoomCodeShortcut> {
+        self.room_code_shortcut.take()
+    }
+
     /// The window gaining or losing focus; losing it lets every key go.
     pub fn focus(&mut self, focused: bool) {
         self.focused = focused;
@@ -210,6 +252,7 @@ impl Keyboard {
             self.held.clear();
             self.pressed = None;
             self.typed.clear();
+            self.room_code_shortcut = None;
         }
     }
 
@@ -319,6 +362,33 @@ mod tests {
         assert!(keys.is_down(Key::S));
         keys.key(PhysicalKey::Code(KeyCode::KeyS), false, false);
         assert!(!keys.is_down(Key::S));
+    }
+
+    #[test]
+    fn room_code_chords_require_focus_control_and_the_enabled_lobby_action() {
+        let copy = LogicalKey::Character("c".into());
+        let paste = LogicalKey::Character("V".into());
+        let mut keys = Keyboard::focused();
+        keys.key(PhysicalKey::Code(KeyCode::ControlLeft), true, false);
+        assert!(!keys.room_code_key(&copy, false), "other screens keep their keys");
+
+        keys.set_room_code_shortcuts(true, false);
+        assert!(!keys.room_code_key(&paste, false));
+        assert!(keys.room_code_key(&copy, false));
+        assert_eq!(keys.take_room_code_shortcut(), Some(RoomCodeShortcut::Copy));
+        assert!(keys.room_code_key(&copy, true), "consume the repeat as a shortcut");
+        assert_eq!(keys.take_room_code_shortcut(), None);
+
+        keys.set_room_code_shortcuts(false, true);
+        keys.key(PhysicalKey::Code(KeyCode::AltRight), true, false);
+        assert!(!keys.room_code_key(&paste, false), "preserve AltGr text");
+        keys.key(PhysicalKey::Code(KeyCode::AltRight), false, false);
+        assert!(keys.room_code_key(&paste, false));
+        assert_eq!(keys.take_room_code_shortcut(), Some(RoomCodeShortcut::Paste));
+        assert!(keys.room_code_key(&paste, false));
+        keys.focus(false);
+        assert_eq!(keys.take_room_code_shortcut(), None);
+        assert!(!keys.room_code_key(&paste, false));
     }
 
     #[test]

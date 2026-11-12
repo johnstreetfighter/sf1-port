@@ -1,0 +1,92 @@
+{
+  "lines": {
+    "super": {
+      "vox": "archive/takes/super/68cbfcbf8a5ead54.vox",
+      "nibbles": 3966
+    },
+    "perfect": {
+      "vox": "archive/takes/perfect/4b144184379fd2fa.vox",
+      "nibbles": 3793
+    },
+    "perfect_parry": {
+      "vox": "archive/takes/perfect_parry/07546a9cb20d74af.vox",
+      "nibbles": 5850
+    },
+    "counter": {
+      "vox": "archive/takes/counter/9e01e08e52f239df.vox",
+      "nibbles": 3592
+    },
+    "punish_counter": {
+      "vox": "archive/takes/punish_counter/d2939986b8a527a2.vox",
+      "nibbles": 5752
+    },
+    "crush_counter": {
+      "vox": "archive/takes/crush_counter/0f25148657855362.vox",
+      "nibbles": 5313
+    },
+    "alpha_counter": {
+      "vox": "archive/takes/alpha_counter/be2c8325c4c60fd0.vox",
+      "nibbles": 5574
+    },
+    "reversal": {
+      "vox": "archive/takes/reversal/eb7095664e35ae5c.vox",
+      "nibbles": 4332
+    },
+    "first_attack": {
+      "vox": "archive/takes/first_attack/bb68f009e11f39ab.vox",
+      "nibbles": 5167
+    },
+    "burnout": {
+      "vox": "archive/takes/burnout/f3093c036f1b3d0f.vox",
+      "nibbles": 4158
+    },
+    "custom_combo": {
+      "vox": "archive/takes/custom_combo/0b1f7abc0f707b88.vox",
+      "nibbles": 6416
+    },
+    "combo_5": {
+      "vox": "archive/takes/combo_5/c1001fc1ca4b2bb8.vox",
+      "nibbles": 7376
+    },
+    "combo_6": {
+      "vox": "archive/takes/combo_6/3d533e12964ee12e.vox",
+      "nibbles": 7154
+    },
+    "combo_7": {
+      "vox": "archive/takes/combo_7/e56d41df20618007.vox",
+      "nibbles": 7549
+    },
+    "combo_8": {
+      "vox": "archive/takes/combo_8/a81d9290ade135e6.vox",
+      "nibbles": 7364
+    },
+    "combo_9": {
+      "vox": "archive/takes/combo_9/e8df3c7b5cecca04.vox",
+      "nibbles": 7116
+    },
+    "combo_10": {
+      "vox": "archive/takes/combo_10/2e1c78fa95a49b5a.vox",
+      "nibbles": 7545
+    },
+    "combo_11": {
+      "vox": "archive/takes/combo_11/5b0a9676e28aaf93.vox",
+      "nibbles": 8061
+    },
+    "combo_12": {
+      "vox": "archive/takes/combo_12/ce9ab222c96c3230.vox",
+      "nibbles": 7668
+    },
+    "combo_13": {
+      "vox": "archive/takes/combo_13/45815633e524586e.vox",
+      "nibbles": 8307
+    },
+    "combo_14": {
+      "vox": "archive/takes/combo_14/ea38fc2df44597f2.vox",
+      "nibbles": 8078
+    },
+    "combo_15": {
+      "vox": "archive/takes/combo_15/bc3f5a3659f37700.vox",
+      "nibbles": 9268
+    }
+  }
+}

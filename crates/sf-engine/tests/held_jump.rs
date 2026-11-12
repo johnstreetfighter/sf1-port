@@ -41,7 +41,7 @@ fn tap(s: &mut GameSession, i: FrameInputs) -> sf_engine::front::FrameOutput {
 fn seed(preset: RulesetPreset) -> Option<GameSession> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let rom = root.join("tools/reference/local/roms/sf");
-    let pack = root.join("tools/reference/local/roms/sf1-port-art");
+    let pack = root.join("assets/sf1-port-art");
     if !rom.is_dir() || !pack.is_dir() {
         eprintln!("skipping: local ROM set or art pack not present");
         return None;

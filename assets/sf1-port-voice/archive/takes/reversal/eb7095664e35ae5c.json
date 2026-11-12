@@ -1,0 +1,24 @@
+{
+  "stem": "reversal",
+  "take": 2,
+  "text": "Reversal!",
+  "prompt": "REVERSAL!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "REVERSAL!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "eb7095664e35ae5c4b6ca344d7d94c0878cffeaa8ba04f58b712f1967cff8da6",
+  "seconds": 1.36,
+  "made": "2026-11-04T19:37:22+00:00"
+}

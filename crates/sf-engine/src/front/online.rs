@@ -11,6 +11,7 @@ use super::draw::{fit, framed_wide};
 pub const NET_ENTRY_CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.: ";
 const ENTRY_MAX: usize = 32;
 const BROWSE_ROOM_START: usize = 4;
+const DIRECT_JOIN_ROW: usize = 3;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OnlineAction {
@@ -63,6 +64,44 @@ impl OnlineScreen {
     pub fn entry(&self) -> &str { &self.entry }
     pub fn notice(&self) -> &str { &self.notice }
     pub fn room_code(&self) -> Option<&str> { self.room_code.as_deref() }
+
+    pub(super) fn room_code_for_copy(&self) -> Option<&str> {
+        match self.view {
+            LobbyView::Browse => self.selected_room().map(|room| room.code.as_str()),
+            LobbyView::Host => self.room_code(),
+            LobbyView::Direct => None,
+        }
+    }
+
+    pub(super) fn accepts_room_code_paste(&self) -> bool {
+        self.view == LobbyView::Direct
+    }
+
+    pub(super) fn paste_room_code(&mut self, text: Option<&str>) {
+        if !self.accepts_room_code_paste() {
+            return;
+        }
+        let Some(text) = text else {
+            self.set_notice("NO ROOM CODE ON CLIPBOARD");
+            return;
+        };
+        let text = text.trim();
+        if text.len() > ENTRY_MAX {
+            self.set_notice("INVALID CODE OR IPV4 ADDRESS");
+            return;
+        }
+        let code = text.to_ascii_uppercase();
+        if decode_room_code(&code).is_none() {
+            self.set_notice("INVALID CODE OR IPV4 ADDRESS");
+            return;
+        }
+        self.entry = code;
+        self.at = self.entry.len();
+        self.editing = false;
+        self.cursor = DIRECT_JOIN_ROW;
+        self.set_notice("ROOM CODE PASTED");
+    }
+
     pub fn set_bound(&mut self, room_code: impl Into<String>) {
         self.room_code = Some(room_code.into());
         self.view = LobbyView::Host;
@@ -113,8 +152,17 @@ impl OnlineScreen {
         Some(Transition::ValueChanged)
     }
 
+    fn listed_rooms(&self) -> impl Iterator<Item = &Room> {
+        self.rooms.iter().filter(|room| !self.wired_only || room.link == Link::Ethernet)
+    }
+
+    fn selected_room(&self) -> Option<&Room> {
+        let index = self.cursor.checked_sub(BROWSE_ROOM_START)?;
+        self.listed_rooms().nth(index)
+    }
+
     pub fn visible_rooms(&self) -> Vec<&Room> {
-        self.rooms.iter().filter(|room| !self.wired_only || room.link == Link::Ethernet).collect()
+        self.listed_rooms().collect()
     }
 
     pub fn set_rooms(&mut self, rooms: Vec<Room>) {
@@ -186,6 +234,9 @@ impl OnlineScreen {
                         (326, if room.link == Link::Ethernet { "[ETH]" } else { "[WIFI]" }.into()),
                     ] { fallback_text(&mut frame.argb, x, y, &text, color, 1); }
                 }
+                if cfg!(windows) && self.selected_room().is_some() {
+                    font.text(&mut frame.argb, 3, 21, "CTRL+C COPY ROOM CODE", ink::DIM);
+                }
                 if self.notice.is_empty() {
                     font.text(&mut frame.argb, 3, 22, &format!("{} ROOMS FOUND", rooms.len()), ink::BLUE);
                 }
@@ -200,6 +251,9 @@ impl OnlineScreen {
                 if let Some(code) = &self.room_code {
                     font.text(&mut frame.argb, 5, 19, "ROOM CODE", ink::BLUE);
                     font.text(&mut frame.argb, 20, 19, code, ink::YELLOW);
+                    if cfg!(windows) {
+                        font.text(&mut frame.argb, 20, 20, "CTRL+C COPY", ink::DIM);
+                    }
                 }
             }
             LobbyView::Direct => {
@@ -216,8 +270,11 @@ impl OnlineScreen {
                     RoomKind::Versus => "PLAYER",
                 };
                 self.draw_row(&mut frame, font, 2, 13, "JOIN AS", role);
-                self.draw_row(&mut frame, font, 3, 15, "JOIN", "");
+                self.draw_row(&mut frame, font, DIRECT_JOIN_ROW, 15, "JOIN", "");
                 font.text(&mut frame.argb, 4, 18, "ROOM CODE OR IPV4:PORT", ink::DIM);
+                if cfg!(windows) {
+                    font.text(&mut frame.argb, 4, 19, "CTRL+V PASTE", ink::DIM);
+                }
             }
         }
         if !self.notice.is_empty() {
@@ -246,7 +303,7 @@ impl OnlineScreen {
                     self.entry.replace_range(self.at..self.at + 1, &char::from(alphabet[next]).to_string());
                 }
                 MenuInput::Start if self.at > 0 => { self.at -= 1; self.entry.remove(self.at); }
-                MenuInput::Confirm => { self.editing = false; self.cursor = 3; }
+                MenuInput::Confirm => { self.editing = false; self.cursor = DIRECT_JOIN_ROW; }
                 MenuInput::Back => self.editing = false,
                 _ => return None,
             }
@@ -271,7 +328,7 @@ impl OnlineScreen {
         }
         if self.view == LobbyView::Browse && self.cursor >= BROWSE_ROOM_START
             && matches!(input, MenuInput::Confirm | MenuInput::Start) {
-            let selected = self.visible_rooms().get(self.cursor - BROWSE_ROOM_START).map(|room| {
+            let selected = self.selected_room().map(|room| {
                 let kind = if self.join_kind == RoomKind::Spectate || room.in_match || room.kind == RoomKind::Spectate {
                     RoomKind::Spectate
                 } else {
@@ -311,7 +368,7 @@ impl OnlineScreen {
             self.at = self.entry.len();
             return Some(Transition::CursorMoved);
         }
-        if self.view == LobbyView::Direct && self.cursor == 3
+        if self.view == LobbyView::Direct && self.cursor == DIRECT_JOIN_ROW
             && matches!(input, MenuInput::Confirm | MenuInput::Start) {
             return self.join();
         }

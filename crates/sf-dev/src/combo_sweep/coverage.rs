@@ -55,10 +55,15 @@ fn load(fighter: TournamentFighter) -> Result<Fixture> {
         (fighter.move_table(), None, None)
     } else {
         let rom_folder = crate::resolve_local(crate::ROMS);
-        let folder = rom_folder.with_file_name(PACK_FOLDER);
+        let local = rom_folder.with_file_name(PACK_FOLDER);
+        let folder = if local.is_dir() {
+            local
+        } else {
+            crate::resolve_local("../../assets").join(PACK_FOLDER)
+        };
         let pack = ArtPack::open(&folder).map_err(|err| {
             format!(
-                "{} needs its SF1+ art and player table. Install the current {PACK_FOLDER} beside the ROM folder at {}. {err}",
+                "{} needs its SF1+ art and player table. The current {PACK_FOLDER} is expected at {}. {err}",
                 fighter.name(), folder.display(),
             )
         })?;

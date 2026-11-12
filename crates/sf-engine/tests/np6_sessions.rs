@@ -20,7 +20,7 @@ fn session(kind: RoomKind) -> GameSession {
     backgrounds.add_rom_stages(&assets).unwrap();
     backgrounds.add_vs_screens(&assets).unwrap();
     let art = (kind == RoomKind::Dramatic).then(|| {
-        let pack = ArtPack::open(std::path::Path::new("../../tools/reference/local/roms/sf1-port-art"))
+        let pack = ArtPack::open(std::path::Path::new("../../assets/sf1-port-art"))
             .expect("NP9 requires the approved art pack");
         load_art_from(&assets, &ArtSources {
             recipes: &[include_str!("../../../art/recipes/sagat.json")],

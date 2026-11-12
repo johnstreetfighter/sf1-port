@@ -1,0 +1,24 @@
+{
+  "stem": "punish_counter",
+  "take": 1,
+  "text": "Punish counter!",
+  "prompt": "PUNISH COUNTER!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "PUNISH COUNTER!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "take_key": "d2939986b8a527a201b136dcfc0d512447274c5a4508c130d591841b1065567e",
+  "seconds": 1.68,
+  "made": "2026-11-04T19:37:14+00:00"
+}

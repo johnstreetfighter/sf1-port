@@ -17,7 +17,7 @@
 //!
 //!   sf-audio voice-encode --wav take.4k.wav --vox take.vox --heard take.heard.wav
 //!   sf-audio voice-rom-sample --command 0x94 --out fight.heard.wav
-//!   sf-audio voice-pack --plan plan.json --out tools/reference/local/roms/sf1-port-voice
+//!   sf-audio voice-pack --plan plan.json --out assets/sf1-port-voice
 
 use std::path::PathBuf;
 use std::process::ExitCode;

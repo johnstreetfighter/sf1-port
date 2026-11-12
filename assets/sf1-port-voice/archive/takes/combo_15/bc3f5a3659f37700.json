@@ -1,0 +1,24 @@
+{
+  "stem": "combo_15",
+  "take": 1,
+  "text": "Fifteen hit combo!",
+  "prompt": "FIFTEEN HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "FIFTEEN HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "take_key": "bc3f5a3659f37700f6e19881f96c8624539f13d96a0c65b25227d89554252aed",
+  "seconds": 2.32,
+  "made": "2026-11-04T19:38:00+00:00"
+}

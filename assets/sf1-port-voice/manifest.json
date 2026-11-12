@@ -1,0 +1,94 @@
+{
+  "format": 1,
+  "sample_rate": 4000,
+  "lines": {
+    "alpha_counter": {
+      "nibbles": 5574,
+      "crc32": "9a87de67"
+    },
+    "burnout": {
+      "nibbles": 4158,
+      "crc32": "bd7c63ef"
+    },
+    "combo_10": {
+      "nibbles": 7545,
+      "crc32": "fc6f6fc3"
+    },
+    "combo_11": {
+      "nibbles": 8061,
+      "crc32": "28831f35"
+    },
+    "combo_12": {
+      "nibbles": 7668,
+      "crc32": "1485ac45"
+    },
+    "combo_13": {
+      "nibbles": 8307,
+      "crc32": "22262925"
+    },
+    "combo_14": {
+      "nibbles": 8078,
+      "crc32": "308e6b4a"
+    },
+    "combo_15": {
+      "nibbles": 9268,
+      "crc32": "35281f6a"
+    },
+    "combo_5": {
+      "nibbles": 7376,
+      "crc32": "8626b7d6"
+    },
+    "combo_6": {
+      "nibbles": 7154,
+      "crc32": "f69d34f4"
+    },
+    "combo_7": {
+      "nibbles": 7549,
+      "crc32": "ec806658"
+    },
+    "combo_8": {
+      "nibbles": 7364,
+      "crc32": "06aa4e8d"
+    },
+    "combo_9": {
+      "nibbles": 7116,
+      "crc32": "cc5b4c1f"
+    },
+    "counter": {
+      "nibbles": 3592,
+      "crc32": "12e6039a"
+    },
+    "crush_counter": {
+      "nibbles": 5313,
+      "crc32": "bd0716f8"
+    },
+    "custom_combo": {
+      "nibbles": 6416,
+      "crc32": "87998fc2"
+    },
+    "first_attack": {
+      "nibbles": 5167,
+      "crc32": "0638bd37"
+    },
+    "perfect": {
+      "nibbles": 3793,
+      "crc32": "3299c3d6"
+    },
+    "perfect_parry": {
+      "nibbles": 5850,
+      "crc32": "8ac14643"
+    },
+    "punish_counter": {
+      "nibbles": 5752,
+      "crc32": "4528aabb"
+    },
+    "reversal": {
+      "nibbles": 4332,
+      "crc32": "da23bbc2"
+    },
+    "super": {
+      "nibbles": 3966,
+      "crc32": "d4988cfd"
+    }
+  }
+}

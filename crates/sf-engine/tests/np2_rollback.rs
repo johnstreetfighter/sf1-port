@@ -88,7 +88,7 @@ fn center_x(fight: &Fight, player: u32) -> i32 {
 
 fn close_with_actual_throw_art() -> (Assets, Fight) {
     let assets = assets();
-    let pack = ArtPack::open(Path::new("../../tools/reference/local/roms/sf1-port-art"))
+    let pack = ArtPack::open(Path::new("../../assets/sf1-port-art"))
         .expect("NP2 real throws require the approved local art pack");
     let art = load_art_from(
         &assets,

@@ -1,0 +1,12 @@
+{
+ "crouching_sweep": [
+  "inpainting's colours reduced to his nearest pens; 12 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "1 pixels where the waist mask met the front thigh's top (rows 44-47, from x33) set back to the approved crouch's"
+ ],
+ "rising_strike": [
+  "inpainting's colours reduced to his nearest pens; 6 single pixels inside the mask unlike all four neighbours set to the pens around them"
+ ],
+ "smash": [
+  "round one's file (65ea49af) with the gap between his forearms opened (the maintainer, round one: \"between the forearms should look transparent\"): 14 pixels of the maroon band where the two forearms' outlines met (x53-66, y40-51) made transparent, keeping one outline pixel on each forearm"
+ ]
+}

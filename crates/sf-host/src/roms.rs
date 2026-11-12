@@ -1,25 +1,47 @@
-//! Finding the ROM set (spec #150, section 5.5): the folders the game looks
-//! in, in order, and the first one whose files all match the embedded
-//! manifest (each file present, its size and its CRC-32).
+//! Find a ROM folder or archive whose files match the embedded manifest.
 
 use std::path::{Path, PathBuf};
 
 use sf_engine::front::rom_missing::Looked;
-use sf_video::romset::{self, Assets};
+use sf_video::romset::{self, Assets, RomsetError, VerifiedRomSet};
+
+mod archive;
+#[cfg(windows)]
+mod picker;
+
+/// Which kind of ROM source to choose in the missing-ROM screen.
+#[derive(Clone, Copy)]
+pub enum BrowseKind {
+    Folder,
+    Archive,
+}
+
+/// Show the host's ROM picker. Cancellation returns no path.
+pub fn browse(window: &crate::gpu_window::WindowState, kind: BrowseKind) -> Result<Option<PathBuf>, String> {
+    #[cfg(windows)]
+    {
+        picker::browse(window, kind).map_err(|error| error.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (window, kind);
+        Err("the ROM picker is unavailable on this platform".to_owned())
+    }
+}
 
 /// The ROM manifest, embedded so the game is one file plus the ROM folder.
 pub const MANIFEST: &str = include_str!("../../../tools/reference/rom-manifest.json");
 
-/// A folder to look in. `path` is `None` when nothing names it (the
-/// settings file's folder, unset).
+/// A folder or archive to look in. `path` is `None` when the setting is unset.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Candidate {
     pub label: String,
     pub path: Option<PathBuf>,
 }
 
-/// The set, loaded from the folder that matched.
+/// The set, loaded from the source that matched.
 pub struct RomSet {
+    /// The selected directory or archive path.
     pub folder: PathBuf,
     /// How many files matched the manifest.
     pub files: usize,
@@ -92,14 +114,27 @@ pub fn find(candidates: &[Candidate]) -> Result<RomSet, Vec<Looked>> {
     Err(looked)
 }
 
-fn load(dir: &Path) -> Result<RomSet, String> {
-    let files = romset::check_set(dir, MANIFEST).map_err(|e| e.0)?;
-    let region = |name| romset::load_region_from_manifest(dir, MANIFEST, name).map_err(|e| e.0);
+/// Validate and load a ROM directory, ZIP, or 7z archive.
+pub fn load(path: &Path) -> Result<RomSet, String> {
+    let VerifiedRomSet { files, assets, audio2, audiocpu } = if path.is_dir() {
+        romset::load_verified_set(MANIFEST, |name, _| {
+            std::fs::read(path.join(name)).map_err(|_| RomsetError(format!("{name} is missing")))
+        }).map_err(|error| error.0)?
+    } else if path.is_file() {
+        archive::load(path, MANIFEST)?
+    } else {
+        let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("");
+        return Err(if extension.eq_ignore_ascii_case("zip") || extension.eq_ignore_ascii_case("7z") {
+            "the archive does not exist".to_owned()
+        } else {
+            "the folder does not exist".to_owned()
+        });
+    };
     Ok(RomSet {
-        folder: dir.to_owned(),
+        folder: path.to_owned(),
         files,
-        assets: romset::load_assets_from_manifest(dir, MANIFEST).map_err(|e| e.0)?,
-        audio2: region("audio2")?,
-        audiocpu: region("audiocpu")?,
+        assets,
+        audio2,
+        audiocpu,
     })
 }

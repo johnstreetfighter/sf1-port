@@ -1,0 +1,24 @@
+{
+  "stem": "combo_5",
+  "take": 2,
+  "text": "Five hit combo!",
+  "prompt": "FIVE HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "FIVE HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "5eda0081aa91fa403b147dd9f64548315e8fb594c7c6852d0977142b79cd9fec",
+  "seconds": 2.08,
+  "made": "2026-11-04T19:37:32+00:00"
+}

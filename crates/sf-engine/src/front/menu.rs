@@ -53,6 +53,8 @@ pub enum MenuItem {
     Moves,
     PowerOn,
     Retry,
+    BrowseRomFolder,
+    BrowseRomArchive,
     RebindP1,
     RebindP2,
     RebindMenu,
@@ -97,6 +99,8 @@ impl MenuItem {
             MenuItem::Moves => "MOVES",
             MenuItem::PowerOn => "POWER ON",
             MenuItem::Retry => "RETRY",
+            MenuItem::BrowseRomFolder => "BROWSE FOLDER",
+            MenuItem::BrowseRomArchive => "BROWSE ARCHIVE",
             MenuItem::RebindP1 => "REBIND P1",
             MenuItem::RebindP2 => "REBIND P2",
             MenuItem::RebindMenu => "REBIND MENU",
@@ -116,6 +120,8 @@ impl MenuItem {
                 | MenuItem::Cabinet1987
                 | MenuItem::PowerOn
                 | MenuItem::Retry
+                | MenuItem::BrowseRomFolder
+                | MenuItem::BrowseRomArchive
                 | MenuItem::RebindP1
                 | MenuItem::RebindP2
                 | MenuItem::RebindMenu

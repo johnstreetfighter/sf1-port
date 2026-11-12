@@ -35,7 +35,7 @@ use sf_video::art_pack::ArtPack;
 use sf_video::romset::{load_assets, Assets};
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
-const PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const PACK: &str = "../../assets/sf1-port-art";
 const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 const RECIPES: [&str; 2] = [include_str!("../../../art/recipes/ryu.json"), include_str!("../../../art/recipes/retsu.json")];
 const REVIEWS: [&str; 2] = [include_str!("../../../art/review/ryu.json"), include_str!("../../../art/review/retsu.json")];

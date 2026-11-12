@@ -1,0 +1,21 @@
+{
+ "crouch": [
+  "outside the mask every pixel is the ROM source's; inside, 250 pixels differ from the source, and the 86 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "9 single pixels inside the mask set to the pen around them"
+ ],
+ "crouching_punch": [
+  "outside the mask every pixel is the ROM source's; inside, 90 pixels differ from the source, and the 64 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "9 single pixels inside the mask set to the pen around them",
+  "5 transparent pixels between the sleeve's underside and the thigh (x 47-48 row 58, x 50-52 row 59), where the backdrop showed through, set to the dark purple of the sleeve's shadow"
+ ],
+ "crouching_block": [
+  "outside the mask every pixel is the ROM source's; inside, 170 pixels differ from the source, and the 152 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "3 single pixels inside the mask set to the pen around them"
+ ],
+ "crouching_kick": [
+  "outside the mask every pixel is the ROM source's; inside, 51 pixels differ from the source, and the 91 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "2 single pixels inside the mask set to the pen around them",
+  "his robe's front panel just above its hem (x 34-43, rows 76-79, 40 pixels) set back to the source's: the inpainting had cleared it and left the hem hanging under empty space",
+  "2 black pixels inside the sleeve (x 45-46, row 61), the leg crop's top outline, set to the sleeve's dark purple"
+ ]
+}

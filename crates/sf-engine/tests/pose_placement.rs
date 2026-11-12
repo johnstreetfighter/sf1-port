@@ -37,7 +37,7 @@ fn local() -> Option<&'static Local> {
         .get_or_init(|| {
             let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
             let roms = root.join("tools/reference/local/roms/sf");
-            let pack = root.join("tools/reference/local/roms/sf1-port-art");
+            let pack = root.join("assets/sf1-port-art");
             if !roms.is_dir() || !pack.is_dir() {
                 eprintln!("skipping: local ROMs and approved art pack required");
                 return None;

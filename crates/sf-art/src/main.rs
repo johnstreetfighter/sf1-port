@@ -27,7 +27,7 @@
 //!   month's against the cap.
 //!
 //! Every command takes `--roms <folder>` (default: the local ROM set) and
-//! `--pack <folder>` (default: the art pack beside it). The recipes, reviews
+//! `--pack <folder>` (default: `assets/sf1-port-art`). The recipes, reviews
 //! and ledgers are read from `art/` in the working copy.
 
 use std::net::TcpListener;
@@ -99,7 +99,7 @@ fn main() {
         out
     };
     let roms = flag(&args, "--roms").map(PathBuf::from).unwrap_or_else(|| repo().join("tools/reference/local/roms/sf"));
-    let pack_dir = flag(&args, "--pack").map(PathBuf::from).unwrap_or_else(|| roms.join("..").join(PACK_FOLDER));
+    let pack_dir = flag(&args, "--pack").map(PathBuf::from).unwrap_or_else(|| repo().join("assets").join(PACK_FOLDER));
     if positional.first() == Some(&"budget") {
         return budget();
     }

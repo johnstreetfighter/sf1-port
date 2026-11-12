@@ -166,6 +166,8 @@ fn a_host_bound_event_shows_the_shareable_code_and_waiting_status_but_client_bou
     let frame = screen.render(&font);
     assert!(text_at(&frame, &font, 5, 19, "ROOM CODE", ink::BLUE));
     assert!(text_at(&frame, &font, 20, 19, code, ink::YELLOW));
+    #[cfg(windows)]
+    assert!(text_at(&frame, &font, 20, 20, "CTRL+C COPY", ink::DIM));
     assert!(text_at(&frame, &font, 3, 22, "WAITING FOR CHALLENGER...", ink::BLUE));
     assert!((200..208).all(|y| (16..368).all(|x| frame.argb[y * WIDTH + x] == 0xff00_0000)));
 
@@ -180,6 +182,10 @@ fn a_host_bound_event_shows_the_shareable_code_and_waiting_status_but_client_bou
     let shown = host.step(FrameInputs::default());
     assert!(text_at(&shown.frame, &font, 20, 19, code, ink::YELLOW));
     assert!(text_at(&shown.frame, &font, 3, 22, "WAITING FOR CHALLENGER...", ink::BLUE));
+    assert_eq!(host.room_code_for_copy(), Some(code));
+    host.room_code_copy_result(true);
+    let copied = host.step(FrameInputs::default());
+    assert!(text_at(&copied.frame, &font, 3, 22, "ROOM CODE COPIED", ink::BLUE));
 
     let mut client = online_session();
     pulse(&mut client, MenuInput::Left);
@@ -230,6 +236,37 @@ fn direct_join_accepts_a_typed_room_code_or_ipv4_and_rejects_malformed_entry() {
     screen.type_key(TypedKey::Enter);
     assert!(screen.drain_actions().is_empty());
     assert!(screen.notice().contains("INVALID"));
+}
+
+#[test]
+fn clipboard_paste_only_fills_direct_join_and_requires_confirmation() {
+    let mut session = online_session();
+    let code = "SF1-7F00-0001-1BD3";
+    session.push_net_events(&[NetTransportEvent::RoomsDiscovered {
+        rooms: vec![advertised_room(code, RoomKind::Versus, false)],
+    }]);
+    assert!(!session.accepts_room_code_paste());
+    session.paste_room_code(Some(code));
+    assert!(session.drain_net_commands().is_empty());
+    assert_eq!(session.room_code_for_copy(), None);
+    for _ in 0..4 { pulse(&mut session, MenuInput::Down); }
+    assert_eq!(session.room_code_for_copy(), Some(code));
+
+    // Wrap back to the header, then switch to Direct Join.
+    pulse(&mut session, MenuInput::Down);
+    pulse(&mut session, MenuInput::Left);
+    assert!(session.accepts_room_code_paste());
+    assert_eq!(session.room_code_for_copy(), None);
+    session.paste_room_code(Some(" \r\nsf1-7f00-0001-1bd3\r\n"));
+    session.step(FrameInputs::default());
+    assert!(session.drain_net_commands().is_empty());
+    session.paste_room_code(Some("SF1-7F00-0001-0000"));
+    session.paste_room_code(Some("127.0.0.1:7001\n127.0.0.1:7002"));
+    session.paste_room_code(None);
+    pulse(&mut session, MenuInput::Confirm);
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::ConnectPeer {
+        addr: "127.0.0.1:7123".into(),
+    }], "bad clipboard contents preserve the validated code");
 }
 
 #[test]

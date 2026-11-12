@@ -50,7 +50,7 @@ pub struct Settings {
     /// The overhaul announcer's chip (ADR 0011), under `master`; 0 is off.
     /// Local presentation: never in the synced `MatchConfig`.
     pub announcer: u8,
-    /// A folder to look for the ROM set in after the two standard ones.
+    /// A ROM folder or archive to try after the standard locations.
     pub rom_folder: Option<String>,
     /// The 1987 cabinet's DIP words.
     pub cabinet_dsw1: u16,

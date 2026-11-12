@@ -73,8 +73,19 @@ pub fn find_pack(folders: &[PathBuf]) -> Result<ArtPack, String> {
 /// Build the art from `rom`, the embedded recipes and reviews, and the art
 /// pack beside the ROM folders, logging what loaded.
 pub fn load(rom: &Assets, rom_folders: &[&Path], log: &mut Log) -> Option<Art> {
-    let pack = find_pack(&pack_folders(rom_folders));
-    load_from(rom, &RECIPES, &REVIEWS, pack, log)
+    load_with_fallbacks(rom, rom_folders, &[], log)
+}
+
+/// Search for a local override first, followed by bundled asset directories.
+pub fn load_with_fallbacks(
+    rom: &Assets,
+    rom_folders: &[&Path],
+    asset_roots: &[PathBuf],
+    log: &mut Log,
+) -> Option<Art> {
+    let mut folders = pack_folders(rom_folders);
+    folders.extend(asset_roots.iter().map(|root| root.join(PACK_FOLDER)));
+    load_from(rom, &RECIPES, &REVIEWS, find_pack(&folders), log)
 }
 
 /// [`load`] with the recipes, reviews and pack given (for tests).

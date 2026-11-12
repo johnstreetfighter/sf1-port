@@ -1,0 +1,10 @@
+{
+ "jump_punch": [
+  "outside the mask every pixel is the ROM source's; inside, 23 pixels differ from the source, and the 36 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "2 single pixels inside the mask set to the pen around them"
+ ],
+ "jump_punch_down": [
+  "outside the mask every pixel is the ROM source's; inside, 37 pixels differ from the source, and the 68 pixels the inpainting drew off his palette were taken to his nearest pens",
+  "3 single pixels inside the mask set to the pen around them"
+ ]
+}

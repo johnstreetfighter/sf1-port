@@ -30,7 +30,7 @@ fn banked_fight(dramatic: Option<(LifebarMode, bool)>) -> (Assets, Fight) {
         "../../tools/reference/rom-manifest.json",
     )
     .expect("NP8 requires the verified local ROM set");
-    let pack = ArtPack::open(Path::new("../../tools/reference/local/roms/sf1-port-art"))
+    let pack = ArtPack::open(Path::new("../../assets/sf1-port-art"))
         .expect("NP8 requires the approved current art pack");
     let mut recipes = vec![
         include_str!("../../../art/recipes/ryu.json"),

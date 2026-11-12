@@ -67,6 +67,16 @@ pub struct WindowState {
     pub stats: PresentStats,
     /// Time since the window opened.
     pub elapsed: Duration,
+    #[cfg(windows)]
+    win32_hwnd: Option<std::num::NonZeroIsize>,
+}
+
+impl WindowState {
+    /// The parent window for native dialogs and clipboard operations.
+    #[cfg(windows)]
+    pub fn win32_hwnd(&self) -> Option<std::num::NonZeroIsize> {
+        self.win32_hwnd
+    }
 }
 
 /// The game behind the window.
@@ -245,6 +255,14 @@ impl App<'_> {
             pacing: self.pacer.pacing(),
             stats: self.stats,
             elapsed: self.start.elapsed(),
+            #[cfg(windows)]
+            win32_hwnd: self.gpu.as_ref().and_then(|gpu| {
+                use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                match gpu.window.window_handle().ok()?.as_raw() {
+                    RawWindowHandle::Win32(handle) => Some(handle.hwnd),
+                    _ => None,
+                }
+            }),
         }
     }
 
@@ -398,8 +416,11 @@ impl ApplicationHandler for App<'_> {
             }
             WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. } => self.choose_pacing(false),
             WindowEvent::Focused(focused) => self.keyboard.focus(focused),
-            WindowEvent::KeyboardInput { event, .. } => {
+            WindowEvent::KeyboardInput { event, is_synthetic, .. } => {
                 let pressed = event.state == ElementState::Pressed;
+                if pressed && !is_synthetic && self.keyboard.room_code_key(&event.logical_key, event.repeat) {
+                    return;
+                }
                 self.keyboard.key(event.physical_key, pressed, event.repeat);
                 if pressed {
                     self.keyboard.text(&event.logical_key, event.text.as_deref(), event.repeat);

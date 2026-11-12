@@ -1,0 +1,24 @@
+{
+  "stem": "crush_counter",
+  "take": 3,
+  "text": "Crush counter!",
+  "prompt": "CRUSH COUNTER!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "CRUSH COUNTER!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22503
+  },
+  "output_format": "pcm_24000",
+  "take_key": "5dbb9c9e31c4a82dffc39c56e23a22e1a2b3335e337b6c15555da4eb13dd6b36",
+  "seconds": 1.6,
+  "made": "2026-11-04T19:37:18+00:00"
+}

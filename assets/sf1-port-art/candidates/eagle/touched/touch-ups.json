@@ -1,0 +1,26 @@
+{
+ "crouch": [
+  "inpainting's colours reduced to his nearest pens; 4 single pixels in the inpainted shins unlike all four neighbours set to the pens around them",
+  "the rear trouser leg's right edge (x27, y59-62), where the tuck's leg was cut, given his black outline",
+  "two holes in his black waistband (x34 y44, x33 y45), where the tuck's stick crossed it, filled black"
+ ],
+ "crouching_sweep": [
+  "inpainting's colours reduced to his nearest pens; 3 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "1 pixels where the waist mask met the front thigh's top (rows 44-47 of the crouch, from x33) set back to the approved crouch's: a stray light pixel and specks the inpainting drew in the waistband's two holes"
+ ],
+ "crouching_uppercut": [
+  "inpainting's colours reduced to his nearest pens; 4 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "5 pixels where the waist mask met the front thigh's top (rows 44-47 of the crouch, from x33) set back to the approved crouch's: a stray light pixel and specks the inpainting drew in the waistband's two holes"
+ ],
+ "rising_strike": [
+  "inpainting's colours reduced to his nearest pens; 1 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "46 pixels of the turned sleeve's underside left hanging below it, under the armpit (x62-79, y60-69), removed; the sleeve's lowest row there (y59, x61-79) set to his outline pen (12), and the torso's front edge under the arm (y60-67), uncovered when the jab's arm was turned away, given his outline pen as the ROM draws it lower down"
+ ],
+ "smash": [
+  "inpainting's colours reduced to his nearest pens; 2 single pixels inside the mask unlike all four neighbours set to the pens around them",
+  "7 transparent holes in his black waistband (rows 46-47), left where his stance's hands were taken off the belt and kept by the inpainting, filled black"
+ ],
+ "rising": [
+  "inpainting's colours reduced to his nearest pens; 5 single pixels inside the mask unlike all four neighbours set to the pens around them"
+ ]
+}

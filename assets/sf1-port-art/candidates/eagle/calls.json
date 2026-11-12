@@ -1,0 +1,80 @@
+[
+ {
+  "at": "2026-11-07T15:05:40Z",
+  "move": "crouch",
+  "job": "44ab99c5-03da-4b8a-ac97-67393e9b24aa",
+  "cost": 5,
+  "canvas": [
+   72,
+   76
+  ],
+  "src": "crouch (first source: shins cut at tuck rows 54/55 and his stance's hems under them, mask rows 57-66)",
+  "kept": false
+ },
+ {
+  "at": "2026-11-07T15:17:50Z",
+  "move": "crouch",
+  "job": "df197c8d-3b89-4e7a-bda6-6fc96f75053e",
+  "cost": 5,
+  "canvas": [
+   72,
+   76
+  ],
+  "src": "crouch-b"
+ },
+ {
+  "at": "2026-11-07T15:17:55Z",
+  "move": "rising stick strike",
+  "job": "c3e4604b-6430-40fd-98e3-de478c76c879",
+  "cost": 6,
+  "canvas": [
+   104,
+   128
+  ],
+  "src": "rising-strike"
+ },
+ {
+  "at": "2026-11-07T15:18:00Z",
+  "move": "overhead smash",
+  "job": "285597a3-3fd8-4033-9f60-3f27ffaded20",
+  "cost": 5,
+  "canvas": [
+   96,
+   96
+  ],
+  "src": "smash"
+ },
+ {
+  "at": "2026-11-07T15:22:40Z",
+  "move": "crouching stick sweep",
+  "job": "7fe080a7-8462-438c-aabc-5d25ff9750df",
+  "cost": 5,
+  "canvas": [
+   96,
+   76
+  ],
+  "src": "crouching-sweep"
+ },
+ {
+  "at": "2026-11-07T15:22:45Z",
+  "move": "crouching stick uppercut",
+  "job": "99ca28e8-8c97-4d38-a2c7-c3e203a79139",
+  "cost": 6,
+  "canvas": [
+   72,
+   120
+  ],
+  "src": "crouching-uppercut"
+ },
+ {
+  "at": "2026-11-07T15:22:50Z",
+  "move": "get-up",
+  "job": "9190a924-06cb-46a6-afab-b51732127d79",
+  "cost": 5,
+  "canvas": [
+   72,
+   76
+  ],
+  "src": "rising"
+ }
+]

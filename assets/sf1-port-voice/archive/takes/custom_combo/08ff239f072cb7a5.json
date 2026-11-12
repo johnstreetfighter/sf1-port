@@ -1,0 +1,24 @@
+{
+  "stem": "custom_combo",
+  "take": 2,
+  "text": "Custom combo!",
+  "prompt": "CUSTOM COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "CUSTOM COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "08ff239f072cb7a547ad286b43e57a44b4e24cf4ba2abffcc40b3002618d2952",
+  "seconds": 1.84,
+  "made": "2026-11-04T19:37:29+00:00"
+}

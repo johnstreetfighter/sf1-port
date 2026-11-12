@@ -485,7 +485,7 @@ class ContentTest(unittest.TestCase):
             self.assertTrue(v["voice_id"], "a saved voice has an id")
             self.assertIn("picked", v["design"], "a saved voice records the preview it was kept from")
 
-    def test_no_generated_audio_is_in_the_repository(self):
+    def test_authoring_scripts_do_not_duplicate_pack_audio(self):
         for pattern in ("*.wav", "*.vox", "*.mp3", "*.ogg"):
             found = [p for p in (REPO / "tools" / "voice").rglob(pattern)]
             self.assertEqual(found, [], pattern)

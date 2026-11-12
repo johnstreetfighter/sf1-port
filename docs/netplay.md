@@ -6,6 +6,10 @@ it is an address, rather than an account or invitation stored on a server.
 The default game port is **7000**. Codes for other ports include a final
 four-digit hexadecimal port word.
 
+On Windows, press **Ctrl+C** to copy the code shown in **Host Match** or the
+selected code in **Browse Rooms**. In **Direct Join**, press **Ctrl+V** to fill
+the entry from the clipboard, then confirm **Join** when ready.
+
 Windows adapter detection uses its built-in networking cmdlets. On Linux,
 adapter detection requires **iproute2** (the `ip` command). Hosting selects a
 local adapter, including on a LAN with no default route; joining selects the

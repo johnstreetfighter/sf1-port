@@ -36,7 +36,7 @@ use sf_video::scene::SceneState;
 use sf_video::vs_screens::{vs_key, SCREENS_PER_PAGE};
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
-const PACK: &str = "../../tools/reference/local/roms/sf1-port-art";
+const PACK: &str = "../../assets/sf1-port-art";
 const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 const RECIPES: [&str; 11] = [
     include_str!("../../../art/recipes/ryu.json"),

@@ -24,15 +24,24 @@ fn a_missing_pack_means_no_announcer_and_one_log_line() {
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(lines[0].contains("no announcer") && lines[0].contains("sf1-port-voice"), "{}", lines[0]);
 
+    let asset_roots = [std::path::PathBuf::from("../../assets")];
+    let mut bundled_log = Log::create(&dir.join("bundled.log"));
+    let bundled = sf_host::voice::load_with_fallbacks(
+        &[roms.as_path()], &asset_roots, &mut bundled_log,
+    ).expect("the repository pack loads without a local override");
+    assert!(bundled.len() > 1);
+
     let clip = encode_adpcm(&[0, 400, 800, 400, 0, -400]).unwrap();
     VoiceStore::from_clips([(AnnouncerLine::Super, clip)]).unwrap().write(&dir.join("roms").join("sf1-port-voice")).unwrap();
     let path = dir.join("found.log");
     let mut log = Log::create(&path);
-    let store = sf_host::voice::load(&[roms.as_path()], &mut log).expect("the pack beside the ROMs");
+    let store = sf_host::voice::load_with_fallbacks(&[roms.as_path()], &asset_roots, &mut log)
+        .expect("the pack beside the ROMs overrides the bundle");
     assert_eq!(store.len(), 1);
     let lines = voice_lines(&path);
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(lines[0].contains("1 announcer lines"), "{}", lines[0]);
     drop(log);
+    drop(bundled_log);
     let _ = std::fs::remove_dir_all(&dir);
 }

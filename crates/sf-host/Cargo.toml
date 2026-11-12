@@ -22,6 +22,9 @@ cpal = "0.15.3"
 gilrs = "0.11"
 socket2 = "=0.6.5"
 serde_json = { workspace = true }
+# Read the player's local ROM archive without staging its entries to disk.
+zip = { version = "=9.5.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+sevenz-rust2 = { version = "=0.25.0", default-features = false }
 # Optional directory requests run on a bounded worker, with verified TLS.
 ureq = { version = "=3.5.1", default-features = false, features = ["rustls"] }
 # The game's GPU window (ADR-0010). wgpu 30 is the version librashader
@@ -41,6 +44,9 @@ symphonia = { version = "0.6.1", default-features = false, features = ["ogg", "v
 
 [dev-dependencies]
 png = { workspace = true }
+sevenz-rust2 = { version = "=0.25.0", default-features = false, features = ["compress", "util"] }
 
 [target.'cfg(windows)'.dependencies]
 gilrs-core = "0.6"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Ole"] }
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }

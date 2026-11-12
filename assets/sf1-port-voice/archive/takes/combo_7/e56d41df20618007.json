@@ -1,0 +1,24 @@
+{
+  "stem": "combo_7",
+  "take": 1,
+  "text": "Seven hit combo!",
+  "prompt": "SEVEN HIT COMBO!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "SEVEN HIT COMBO!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "take_key": "e56d41df20618007b3b854d624986e5cbc8453f12bb063989ddb8d9c9d9f7614",
+  "seconds": 2.16,
+  "made": "2026-11-04T19:37:36+00:00"
+}

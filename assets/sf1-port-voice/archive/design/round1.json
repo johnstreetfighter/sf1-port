@@ -1,0 +1,30 @@
+{
+  "request": {
+    "voice_description": "A ringside announcer at a 1980s world fighting tournament. Adult man, strong mid-range voice, a little gravel, loud and bright. He barks single words and short phrases with hard consonants, as if he's calling the action over a crowd through a cheap PA. No breathiness, no long vowels, no commentary.",
+    "model_id": "eleven_ttv_v3",
+    "text": "ROUND ONE! FIGHT! SUPER! PERFECT! COUNTER! PUNISH COUNTER! REVERSAL! FIRST ATTACK! PERFECT PARRY! ALPHA COUNTER! CRUSH COUNTER! BURNOUT! CUSTOM COMBO! FIVE HIT COMBO! TWELVE HIT COMBO!",
+    "loudness": 0.5,
+    "guidance_scale": 5,
+    "seed": 22501
+  },
+  "output_format": "pcm_24000",
+  "text": "ROUND ONE! FIGHT! SUPER! PERFECT! COUNTER! PUNISH COUNTER! REVERSAL! FIRST ATTACK! PERFECT PARRY! ALPHA COUNTER! CRUSH COUNTER! BURNOUT! CUSTOM COMBO! FIVE HIT COMBO! TWELVE HIT COMBO!",
+  "previews": [
+    {
+      "file": "round1_preview1.wav",
+      "generated_voice_id": "TtaXYTixYbE9JF8fvOzO",
+      "duration_secs": 27.36
+    },
+    {
+      "file": "round1_preview2.wav",
+      "generated_voice_id": "jSpNnJd6IV3EN0dVoIXm",
+      "duration_secs": 38.0
+    },
+    {
+      "file": "round1_preview3.wav",
+      "generated_voice_id": "3zlcZRIulOdUgxHt36EN",
+      "duration_secs": 27.6
+    }
+  ],
+  "made": "2026-11-04T19:32:42+00:00"
+}

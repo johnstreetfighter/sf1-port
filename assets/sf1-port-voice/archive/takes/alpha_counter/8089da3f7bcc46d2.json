@@ -1,0 +1,24 @@
+{
+  "stem": "alpha_counter",
+  "take": 2,
+  "text": "Alpha counter!",
+  "prompt": "ALPHA COUNTER!",
+  "vendor": "elevenlabs",
+  "voice_id": "jSpNnJd6IV3EN0dVoIXm",
+  "request": {
+    "text": "ALPHA COUNTER!",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.5,
+      "use_speaker_boost": true,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "speed": 1.0
+    },
+    "seed": 22502
+  },
+  "output_format": "pcm_24000",
+  "take_key": "8089da3f7bcc46d24786866bda07a05c16bc7f096e6e71e05b1744b3a06ca723",
+  "seconds": 1.68,
+  "made": "2026-11-04T19:37:20+00:00"
+}
