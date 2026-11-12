@@ -100,6 +100,8 @@ use sf_video::art::Catalogue;
 use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 
+pub(crate) mod arcade_text;
+
 /// The first address of the bank.
 pub const DATA_BANK_BASE: u32 = 0x10_0000;
 /// The last address of the bank.
@@ -551,6 +553,7 @@ impl DataBank {
                 Err(why) => bank.notes.push(format!("{} has no 1987 player table: {why}", fighter.name())),
             }
         }
+        arcade_text::append(rom, &mut bank.bytes);
         bank
     }
 }

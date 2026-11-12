@@ -61,7 +61,7 @@ pub const RYU: u16 = 0x400;
 pub const KEN: u16 = 0xa00;
 
 /// Work RAM globals (A5-relative in the original).
-const MODE_DEMO: u32 = 0xff8003; // ($3,A5): 0 in attract/demo play
+pub(crate) const MODE_DEMO: u32 = 0xff8003; // ($3,A5): 0 in attract/demo play
 const SOUND_READ: u32 = 0xff865e; // sound-queue read index
 const SOUND_WRITE: u32 = 0xff8660; // sound-queue write index
 const SOUND_QUEUE: u32 = 0xff8662; // 16-word ring of sound commands
@@ -416,6 +416,7 @@ impl Program {
             preset: self.match_config.preset,
             roster: self.match_config.roster,
             dramatic: self.match_config.dramatic,
+            world_tour: self.match_config.world_tour,
             era_rules: self.match_config.into(),
             toggle_state: &mut self.toggle_state,
             training: &mut self.training,
@@ -468,6 +469,7 @@ pub struct Bus<'a> {
     /// 12-fighter roster binding (`#98`, `O7`). Ignored while `full_cast` is false.
     pub roster: crate::roster::RosterSettings,
     pub dramatic: Option<crate::dramatic::DramaticRules>,
+    pub(crate) world_tour: Option<crate::config::WorldTourRules>,
     pub(crate) era_rules: crate::era_fight::EraRules,
     /// Per-session runtime state for Tier 1 core overhaul toggles (`#94`, `O3`).
     pub toggle_state: &'a mut crate::config::CoreToggleState,
@@ -690,10 +692,8 @@ impl Bus<'_> {
         let big = self.is_big(e);
         let hx = Self::half_extent(self.eb(e, 0xd), big);
         let hy = Self::half_extent(self.eb(e, 0xc), big);
-        let sx = self
-            .ew(e, 6)
-            .wrapping_sub(hx)
-            .wrapping_add(sext8(self.eb(e, 0x15)));
+        let dx = self.world_tour_horizontal_step(self.el(e, 0x38), self.eb(e, 0xa), sext8(self.eb(e, 0x15)) as i16);
+        let sx = self.ew(e, 6).wrapping_sub(hx).wrapping_add(dx as u16);
         self.set_ew(e, 6, sx);
         let x = sext8(self.eb(e, 0x26)).wrapping_add(sx);
         let sy = self.ew(e, 4).wrapping_sub(hy);
@@ -811,6 +811,8 @@ impl Bus<'_> {
     /// placement entries 0x44114.. enter here with 0 (keep the header's
     /// position) or an x such as 0x1c0.
     pub fn start_move_at(&mut self, e: u16, ps: u32, mv: u8, mut d3: u16) {
+        self.world_tour_guard_reaction(ps, false);
+        self.world_tour_shuriken_recovery(ps, false);
         self.era_clear_alpha_move(ps, mv);
         let table = self.rl(ps + 0x12);
         let family_move = self.era_state(ps)
@@ -850,7 +852,7 @@ impl Bus<'_> {
         if let Some(slot) = self.player_slot_index(ps) {
             self.toggle_state.human_attack_frames[slot] = 0;
         }
-        if self.era_offense_flag(ps, self.toggles.true_combos) || self.era_state(ps).is_some_and(|era| era.alpha_move_active(mv)) {
+        if self.era_true_combos(ps) || self.era_state(ps).is_some_and(|era| era.alpha_move_active(mv)) {
             self.combo_new_move(e, mv);
         }
         if self.toggles.cancels {
@@ -903,7 +905,8 @@ impl Bus<'_> {
             }
             // 0x4420c-0x44228 also negate the new x-offset into a scratch
             // register that nothing reads.
-            let x = self.ew(e, 6).wrapping_add(d3);
+            let dx = self.world_tour_horizontal_step(ps, mv, self.ew(e, 6) as i16);
+            let x = d3.wrapping_add(dx as u16);
             self.set_ew(e, 6, x);
         }
         // 0x4422e: the unflipped grid from the header's code/attr/position.
@@ -1016,7 +1019,7 @@ impl Bus<'_> {
         }
         let alpha_move = self.era_state(self.el(e, 0x38))
             .is_some_and(|era| era.alpha_move_active(self.eb(e, 0xa)));
-        if self.era_offense_flag(self.el(e, 0x38), self.toggles.true_combos)
+        if self.era_true_combos(self.el(e, 0x38))
             || alpha_move || self.combo_reacting(e) || self.guard_crush_reaction(e)
         {
             self.combo_load_frame(e, a1);
@@ -1102,6 +1105,15 @@ impl Bus<'_> {
 
     /// 0x42be2: advance the animation stream of a busy entity (+9 bit 7).
     fn animate(&mut self, me: u16, other: u16) {
+        // The trial advances two native recovery frames per tick after Geki throws.
+        let accelerated = self.world_tour_shuriken_recovering(self.el(me, 0x38), self.eb(me, 0xa));
+        self.animate_frame(me, other);
+        if accelerated && self.world_tour_shuriken_recovering(self.el(me, 0x38), self.eb(me, 0xa)) {
+            self.animate_frame(me, other);
+        }
+    }
+
+    fn animate_frame(&mut self, me: u16, other: u16) {
         if self.eb(me, 9) & 0x80 == 0 {
             return;
         }
@@ -1121,7 +1133,9 @@ impl Bus<'_> {
             // 0x42cd6: repeat the frame with its (dy, dx) step.
             self.set_eb(me, 0xb, self.eb(me, 0xb) - 1);
             let dy = sext8(self.eb(me, 0x14));
-            let dx = sext8(self.eb(me, 0x15));
+            let dx = self.world_tour_horizontal_step(
+                self.el(me, 0x38), self.eb(me, 0xa), sext8(self.eb(me, 0x15)) as i16,
+            ) as u16;
             for s in self.grid_entries(me) {
                 let y = self.ew(s, 4).wrapping_add(dy);
                 let x = self.ew(s, 6).wrapping_add(dx);
@@ -1174,7 +1188,7 @@ impl Bus<'_> {
                         // entry; the animation step starts over this frame.
                         Some(Resume::Restart) => {
                             self.set_el(me, 0x2c, a1 + 6);
-                            self.animate(me, other);
+                            self.animate_frame(me, other);
                             return;
                         }
                         None => {
@@ -1405,6 +1419,7 @@ impl Bus<'_> {
                 }
                 let level = (self.eb(me, 0x34) as u32).clamp(1, 3) - 1;
                 self.spawn_effect(me, self.rl(r + 4 + level * 4));
+                self.world_tour_shuriken_recovery(self.el(me, 0x38), true);
                 Some(Resume::Load)
             }
             // The fighter, unseen in his smoke, moves to the record's gap
@@ -1582,7 +1597,7 @@ impl Bus<'_> {
     /// The tracker at `ps + off` has its command done and the fighter has a
     /// special it fires with the button (punch, or `kick`): that special.
     fn command_done(&self, ps: u32, off: u32, kick: bool) -> Option<u8> {
-        if self.rb(self.tracker_base(ps) + off + 2) == 0 {
+        if self.world_tour_pure_footsies() || self.rb(self.tracker_base(ps) + off + 2) == 0 {
             return None;
         }
         self.tracker_special(ps, off, kick)
@@ -2412,7 +2427,7 @@ impl Bus<'_> {
         // True combos (SP17): every hit function clears the attacker's
         // active bit, hit or guarded; the move has connected, so its later
         // active frames no longer hit (`combo_load_frame`).
-        if (self.era_offense_flag(owner, self.toggles.true_combos) || alpha_move) && self.eb(me, 0xf) & 0x80 == 0 {
+        if (self.era_true_combos(owner) || alpha_move) && self.eb(me, 0xf) & 0x80 == 0 {
             let s = self.combo_slot(me);
             let move_hits = self.era_side(owner).filter(|_| hit_limit > 1).map(|side| {
                 let count = &mut self.toggle_state.era.fighters[side].move_hits;
@@ -2708,7 +2723,7 @@ impl Bus<'_> {
         let owner = self.el(me, 0x38);
         let ps = self.el(me, 0x3c);
         let suppress_chip = is_chip && self.era_state(ps).is_some_and(|state| state.is_sf6() && state.gauge().is_some() && !state.sf6_burnout());
-        if self.era_offense_flag(owner, self.toggles.true_combos) && !is_chip {
+        if self.era_true_combos(owner) && !is_chip {
             dmg = self.combo_scale(ps, dmg);
         }
         let sf2 = self.sf2_state(owner).copied();
@@ -3028,6 +3043,7 @@ impl Bus<'_> {
         };
         let ps = self.el(other, 0x38);
         self.clear_air_attack_trajectory(ps);
+        self.world_tour_guard_reaction(ps, src == HitSource::Chip);
         let alive = self.defender_alive(ps);
         let te = match ps {
             ps if self.is_player_driven(ps) => {
@@ -3116,7 +3132,7 @@ impl Bus<'_> {
         } else if self.eb(other, 0xb) >= 2 {
             self.set_eb(other, 0xb, 2);
         }
-        if self.era_offense_flag(self.el(me, 0x38), self.toggles.true_combos) {
+        if self.era_true_combos(self.el(me, 0x38)) {
             self.combo_react(me, other, te, src);
         } else {
             let slot = self.combo_slot(other);
@@ -5017,7 +5033,7 @@ impl Bus<'_> {
         self.input_handler(ps);
     }
 
-    fn pad_directions(&self, ps: u32) -> u8 {
+    pub(crate) fn pad_directions(&self, ps: u32) -> u8 {
         if ps == CPU_STRUCT && self.dramatic_rules().is_some() {
             self.toggle_state.dramatic.boss_pad.directions.into_iter().enumerate()
                 .fold(0, |bits, (bit, held)| bits | (u8::from(held) << bit))
@@ -5071,11 +5087,12 @@ impl Bus<'_> {
         let era_throws = self.era_offense_flag(ps, self.toggles.throws);
         let mode = self.rb(SCENE_MODE);
         let scripted_turn = mode == 0x40 || mode == 0xc0;
+        let pure_footsies = self.world_tour_pure_footsies();
         if !scripted_turn {
             self.track_commands(ps, me, d0);
             let relative = self.relative_directions(me, d0);
             self.era_track_motion(ps, relative);
-            if self.try_family_input(ps, me, relative) || self.try_alpha_counter(ps, me, relative) {
+            if self.try_family_input(ps, me, relative) || (!pure_footsies && self.try_alpha_counter(ps, me, relative)) {
                 self.input_tail(me, ps);
                 return;
             }
@@ -5123,7 +5140,7 @@ impl Bus<'_> {
             && matches!(mv, 0xd..=0x1b | 0x1f | 0x2c..=0x2f) && mv != crate::data_bank::ALPHA_COUNTER_SLOT
             && self.era_buttons(ps).1 != 0
             && (self.latch_fires(ps, false) || self.latch_fires(ps + 1, true));
-        if !scripted_turn && cancel_custom {
+        if !scripted_turn && !pure_footsies && cancel_custom {
             if !self.try_era_special(ps, me) {
                 self.dispatch_direction(ps, me, other, d0, d0);
             }
@@ -5135,7 +5152,7 @@ impl Bus<'_> {
         let airborne = jumping && self.is_jump_airborne(me) && self.frames_until_landing(me) >= 4;
         let normal = matches!(mv, 0xd..=0x18) && state & 0x80 != 0;
         use crate::era_fight::SpecialContext::{Airborne, MashCancel};
-        if !scripted_turn
+        if !scripted_turn && !pure_footsies
             && ((airborne && self.era_sf4_command(ps, me, Airborne))
                 || (airborne && self.try_what_if_move(ps, me, Airborne))
                 || (jumping && (airborne || state & 3 == 1) && self.try_alpha_move(ps, me, airborne, false))
@@ -5190,7 +5207,7 @@ impl Bus<'_> {
             self.filter_neg_edge_latches(ps, me, d0);
         }
         let dispatch_d0 = self.apply_recovery_buffer(ps, me, d0);
-        if !scripted_turn && (self.try_custom_combo(ps, me) || self.try_era_special(ps, me)) {
+        if !scripted_turn && ((!pure_footsies && self.try_custom_combo(ps, me)) || self.try_era_special(ps, me)) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
@@ -5206,7 +5223,9 @@ impl Bus<'_> {
     }
 
     fn try_family_input(&mut self, ps: u32, entity: u16, relative: u8) -> bool {
-        if !self.era_state(ps).is_some_and(|state| state.uses_family_bank()) {
+        if self.world_tour_pure_footsies()
+            || !self.era_state(ps).is_some_and(|state| state.uses_family_bank())
+        {
             return false;
         }
         let posture = self.eb(entity, 9);
@@ -5254,6 +5273,9 @@ impl Bus<'_> {
         use crate::era_fight::{SF2_EXTRA_SPECIAL, SF2_SUPER};
         use crate::roster::TournamentFighter::{Ryu, Sagat};
 
+        if self.world_tour_pure_footsies() {
+            return None;
+        }
         let era = self.sf2_state(ps)?;
         let fighter = era.fighter?;
         let super_button = kick == (fighter == Sagat);
@@ -5280,6 +5302,9 @@ impl Bus<'_> {
     fn try_era_special(&mut self, ps: u32, entity: u16) -> bool {
         use crate::era_fight::{SpecialContext, SF2_SUPER};
 
+        if self.world_tour_pure_footsies() {
+            return self.try_alpha_move(ps, entity, false, false) || self.try_sf3_move(ps, entity, false);
+        }
         let canceling = self.eb(entity, 9) & 0xc0 == 0xc0;
         let context = SpecialContext::Ground { canceling };
         if self.try_what_if_move(ps, entity, context) {
@@ -6730,16 +6755,17 @@ impl Bus<'_> {
         use crate::era::{GaugeMode, Loadout, Revision};
 
         let ps = self.el(defender, 0x38);
+        if !self.world_tour_can_block(ps) { return false; }
         let Some(side) = self.era_side(ps) else { return false };
         let fighter = &self.toggle_state.era.fighters[side];
+        let air_guard = self.world_tour_perk(ps, crate::world_tour::native::Perk::AirGuard);
         let can_air_block = matches!(
             (fighter.style.revision, fighter.style.loadout),
             (Revision::Sfz1 | Revision::Sfz2 | Revision::Sfz2A, Loadout::Standard)
                 | (Revision::Sfz3, Loadout::AIsm | Loadout::VIsm)
         );
-        if !can_air_block
-            || !fighter.is_alpha() || fighter.custom_combo_active()
-            || self.era_gauge_mode(side) == GaugeMode::NoGauges
+        if (!air_guard && (!can_air_block || !fighter.is_alpha()
+            || self.era_gauge_mode(side) == GaugeMode::NoGauges)) || fighter.custom_combo_active()
             || self.era_guard_crushed(ps)
             || self.eb(defender, 9) & 0x40 != 0
             || !self.is_jump_airborne(defender)
@@ -6761,6 +6787,9 @@ impl Bus<'_> {
     }
 
     fn incoming_attack(&self, me: u16, other: u16, low: bool) -> bool {
+        if !self.world_tour_can_block(self.el(me, 0x38)) {
+            return false;
+        }
         if self.alpha_state(self.el(me, 0x38)).is_some_and(|era| era.custom_combo_active()) {
             return false;
         }
@@ -7052,7 +7081,7 @@ impl Bus<'_> {
             .saturating_add(if burnout { 4 } else { 0 });
         if block > 0 && matches!(self.eb(other, 0xa), 4 | 8) && self.can_alpha_counter(defender) {
             self.alpha_guard_contact(other, block);
-        } else if self.era_offense_flag(owner, self.toggles.true_combos)
+        } else if self.era_true_combos(owner)
             || self.era_state(defender).is_some_and(|state| state.uses_family_bank())
         {
             let slot = self.combo_slot(other);
@@ -8043,6 +8072,7 @@ mod tests {
                 preset: crate::config::RulesetPreset::Faithful1987,
                 roster: crate::roster::RosterSettings::faithful(),
                 dramatic: None,
+                world_tour: None,
                 era_rules: crate::config::MatchConfig::faithful().into(),
                 toggle_state: &mut self.toggle_state,
                 training: &mut self.training,

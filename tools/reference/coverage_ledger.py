@@ -771,7 +771,7 @@ NOTE_SITE_DISPOSITIONS: dict[tuple[str, str, str], tuple[list[int], str]] = {
         [],
         "Unreachable under MAME: defensive loop-bound guard (`d0 > 0x600`); caller `0x437fc` (`stage_reset`) passes `d0 = 0x100` and `0x44506` steps `d0` by `0x40` up to `0x600`.",
     ),
-    ("fighter.rs", "animate", "routine"): (
+    ("fighter.rs", "animate_frame", "routine"): (
         [],
         "Deferred (open decision 8 in #1): dynamic fighter stream-call dispatch (`0xfe` control byte at `0x42c20`); all scenario-reached targets (`0x4141a`, `0x414f0`, `0x41558` in F29 #69 / F58 #130; `0x4596e`, `0x45a34` in F27 #67; `0x4558a` in F62 #134; `0x45ace` in F63 #135) are translated, and static translation of unreached move-stream pointers is deferred under #1 open decision 8.",
     ),

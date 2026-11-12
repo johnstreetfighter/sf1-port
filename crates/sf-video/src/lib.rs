@@ -14,6 +14,7 @@ pub mod busts;
 pub mod callouts;
 pub mod compositor;
 pub mod decode;
+pub mod ending_screens;
 pub mod mirror_palette;
 pub mod era_hud;
 pub mod palette;

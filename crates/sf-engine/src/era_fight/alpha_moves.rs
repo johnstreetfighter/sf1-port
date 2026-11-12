@@ -179,7 +179,7 @@ impl AlphaMove {
         } else {
             requested
         };
-        (state.super_meter >= state.alpha_super_cost(level)?).then_some(level)
+        (state.super_meter >= state.meter_cost(state.alpha_super_cost(level)?)).then_some(level)
     }
 }
 

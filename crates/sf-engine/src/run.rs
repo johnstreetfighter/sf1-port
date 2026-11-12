@@ -1909,6 +1909,11 @@ impl PowerOnMachine {
         self.scheduler.match_over()
     }
 
+    pub(crate) fn start_world_tour_ending(&mut self) {
+        let mut bus = self.program.bus(&mut self.state);
+        self.scheduler.start_world_tour_ending(&mut bus);
+    }
+
     /// Active match configuration (ruleset preset and Tier 1 core toggles, `#94`, `O3`).
     pub fn match_config(&self) -> &crate::config::MatchConfig {
         &self.program.match_config

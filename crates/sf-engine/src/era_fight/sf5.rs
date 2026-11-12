@@ -625,7 +625,14 @@ impl EraFighterState {
         }
     }
 
+    fn award_v_meter(&mut self, amount: u8) {
+        let surge = self.world_tour_perk(crate::world_tour::native::Perk::MeterSurge);
+        let gain = super::world_tour::meter_gain(u16::from(amount), surge, &mut self.tour.v_gain_remainder);
+        self.sf5.gain(gain.min(u16::from(u8::MAX)) as u8);
+    }
+
     fn can_spend_v(&self, mode: GaugeMode, amount: u8) -> bool {
+        let amount = self.meter_cost(amount);
         self.sf5.capacity != 0
             && self.sf5.trigger_left == 0
             && if mode == GaugeMode::Unified {
@@ -636,6 +643,7 @@ impl EraFighterState {
     }
 
     fn spend_v(&mut self, mode: GaugeMode, amount: u8) {
+        let amount = self.meter_cost(amount);
         if mode == GaugeMode::Unified {
             self.super_meter -= amount;
         } else {
@@ -704,8 +712,8 @@ impl Bus<'_> {
         let state = &mut self.toggle_state.era.fighters[side];
         state.sf5.clear_motions();
         match action {
-            Action::CriticalArt => state.super_meter -= 3 * STOCK_AT,
-            Action::Enhanced(_) => state.super_meter -= STOCK_AT,
+            Action::CriticalArt => state.super_meter -= state.meter_cost(3 * STOCK_AT),
+            Action::Enhanced(_) => state.super_meter -= state.meter_cost(STOCK_AT),
             Action::Reversal => {
                 state.spend_v(mode, STOCK_AT);
                 state.sf5.reversal_left = 13;
@@ -747,11 +755,11 @@ impl Bus<'_> {
             }
             Action::Skill(slot) if fighter == Sagat => {
                 if state.sf5.skill_charge == 0 {
-                    state.sf5.gain(12);
+                    state.award_v_meter(12);
                 }
                 state.sf5.skill_charge = if slot == SKILL_ONE { UPPERCUT } else { 0x19 };
             }
-            Action::Skill(SKILL_ONE) if fighter == Birdie => state.sf5.gain(16),
+            Action::Skill(SKILL_ONE) if fighter == Birdie => state.award_v_meter(16),
             _ => {}
         }
         self.era_share_gauge(side);
@@ -772,12 +780,9 @@ impl Bus<'_> {
                 state.sf5.break_left = SHIFT_BREAK_FRAMES;
                 state.sf5.slow_left = 14;
                 if mode == GaugeMode::Unified {
-                    state.super_meter = state
-                        .super_meter
-                        .saturating_add(STOCK_AT / 2)
-                        .min(state.super_capacity);
+                    state.award_super_meter(STOCK_AT / 2);
                 } else {
-                    state.sf5.gain(STOCK_AT / 2);
+                    state.award_v_meter(STOCK_AT / 2);
                 }
                 self.era_share_gauge(side);
             }
@@ -797,7 +802,7 @@ impl Bus<'_> {
         if state.sf5.warm() && !strike {
             state.sf5.trigger_left = (state.sf5.trigger_left + 50).min(state.sf5.trigger_total);
         } else {
-            state.sf5.gain(20);
+            state.award_v_meter(20);
         }
         if strike {
             if trigger_counter {
@@ -864,7 +869,7 @@ impl Bus<'_> {
             return false;
         }
         if matches!(slot, SKILL_ONE | SKILL_TWO | COUNTER_STRIKE) {
-            state.sf5.gain(20);
+            state.award_v_meter(20);
         }
         let crush_move = matches!(slot, 0x16 | 0x18)
             || (state.fighter == Some(Ryu) && slot == 0x10)
@@ -873,7 +878,7 @@ impl Bus<'_> {
             self.era_share_gauge(side);
             return false;
         }
-        self.toggle_state.era.fighters[side].sf5.gain(14);
+        self.toggle_state.era.fighters[side].award_v_meter(14);
         self.era_share_gauge(side);
         self.toggle_state.era.freeze = self.toggle_state.era.freeze.max(6);
         self.era_emit_callout(ps, CalloutKind::CrushCounter);
@@ -941,7 +946,7 @@ fn sf5_action(
     if gauge
         && canonical(fighter)
         && !state.what_if_active()
-        && state.super_meter >= 3 * STOCK_AT
+        && state.super_meter >= state.meter_cost(3 * STOCK_AT)
         && pressed & family != 0
         && state.sf5.critical.ready(DOUBLE_QUARTER_CIRCLE)
     {
@@ -950,7 +955,7 @@ fn sf5_action(
     if !free_ground && !cancel_ground {
         return None;
     }
-    if gauge && !state.what_if_active() && state.super_meter >= STOCK_AT {
+    if gauge && !state.what_if_active() && state.super_meter >= state.meter_cost(STOCK_AT) {
         for special in ex_specials(fighter) {
             if pair(held, pressed, if special.kick { KICKS } else { PUNCHES })
                 && state.sf5.motion(special.motion).ready(special.motion)
@@ -998,14 +1003,12 @@ impl Bus<'_> {
                     && !recoverable
                     && !(authored && matches!(slot, EX_FORWARD..=EX_LOW_SHOT | CRITICAL_ART))
                 {
-                    state.super_meter = state
-                        .super_meter
-                        .saturating_add(5)
-                        .min(state.super_capacity);
+                    state.award_super_meter(5);
                 }
             }
             self.era_share_gauge(owner);
         }
+        damage = self.world_tour_damage(attacker, defender, damage, chip);
         if let Some(target) = target {
             let mode = self.era_gauge_mode(target);
             let state = &mut self.toggle_state.era.fighters[target];
@@ -1016,7 +1019,7 @@ impl Bus<'_> {
                 state.sf5.clear_white();
             }
             if state.sf5.capacity != 0 && comeback && mode != GaugeMode::Unified {
-                state.sf5.gain((damage / 10).min(24) as u8);
+                state.award_v_meter((damage / 10).min(24) as u8);
                 self.era_share_gauge(target);
             }
         }
@@ -1049,6 +1052,7 @@ impl Bus<'_> {
         let Some(side) = self.era_side(def_ps) else {
             return;
         };
+        let amount = self.world_tour_damage(atk_ps, def_ps, amount, true);
         let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
         let amount = amount.min(state.sub_hp.saturating_sub(1));
@@ -1059,7 +1063,7 @@ impl Bus<'_> {
         if !self.era_rules.disable_comeback_scaling
             && mode == GaugeMode::EraDefault
         {
-            state.sf5.gain((amount / 4) as u8);
+            state.award_v_meter((amount / 4) as u8);
             self.era_share_gauge(side);
         }
         self.era_damage(def_ps, amount, true);

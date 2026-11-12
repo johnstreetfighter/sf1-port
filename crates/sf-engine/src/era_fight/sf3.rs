@@ -583,14 +583,18 @@ impl Bus<'_> {
             && state.super_capacity != 0
             && ButtonClass::MediumPair.held(held)
             && fresh & ButtonClass::MediumPair.fixed_mask() != 0;
+        if self.world_tour_pure_footsies() {
+            return state.is_sf3() && overhead
+                && self.era_start_banked_move(ps, entity, OVERHEAD, 0, None);
+        }
         let Some(art) = state.sf3_art() else {
             return state.is_sf3()
                 && overhead
                 && self.era_start_banked_move(ps, entity, OVERHEAD, 0, None);
         };
         let meter = state.super_meter;
-        let ex_cost = if state.sf3.unified { STOCK_AT } else { EX_COST };
-        let super_cost = state.sf3_super_art_cost().unwrap_or_default();
+        let ex_cost = state.meter_cost(if state.sf3.unified { STOCK_AT } else { EX_COST });
+        let super_cost = state.meter_cost(state.sf3_super_art_cost().unwrap_or_default());
         let (slot, cost, level, call_out) = if airborne {
             if state.style.revision == Revision::Sf3Ng
                 || fresh & KICK_MASK == 0

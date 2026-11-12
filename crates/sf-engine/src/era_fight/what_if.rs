@@ -575,10 +575,8 @@ impl Bus<'_> {
     fn what_if_can_spend(&self, ps: u32, state: &EraFighterState, spend: Spend) -> bool {
         match spend {
             Spend::None => true,
-            Spend::Super(cost) => state.super_meter >= cost,
-            Spend::Revenge => state
-                .sf4_revenge_points()
-                .is_some_and(|rage| rage >= super::sf4::REVENGE_MAX / 2),
+            Spend::Super(cost) => state.super_meter >= state.meter_cost(cost),
+            Spend::Revenge => state.is_sf4() && state.sf4_ultra_ready(),
             Spend::Drive => self.sf6_can_spend(ps, 96),
         }
     }
@@ -631,7 +629,7 @@ impl Bus<'_> {
             }
             let state = &mut self.toggle_state.era.fighters[side];
             match finisher.spend {
-                Spend::Super(cost) => state.super_meter -= cost,
+                Spend::Super(cost) => state.super_meter -= state.meter_cost(cost),
                 _ => {}
             }
             if state.style.family == EraFamily::Sf4 && matches!(finisher.slot, 0x2a | 0x2b) {
@@ -696,7 +694,7 @@ impl Bus<'_> {
         }
         let state = &mut self.toggle_state.era.fighters[side];
         if let Spend::Super(cost) = spend {
-            state.super_meter -= cost;
+            state.super_meter -= state.meter_cost(cost);
         }
         if let Some(crane) = special.crane {
             state.gen_crane = crane;

@@ -258,9 +258,9 @@ impl crate::canonical::Canonical for MatchConfig {
             preset, toggles, roster, fill_meters, p2_fair_cpu,
             p1_scheme: _, p2_scheme: _, modern_control_damage_penalty,
             sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
-            tour, dramatic, difficulty, round_time,
+            tour, dramatic, world_tour, difficulty, round_time,
         } = self;
-        out.tag("MatchConfig.v2");
+        out.tag("MatchConfig.v3");
         preset.encode(out);
         toggles.encode(out);
         roster.encode(out);
@@ -273,6 +273,7 @@ impl crate::canonical::Canonical for MatchConfig {
         disable_raw_drive_rush.encode(out);
         tour.encode(out);
         dramatic.encode(out);
+        world_tour.encode(out);
         difficulty.encode(out);
         round_time.encode(out);
         // Scheme selectors currently affect no translated-machine input.
@@ -457,10 +458,12 @@ pub struct MatchConfig {
     pub disable_comeback_scaling: bool,
     /// Refuse the 1-bar raw neutral Drive Rush. Cancel Drive Rush stays (`#108`, `O17`).
     pub disable_raw_drive_rush: bool,
-    /// World Tour mission rules. Off for every preset (`#111`, `O20`).
+    /// Legacy World Tour settings retained for configuration and wire compatibility (`#111`, `O20`).
     pub tour: TourRules,
     /// Session-only rules for a native Dramatic fight.
     pub dramatic: Option<crate::dramatic::DramaticRules>,
+    /// Session-only rules for a native World Tour mission.
+    pub world_tour: Option<WorldTourRules>,
     /// The front end's Gameplay `DIFFICULTY` (1 Easy, 2 Normal, 3 Difficult,
     /// 4 Very Difficult) and `ROUND TIME` (100, 150, 200, 250). The 1987
     /// program never reads them: the front end powers every fight on with
@@ -471,7 +474,7 @@ pub struct MatchConfig {
     pub round_time: u16,
 }
 
-/// Mission switches written onto a match from the 1987 World Tour (`#111`, `O20`).
+/// Settings used by the original standalone World Tour prototype (`#111`, `O20`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TourRules {
     pub rpg: bool,
@@ -500,6 +503,46 @@ impl TourRules {
 impl Default for TourRules {
     fn default() -> Self {
         Self::off()
+    }
+}
+
+/// Rules stamped on the native fight for the selected World Tour node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorldTourRules {
+    pub mission: crate::world_tour::native::MissionKind,
+    pub bonuses: Option<WorldTourBonuses>,
+    /// The remaining SubHP carried into the next Survival Gauntlet wave.
+    pub starting_hp: Option<u16>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorldTourBonuses {
+    pub attack: u8,
+    pub defense: u8,
+    pub speed: u8,
+    pub perk: Option<crate::world_tour::native::Perk>,
+}
+
+crate::canonical::canonical_struct!(WorldTourRules, "WorldTourRules.v1", {
+    mission, bonuses, starting_hp,
+});
+crate::canonical::canonical_struct!(WorldTourBonuses, "WorldTourBonuses.v1", {
+    attack, defense, speed, perk,
+});
+
+impl WorldTourRules {
+    pub(crate) fn time_limit(self) -> Option<u8> {
+        use crate::world_tour::native::{MissionKind, RuleModifier};
+        match self.mission {
+            MissionKind::TimeAttack { max_ticks } => Some(max_ticks),
+            MissionKind::RuleModifierTrial(RuleModifier::ProjectileDefense) => Some(60),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn single_round(self) -> bool {
+        use crate::world_tour::native::MissionKind;
+        self.time_limit().is_some() || matches!(self.mission, MissionKind::SurvivalGauntlet { .. })
     }
 }
 
@@ -542,6 +585,7 @@ impl MatchConfig {
             disable_raw_drive_rush: false,
             tour: TourRules::off(),
             dramatic: None,
+            world_tour: None,
             difficulty: 2,
             round_time: 100,
         }

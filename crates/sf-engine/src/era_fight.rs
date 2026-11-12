@@ -40,6 +40,7 @@ const ALPHA_COUNTER_MOTION: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down];
 mod alpha_moves;
 pub(crate) mod sf3;
 pub(crate) mod sf4;
+mod world_tour;
 pub(crate) mod sf5;
 pub(crate) mod sf6;
 pub(crate) mod what_if;
@@ -357,14 +358,15 @@ pub struct EraFighterState {
     pub(crate) move_hits: u8,
     pub(crate) juggle_count: u8,
     attack_reached_active: bool,
+    tour: world_tour::TourFighter,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v8", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v9", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
-    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active,
+    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active, tour,
 });
 
 impl EraFighterState {
@@ -663,7 +665,7 @@ impl EraFighterState {
     fn alpha_counter_ready(&self) -> bool {
         self.alpha_counter_enabled()
             && self.guard_power.crush_left == 0
-            && self.super_meter >= STOCK_AT
+            && self.super_meter >= self.meter_cost(STOCK_AT)
             && self.alpha_counter_motion.ready(ALPHA_COUNTER_MOTION)
     }
 
@@ -676,7 +678,7 @@ impl EraFighterState {
     pub(crate) fn super_ready(&self) -> bool {
         self.st_new()
             && self.super_capacity > 0
-            && self.super_meter == self.super_capacity
+            && self.super_meter >= self.meter_cost(self.super_capacity)
             && self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
     }
 
@@ -865,6 +867,7 @@ impl Bus<'_> {
         }
         let arcade = self.roster.mode == PlayMode::Arcade;
         let dramatic = self.dramatic_rules();
+        let tour = self.world_tour_rules();
         let state = self.toggle_state.era;
         let step = arcade.then(|| u16::from(self.rb(0xffc003)) * 2 + u16::from(self.rb(0xffc004)));
         let new_match = step != state.arcade_step;
@@ -879,7 +882,9 @@ impl Bus<'_> {
         for (index, ps) in self.era_player_slots().into_iter().enumerate() {
             let Some(ps) = ps else { continue };
             let fighter = TournamentFighter::from_move_table(self.rl(ps + 0x12));
-            let style = if let Some(rules) = dramatic {
+            let style = if index == 0 && tour.is_some() {
+                state.selections[0]
+            } else if let Some(rules) = dramatic {
                 crate::dramatic::DramaticRules::style_pick(rules.styles[index])
             } else if arcade {
                 let pick = state.selections[0];
@@ -899,6 +904,8 @@ impl Bus<'_> {
             };
             let hp = if dramatic.is_some() {
                 self.toggle_state.dramatic.health[index]
+            } else if index == 0 && tour.is_some_and(|rules| matches!(rules.mission, crate::world_tour::native::MissionKind::SurvivalGauntlet { .. })) {
+                FULL_SUB_HP
             } else {
                 match (style.family, fighter) {
                     (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
@@ -922,6 +929,9 @@ impl Bus<'_> {
                 ..EraFighterState::default()
             };
             next.set_gauge_mode(self.era_gauge_mode(index));
+            if index == 0 {
+                next.tour.perk = tour.and_then(|rules| rules.bonuses).and_then(|bonuses| bonuses.perk);
+            }
             if index == 2 && self.era_shared_gauge(index).is_some() {
                 next.super_capacity = self.toggle_state.era.fighters[0].super_capacity;
             }
@@ -933,6 +943,7 @@ impl Bus<'_> {
             } else {
                 0
             };
+            next.world_tour_start_meter();
             self.toggle_state.era.fighters[index] = next;
         }
         self.era_share_gauge(0);
@@ -1152,7 +1163,7 @@ impl Bus<'_> {
             return;
         };
         let state = &mut self.toggle_state.era.fighters[index];
-        state.super_meter = 0;
+        state.super_meter -= state.meter_cost(state.super_capacity);
         state.super_motion = MotionTracker::default();
         self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
         self.toggle_state.era.super_events[index] = state.fighter;
@@ -1187,6 +1198,7 @@ impl Bus<'_> {
                 tracker.ready(entry.motion())
             };
             if !entry.available(state, false) || entry.airborne != airborne
+                || (self.world_tour_trial(crate::world_tour::native::RuleModifier::PureFootsies) && entry.kind != MoveKind::Normal)
                 || (normal && entry.input.button != ButtonClass::MashPunch)
                 || !state.alpha_button_fires(entry.input.button, strength) || !direction_ready
             {
@@ -1222,7 +1234,7 @@ impl Bus<'_> {
             state.gen_crane = stance == Stance::Crane;
         }
         if level != 0 {
-            let cost = state.alpha_super_cost(level).expect("recognized Alpha Super");
+            let cost = state.meter_cost(state.alpha_super_cost(level).expect("recognized Alpha Super"));
             state.super_meter -= cost;
             self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
             self.toggle_state.era.alpha_super_events[index] = Some(entry.name);
@@ -1240,7 +1252,7 @@ impl Bus<'_> {
         let Some(side) = self.era_side(ps) else { return false };
         let unified = self.era_gauge_mode(side) == GaugeMode::Unified;
         let state = &mut self.toggle_state.era.fighters[side];
-        let minimum = if unified { 2 * STOCK_AT } else { STOCK_AT };
+        let minimum = state.meter_cost(if unified { 2 * STOCK_AT } else { STOCK_AT });
         if !state.custom_combo_available() || state.custom_combo_active() || state.super_meter < minimum {
             return false;
         }
@@ -1356,6 +1368,11 @@ impl Bus<'_> {
 
     pub(crate) fn era_guard_contact(&mut self, ps: u32, pressure: u8) -> bool {
         let Some(index) = self.era_side(ps) else { return false };
+        let pressure = if self.world_tour_perk(ps, crate::world_tour::native::Perk::GuardMaster) {
+            pressure.div_ceil(2)
+        } else {
+            pressure
+        };
         let era = &mut self.toggle_state.era;
         let fighter = &mut era.fighters[index];
         if fighter.sub_hp == 0 || !fighter.guard_power.block(fighter.style.loadout, pressure) {
@@ -1372,7 +1389,7 @@ impl Bus<'_> {
         if !state.alpha_counter_ready() {
             return false;
         }
-        state.super_meter -= STOCK_AT;
+        state.super_meter -= state.meter_cost(STOCK_AT);
         state.alpha_counter_motion = MotionTracker::default();
         self.toggle_state.era.alpha_counter_events[index] = true;
         self.era_share_gauge(index);
@@ -1404,7 +1421,7 @@ impl Bus<'_> {
         if let Some(index) = self.era_side(ps) {
             let state = &mut self.toggle_state.era.fighters[index];
             if !state.custom_combo_active() {
-                state.super_meter = state.super_meter.saturating_add(gain).min(state.super_capacity);
+                state.award_super_meter(gain);
                 self.era_share_gauge(index);
             }
         }
@@ -1464,12 +1481,15 @@ impl Bus<'_> {
                     if hp == 0 { continue; }
                 }
                 self.era_sf4_tick(ps);
-                if !dramatic {
+                let tour_player = ps == crate::fighter::P1_STRUCT && self.world_tour_rules().is_some();
+                if !dramatic && !tour_player {
                     self.era_sync_health(ps, index);
                 }
                 let entity = self.rw(ps + 0x10);
                 let guarding = self.eb(entity, 9) & 0x20 != 0 || matches!(self.eb(entity, 0xa), 4 | 8);
                 let ready = self.eb(entity, 9) & 0xc1 == 0 && self.eb(entity, 8) == 2;
+                let neutral = ready && self.eb(entity, 0xa) == 1 && self.pad_directions(ps) == 0;
+                self.world_tour_heal_neutral(ps, index, neutral);
                 // Shared Drive recovers once per frame and a held parry
                 // on either ally pauses that recovery.
                 let drive_tick = self.era_shared_gauge(index).map_or(true, |partner| {
@@ -1478,7 +1498,7 @@ impl Bus<'_> {
                 let state = &mut self.toggle_state.era.fighters[index];
                 state.sf3_tick();
                 state.what_if_tick();
-                state.sf6.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp, drive_tick);
+                state.sf6.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp, drive_tick, &mut state.tour);
                 state.sf5.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp);
                 if state.is_sf4() && self.era_rules.fill_meters && ready && state.super_capacity != 0 {
                     state.sf4.fill();
@@ -1511,6 +1531,9 @@ impl Bus<'_> {
                 }
                 self.era_share_gauge(index);
                 self.era_reconcile_health(ps, index);
+                if !dramatic && tour_player {
+                    self.era_sync_health(ps, index);
+                }
             }
         }
     }

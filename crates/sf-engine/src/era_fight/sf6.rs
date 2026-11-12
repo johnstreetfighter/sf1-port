@@ -20,7 +20,7 @@ const OD_EXTRA: u8 = 0x22;
 const EXTRA: u8 = 0x1f;
 const INSTALL: u8 = 0x20;
 const JINRAI: u8 = 0x21;
-const QUICK_DASH: u8 = 0x1c;
+pub(crate) const QUICK_DASH: u8 = 0x1c;
 const JINRAI_LOW: u8 = 0x23;
 pub(crate) const JINRAI_MID: u8 = 0x1e;
 const JINRAI_OVERHEAD: u8 = 0x1d;
@@ -107,7 +107,7 @@ impl DriveState {
         }
     }
 
-    pub(super) fn tick(&mut self, fill: bool, ready: bool, hp: &mut u16, max_hp: u16, meter_tick: bool) {
+    pub(super) fn tick(&mut self, fill: bool, ready: bool, hp: &mut u16, max_hp: u16, meter_tick: bool, tour: &mut super::world_tour::TourFighter) {
         self.parry_flash = self.parry_flash.saturating_sub(1);
         self.perfect_scale = self.perfect_scale.saturating_sub(1);
         self.reversal_left = self.reversal_left.saturating_sub(1);
@@ -129,7 +129,7 @@ impl DriveState {
         } else if self.parry_age == 0 {
             self.regen_delay = self.regen_delay.saturating_sub(1);
             if self.regen_delay == 0 {
-                self.recover(1);
+                self.recover(tour.boost_drive_gain(1));
             }
         }
     }
@@ -382,13 +382,18 @@ impl Bus<'_> {
         let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
         if mode == GaugeMode::Unified {
-            if let Some(meter) = state.super_meter.checked_sub(STOCK_AT) {
+            if let Some(meter) = state.super_meter.checked_sub(state.meter_cost(STOCK_AT)) {
                 state.super_meter = meter;
                 self.era_share_gauge(side);
                 return true;
             }
             return false;
         }
+        let cost = if cost == 1 && state.world_tour_perk(crate::world_tour::native::Perk::IsmPlus) {
+            let remainder = &mut state.tour.drive_cost_remainder;
+            *remainder = (*remainder + 1) % 4;
+            u8::from(*remainder != 0)
+        } else { state.meter_cost(cost) };
         let drive = &mut state.sf6;
         if !drive.enabled || drive.burnout || drive.points < u16::from(cost) {
             return false;
@@ -408,9 +413,9 @@ impl Bus<'_> {
     pub(crate) fn sf6_can_spend(&self, ps: u32, cost: u8) -> bool {
         self.era_state(ps).is_some_and(|state| {
             if state.unified_gauge {
-                state.super_meter >= STOCK_AT
+                state.super_meter >= state.meter_cost(STOCK_AT)
             } else {
-                state.sf6.enabled && !state.sf6.burnout && state.sf6.points >= u16::from(cost)
+                state.sf6.enabled && !state.sf6.burnout && state.sf6.points >= u16::from(state.meter_cost(cost))
             }
         })
     }
@@ -534,7 +539,8 @@ impl Bus<'_> {
             && state_forward(self.era_state(ps))
             && mode == GaugeMode::EraDefault
         {
-            self.toggle_state.era.fighters[side].sf6.recover(1);
+            let state = &mut self.toggle_state.era.fighters[side];
+            state.sf6.recover(state.tour.boost_drive_gain(1));
             self.era_share_gauge(side);
         }
         self.sf6_attacks(ps, entity, free, cancel, held, fresh)
@@ -561,7 +567,7 @@ impl Bus<'_> {
         let mut command = None;
         for (i, (name, button, index)) in arts(fighter).into_iter().enumerate().rev() {
             let level = i as u8 + 1;
-            let cost = level * STOCK_AT;
+            let cost = state.meter_cost(level * STOCK_AT);
             if state.super_meter >= cost
                 && button.held(fresh)
                 && state.sf6.motions[index].ready(motion(index))
@@ -684,12 +690,9 @@ impl Bus<'_> {
         let perfect = state.sf6.parry_age <= 2;
         state.sf6.parry_flash = 6;
         if state.unified_gauge {
-            state.super_meter = state
-                .super_meter
-                .saturating_add(STOCK_AT / 2)
-                .min(state.super_capacity);
+            state.award_super_meter(STOCK_AT / 2);
         } else {
-            state.sf6.recover(u16::from(STOCK_AT));
+            state.sf6.recover(state.tour.boost_drive_gain(u16::from(STOCK_AT)));
         }
         if perfect {
             state.sf6.perfect_scale = 60;
@@ -741,7 +744,8 @@ impl Bus<'_> {
             }
         }
         if let Some(side) = self.era_side(target) {
-            let absorbed_damage = self.dramatic_scale_damage(owner, damage);
+            let received = self.world_tour_damage(owner, target, damage, chip);
+            let absorbed_damage = self.dramatic_scale_damage(owner, received);
             let state = &mut self.toggle_state.era.fighters[side];
             if !chip && state.sf6.armor != 0 && !armor_break {
                 state.sf6.armor -= 1;

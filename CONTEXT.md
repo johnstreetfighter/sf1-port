@@ -88,6 +88,9 @@ _Avoid_: fan edit, custom groove, non-canon mode
 The resource and system-mechanic package associated with an era style (such as Parry and Super Art or Drive and Super Art), which can be decoupled from the fighter's moveset via match toggles.
 _Avoid_: meter system, bar
 
+**Team Era Gauge**:
+The shared gauge built and spent by both allies in Dramatic Battle when they share a lifebar. Allies using different Era Families share a three-stock Unified Gauge (ADR-0016).
+
 **Era costume**:
 An optional 1987-pixel-art outfit variant representing a fighter's appearance from a later Street Fighter entry, distinct from a color palette swap.
 _Avoid_: HD skin, sprite rip
@@ -159,6 +162,12 @@ _Avoid_: page, view, menu (as a type)
 The original one-player opponent sequence through the five countries, bonus stages, flights and ending.
 _Avoid_: campaign, story mode, tower
 
+**Dramatic Battle**:
+A two-on-one fight on the 1987 engine. The player teams up with a CPU ally in single-player or a second player in local co-op to face the CPU boss (ADR-0016).
+
+**World Tour profile**:
+The persistent campaign state shared across fighters and Era Styles. It stores node progress, the RPG setting, XP, stats, and perks in world_tour.toml (ADR-0016).
+
 **Stand-in**:
 Ryu taking the player's own slot in the Arcade ladder when the player is one of a country's two fighters, fought on the stage of the slot he takes (the maintainer, 2026-11-07; before, the country's other fighter stood in). A Sagat player's final battle is against Ryu, in Thailand.
 _Avoid_: substitute, swap, mirror fix
@@ -180,6 +189,9 @@ The overhaul rule that no coin is ever needed: Start alone opens the front end, 
 _Avoid_: unlimited credits, coin hack
 
 ## Art pipeline
+
+**Composite ending view**:
+A 24-column extended background view built from a boss's ROM VS bust, nameplate, and home stage. The native typewriter draws the boss's epilogue from the extended data bank over the view during the congratulatory ending (ADR-0016).
 
 **Pose**:
 One drawn picture of a fighter: a rectangle of sprite tiles in his palette.

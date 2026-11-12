@@ -32,6 +32,7 @@ mod style_card;
 pub mod settings;
 pub mod stage_select;
 pub mod tune;
+pub mod world_tour;
 
 pub use fight::FightDips;
 pub use menu::{MenuItem, MenuScreen};
@@ -63,6 +64,10 @@ pub enum Transition {
     Fighter(TournamentFighter),
     /// Dramatic Battle setup is ready to start or choose a custom team.
     StartDramatic,
+    /// Launch the selected World Tour mission.
+    StartWorldTour,
+    /// Open the shared fighter and style picker for World Tour.
+    WorldTourSelect,
     /// The stage screen picked a stage: the fight starts on it.
     Stage(StagePick),
     /// The stage screen picked its `RANDOM` tile: the session chooses a

@@ -32,6 +32,7 @@ use std::time::Duration;
 use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::front::rom_missing::RomMissing;
 use sf_engine::front::settings::{Aspect, DisplayInfo, Settings, FRAME_DELAY_CAP_MS, LOOK_OFF, MAX_SCALE};
+use sf_engine::world_tour::native::WorldTourProfile;
 use sf_engine::front::{GameSession, MenuItem, Transition, VideoState};
 use sf_host::audio::{Audio, Gains, SoundStart};
 use sf_host::bindings::BindingsTable;
@@ -245,6 +246,7 @@ struct Play {
     /// What the settings file holds; the menus' positions change without
     /// a save and are written when the game ends.
     saved: Settings,
+    saved_world_tour: WorldTourProfile,
     /// The screen the last frame showed.
     screen: &'static str,
     /// The extended themes (ticket #199), looked for once the preset is an
@@ -314,8 +316,10 @@ impl Game {
         let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
 
         let config = self.config.take().unwrap_or_default();
+        let saved_world_tour = files::load_world_tour(&self.app_dir, log);
         let mut session = GameSession::new(assets, config)
             .with_settings(self.settings.clone())
+            .with_world_tour_profile(saved_world_tour.clone())
             .with_looks(self.catalogue.names())
             .with_binds(self.bindings.binds(), BindingsTable::default().binds());
         if let Some((id, error)) = self.look_failed.take() {
@@ -365,7 +369,7 @@ impl Game {
         }
         let saved = self.settings.clone();
         let (audiocpu, rom_folders) = themes_from;
-        let play = Play { session, net: HostNetDriver::new(), sound, saved, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, jukebox };
+        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, jukebox };
         self.phase = Phase::Playing(Box::new(play));
     }
 
@@ -390,6 +394,11 @@ impl Game {
             if play.session.settings() != &play.saved {
                 if let Err(e) = play.session.settings().save(&files::settings_path(&self.app_dir)) {
                     self.log.line("settings", &e);
+                }
+            }
+            if play.session.world_tour_profile() != &play.saved_world_tour {
+                if let Err(error) = play.session.world_tour_profile().save(&files::world_tour_path(&self.app_dir)) {
+                    self.log.line("world tour", &error);
                 }
             }
         }
@@ -547,6 +556,13 @@ impl Driver for Game {
                 }
                 if out.quit {
                     return false;
+                }
+                if session.take_world_tour_changed() {
+                    let profile = session.world_tour_profile();
+                    match profile.save(&files::world_tour_path(&self.app_dir)) {
+                        Ok(()) => play.saved_world_tour = profile.clone(),
+                        Err(error) => log.line("world tour", &error),
+                    }
                 }
                 if out.bindings_changed {
                     match session.binds().map(|b| self.bindings.with_binds(b)) {

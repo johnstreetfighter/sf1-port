@@ -31,8 +31,10 @@
 //! refused rather than guessed.
 
 use crate::fighter::{Bus, CPU_STRUCT, DRAMATIC_ALLY2, P1_STRUCT, P2_STRUCT};
-use crate::roster::{PlayMode, StagePick};
+use crate::data_bank::arcade_text;
+use crate::roster::{PlayMode, StagePick, TournamentFighter};
 use sf_video::background_bank::{LayerView, StageView};
+use sf_video::ending_screens::ending_key;
 use sf_video::vs_screens::vs_key;
 
 /// The slot table (A5+6).
@@ -1677,6 +1679,21 @@ impl Scheduler {
                 Flow::AwaitMatchWipe { .. } | Flow::AwaitCpuMatchWipe | Flow::AwaitGameOverWipe
             ))
         )
+    }
+
+    /// Replace the finished World Tour finale's wipe with the native ending.
+    pub(crate) fn start_world_tour_ending(&mut self, bus: &mut Bus) {
+        self.kill(bus, 2);
+        bus.wb(SCENE_MODE, 0);
+        clear_objects(bus);
+        let mut at = Flow::EndingMessageSetup;
+        let Yield::Sleep(delay) = ending_message_start(bus, &mut at) else {
+            unreachable!("ending message setup always sleeps");
+        };
+        self.tasks[1] = Some(Task::Flow(at));
+        let slot = slot_address(1);
+        bus.wb(slot, 8);
+        bus.wb(slot + 1, delay);
     }
 
     /// The occupied slots and the original resume address each task's
@@ -3471,9 +3488,16 @@ const TIME_SETTING: u32 = 0xff8e1c;
 pub fn round_timer(bus: &mut Bus) {
     if bus.rb(TIMER_FLAGS) & 1 != 0 {
         bus.wb(TIMER_FLAGS, bus.rb(TIMER_FLAGS) & 0xfe);
-        let table = 0x3f544 + ((bus.rb(TIME_SETTING) as u32) << 2);
-        for i in 0..3 {
-            bus.wb(TIME_DIGITS + i, bus.rb(table + i));
+        if let Some(ticks) = bus.world_tour_rules().and_then(|rules| rules.time_limit()) {
+            bus.wb(TIME_DIGITS, ticks / 100);
+            bus.wb(TIME_DIGITS + 1, ticks / 10 % 10);
+            bus.wb(TIME_DIGITS + 2, ticks % 10);
+            bus.wb(TIME_FRAMES, 0);
+        } else {
+            let table = 0x3f544 + ((bus.rb(TIME_SETTING) as u32) << 2);
+            for i in 0..3 {
+                bus.wb(TIME_DIGITS + i, bus.rb(table + i));
+            }
         }
     } else if time_word(bus) != 0 && bus.roster.mode != PlayMode::Training && !bus.era_frozen() {
         let limit = if bus.toggles.real_second_timer_and_draws {
@@ -3627,6 +3651,12 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
                 speed_sleep(bus, io)
             }
             Checks::TimeOver => {
+                if bus.world_tour_trial(crate::world_tour::native::RuleModifier::ProjectileDefense) {
+                    // The trial judges survival at TIME zero, before any
+                    // remaining move or projectile settles in the result hold.
+                    let survived = bus.era_health(P1_STRUCT).is_some_and(|(hp, _)| hp != 0);
+                    bus.wl(WINNER, if survived { P1_STRUCT } else { P2_STRUCT });
+                }
                 // 0x3ed20: the time-over path starts with a sleep.
                 *at = Flow::TimeOverStart;
                 speed_sleep(bus, io)
@@ -3948,25 +3978,20 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
             // *(0x44ca4 + d5) via 0x3bd3e; if d4 != 0 (dbra D4, $44ab0), run
             // the second sub-step of scene `d1`; otherwise advance `d1`
             // (dbra D2, $44a72) or enter 0x44b00.
-            let block = bus.rl(0x44ca4 + d5 as u32);
+            let (block, stand_in) = ending_montage_card(bus, d5);
             erase_block_2x2(bus, block);
             if d4 != 0 {
-                let country = bus.rb(0xffc006) as u32;
-                let a2 = bus.rl(0x44c1c + (country << 2));
-                let d3 = (d1 as u32) << 2;
-                let byte = bus.rb(a2 + d3 + 2);
+                let scene = ending_scene_address(bus, d1);
+                if stand_in {
+                    request_ending_scene_palette(bus, scene);
+                }
+                let byte = bus.rb(scene + 2);
                 return ending_scene_step(bus, at, d1, 0, byte);
             }
             if d1 < 4 {
                 return ending_scene_outer(bus, at, d1 + 1);
             }
-            // 0x44b00..0x44b1e: queue sound 0xff, turn off layers 0xe8, clear
-            // the text layer, and sleep 1 frame (0x3b51a into 0x44b20).
-            bus.queue_sound(0xff);
-            gfx_off(bus, 0xe8);
-            clear_text_layer(bus);
-            *at = Flow::EndingMessageSetup;
-            Yield::Sleep(1)
+            ending_message_start(bus, at)
         }
         Flow::EndingMessageSetup => {
             // 0x44b20..0x44b70: turn on bg + tx (0x28), request palette 0x1b868
@@ -3975,23 +4000,32 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
             // TEXT_SOUND = 0x000d, and start typing 0x44d60 with delay D4 = 5
             // (0x3bb98).
             gfx_on(bus, 0x28);
-            request_palette(bus, 0x1b868, 0);
-            let scroll = if bus.rb(GAME_MODE) == 2 {
-                bus.rw(0x44d5c)
-            } else {
-                bus.rw(0x44d5e)
-            };
             bus.ww(0xffc682, 0);
-            add_bg_scroll(bus, scroll);
+            let block = if let Some((view, block)) = boss_ending(bus) {
+                request_palette(bus, view.palette, 0);
+                add_bg_scroll(bus, view.scroll);
+                *bus.bg_page = view.page;
+                block
+            } else {
+                request_palette(bus, 0x1b868, 0);
+                let ken = if let Some(fighter) = ending_player(bus) {
+                    fighter == TournamentFighter::Ken
+                } else {
+                    bus.rb(GAME_MODE) != 2
+                };
+                add_bg_scroll(bus, bus.rw(if ken { 0x44d5e } else { 0x44d5c }));
+                0x44d60
+            };
             bus.ww(TEXT_SOUND, 0x000d);
-            let writer = TextWriter::new(bus, 0x44d60, 5);
+            let writer = TextWriter::new(bus, block, 5);
             ending_message_type(bus, at, writer)
         }
         Flow::EndingMessageTyping { writer } => ending_message_type(bus, at, writer),
         Flow::EndingMessageHold => {
             // 0x44b78..0x44b86: erase 0x44d60 (0x3bd00) and sleep 1 frame
             // (0x3b51a into 0x44b88).
-            erase_block(bus, 0x44d60);
+            let block = boss_ending(bus).map_or(0x44d60, |(_, block)| block);
+            erase_block(bus, block);
             *at = Flow::EndingStaffSetup;
             Yield::Sleep(1)
         }
@@ -4039,6 +4073,10 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
             // 4 to 5 into 0x3f2d0).
             erase_block_2x2(bus, bus.rl(0x44f7c));
             queue_boot_sounds(bus);
+            if bus.world_tour_rules().is_some() {
+                bus.wb(MODE_DEMO, 0);
+                return Yield::Exit;
+            }
             stage_step(scheduler, bus, io, at)
         }
         Flow::KoStart => {
@@ -4088,7 +4126,8 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
                 return speed_sleep(bus, io);
             }
             let winner = bus.rl(0xff8e38);
-            if bus.rb(winner + 8) == 2 {
+            let wins_needed = if bus.world_tour_rules().is_some_and(|rules| rules.single_round()) { 1 } else { 2 };
+            if bus.rb(winner + 8) == wins_needed {
                 // 0x3ec70: the match is won (0xffc009 = 1 P1, 2 P2, 4 CPU).
                 let who = match winner {
                     0xff86b0 => 1,
@@ -4345,10 +4384,6 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
                     return bonus_stage1_start(bus, at, Bonus10Copy::Stage3);
                 }
                 if target == 0x44a40 {
-                    if bus.roster.full_cast && !bus.roster.p1.is_shoto() {
-                        *at = Flow::EndingStaffSetup;
-                        return flow(scheduler, bus, io, at);
-                    }
                     return ending_start(bus, at);
                 }
                 bus.note(target);
@@ -5856,14 +5891,29 @@ fn ending_start(bus: &mut Bus, at: &mut Flow) -> Yield {
 /// `*(0x44c7c + 4 * (entry[0] & 0x0f))` at offset `0` (`0x44a84..0x44aa2`) and
 /// run the first sub-step (`d4 = 1`) with `entry[1]`.
 fn ending_scene_outer(bus: &mut Bus, at: &mut Flow, d1: u16) -> Yield {
+    let scene = ending_scene_address(bus, d1);
+    request_ending_scene_palette(bus, scene);
+    ending_scene_step(bus, at, d1, 1, bus.rb(scene + 1))
+}
+
+fn ending_scene_address(bus: &Bus, d1: u16) -> u32 {
     let country = bus.rb(0xffc006) as u32;
-    let a2 = bus.rl(0x44c1c + (country << 2));
-    let d3 = (d1 as u32) << 2;
-    let pal_idx = (bus.rb(a2 + d3) & 0x0f) as u32;
+    bus.rl(0x44c1c + (country << 2)) + (u32::from(d1) << 2)
+}
+
+fn request_ending_scene_palette(bus: &mut Bus, scene: u32) {
+    let pal_idx = (bus.rb(scene) & 0x0f) as u32;
     let pal = bus.rl(0x44c7c + (pal_idx << 2));
     request_palette(bus, pal, 0);
-    let byte = bus.rb(a2 + d3 + 1);
-    ending_scene_step(bus, at, d1, 1, byte)
+}
+
+fn ending_montage_card(bus: &Bus, d5: u16) -> (u32, bool) {
+    if ending_player(bus).is_some_and(|fighter| fighter as u16 == (d5 >> 2) + 2) {
+        if let Some(block) = arcade_text::stand_in_card(bus.data_bank) {
+            return (block, true);
+        }
+    }
+    (bus.rl(0x44ca4 + u32::from(d5)), false)
 }
 
 /// 0x44ab4..0x44ae6: run one sub-step (`d4 = 1` or `0`) of ending scene `d1`:
@@ -5873,12 +5923,40 @@ fn ending_scene_outer(bus: &mut Bus, at: &mut Flow, d1: u16) -> Yield {
 fn ending_scene_step(bus: &mut Bus, at: &mut Flow, d1: u16, d4: u16, byte: u8) -> Yield {
     bus.ww(0xffc682, 0);
     let scroll_off = ((byte >> 4) as u32) << 1;
-    add_bg_scroll(bus, bus.rw(0x44c90 + scroll_off));
     let d5 = ((byte & 0x0f) as u16) << 2;
-    let block = bus.rl(0x44ca4 + d5 as u32);
+    let (block, stand_in) = ending_montage_card(bus, d5);
+    let scroll = if stand_in {
+        request_palette(bus, 0x1ae68, 0);
+        0x0900
+    } else {
+        bus.rw(0x44c90 + scroll_off)
+    };
+    add_bg_scroll(bus, scroll);
     text_block_2x2(bus, block);
     *at = Flow::EndingSceneHold { d1, d4, d5 };
     Yield::Sleep(bus.rw(0x3b56c) as u8)
+}
+
+/// 0x44b00..0x44b1e: stop the montage tune and clear the screen before
+/// the congratulatory message. World Tour enters the ending here.
+fn ending_message_start(bus: &mut Bus, at: &mut Flow) -> Yield {
+    bus.queue_sound(0xff);
+    gfx_off(bus, 0xe8);
+    clear_text_layer(bus);
+    *at = Flow::EndingMessageSetup;
+    Yield::Sleep(1)
+}
+
+fn ending_player(bus: &Bus) -> Option<TournamentFighter> {
+    (bus.preset != crate::config::RulesetPreset::Faithful1987 && bus.rb(MODE_DEMO) != 0)
+        .then_some(bus.roster.p1)
+}
+
+fn boss_ending(bus: &Bus) -> Option<(LayerView, u32)> {
+    let fighter = ending_player(bus)?;
+    let block = arcade_text::epilogue(bus.data_bank, fighter)?;
+    let view = bus.backgrounds?.view(&ending_key(fighter.name()))?;
+    Some((view, block))
 }
 
 /// 0x44b6c..0x44b76: step the congratulatory message typewriter (`0x44d60`,
@@ -6221,6 +6299,19 @@ fn time_over_judge(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut F
         bus.wb(TIME_COPY + i, bus.rb(TIME_DIGITS + i));
     }
     erase_block(bus, 0x14f74);
+    if let Some(rules) = bus.world_tour_rules() {
+        use crate::world_tour::native::{MissionKind, RuleModifier};
+        match rules.mission {
+            MissionKind::TimeAttack { .. } | MissionKind::SurvivalGauntlet { .. } => {
+                return record_win(scheduler, bus, io, at, P2_STRUCT);
+            }
+            MissionKind::RuleModifierTrial(RuleModifier::ProjectileDefense) => {
+                let winner = bus.rl(WINNER);
+                return record_win(scheduler, bus, io, at, winner);
+            }
+            _ => {}
+        }
+    }
     let (this, other, d2, d0) = if bus.dramatic_rules().is_some() {
         use crate::dramatic::{ALLY_SUB_HP, BOSS_SUB_HP};
 
@@ -6287,6 +6378,10 @@ fn double_ko_hold(
 /// the three-rounds rule (0x3ee04), else the next round's wipe (event 6,
 /// 0x3ec4e) is requested.
 fn after_round(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
+    if bus.world_tour_rules().is_some_and(|rules| rules.single_round()) {
+        bus.wb(0xffc009, 0);
+        return match_end(bus, io, at);
+    }
     bus.wb(0xffc00a, bus.rb(0xffc00a).wrapping_add(1));
     if bus.rb(0xffc00a) == 3 {
         return three_rounds(bus, io, at);
@@ -6562,6 +6657,7 @@ fn round_hud(bus: &mut Bus) -> bool {
         bus.position_dramatic_ally();
     }
     health_bars(bus);
+    bus.world_tour_apply_starting_hp();
     round_markers(bus, layout.a);
     round_markers(bus, layout.b);
     true
@@ -6773,6 +6869,13 @@ fn screen(bus: &mut Bus, io: &Io, at: &mut Screen) -> Yield {
             // palette 0x1ae68 requested and sound 0x9c, then after a frame
             // the text 0x15a78 is held 120 frames.
             erase_block(bus, text);
+            if bus.world_tour_rules().is_some() {
+                // The mission already showed the result. Its roster has no
+                // corresponding entry in the Arcade or versus win-card table.
+                bus.wb(SCENE_MODE, bus.rb(SCENE_MODE) & !0x20);
+                *at = Screen::Poll;
+                return Yield::Sleep(1);
+            }
             clear_objects(bus);
             gfx_off(bus, 0x40);
             clear_text_layer(bus);
@@ -6794,15 +6897,26 @@ fn screen(bus: &mut Bus, io: &Io, at: &mut Screen) -> Yield {
             let at_word = |table: u32| table.wrapping_add((opponent << 1) as i16 as i32 as u32);
             if bus.rb(0xffc009) & 3 != 0 {
                 let table = bus.rl(0x4018a + country);
-                let (text, sound) = if opponent as u8 == 9 {
+                let finale = opponent as u8 == 9;
+                let (text, sound) = if finale {
                     (0x159b2, 0xba)
                 } else {
                     (0x158e4, 0x9e)
                 };
+                let player = ending_player(bus).filter(|_| bus.roster.mode == PlayMode::Arcade);
+                let quote = player.and_then(|fighter| arcade_text::quote(bus.data_bank, fighter, finale));
                 bus.queue_sound(sound);
-                text_block(bus, text);
+                text_block(bus, quote.unwrap_or(text));
                 bus.ww(0xffc682, 0);
-                let d = bus.rw(at_word(table));
+                let stand_in = player.is_some_and(|fighter| {
+                    !fighter.is_shoto() && bus.arcade_opponent() == Some(TournamentFighter::Ryu)
+                });
+                let d = if stand_in {
+                    request_palette(bus, 0x1ae68, 0);
+                    0x0900
+                } else {
+                    bus.rw(at_word(table))
+                };
                 add_bg_scroll(bus, d);
                 *at = Screen::WinCard { held: false };
                 Yield::Sleep(180)
@@ -8079,6 +8193,10 @@ fn coin_debounce(bus: &mut Bus, slot: u32, released: bool) -> u32 {
     bus.wb(slot, 0);
     cycles + 16 + 16
 }
+
+#[cfg(test)]
+#[path = "tasks/arcade_tests.rs"]
+mod arcade_tests;
 
 #[cfg(test)]
 mod tests {

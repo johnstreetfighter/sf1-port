@@ -1,14 +1,13 @@
-//! Bonus challengers and what-if styles in AI, tour, drama, and rooms (`#121`, `M8`).
+//! Bonus challengers and what-if styles in AI and rooms (`#121`, `M8`).
 
 use sf_engine::bonus::{Bout, Challenger, Side};
 use sf_engine::config::MatchConfig;
-use sf_engine::dramatic::{DramaticBattle, Pad};
 use sf_engine::era::EraFamily;
 use sf_engine::front::fight::FightDips;
 use sf_engine::netplay::{config_hash, Browser, Link, Room, RoomKind, SyncedMatchRules};
 use sf_engine::roster::{PlayMode, StagePick, TournamentFighter};
 use sf_engine::utility::{decide, Action, ComboTrial, Difficulty, Spot};
-use sf_engine::world_tour::{lore_episodes, Campaign};
+use sf_engine::world_tour::lore_episodes;
 
 fn spot_with(command_throw: bool, teleport: bool) -> Spot {
     Spot {
@@ -52,22 +51,12 @@ fn utility_and_trials_cover_what_if_and_bonus_fighters() {
 }
 
 #[test]
-fn lore_tour_rooms_and_synchronized_rules_agree() {
+fn lore_rooms_and_synchronized_rules_agree() {
     assert!(lore_episodes(false).is_empty());
     let episodes = lore_episodes(true);
     assert_eq!(episodes.len(), 5);
     assert_eq!(episodes[0].0, "Ryu & Ken vs. Akuma / Gouken");
     assert_eq!(episodes[3].2, "M. Bison");
-    let mut battle = DramaticBattle::preset();
-    battle.step(Pad { left: false, right: true, attack: true }, Pad::default(), Pad::default());
-
-    for challenger in Challenger::ALL {
-        let mut tour = Campaign::for_challenger(challenger, false);
-        assert_eq!(tour.bonus, Some(challenger));
-        assert!(tour.travel("usa-footsies"));
-        assert!(tour.travel("thailand-boss") || tour.travel("england-survival"));
-    }
-
     let mut expanded = MatchConfig::definitive();
     let strict = {
         let mut config = MatchConfig::definitive();

@@ -88,6 +88,86 @@ fn active_punch(snapshot: &mut FightSnapshot, attacker: usize) {
 }
 
 #[test]
+fn both_human_allies_launch_and_advance_their_own_projectiles_on_the_same_frames() {
+    let (assets, mut fight) = ready_fight(LifebarMode::Independent, false, true);
+    let neutral = PlayerInputs::default();
+    let mut forward = None;
+    for _ in 0..60 {
+        let telemetry = fight.machine().diagnostic_telemetry();
+        let allies = [telemetry.p1, telemetry.ally2.unwrap()];
+        if allies.iter().all(|ally| ally.move_id == 1 && ally.state_byte & 0x80 == 0) {
+            forward = Some(allies.map(|ally| usize::from(ally.facing_left)));
+            break;
+        }
+        fight.step(&assets, neutral, neutral, false);
+    }
+    let forward = forward.expect("Both allies enter neutral stance");
+
+    // Leave both shots room to travel before they reach the boss.
+    let boss = fight.machine().diagnostic_telemetry().p2;
+    let offset = (0x1b0 - boss.center_x) as i16;
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    let objects = &mut snapshot.machine.state.objectram;
+    let entity = usize::from(boss.entity_offset);
+    let sprites = usize::from(objects[entity + 0xc] + 1) * usize::from(objects[entity + 0xd] + 1);
+    for sprite in objects[entity..entity + sprites * 0x40].chunks_exact_mut(0x40) {
+        let x = i16::from_be_bytes([sprite[6], sprite[7]]);
+        sprite[6..8].copy_from_slice(&x.wrapping_add(offset).to_be_bytes());
+    }
+    fight.restore_netplay_snapshot(&snapshot);
+
+    let mut moves = Vec::new();
+    for phase in 0..3 {
+        let pads = forward.map(|direction| {
+            let mut pad = neutral;
+            pad.directions[2] = phase < 2;
+            pad.directions[direction] = phase > 0;
+            pad.buttons[0] = phase == 2;
+            pad
+        });
+        for _ in 0..3 {
+            fight.step(&assets, pads[0], pads[1], false);
+            let telemetry = fight.machine().diagnostic_telemetry();
+            moves.push((telemetry.p1.move_id, telemetry.ally2.unwrap().move_id));
+        }
+    }
+
+    let projectiles = |fight: &Fight| {
+        let mut positions = [None; 2];
+        for shot in fight.machine().diagnostic_telemetry().projectiles {
+            if shot.collision_flags & 0x20 == 0 {
+                continue;
+            }
+            if let Some(side) = [P1_STRUCT, P2_STRUCT].iter().position(|&ally| ally == shot.owner_struct) {
+                assert!(positions[side].replace(shot.hitbox.center_x).is_none());
+            }
+        }
+        positions
+    };
+    for _ in 0..50 {
+        let shots = projectiles(&fight);
+        if shots == [None, None] {
+            fight.step(&assets, neutral, neutral, false);
+            continue;
+        }
+        let [Some(first), Some(second)] = shots else {
+            panic!("Both allies should create their projectiles on one frame: {shots:?}; moves {moves:?}");
+        };
+        fight.step(&assets, neutral, neutral, false);
+        let [Some(next_first), Some(next_second)] = projectiles(&fight) else {
+            panic!("Both allies' projectiles should remain active after advancing a frame");
+        };
+        assert_ne!(first, second, "Each projectile starts at its owner's position");
+        for (movement, direction) in [(next_first - first, forward[0]), (next_second - second, forward[1])] {
+            assert_ne!(movement, 0);
+            assert_eq!(movement > 0, direction == 0);
+        }
+        return;
+    }
+    panic!("The allies' simultaneous Hadoken commands should launch both projectiles");
+}
+
+#[test]
 fn one_native_boss_projectile_can_hit_both_allies_on_the_same_frame() {
     let (assets, mut fight) = ready_fight(LifebarMode::Independent, false, true);
     let mut snapshot = fight.save_netplay_snapshot(0);
@@ -440,4 +520,23 @@ fn same_era_allies_share_drive_only_in_shared_lifebar_mode() {
         assert_eq!(era[2].sub_hp, ally2);
         assert_eq!(ally2 == 0, mode == LifebarMode::Shared);
     }
+}
+
+#[test]
+fn dramatic_camera_keeps_the_three_native_fighters_visible() {
+    use sf_video::render::{VISAREA_X, WIDTH};
+    let (assets, mut fight) = ready_fight(LifebarMode::Independent, false, true);
+    let mut left = PlayerInputs::default();
+    left.directions[1] = true;
+    let mut right = PlayerInputs::default();
+    right.directions[0] = true;
+    let visible = VISAREA_X as i32 + 16..=VISAREA_X as i32 + WIDTH as i32 - 16;
+    for _ in 0..96 {
+        fight.step(&assets, left, right, false);
+        let telemetry = fight.machine().diagnostic_telemetry();
+        for fighter in [telemetry.p1, telemetry.p2, telemetry.ally2.unwrap()] {
+            assert!(fighter.active && visible.contains(&fighter.center_x), "{fighter:?}");
+        }
+    }
+    assert!(fight.machine().unrecovered().is_empty());
 }

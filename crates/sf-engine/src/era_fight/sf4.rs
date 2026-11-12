@@ -412,6 +412,11 @@ impl EraFighterState {
         }
     }
 
+    pub(super) fn sf4_ultra_ready(&self) -> bool {
+        let discount = self.world_tour_perk(crate::world_tour::native::Perk::IsmPlus);
+        self.sf4.revenge >= if discount { REVENGE_READY * 3 / 4 } else { REVENGE_READY }
+    }
+
     pub(super) fn sf4_spend_ultra(&mut self, disable_comeback_scaling: bool) {
         let revenge = if self.unified_gauge {
             REVENGE_MAX
@@ -426,7 +431,9 @@ impl EraFighterState {
         if self.style.loadout == Loadout::UltraDouble {
             scale = (u16::from(scale) * 75 / 100) as u8;
         }
-        self.sf4.revenge = 0;
+        self.sf4.revenge = if self.world_tour_perk(crate::world_tour::native::Perk::IsmPlus) {
+            self.sf4.revenge / 4
+        } else { 0 };
         self.sf4.ultra_scale = scale;
     }
 
@@ -514,7 +521,7 @@ impl Bus<'_> {
         {
             let focus_cancel = charging || after_contact;
             let paid = state.sf4.focus_paid || state.sf4.focus_hit && state.sf4.focus_level >= 2;
-            let cost = if focus_cancel && !paid { fadc_cost } else { 0 };
+            let cost = state.meter_cost(if focus_cancel && !paid { fadc_cost } else { 0 });
             if state.super_meter >= cost {
                 return self.era_sf4_dash(ps, entity, direction, cost, focus_cancel);
             }
@@ -539,6 +546,7 @@ impl Bus<'_> {
                 (false, true) => fadc_cost,
                 _ => 0,
             };
+            let cost = state.meter_cost(cost);
             if state.super_meter >= cost {
                 return self.era_sf4_begin_focus(ps, entity, cost, red);
             }
@@ -618,11 +626,6 @@ impl Bus<'_> {
         let airborne = context == SpecialContext::Airborne;
         let canceling = matches!(context, SpecialContext::Ground { canceling: true });
         let meter = state.super_meter;
-        let revenge = if state.unified_gauge {
-            REVENGE_MAX
-        } else {
-            state.sf4.revenge
-        };
         let unified = state.unified_gauge;
         let intent = state
             .sf4_commands()
@@ -643,7 +646,7 @@ impl Bus<'_> {
                 let fresh_chord =
                     |button: ButtonClass| button.held(held) && !button.held(held & !fresh);
                 let ex =
-                    command.ex.is_some() && meter >= STOCK_AT && fresh_chord(command.ex_button());
+                    command.ex.is_some() && meter >= state.meter_cost(STOCK_AT) && fresh_chord(command.ex_button());
                 let button_fired = match command.input.button {
                     Punch if command.cost == Super => {
                         fresh & super::PUNCH_MASK != 0 && !TriplePunch.held(held)
@@ -665,9 +668,10 @@ impl Bus<'_> {
                     Super if unified => 3 * STOCK_AT,
                     Super => 4 * STOCK_AT,
                     Ultra1 | Ultra2 if unified => 3 * STOCK_AT,
-                    Ultra1 | Ultra2 if revenge < REVENGE_READY => return None,
+                    Ultra1 | Ultra2 if !state.sf4_ultra_ready() => return None,
                     _ => 0,
                 };
+                let cost = state.meter_cost(cost);
                 (meter >= cost).then_some((*command, ex, cost))
             });
         let Some((command, ex, cost)) = intent else {
@@ -863,7 +867,8 @@ impl Bus<'_> {
             }
         }
         if let Some(side) = defending {
-            let absorbed_damage = self.dramatic_scale_damage(owner, damage);
+            let received = self.world_tour_damage(owner, target, damage, is_chip);
+            let absorbed_damage = self.dramatic_scale_damage(owner, received);
             let disable_revenge = self.era_rules.disable_comeback_scaling;
             let state = &mut self.toggle_state.era.fighters[side];
             state.sf4.absorbed = false;
@@ -871,10 +876,12 @@ impl Bus<'_> {
                 let sf4 = state.is_sf4();
                 if sf4 && !disable_revenge && !state.unified_gauge && state.super_capacity != 0 {
                     let gain = if state.sf4.red && state.sf4.focus_armor != 0 && !armor_break {
-                        damage.saturating_mul(2)
+                        received.saturating_mul(2)
                     } else {
-                        damage
+                        received
                     };
+                    let surge = state.world_tour_perk(crate::world_tour::native::Perk::MeterSurge);
+                    let gain = super::world_tour::meter_gain(gain, surge, &mut state.tour.revenge_gain_remainder);
                     state.sf4.revenge = state.sf4.revenge.saturating_add(gain).min(REVENGE_MAX);
                 }
                 if sf4 && state.sf4.focus_armor != 0 && !armor_break {

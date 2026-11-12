@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use sf_engine::config::MatchConfig;
 use sf_engine::front::settings::Settings;
+use sf_engine::world_tour::native::WorldTourProfile;
 
 use crate::bindings::BindingsTable;
 use crate::log::Log;
@@ -24,6 +25,18 @@ pub fn app_dir() -> PathBuf {
 
 pub fn settings_path(app_dir: &Path) -> PathBuf {
     app_dir.join("settings.toml")
+}
+
+pub fn world_tour_path(app_dir: &Path) -> PathBuf {
+    app_dir.join("world_tour.toml")
+}
+
+pub fn load_world_tour(app_dir: &Path, log: &mut Log) -> WorldTourProfile {
+    let (profile, error) = WorldTourProfile::load_or_default(&world_tour_path(app_dir));
+    if let Some(error) = error {
+        log.line("world tour", &error);
+    }
+    profile
 }
 
 pub fn match_config_path(app_dir: &Path) -> PathBuf {

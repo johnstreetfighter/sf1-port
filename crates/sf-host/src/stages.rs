@@ -1,6 +1,6 @@
 //! The extended background bank at launch (ADR-0009, tickets #198 and
 //! #215): the committed stage records, embedded so the game stays one file,
-//! rebuilt from the player's ROM and packed, then the two-player VS screens
+//! rebuilt from the player's ROM and packed, then the VS and ending screens
 //! built from the ROM on the pages after them. Only overhaul fights read
 //! the bank.
 //! - The test stage, which no screen lists, is picked with
@@ -43,6 +43,10 @@ pub fn load(rom: &Assets, log: &mut Log) -> Option<BackgroundBank> {
     match bank.add_vs_screens(rom) {
         Ok(n) => log.line("stages", &format!("{n} VS screens on {} page(s)", bank.pages() - before)),
         Err(e) => log.line("stages", &format!("no VS screens in the background bank: {e}")),
+    }
+    match bank.add_ending_screens(rom) {
+        Ok(n) => log.line("stages", &format!("{n} composite ending views")),
+        Err(e) => log.line("stages", &format!("no ending views in the background bank: {e}")),
     }
     (!bank.is_empty()).then_some(bank)
 }

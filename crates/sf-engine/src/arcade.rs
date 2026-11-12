@@ -1,7 +1,6 @@
-//! Arcade route, bonus scoring and ending content.
+//! Arcade route, win quotes and ending content.
 
 use crate::roster::TournamentFighter;
-use sf_video::asset_pack::{validate_tile, IndexedTile, Rgba};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Country {
@@ -101,225 +100,55 @@ pub fn win_quote(fighter: TournamentFighter) -> &'static str {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BonusKind {
-    Plank,
-    Barrel,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PowerCheck {
-    pub start: u8,
-    pub end: u8,
-    pub power_needed: u8,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Sample {
-    pub frame: u8,
-    pub down: bool,
-    /// 1 light, 2 medium, 3 heavy. Zero while the button is up.
-    pub power: u8,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BonusStage {
-    pub kind: BonusKind,
-    pub positive_edge: bool,
-    pub checks: Vec<PowerCheck>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BonusScore {
-    pub kind: BonusKind,
-    pub hits: u8,
-    pub points: u16,
-}
-
-impl BonusStage {
-    pub fn plank(positive_edge: bool) -> Self {
-        Self {
-            kind: BonusKind::Plank,
-            positive_edge,
-            checks: vec![PowerCheck {
-                start: 8,
-                end: 12,
-                power_needed: 2,
-            }],
-        }
+/// Two lines for the native post-match card, with a separate Thailand finale.
+pub(crate) fn win_quote_lines(fighter: TournamentFighter, finale: bool) -> [&'static str; 2] {
+    use TournamentFighter::*;
+    if finale {
+        return match fighter {
+            Ryu => ["THE TIGER HAS FALLEN.", "I STILL HAVE FAR TO WALK."],
+            Ken => ["THAT WAS YOUR BEST, SAGAT?", "NEXT STOP, HOME."],
+            Retsu => ["YOUR KNEE WAS SWIFT, TIGER.", "YOUR PRIDE WAS SLOWER."],
+            Geki => ["THE TIGER DID NOT HEAR ME.", "THAILAND HAS GONE QUIET."],
+            Joe => ["YOUR ARENA, MY RULES.", "THE BELT IS COMING HOME."],
+            Mike => ["THE TIGER IS ON THE CANVAS.", "COUNT HIM OUT."],
+            Lee => ["ONE STEP INSIDE YOUR KNEE.", "THAT WAS ALL I NEEDED."],
+            Gen => ["THE TIGER HAS HIS ANSWER.", "I SEEK ANOTHER."],
+            Birdie => ["TIGER DOWN. HORNS UP.", "WHERE'S THE FEAST?"],
+            Eagle => ["A WORTHY DUEL, SAGAT.", "LONDON WILL HEAR OF IT."],
+            Adon => ["YOU TAUGHT ME WELL, MASTER.", "THE JAGUAR REIGNS NOW."],
+            Sagat => ["YOU HAVE COURAGE, RYU.", "THE TIGER STILL REIGNS."],
+        };
     }
-
-    pub fn barrel(positive_edge: bool) -> Self {
-        Self {
-            kind: BonusKind::Barrel,
-            positive_edge,
-            checks: vec![
-                PowerCheck {
-                    start: 5,
-                    end: 7,
-                    power_needed: 1,
-                },
-                PowerCheck {
-                    start: 12,
-                    end: 14,
-                    power_needed: 2,
-                },
-                PowerCheck {
-                    start: 18,
-                    end: 20,
-                    power_needed: 3,
-                },
-            ],
-        }
-    }
-
-    /// Score swings against the timing windows.
-    ///
-    /// Positive edge uses the frame the button goes down, and the strength on
-    /// that frame. The 1987 check uses the release, and the strength that was
-    /// held. A hold that began before the window does not count as a press
-    /// inside it.
-    pub fn judge(&self, samples: &[Sample]) -> BonusScore {
-        let mut edges = Vec::new();
-        let mut was_down = false;
-        let mut held = 0u8;
-        for sample in samples {
-            let rising = sample.down && !was_down;
-            let falling = !sample.down && was_down;
-            if self.positive_edge && rising {
-                edges.push((sample.frame, sample.power));
-            }
-            if !self.positive_edge && falling {
-                edges.push((sample.frame, held));
-            }
-            if sample.down && sample.power > 0 {
-                held = sample.power;
-            }
-            was_down = sample.down;
-        }
-        let mut used = vec![false; edges.len()];
-        let mut hits = 0u8;
-        let mut points = 0u16;
-        for check in &self.checks {
-            let found = edges.iter().enumerate().find(|(index, (frame, power))| {
-                !used[*index]
-                    && *frame >= check.start
-                    && *frame <= check.end
-                    && *power >= check.power_needed
-            });
-            if let Some((index, (_, power))) = found {
-                used[index] = true;
-                hits += 1;
-                points = points.saturating_add(u16::from(*power) * 1000);
-            }
-        }
-        BonusScore {
-            kind: self.kind,
-            hits,
-            points,
-        }
+    match fighter {
+        Ryu => ["STILL WALKING.", "THERE IS MORE TO LEARN."],
+        Ken => ["ROUND'S MINE.", "HOLD THE PLANE."],
+        Retsu => ["QUICK HANDS. SLOW FEET.", "PRACTISE YOUR FOOTWORK."],
+        Geki => ["NO ECHO.", "NOT EVEN A FOOTSTEP."],
+        Joe => ["THE LEGS GOT THERE FIRST.", "KEEP YOUR GUARD UP."],
+        Mike => ["STAY DOWN. THE BELL RANG.", "SAVE IT FOR THE REMATCH."],
+        Lee => ["TOLD YOU. ONE STEP.", "YOU NEVER SAW IT COMING."],
+        Gen => ["AGE HITS HARDER THAN PRIDE.", "REMEMBER THE DIFFERENCE."],
+        Birdie => ["HORNS DOWN. NEXT TOWN.", "I COULD USE A BITE."],
+        Eagle => ["STICKS BACK IN THE CASE.", "GOOD DAY TO YOU."],
+        Adon => ["THE KNEE FOUND YOU.", "THE JAGUAR STRIKES FIRST."],
+        Sagat => ["THE SHOT MISSED.", "THE KNEE DID NOT."],
     }
 }
 
-/// A press that begins on `frame` and stays down. Positive-edge stages read this.
-pub fn press_at(frame: u8, power: u8) -> Vec<Sample> {
-    vec![
-        Sample {
-            frame: frame.saturating_sub(2),
-            down: false,
-            power: 0,
-        },
-        Sample {
-            frame,
-            down: true,
-            power,
-        },
-        Sample {
-            frame: frame.saturating_add(2),
-            down: true,
-            power,
-        },
-    ]
-}
-
-/// Held from frame 1 and let go on `frame`. Release-timed stages read this.
-pub fn release_at(frame: u8, power: u8) -> Vec<Sample> {
-    vec![
-        Sample {
-            frame: 1,
-            down: true,
-            power,
-        },
-        Sample {
-            frame,
-            down: false,
-            power: 0,
-        },
-    ]
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ending {
-    pub fighter: TournamentFighter,
-    pub panels: Vec<IndexedTile>,
-    pub credits: Vec<String>,
-}
-
-pub fn ending_for(fighter: TournamentFighter) -> Ending {
-    let id = TournamentFighter::ALL
-        .iter()
-        .position(|one| *one == fighter)
-        .unwrap_or(0);
-    let ink = Rgba {
-        r: 70 + (id as u8) * 12,
-        g: 36 + (id as u8) * 6,
-        b: 28,
-        a: 255,
-    };
-    let accent = Rgba {
-        r: 180,
-        g: 140 - (id as u8 % 4) * 20,
-        b: 40 + (id as u8) * 8,
-        a: 255,
-    };
-    let mut pixels = vec![Rgba::TRANSPARENT; 64 * 16];
-    for panel in 0..4 {
-        let x0 = panel * 16;
-        for y in 1..15 {
-            for x in 1..15 {
-                let mark = x == 1 + (id % 14) && y > 1 && y < 14;
-                let draw = mark
-                    || match panel {
-                        0 => x > 4 && x < 11 && y > 2 && y < 13,
-                        1 => x + (y / 2) > 6 && x < 13 && y > 3 && y < 14,
-                        2 => y > 8 && x > 2 && x < 14,
-                        _ => y == 3 || y == 12 || (x == 8 && y > 3 && y < 12),
-                    };
-                if draw {
-                    let color = if (x + y + panel) % 2 == 0 {
-                        ink
-                    } else {
-                        accent
-                    };
-                    pixels[y * 64 + x0 + x] = color;
-                }
-            }
-        }
-    }
-    let panels = sf_video::asset_pack::quantize_sheet(&pixels, 64, 16).expect("ending sheet");
-    for panel in &panels {
-        validate_tile(panel).expect("ending panel");
-    }
-    Ending {
-        fighter,
-        panels,
-        credits: vec![
-            fighter.name().to_string(),
-            "Thailand".to_string(),
-            win_quote(fighter).to_string(),
-            "Pictures".to_string(),
-            "Sound".to_string(),
-            "The end".to_string(),
-        ],
-    }
+/// The ten bosses' native ending messages. Ryu and Ken use the ROM message.
+pub(crate) fn ending_epilogue(fighter: TournamentFighter) -> Option<&'static str> {
+    use TournamentFighter::*;
+    Some(match fighter {
+        Ryu | Ken => return None,
+        Retsu => "HAVING TESTED EVERY MASTER OF THE WORLD TOURNAMENT, RETSU RETURNS TO THE SHORINJI TEMPLE. HIS KIAI STRIKES ECHO THROUGH THE COURTYARD AS NEW DISCIPLES GATHER AT THE GATE.",
+        Geki => "THE TOURNAMENT ENDS IN SILENCE. BEFORE THE CROWD CAN SPEAK HIS NAME, GEKI VANISHES INTO THE NIGHT SHADOWS, HIS CONTRACT FULFILLED, HIS CLAW UNBLEMISHED.",
+        Joe => "BELT SLUNG OVER HIS SHOULDER, JOE WALKS OUT OF THE THAILAND ARENA UNDEFEATED. FROM THE BACK ALLEYS TO THE WORLD STAGE, THE AMERICAN CHAMP STANDS ALONE.",
+        Mike => "NONE COULD WITHSTAND THE IRON FISTS OF MIKE. HAVING CRUSHED EVERY CHALLENGER ON EARTH, THE HEAVYWEIGHT POWERHOUSE SETS HIS SIGHTS ON A NEW RING.",
+        Lee => "WITH BAJIQUAN PERFECTED AGAINST THE WORLD'S GREATEST FIGHTERS, LEE BOWS TO THE FOUR WINDS AND RETURNS TO THE GREAT WALL TO GUARD CHINA'S MARTIAL LEGACY.",
+        Gen => "NO ASSASSIN NOR EMPEROR COULD FELL THE MASTER OF MANTIS AND CRANE. GEN COUGHS SOFTLY AND WALKS AWAY INTO THE MIST, STILL SEEKING ONE FINAL WORTHY DEATH MATCH.",
+        Birdie => "THE CROWD ROARS AS BIRDIE RAISES A MASSIVE FIST IN TRIUMPH. ENGLAND'S BRAWLER OWNS THE STREETS AND THE WORLD TITLE, AND RECKONS A PROPER FEAST IS NEXT.",
+        Eagle => "TWO KALI STICKS RETURN CLEANLY TO THEIR CASE. HAVING PROVED THE ART OF GENTLEMAN'S COMBAT AGAINST EVERY STYLE ON EARTH, EAGLE TIPS HIS HAT AND DEPARTS LONDON.",
+        Adon => "HAVING SURPASSED EVEN HIS MASTER'S LEGEND IN THE TEMPLE COURTYARD, ADON STANDS ATOP MUAY THAI AS ITS NEW EMPEROR. THE JAGUAR REIGNS SUPREME.",
+        Sagat => "THE YOUNG CHALLENGERS FELL ONE BY ONE BEFORE THE TIGER'S WRATH. UNSCARRED AND UNBROKEN, SAGAT STANDS ATOP THE WORLD AS THE UNDISPUTED EMPEROR OF MUAY THAI.",
+    })
 }

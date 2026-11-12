@@ -194,6 +194,8 @@ pub enum FightKind {
     TrainingDummy,
     /// Two allies share the stage against the same CPU boss.
     Dramatic { co_op: bool },
+    /// A one-player World Tour mission driven through the native two-pad fight.
+    WorldTour,
 }
 
 impl FightKind {
@@ -270,7 +272,7 @@ pub struct FightSetup {
     pub dsw2: u16,
 }
 
-canonical_enum!(FightKind, "fight-kind/v2"; Local => 0, Arcade => 1, TrainingCpu => 2, TrainingDummy => 3, Dramatic { co_op } => 4);
+canonical_enum!(FightKind, "fight-kind/v2"; Local => 0, Arcade => 1, TrainingCpu => 2, TrainingDummy => 3, Dramatic { co_op } => 4, WorldTour => 5);
 canonical_enum!(Players, "fight-players/v1"; One => 0, Two => 1);
 canonical_struct!(FightSetup, "fight-setup/v1", { kind, players, config, dsw1, dsw2 });
 canonical_struct!(PlayerInputs, "player-inputs/v1", { directions, buttons });
@@ -644,11 +646,19 @@ impl Fight {
     /// bosses' 1987 player tables, given only to an overhaul fight.
     pub fn start_banked(
         program_rom: &[u8],
-        setup: FightSetup,
+        mut setup: FightSetup,
         flag: Option<u8>,
         backgrounds: Option<Arc<BackgroundBank>>,
         data: Option<Arc<DataBank>>,
     ) -> Result<Fight, FightEvent> {
+        setup.config.world_tour = setup.config.world_tour.filter(|rules| {
+            let boss = matches!(rules.mission, crate::world_tour::native::MissionKind::DramaticBoss { .. });
+            match setup.kind {
+                FightKind::WorldTour => !boss,
+                FightKind::Dramatic { co_op: false } => boss,
+                _ => false,
+            }
+        });
         let mut machine = PowerOnMachine::with_io(
             program_rom.to_vec(),
             Io {
@@ -751,7 +761,7 @@ impl Fight {
     }
 
     pub(crate) fn set_selected_styles(&mut self, styles: [Option<StylePick>; 2]) {
-        if self.setup.config.dramatic.is_some() {
+        if self.setup.config.dramatic.is_some() && self.setup.config.world_tour.is_none() {
             return;
         }
         let fixed = StylePick::for_preset(self.setup.config.preset);
@@ -763,6 +773,9 @@ impl Fight {
     /// ladder opponent and is absent before a country is picked.
     pub fn fighter_style(&self, side: usize) -> Option<StylePick> {
         if let Some(rules) = self.setup.config.dramatic {
+            if side == 0 && self.setup.config.world_tour.is_some() {
+                return Some(self.selected_styles[0]);
+            }
             let slot = *[0, 2].get(side)?;
             return Some(crate::dramatic::DramaticRules::style_pick(rules.styles[slot]));
         }
@@ -818,6 +831,11 @@ impl Fight {
             0 => None,
             _ => Some(1),
         }
+    }
+
+    pub(super) fn start_world_tour_ending(&mut self) {
+        self.machine.start_world_tour_ending();
+        self.over = false;
     }
 
     /// The screen's name: the hidden drive's black, the real country
@@ -1661,3 +1679,6 @@ impl Fight {
         }
     }
 }
+
+#[cfg(test)]
+mod arcade_tests;

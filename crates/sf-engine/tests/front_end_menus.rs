@@ -10,9 +10,12 @@
 use std::path::Path;
 
 use sf_engine::config::MatchConfig;
+use sf_engine::era::EraFamily;
 use sf_engine::front::attract::FreePlay;
 use sf_engine::front::{sound, FrameInputs, FrameOutput, GameSession, MenuItem, MenuScreen, Transition};
 use sf_engine::run::PowerOnMachine;
+use sf_engine::roster::TournamentFighter;
+use sf_engine::world_tour::native::{node, Perk, WorldTourProfile};
 use sf_video::compositor::{ink, small_glyph, RomFont};
 use sf_video::decode::decode_char_tile;
 use sf_video::palette::Palette;
@@ -66,6 +69,8 @@ fn p_dir(player: usize, dir: usize) -> FrameInputs {
     i
 }
 
+const RIGHT: usize = 0;
+const LEFT: usize = 1;
 const DOWN: usize = 2;
 const UP: usize = 3;
 
@@ -306,7 +311,7 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     expect_cursor(&mut s, p_dir(1, UP), 0);
 
     // Confirm opens Single Player: ARCADE MODE (FE6) under the cursor,
-    // TRAINING (FE7) and Dramatic Battle live, World Tour greyed.
+    // TRAINING (FE7), World Tour and Dramatic Battle live.
     let out = tap(&mut s, confirm());
     assert_eq!(out.screen, "single player");
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::SinglePlayer)));
@@ -314,13 +319,21 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     let single = [MenuItem::Arcade, MenuItem::Training, MenuItem::WorldTour, MenuItem::DramaticBattle];
     let menu = MenuScreen::single_player();
     let colors: Vec<_> = single.iter().enumerate().map(|(i, it)| row_color(&out.frame, &a, &menu, *it, i)).collect();
-    assert_eq!(colors, [Some(ink::YELLOW), Some(ink::BLUE), Some(ink::DIM), Some(ink::BLUE)]);
+    assert_eq!(colors, [Some(ink::YELLOW), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE)]);
     assert!(row_is_black(&out.frame, 25, 6, 41), "no preset line");
-    // Down skips World Tour and reaches Dramatic Battle.
+    // Down reaches World Tour and Dramatic Battle in order.
     let out = tap(&mut s, p_dir(1, DOWN));
     assert_eq!((out.transition, out.sound_latch), (Some(Transition::CursorMoved), sound::CURSOR));
     assert_eq!(row_color(&out.frame, &a, &menu, MenuItem::Training, 1), Some(ink::YELLOW));
     assert_eq!(tap(&mut s, p_dir(1, DOWN)).transition, Some(Transition::CursorMoved));
+    assert_eq!(s.menu_item(), Some(MenuItem::WorldTour));
+    let out = tap(&mut s, confirm());
+    assert_eq!(out.screen, "world tour");
+    // World travel map foreground at sea and land pixels in the MAME capture.
+    assert_eq!(out.frame.argb[48 * WIDTH + 99], 0xffcc_7700);
+    assert_eq!(out.frame.argb[38 * WIDTH + 218], 0xff00_7777);
+    assert_eq!(tap(&mut s, back()).screen, "single player");
+    tap(&mut s, p_dir(1, DOWN));
     assert_eq!(s.menu_item(), Some(MenuItem::DramaticBattle));
     assert_eq!(tap(&mut s, confirm()).screen, "dramatic setup");
     assert_eq!(tap(&mut s, back()).screen, "single player");
@@ -348,6 +361,50 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     let out = tap(&mut s, back());
     assert_eq!((out.screen, out.transition), ("attract", Some(Transition::Back)));
     assert!(s.attract_machine().unrecovered().is_empty());
+}
+
+#[test]
+fn world_tour_controls_change_the_shared_fighter_style_and_rpg_profile() {
+    let Some(assets) = assets() else { return };
+    let mut profile = WorldTourProfile::default();
+    profile.complete(node("jp-1-dojo").unwrap());
+    profile.complete(node("jp-3-era").unwrap());
+    let mut session = session(assets).with_world_tour_profile(profile);
+    for _ in 0..200 { session.step(idle()); }
+    tap(&mut session, start());
+    tap(&mut session, confirm());
+    tap(&mut session, p_dir(1, DOWN));
+    tap(&mut session, p_dir(1, DOWN));
+    assert_eq!(tap(&mut session, confirm()).screen, "world tour");
+    tap(&mut session, p_dir(1, RIGHT));
+    assert_eq!(session.world_tour_profile().current_node().id, "jp-2-shuriken");
+    let mut tab_left = idle();
+    tab_left.menu.tab_left = true;
+    assert_eq!(tap(&mut session, tab_left).screen, "world tour fighter select");
+    tap(&mut session, p_dir(1, RIGHT));
+    assert_eq!(tap(&mut session, confirm()).transition, Some(Transition::StyleOpened));
+    tap(&mut session, p_dir(1, RIGHT));
+    assert_eq!(tap(&mut session, confirm()).screen, "world tour");
+    assert_eq!(session.world_tour_profile().fighter, TournamentFighter::Ken);
+    assert_ne!(session.world_tour_profile().style.family, EraFamily::Sf1Plus);
+    assert!(session.take_world_tour_changed());
+
+    let mut tab_right = idle();
+    tab_right.menu.tab_right = true;
+    assert_eq!(tap(&mut session, tab_right).screen, "world tour rpg");
+    tap(&mut session, confirm());
+    assert!(!session.world_tour_profile().rpg);
+    tap(&mut session, p_dir(1, DOWN));
+    tap(&mut session, p_dir(1, RIGHT));
+    assert_eq!(session.world_tour_profile().attack, 1);
+    tap(&mut session, p_dir(1, LEFT));
+    assert_eq!(session.world_tour_profile().attack, 0);
+    tap(&mut session, p_dir(1, UP));
+    tap(&mut session, p_dir(1, UP));
+    tap(&mut session, p_dir(1, RIGHT));
+    assert_eq!(session.world_tour_profile().perk, Some(Perk::VitalSpirit));
+    assert_eq!(tap(&mut session, back()).screen, "world tour");
+    assert!(session.take_world_tour_changed());
 }
 
 #[test]
@@ -566,8 +623,7 @@ fn menus_open_where_they_were_left_and_the_positions_survive_the_settings_file()
     assert_eq!(tap(&mut s, start()).screen, "main menu");
     assert_eq!(s.menu_item(), Some(MenuItem::MultiPlayer), "the Main Menu reopens on MULTI PLAYER");
     assert_eq!(s.settings().menu_positions, [1, 0, 0, 0]);
-    // A saved position on a greyed row (World Tour) opens on the first
-    // live row instead.
+    // Single Player also reopens on its saved position.
     let mut settings = s.settings().clone();
     settings.menu_positions[1] = 2;
     let text = settings.to_toml();
@@ -582,5 +638,5 @@ fn menus_open_where_they_were_left_and_the_positions_survive_the_settings_file()
     assert_eq!(t.menu_item(), Some(MenuItem::MultiPlayer), "a new session opens where the file says");
     tap(&mut t, p_dir(1, UP));
     assert_eq!(tap(&mut t, confirm()).screen, "single player");
-    assert_eq!(t.menu_item(), Some(MenuItem::Arcade), "the greyed row is not opened on");
+    assert_eq!(t.menu_item(), Some(MenuItem::WorldTour), "Single Player restores its own row");
 }

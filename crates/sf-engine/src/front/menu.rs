@@ -129,6 +129,7 @@ impl MenuItem {
                 | MenuItem::Local
                 | MenuItem::Online
                 | MenuItem::DramaticBattle
+                | MenuItem::WorldTour
                 | MenuItem::LocalCoopDramatic
                 | MenuItem::Arcade
                 | MenuItem::Training
@@ -203,7 +204,7 @@ pub struct MenuScreen {
     kind: MenuKind,
     /// The cursor's item, or None when every item is greyed.
     cursor: Option<usize>,
-    dramatic_enabled: bool,
+    overhaul_modes_enabled: bool,
 }
 
 impl MenuScreen {
@@ -225,21 +226,21 @@ impl MenuScreen {
     }
 
     fn open(kind: MenuKind) -> Self {
-        let mut screen = MenuScreen { kind, cursor: None, dramatic_enabled: true };
+        let mut screen = MenuScreen { kind, cursor: None, overhaul_modes_enabled: true };
         screen.cursor = screen.items().iter().position(|&item| screen.item_available(item));
         screen
     }
 
-    pub(super) fn with_dramatic_enabled(mut self, enabled: bool) -> Self {
-        self.dramatic_enabled = enabled;
+    pub(super) fn with_overhaul_modes(mut self, enabled: bool) -> Self {
+        self.overhaul_modes_enabled = enabled;
         self.cursor = self.cursor.filter(|&row| self.item_available(self.items()[row]))
             .or_else(|| self.items().iter().position(|&item| self.item_available(item)));
         self
     }
 
     fn item_available(&self, item: MenuItem) -> bool {
-        item.available() && (self.dramatic_enabled
-            || !matches!(item, MenuItem::DramaticBattle | MenuItem::LocalCoopDramatic))
+        item.available() && (self.overhaul_modes_enabled
+            || !matches!(item, MenuItem::WorldTour | MenuItem::DramaticBattle | MenuItem::LocalCoopDramatic))
     }
 
     /// The menu with its cursor on row `row`, when that row exists and is

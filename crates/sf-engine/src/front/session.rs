@@ -32,6 +32,7 @@ use crate::jukebox::TrackFormats;
 use super::stage_select::{random_pick, StageScreen};
 use super::settings::{default_looks, frame_delay_cap, look_in_use, Aspect, DisplayInfo, LookName, Settings, SettingsScreen};
 use super::tune::{DemoScene, LookParam, LookTuning, Panel, SaveLook, TuneScreen, TypedKey};
+use super::world_tour::WorldTourScreen;
 use super::{sound, Transition};
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::data_bank::DataBank;
@@ -47,9 +48,11 @@ use crate::netplay::protocol::tag_from_str;
 use crate::netplay::connection::{Connection, ConnectionEvent};
 use crate::netplay::RejectReason;
 use crate::canonical::{Canonical, CanonicalHasher};
+use crate::world_tour::native::WorldTourProfile;
 
 mod netplay;
 mod spectator;
+mod world_tour;
 
 /// One player's logical inputs: directions (right, left, down, up) and the
 /// six attack buttons (LP, MP, HP, LK, MK, HK), as the machines take them.
@@ -161,6 +164,7 @@ enum Screen {
     DramaticSetup(DramaticSetupScreen),
     DramaticPick(Box<DramaticPicks>),
     DramaticGuest(Box<DramaticGuest>),
+    WorldTour(Box<WorldTourScreen>),
     Settings(Box<SettingsScreen>),
     Dip(DipScreen),
     Rebind(Box<RebindScreen>),
@@ -178,6 +182,7 @@ impl Screen {
             Screen::DramaticSetup(s) => s.name(),
             Screen::DramaticPick(_) => "dramatic select",
             Screen::DramaticGuest(_) => "dramatic guest",
+            Screen::WorldTour(screen) => screen.name(),
             Screen::Settings(s) => s.name(),
             Screen::Dip(d) => d.name(),
             Screen::Rebind(r) => r.name(),
@@ -202,6 +207,8 @@ impl Screen {
             Screen::Online(o) => o.apply(input),
             // The walk takes presses, not menu inputs.
             Screen::Rebind(_) => None,
+            // World Tour also takes the shared campaign profile.
+            Screen::WorldTour(_) => None,
         }
     }
 }
@@ -211,6 +218,7 @@ impl Screen {
 #[derive(Clone)]
 struct Play {
     fight: Fight,
+    world_tour: Option<world_tour::WorldTourRun>,
     netplay: Option<crate::netplay::RollbackEngine>,
     pause: Option<PauseBox>,
     /// The move list over the pause box, while it shows.
@@ -286,6 +294,8 @@ pub struct GameSession {
     settings: Settings,
     /// The Settings screen was left this frame: the files are to be saved.
     settings_changed: bool,
+    world_tour_profile: WorldTourProfile,
+    world_tour_changed: bool,
     play: Option<Play>,
     /// The faithful cabinet, when the 1987 item has powered it on.
     cabinet: Option<Cabinet>,
@@ -368,6 +378,8 @@ impl GameSession {
             config,
             settings: Settings::default(),
             settings_changed: false,
+            world_tour_profile: WorldTourProfile::default(),
+            world_tour_changed: false,
             binds: None,
             bindings_changed: false,
             lost_pad: None,
@@ -549,6 +561,20 @@ impl GameSession {
         self
     }
 
+    /// Builder: the World Tour profile loaded by the host.
+    pub fn with_world_tour_profile(mut self, profile: WorldTourProfile) -> Self {
+        self.world_tour_profile = profile;
+        self
+    }
+
+    pub fn world_tour_profile(&self) -> &WorldTourProfile {
+        &self.world_tour_profile
+    }
+
+    pub fn take_world_tour_changed(&mut self) -> bool {
+        std::mem::take(&mut self.world_tour_changed)
+    }
+
     /// The settings (video, sound, ROM folder, the cabinet's DIP words).
     pub fn settings(&self) -> &Settings {
         &self.settings
@@ -578,8 +604,8 @@ impl GameSession {
     /// `screen` opened where it was last left.
     fn menu(&self, screen: MenuScreen) -> Screen {
         let row = self.settings.menu_positions[screen.slot()];
-        let dramatic = self.config.preset != RulesetPreset::Faithful1987;
-        Screen::Menu(screen.with_dramatic_enabled(dramatic).at(row))
+        let overhaul = self.config.preset != RulesetPreset::Faithful1987;
+        Screen::Menu(screen.with_overhaul_modes(overhaul).at(row))
     }
 
     /// The item under the cursor, when a menu is showing.
@@ -811,6 +837,7 @@ impl GameSession {
     fn stamped(&self, mode: PlayMode, p1: TournamentFighter, p2: TournamentFighter) -> MatchConfig {
         let mut config = self.config;
         config.dramatic = None;
+        config.world_tour = None;
         config.roster.mode = mode;
         config.roster.p1 = p1;
         config.roster.p2 = p2;
@@ -839,7 +866,7 @@ impl GameSession {
             FightKind::TrainingCpu if fair_cpu => (Players::Two, PlayMode::Training),
             FightKind::TrainingCpu => (Players::One, PlayMode::Training),
             FightKind::TrainingDummy => (Players::Two, PlayMode::Training),
-            FightKind::Dramatic { .. } => return,
+            FightKind::Dramatic { .. } | FightKind::WorldTour => return,
         };
         let flag = match kind {
             FightKind::TrainingCpu if fair_cpu => Some(rematch.unwrap_or(HIDDEN_FLAG)),
@@ -930,6 +957,7 @@ impl GameSession {
                 fight.set_hold_combo(self.settings.hold_combo);
                 self.play = Some(Play {
                     fight,
+                    world_tour: None,
                     netplay: self.net_setup.as_ref().and_then(|setup| setup.local_side
                         .map(|side| crate::netplay::RollbackEngine::new(side, setup.delay, setup.max_rollback))),
                     pause: None,
@@ -1274,7 +1302,7 @@ impl GameSession {
         let select = match kind {
             FightKind::Local => SelectScreen::local(&self.config, self.player_tables()),
             FightKind::Arcade => SelectScreen::arcade(&self.config, self.player_tables()),
-            FightKind::Dramatic { .. } => SelectScreen::single(&self.config, self.player_tables(), 0),
+            FightKind::Dramatic { .. } | FightKind::WorldTour => SelectScreen::single(&self.config, self.player_tables(), 0),
             FightKind::TrainingCpu => SelectScreen::training(&self.config, true, self.player_tables()),
             FightKind::TrainingDummy => SelectScreen::training(&self.config, false, self.player_tables()),
         };
@@ -1409,8 +1437,10 @@ impl GameSession {
             return;
         };
         let list: Vec<String> = addresses.iter().map(|a| format!("0x{a:05x}")).collect();
+        let on_tour = matches!(self.stack.last(), Some(Screen::WorldTour(_)));
+        let destination = if on_tour { "World Tour" } else { "the Main Menu" };
         self.log.push(format!(
-            "frame {frame}: untranslated original branches [{}] during {during}; back to the Main Menu",
+            "frame {frame}: untranslated original branches [{}] during {during}, back to {destination}",
             list.join(", ")
         ));
         self.notice = Some(format!(
@@ -1422,7 +1452,9 @@ impl GameSession {
             self.stop_extended_theme(&config);
         }
         self.play = None;
-        self.stack.truncate(1);
+        if !on_tour {
+            self.stack.truncate(1);
+        }
     }
 
     /// Inputs while a fight is up: the after-match box's, the pause box's,
@@ -1439,6 +1471,9 @@ impl GameSession {
         let events = online_events.as_deref().unwrap_or(events);
         let (prev, now) = (&before, &input);
         let play = self.play.as_mut()?;
+        if play.world_tour.is_some_and(|run| run.ending) {
+            return None;
+        }
         let training = matches!(play.fight.setup().kind, FightKind::TrainingCpu | FightKind::TrainingDummy);
         let can_pause = !play.fight.driving() && !play.fight.in_continue();
         // A lost pad pauses the fight with a notice, at once or as soon as
@@ -1626,6 +1661,9 @@ impl GameSession {
                         MenuItem::QuitToMenu if self.net_setup.is_some() => {
                             self.net_quit();
                         }
+                        MenuItem::QuitToMenu if play.world_tour.is_some() => {
+                            self.leave_world_tour_fight();
+                        }
                         _ => {
                             let config = play.fight.setup().config;
                             self.stop_extended_theme(&config);
@@ -1765,6 +1803,11 @@ impl GameSession {
                 (Screen::Tune(t), Event::Typed(key)) => t.type_key(key),
                 (Screen::Settings(screen), Event::Typed(key)) => screen.type_key(key),
                 (Screen::Online(screen), Event::Typed(key)) => screen.type_key(key),
+                (Screen::WorldTour(screen), Event::Menu(event)) => {
+                    let (transition, changed) = screen.apply(event, &mut self.world_tour_profile);
+                    self.world_tour_changed |= changed;
+                    transition
+                }
                 (_, Event::Typed(_)) => None,
                 (other, Event::Menu(event)) => other.apply(event),
             };
@@ -1843,12 +1886,27 @@ impl GameSession {
                     self.start_dramatic_setup();
                     break;
                 }
+                Transition::StartWorldTour => {
+                    self.sounds.push_back(sound::CONFIRM);
+                    self.start_world_tour_node();
+                    break;
+                }
+                Transition::WorldTourSelect => {
+                    let config = self.world_tour_config();
+                    let player_tables = self.data_bank.as_deref().map_or(&[][..], DataBank::fighters);
+                    if let Some(Screen::WorldTour(screen)) = self.stack.last_mut() {
+                        screen.open_select(&config, player_tables, &self.world_tour_profile);
+                        self.sounds.push_back(sound::CONFIRM);
+                    }
+                    break;
+                }
                 Transition::Choose(item) => {
                     self.sounds.push_back(sound::CONFIRM);
                     let next = match item {
                         MenuItem::SinglePlayer => Some(self.menu(MenuScreen::single_player())),
                         MenuItem::MultiPlayer => Some(self.menu(MenuScreen::multi_player())),
                         MenuItem::Training => Some(self.menu(MenuScreen::training())),
+                        MenuItem::WorldTour => Some(Screen::WorldTour(Box::new(WorldTourScreen::open(&self.assets)))),
                         MenuItem::DramaticBattle | MenuItem::LocalCoopDramatic => {
                             let co_op = item == MenuItem::LocalCoopDramatic;
                             Some(Screen::DramaticSetup(DramaticSetupScreen::for_config(co_op, &self.config)))
@@ -2064,6 +2122,7 @@ impl GameSession {
         let mut abandoned = None;
         let mut returned = false;
         let mut winner = None;
+        let mut world_tour_result = None;
         let start = events.contains(&MenuInput::Start);
         if let Some(play) = self.play.as_mut().filter(|p| p.held && !online_play) {
             play.held = false;
@@ -2086,7 +2145,10 @@ impl GameSession {
             if let Some(ff) = ff { match ff.event {
                 Some(FightEvent::ReturnedToAttract) => returned = true,
                 Some(FightEvent::MatchOver) => {
-                    if play.netplay.as_ref().is_none_or(|rollback| rollback.confirmed_match_over()) {
+                    if play.world_tour.is_some() {
+                        world_tour_result = Some(play.fight.match_winner());
+                        transition = Some(Transition::MatchOver);
+                    } else if play.netplay.as_ref().is_none_or(|rollback| rollback.confirmed_match_over()) {
                         play.after = Some(if self.net_setup.is_some() { AfterMatchBox::open_online() }
                             else { AfterMatchBox::default() });
                         winner = Some(play.fight.match_winner());
@@ -2109,8 +2171,15 @@ impl GameSession {
         if let Some(event) = abandoned {
             self.abandon(event, "a fight");
         }
+        if let Some(result) = world_tour_result {
+            self.finish_world_tour_match(result);
+        }
         if returned {
-            self.arcade_over();
+            if self.play.as_ref().is_some_and(|play| play.world_tour.is_some()) {
+                self.leave_world_tour_fight();
+            } else {
+                self.arcade_over();
+            }
         }
         self.net_rollback_events();
         self.net_send();
@@ -2176,6 +2245,7 @@ impl GameSession {
                     Screen::Menu(m) => m.render(&font, self.title_logo.as_ref(), self.notice.as_deref()),
                     Screen::Select(s) => s.render(&font, &self.busts),
                     Screen::Stage(s) => s.render(&font),
+                    Screen::WorldTour(screen) => screen.render(&font, &self.busts, &self.world_tour_profile, self.frames, self.notice.as_deref()),
                     Screen::DramaticSetup(s) => s.render(&font, self.notice.as_deref()),
                     Screen::DramaticPick(s) => s.render(&font, &self.busts, self.notice.as_deref()),
                     Screen::DramaticGuest(s) => {

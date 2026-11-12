@@ -1,11 +1,5 @@
 //! Arcade route, positive-edge bonus stages, rival lines, and endings (`#102`, `O11`).
 
-use std::collections::HashSet;
-
-use sf_engine::arcade::{
-    ending_for, player_intro, press_at, release_at, rival_taunt, route_from, win_quote, BonusKind,
-    BonusStage, Country, Sample, ROUTE,
-};
 use sf_engine::config::MatchConfig;
 use sf_engine::fighter::CPU_STRUCT;
 use sf_engine::front::cabinet::{flow_position, Players};
@@ -13,102 +7,7 @@ use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup};
 use sf_engine::front::PlayerInputs;
 use sf_engine::roster::{PlayMode, TournamentFighter};
 use sf_engine::tasks::TIME_DIGITS;
-use sf_video::asset_pack::validate_tile;
 use sf_video::romset::{load_assets, Assets};
-
-#[test]
-fn positive_edge_scores_the_press_and_release_mode_scores_the_let_go() {
-    let plank_press = BonusStage::plank(true);
-    let timed = plank_press.judge(&press_at(10, 3));
-    assert_eq!(timed.hits, 1);
-    assert_eq!(timed.points, 3000);
-
-    let early_hold = vec![
-        Sample {
-            frame: 2,
-            down: true,
-            power: 3,
-        },
-        Sample {
-            frame: 10,
-            down: true,
-            power: 3,
-        },
-    ];
-    assert_eq!(
-        plank_press.judge(&early_hold).hits,
-        0,
-        "a hold already down is not a new press"
-    );
-
-    let weak = plank_press.judge(&press_at(10, 1));
-    assert_eq!(weak.hits, 0, "light power misses the plank");
-
-    let outside = plank_press.judge(&press_at(4, 3));
-    assert_eq!(outside.hits, 0, "a press outside the window misses");
-
-    let release = BonusStage::plank(false);
-    assert_eq!(release.judge(&release_at(10, 3)).hits, 1);
-    assert_eq!(
-        release.judge(&press_at(10, 3)).hits,
-        0,
-        "a press with no release does not score"
-    );
-    assert_eq!(release.judge(&release_at(4, 3)).hits, 0);
-
-    let barrels = BonusStage::barrel(true);
-    let mut swings = press_at(6, 1);
-    swings.extend(press_at(13, 2));
-    swings.extend(press_at(19, 3));
-    let broken = barrels.judge(&swings);
-    assert_eq!(broken.kind, BonusKind::Barrel);
-    assert_eq!(broken.hits, 3);
-    assert_eq!(broken.points, 6000);
-
-    let mut soft_last = press_at(6, 1);
-    soft_last.extend(press_at(13, 2));
-    soft_last.extend(press_at(19, 1));
-    assert_eq!(
-        barrels.judge(&soft_last).hits,
-        2,
-        "the heavy barrel refuses a light tap"
-    );
-}
-
-#[test]
-fn all_fighters_have_distinct_arcade_lines_and_ending_panels() {
-    let mut intros = HashSet::new();
-    let mut taunts = HashSet::new();
-    let mut wins = HashSet::new();
-    let mut first_panels = HashSet::new();
-
-    for fighter in TournamentFighter::ALL {
-        assert!(intros.insert(player_intro(fighter)));
-        assert!(taunts.insert(rival_taunt(fighter)));
-        assert!(wins.insert(win_quote(fighter)));
-
-        let ending = ending_for(fighter);
-        assert_eq!(ending.panels.len(), 4);
-        for panel in &ending.panels {
-            validate_tile(panel).unwrap();
-        }
-        assert_ne!(ending.panels[0].pixels, ending.panels[1].pixels);
-        assert!(first_panels.insert(ending.panels[0].pixels));
-        assert!(ending.credits.iter().any(|line| line == fighter.name()));
-        assert!(ending.credits.iter().any(|line| line == "Thailand"));
-        assert!(ending.credits.iter().any(|line| line == "The end"));
-    }
-    assert!(ending_for(TournamentFighter::Eagle)
-        .credits
-        .iter()
-        .any(|line| line.contains("Sticks back in the case")));
-    assert_eq!(route_from(Country::Japan), ROUTE);
-    assert_eq!(
-        route_from(Country::England),
-        &[Country::England, Country::Thailand]
-    );
-    assert_eq!(route_from(Country::Thailand), &[Country::Thailand]);
-}
 
 const FIGHT_LOOP: u32 = 0x3eafa;
 const STAGE_NUMBER: usize = 0x4003;
@@ -237,5 +136,49 @@ fn other_flags_start_the_native_ladder_with_their_local_rival() {
         assert_eq!(flow_position(fight.machine()), FIGHT_LOOP);
         assert_eq!(fight.country(), Some(flag));
         assert_eq!(fight.machine().arcade_opponent(), Some(opponent));
+    }
+}
+
+#[test]
+fn native_board_breaking_respects_press_and_release_rules() {
+    const POWER_METER: u32 = 0x40f14;
+    const STRIKE_WINDUP: u32 = 0x41078;
+    let Some(assets) = roms() else { return };
+
+    for positive_edge in [false, true] {
+        let mut config = MatchConfig::definitive();
+        config.toggles.positive_edge_attacks = positive_edge;
+        let mut fight = arcade(&assets, 0, config);
+        for _ in 0..5_000 {
+            step(&mut fight, &assets);
+            match flow_position(fight.machine()) {
+                POWER_METER => break,
+                FIGHT_LOOP => win_on_time(&mut fight),
+                _ => {}
+            }
+        }
+        assert_eq!(flow_position(fight.machine()), POWER_METER);
+        let ready = fight.save_netplay_snapshot(0);
+        for button in [0, 2] {
+            fight.restore_netplay_snapshot(&ready);
+            let mut punch = PlayerInputs::default();
+            punch.buttons[button] = true;
+            for _ in 0..2 {
+                fight.step(&assets, punch, PlayerInputs::default(), false);
+            }
+            assert_eq!(
+                flow_position(fight.machine()),
+                if positive_edge { STRIKE_WINDUP } else { POWER_METER },
+            );
+            for _ in 0..2 { step(&mut fight, &assets); }
+            assert_eq!(flow_position(fight.machine()), STRIKE_WINDUP);
+            let power = fight.machine().state.objectram[0x434];
+            if button == 0 {
+                assert!(power < 5, "light punch keeps the native low power band, got {power}");
+            } else {
+                assert!(power >= 5, "heavy punch reaches the native high power band, got {power}");
+            }
+        }
+        assert!(fight.machine().unrecovered().is_empty());
     }
 }

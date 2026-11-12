@@ -89,7 +89,7 @@ impl SyncedMatchRules {
     }
 
     pub fn supports_online(&self) -> bool {
-        self.config.dramatic.is_none_or(|rules| {
+        self.config.world_tour.is_none() && self.config.dramatic.is_none_or(|rules| {
             rules.co_op
                 && self.config.preset != RulesetPreset::Faithful1987
                 && self.config.roster.mode == PlayMode::Versus
@@ -316,7 +316,7 @@ fn read_roster(read: &mut Reader<'_>) -> Option<RosterSettings> {
 fn write_config(value: &MatchConfig, out: &mut Vec<u8>) {
     let MatchConfig { preset, toggles, roster, fill_meters, p2_fair_cpu, p1_scheme: _, p2_scheme: _,
         modern_control_damage_penalty, sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
-        tour, difficulty, round_time, dramatic: _ } = value;
+        tour, difficulty, round_time, dramatic: _, world_tour: _ } = value;
     write_preset(*preset, out); write_toggles(toggles, out); write_roster(roster, out);
     fill_meters.write(out); p2_fair_cpu.write(out); modern_control_damage_penalty.write(out);
     write_sf1plus(sf1plus, out); write_gauge(*gauge_mode, out);
@@ -331,7 +331,7 @@ fn read_config(read: &mut Reader<'_>) -> Option<MatchConfig> {
         p1_scheme: ControlScheme::Classic, p2_scheme: ControlScheme::Classic,
         modern_control_damage_penalty: read.boolean()?, sf1plus: read_sf1plus(read)?, gauge_mode: read_gauge(read)?,
         disable_comeback_scaling: read.boolean()?, disable_raw_drive_rush: read.boolean()?,
-        tour: read_tour(read)?, difficulty: read.u8()?, round_time: read.u16()?, dramatic: None,
+        tour: read_tour(read)?, difficulty: read.u8()?, round_time: read.u16()?, dramatic: None, world_tour: None,
     };
     let t = value.toggles;
     (t.recovery_buffer_window <= 30 && (1..=60).contains(&t.command_tracker_window)

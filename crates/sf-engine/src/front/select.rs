@@ -288,6 +288,14 @@ impl SelectScreen {
         }
     }
 
+    pub(super) fn restore_open_style(&mut self, pick: StylePick) {
+        if let Some(what_if) = self.styles.filter(|_| self.cards[0].is_some()) {
+            if let Some(card) = StyleCard::from_pick(self.fighter(0), pick, what_if) {
+                self.cards[0] = Some(card);
+            }
+        }
+    }
+
     /// `side`'s locked fighter, once picked.
     pub fn locked(&self, side: usize) -> Option<TournamentFighter> {
         self.locked[side]

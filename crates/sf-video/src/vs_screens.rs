@@ -49,7 +49,7 @@ pub const SCREEN_COLUMNS: usize = 24;
 /// holds start at 8, 32, .., 2024, so the last ends at column 2047 and no
 /// screen's scroll is 0 (an add to a cleared copy is how the 1987 code
 /// leaves a page, `tasks.rs` `add_bg_scroll`).
-const FIRST_COLUMN: usize = 8;
+pub(crate) const FIRST_COLUMN: usize = 8;
 /// Built screens on one page.
 pub const SCREENS_PER_PAGE: usize = (PAGE_COLS - FIRST_COLUMN) / SCREEN_COLUMNS;
 /// The visible area starts 64 pixels into the screen bitmap.
@@ -148,6 +148,23 @@ fn part_cells(tilerom: &[u8], p: Part, side: usize) -> Vec<(usize, usize, Cell)>
         }
     }
     out
+}
+
+/// A boss's mode-4 bust and nameplate, with the left bracket. The rest of
+/// the ending uses the blank cell from this same ROM screen.
+pub(crate) fn left_boss_card(rom: &Assets, opponent: usize) -> Result<(Cell, Vec<(usize, usize, Cell)>), String> {
+    let part = rom_screen(&rom.maincpu, MODE_4_SCROLLS, opponent, LEFT)?;
+    let tilerom = &rom.tilerom;
+    if part.col + SCREEN_COLUMNS > PAGE_COLS || tilerom.len() < crate::background_bank::PAGE_BYTES {
+        return Err("a boss's VS screen is past the ROM tilemap".into());
+    }
+    let read = |col, row| Cell::read(tilerom, MapLayer::Bg.base(), (part.col + col) * MAP_ROWS + row);
+    let mut cells = part_cells(tilerom, part, LEFT);
+    for row in NAME_ROWS {
+        let col = NAME_COL[LEFT] - 1;
+        cells.push((col, row, read(col, row)));
+    }
+    Ok((read(0, 0), cells))
 }
 
 /// One built screen: its 24 columns of cells and its palette.
