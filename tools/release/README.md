@@ -37,14 +37,19 @@ declaration in its manifest. Its original manifests and full source are retained
 with a transparent provenance note; the packager does not invent a copyright
 notice or grant. An unknown omission remains an error for review.
 
-Before upload, extract the ZIP into a fresh directory, compare the executable and
-shader files with the tagged build/source, verify the SHA-256, inspect PE runtime
-imports and run the available version check from the extracted directory. Record
-any runtime/interactive checks actually performed in the release notes. Keep
-packages outside a temporary worktree before archiving that worktree.
+Before upload, extract the ZIP into a fresh directory. Compare the executable and
+shaders with the tagged build and source, verify ZIP CRC and SHA-256, and inspect
+the Windows x64 GUI executable's runtime imports. Run the available version and
+Windows launch checks from the extracted directory. Scan the executable and ZIP
+for embedded workstation paths. Record the verification actually performed in
+the release notes. Keep packages outside temporary worktrees.
 
-Upload both files to the published GitHub Release for the annotated tag. The ZIP
-contains no ROMs, art or voice packs, user settings or logs. Do not copy a
-whole build or local asset folder into the release. Dependency and shader notices
-remain beside the executable. The quick start links Microsoft's current x64 v14
-runtime and explains where users supply their own ROM set.
+Push the annotated tag for the tested commit and publish the GitHub Release with
+the Windows ZIP and its SHA-256 sidecar. Mark stable releases as latest. Download
+both published assets, compare them with the verified local files, and check the
+ZIP against the downloaded sidecar before reporting the release complete.
+
+The ZIP contains no ROMs, art or voice packs, user settings or logs. Package the
+release with the script above so dependency and shader notices remain beside the
+executable. The quick start links Microsoft's x64 v14 runtime and explains where
+users supply their own ROM set.
