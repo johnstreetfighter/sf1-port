@@ -477,3 +477,35 @@ fn gauge_art_names_round_trip_and_cycle() {
     assert_eq!(GaugeArt::Plate.next(), GaugeArt::Ruled);
     assert_eq!(GaugeArt::from_slug("neon"), None);
 }
+
+#[test]
+fn independent_ally_gauge_is_compact_above_the_left_corner() {
+    let primary = EraGauge::one(GaugeRow::stock(1, 1, Fill::EMPTY));
+    let ally2 = EraGauge::one(GaugeRow::stock(3, 1, Fill::of(1, 2)));
+    let lift = 24;
+    let corner_top = HEIGHT - CORNER_BOTTOM - lift - CORNER_HEIGHT;
+    let bounds = corner_top - 2 - SECOND_ROW..corner_top - 2;
+
+    for gauge_art in GaugeArt::ALL {
+        let scene = OverhaulScene {
+            hud: EraHud { p1: Some(primary), p2: Some(primary) },
+            gauge_art,
+            hud_lift: lift,
+            ..OverhaulScene::EMPTY
+        };
+        let single = present(PresentMode::Overhaul, &blank(), &scene);
+        let both = present(
+            PresentMode::Overhaul,
+            &blank(),
+            &OverhaulScene { ally2_gauge: Some(ally2), ..scene },
+        );
+        let changed: Vec<_> = single.argb.iter().zip(&both.argb).enumerate()
+            .filter(|(_, (before, after))| before != after)
+            .map(|(index, _)| (index % WIDTH, index / WIDTH))
+            .collect();
+        assert!(!changed.is_empty(), "{gauge_art:?} draws the ally gauge");
+        assert!(changed.iter().all(|&(x, y)| {
+            (CORNER_EDGE..CORNER_EDGE + CORNER_WIDTH).contains(&x) && bounds.contains(&y)
+        }), "{gauge_art:?} leaves the primary and boss gauges intact");
+    }
+}

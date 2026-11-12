@@ -49,7 +49,8 @@ pub struct RollbackEngine {
     confirmed: i64,
     local: Vec<u16>,
     remote: Vec<Option<u16>>,
-    slots: [Option<Slot>; RING],
+    // The snapshots are large. Keep their ring off the session stack.
+    slots: Box<[Option<Slot>]>,
     confirmed_history: Vec<(u16, u16)>,
     // A peer's confirmed checksum can arrive after its pre-step snapshot
     // was reused. This grows only with locally confirmed play, like inputs.
@@ -83,7 +84,7 @@ impl RollbackEngine {
             confirmed: -1,
             local: vec![0; usize::from(delay)],
             remote: vec![Some(0); usize::from(delay)],
-            slots: std::array::from_fn(|_| None),
+            slots: std::iter::repeat_with(|| None).take(RING).collect(),
             confirmed_history: Vec::new(),
             confirmed_hashes: Vec::new(),
             confirmed_checksums: None,

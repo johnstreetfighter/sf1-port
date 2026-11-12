@@ -11,11 +11,21 @@ use sf_engine::front::cabinet::{flow_position, Players};
 use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup, FightSnapshot};
 use sf_engine::front::PlayerInputs;
 use sf_engine::roster::{PlayMode, TournamentFighter};
+use sf_video::era_hud::{Fill, GaugeRow};
 use sf_video::romset::{load_assets, Assets};
 
 const ENTITIES: [usize; 3] = [0x400, 0xa00, DRAMATIC_ALLY2 as usize];
 
 fn ready_fight(lifebar: LifebarMode, friendly_fire: bool, co_op: bool) -> (Assets, Fight) {
+    ready_era_fight(lifebar, friendly_fire, co_op, [Revision::Sf1Plus; 3])
+}
+
+fn ready_era_fight(
+    lifebar: LifebarMode,
+    friendly_fire: bool,
+    co_op: bool,
+    styles: [Revision; 3],
+) -> (Assets, Fight) {
     let assets = load_assets(
         "../../tools/reference/local/roms/sf",
         "../../tools/reference/rom-manifest.json",
@@ -32,7 +42,7 @@ fn ready_fight(lifebar: LifebarMode, friendly_fire: bool, co_op: bool) -> (Asset
         stage: TournamentFighter::Retsu,
         lifebar,
         friendly_fire,
-        styles: [Revision::Sf1Plus; 3],
+        styles,
         rivalry: None,
     });
     let setup = FightSetup {
@@ -320,4 +330,114 @@ fn solo_dramatic_ally_uses_its_cpu_controller() {
         ally_pressed,
         "the independent Ally 2 CPU drives the native pad"
     );
+}
+
+
+#[test]
+fn dramatic_era_styles_initialize_native_fighter_slots() {
+    for mode in [LifebarMode::Shared, LifebarMode::Independent] {
+        let styles = [Revision::St, Revision::Sfz3, Revision::Sf6];
+        let (_, fight) = ready_era_fight(mode, false, true, styles);
+        let era = &fight.machine().toggle_state().era.fighters;
+        assert_eq!(era[0].style.revision, styles[0]);
+        assert_eq!(era[1].style.revision, styles[1]);
+        assert_eq!(era.get(2).map(|ally| ally.style.revision), Some(styles[2]));
+    }
+}
+
+
+fn era_meters(fight: &Fight) -> [u8; 3] {
+    fight.machine().dramatic_era_fighters().map(|fighter| fighter.super_meter)
+}
+
+fn chord(buttons: [usize; 2]) -> PlayerInputs {
+    let mut pad = PlayerInputs::default();
+    for button in buttons {
+        pad.buttons[button] = true;
+    }
+    pad
+}
+
+#[test]
+fn mixed_era_allies_build_and_spend_one_three_stock_team_gauge() {
+    let (assets, mut fight) = ready_era_fight(
+        LifebarMode::Shared,
+        false,
+        true,
+        [Revision::Sf6, Revision::Sfz3, Revision::Sf5Ce],
+    );
+    let neutral = PlayerInputs::default();
+    let ready = fight.save_netplay_snapshot(0);
+    let hud = fight.era_hud();
+    assert_eq!(hud.p1.unwrap().main, GaugeRow::stock(3, 0, Fill::of(0, 48)));
+    assert!(hud.p1.unwrap().second.is_none());
+    assert!(hud.p2.unwrap().second.is_some(), "boss retains native Alpha guard power");
+    for ally in [0, 2] {
+        let mut hit = ready.clone();
+        active_punch(&mut hit, ENTITIES[ally]);
+        fight.restore_netplay_snapshot(&hit);
+        fight.step(&assets, neutral, neutral, false);
+        let [ally1, _, ally2] = era_meters(&fight);
+        assert!(ally1 > 0, "native slot {ally} builds the Team Era Gauge");
+        assert_eq!(ally1, ally2);
+    }
+
+    // Two stocks pay for both actions, but one stock can only pay once.
+    for (stock, p1, p2, expected, actions) in [
+        (96, chord([2, 5]), neutral, 48, [true, false]), // SF6 Drive Impact.
+        (96, neutral, chord([2, 4]), 48, [false, true]), // SF5 V-Shift.
+        (96, chord([2, 5]), chord([2, 4]), 0, [true, true]),
+        (48, chord([2, 5]), chord([2, 4]), 0, [true, false]),
+    ] {
+        let mut funded = ready.clone();
+        funded.machine.toggle_state.era.fighters[0].super_meter = stock;
+        funded.machine.toggle_state.era.fighters[2].super_meter = stock;
+        fight.restore_netplay_snapshot(&funded);
+        fight.step(&assets, p1, p2, false);
+        assert_eq!(era_meters(&fight), [expected, 0, expected]);
+        let objects = &fight.machine().state.objectram;
+        assert_eq!([objects[ENTITIES[0] + 0xa] == 0x2f, objects[ENTITIES[2] + 0xa] == 0x2e], actions);
+    }
+}
+
+#[test]
+fn same_era_allies_share_drive_only_in_shared_lifebar_mode() {
+    for mode in [LifebarMode::Shared, LifebarMode::Independent] {
+        let (assets, mut fight) =
+            ready_era_fight(mode, false, true, [Revision::Sf6, Revision::Sfz3, Revision::Sf6]);
+        let neutral = PlayerInputs::default();
+        let impact = chord([2, 5]);
+        let points = |fight: &Fight| {
+            fight.machine().dramatic_era_fighters().map(|fighter| fighter.sf6_drive_points())
+        };
+        assert_eq!(points(&fight), [Some(288), None, Some(288)]);
+        let ready = fight.save_netplay_snapshot(0);
+        let mut hit = ready.clone();
+        active_punch(&mut hit, ENTITIES[2]);
+        fight.restore_netplay_snapshot(&hit);
+        fight.step(&assets, neutral, neutral, false);
+        let [ally1, _, ally2] = era_meters(&fight);
+        assert!(ally2 > 0);
+        assert_eq!(ally1, if mode == LifebarMode::Shared { ally2 } else { 0 });
+
+        fight.restore_netplay_snapshot(&ready);
+        fight.step(&assets, neutral, impact, false);
+        let first = if mode == LifebarMode::Shared { 240 } else { 288 };
+        assert_eq!(points(&fight), [Some(first), None, Some(240)]);
+
+        let mut snapshot = fight.save_netplay_snapshot(1);
+        active_punch(&mut snapshot, ENTITIES[1]);
+        snapshot.machine.toggle_state.dramatic.health[0] = 1;
+        if mode == LifebarMode::Shared {
+            snapshot.machine.toggle_state.dramatic.health[2] = 1;
+        }
+        fight.restore_netplay_snapshot(&snapshot);
+        fight.step(&assets, neutral, neutral, false);
+        let [ally1, _, ally2] = health(&fight);
+        let era = fight.machine().dramatic_era_fighters();
+        assert_eq!(ally1, 0);
+        assert_eq!(era[0].sub_hp, ally1);
+        assert_eq!(era[2].sub_hp, ally2);
+        assert_eq!(ally2 == 0, mode == LifebarMode::Shared);
+    }
 }

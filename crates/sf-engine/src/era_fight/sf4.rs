@@ -563,6 +563,7 @@ impl Bus<'_> {
         state.super_meter -= cost;
         state.sf4.finish_focus();
         state.sf4.dash_trail = if focus_cancel { 12 } else { 0 };
+        self.era_share_gauge(side);
         true
     }
 
@@ -578,6 +579,7 @@ impl Bus<'_> {
         state.sf4.focus_armor = if red { u8::MAX } else { 1 };
         state.sf4.red = red;
         state.sf4.tap_window = 0;
+        self.era_share_gauge(side);
         true
     }
 
@@ -713,6 +715,7 @@ impl Bus<'_> {
             1
         };
         self.set_eb(entity, 0x34, strength);
+        self.era_share_gauge(side);
         if command.cost == Special && !ex {
             self.era_meter_gain(ps, 4);
         }
@@ -860,6 +863,7 @@ impl Bus<'_> {
             }
         }
         if let Some(side) = defending {
+            let absorbed_damage = self.dramatic_scale_damage(owner, damage);
             let disable_revenge = self.era_rules.disable_comeback_scaling;
             let state = &mut self.toggle_state.era.fighters[side];
             state.sf4.absorbed = false;
@@ -877,11 +881,13 @@ impl Bus<'_> {
                     if state.sf4.focus_armor != u8::MAX {
                         state.sf4.focus_armor -= 1;
                     }
-                    let lost = damage.min(state.sub_hp.saturating_sub(1));
+                    let lost = absorbed_damage.min(state.sub_hp.saturating_sub(1));
                     state.sub_hp -= lost;
                     state.sf4.recoverable_hp += lost;
                     state.sf4.recovery_delay = RECOVERY_DELAY;
                     state.sf4.absorbed = true;
+                    self.era_share_gauge(side);
+                    self.era_reconcile_health(target, side);
                     return None;
                 }
                 state.sf4.recoverable_hp = 0;

@@ -76,6 +76,8 @@ fn custom_coop_picks_three_roles_and_the_stage_and_moves_follows_the_pausing_pad
     tap(&mut session, |input| input.p1.directions[0] = true); // Friendly fire on.
     down(&mut session);
     assert_eq!(confirm(&mut session).screen, "dramatic select");
+    assert_eq!(confirm(&mut session).transition, Some(Transition::StyleOpened));
+    tap(&mut session, |input| input.p1.directions[0] = true); // SF2 ST.
     assert_eq!(
         confirm(&mut session).transition,
         Some(Transition::Fighter(TournamentFighter::Ryu))
@@ -86,24 +88,32 @@ fn custom_coop_picks_three_roles_and_the_stage_and_moves_follows_the_pausing_pad
         "Ally 2 belongs to the second pad"
     );
     tap(&mut session, |input| input.p2.directions[0] = true);
-    let ally2 = tap(&mut session, |input| {
-        input.pads[1] = Some(MenuKeys {
-            confirm: true,
-            ..MenuKeys::default()
+    let confirm_ally2 = |session: &mut GameSession| {
+        tap(session, |input| {
+            input.pads[1] = Some(MenuKeys {
+                confirm: true,
+                ..MenuKeys::default()
+            })
         })
-    });
+    };
+    assert_eq!(confirm_ally2(&mut session).transition, Some(Transition::StyleOpened));
+    tap(&mut session, |input| input.p2.directions[1] = true); // SF6.
+    let ally2 = confirm_ally2(&mut session);
     assert_eq!(
         ally2.transition,
         Some(Transition::Fighter(TournamentFighter::Ken))
     );
+    assert_eq!(confirm(&mut session).transition, Some(Transition::StyleOpened));
+    tap(&mut session, |input| input.p1.directions[0] = true);
+    tap(&mut session, |input| input.p1.directions[0] = true); // SFZ3.
     assert_eq!(confirm(&mut session).screen, "stage select");
     tap(&mut session, |input| input.p1.directions[0] = true); // Ryu's home cursor starts at Retsu.
     confirm(&mut session);
 
-    let setup = session
-        .fight()
-        .expect("the selection starts a native fight")
-        .setup();
+    let fight = session.fight().expect("the selection starts a native fight");
+    let setup = fight.setup();
+    assert_eq!(fight.fighter_style(0).unwrap().revision, Revision::St);
+    assert_eq!(fight.fighter_style(1).unwrap().revision, Revision::Sf6);
     let rules = setup
         .config
         .dramatic
@@ -125,7 +135,7 @@ fn custom_coop_picks_three_roles_and_the_stage_and_moves_follows_the_pausing_pad
         (rules.lifebar, rules.friendly_fire, rules.rivalry),
         (LifebarMode::Independent, true, None)
     );
-    assert_eq!(rules.styles, [Revision::Sf1Plus; 3]);
+    assert_eq!(rules.styles, [Revision::St, Revision::Sfz3, Revision::Sf6]);
 
     for _ in 0..2_400 {
         if session

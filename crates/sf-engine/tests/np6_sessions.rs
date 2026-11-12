@@ -3,10 +3,13 @@
 use sf_engine::config::MatchConfig;
 use sf_engine::dramatic::LifebarMode;
 use sf_engine::era::{Costume, Loadout, Revision, StylePick};
-use sf_engine::front::{FrameInputs, GameSession, MenuItem, MenuKeys, Transition, TypedKey};
-use sf_engine::front::fight::FightSnapshot;
+use sf_engine::front::cabinet::flow_position;
+use sf_engine::front::fight::{Fight, FightSnapshot};
+use sf_engine::front::{FrameInputs, GameSession, MenuItem, MenuKeys, PlayerInputs, Transition, TypedKey};
+use sf_engine::moves::{move_list, Strength};
 use sf_engine::netplay::bus::{PacketFault, VirtualNetBus, VirtualNetConfig};
-use sf_engine::netplay::{Link, NetPacket, NetTransportCommand, NetTransportEvent, Room, RoomKind};
+use sf_engine::netplay::rollback::RollbackEngine;
+use sf_engine::netplay::{encode_inputs, Link, NetPacket, NetTransportCommand, NetTransportEvent, Room, RoomKind};
 use sf_engine::roster::{MenuInput, TournamentFighter};
 use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
@@ -72,8 +75,9 @@ struct RoomTest {
     stream_cap: Option<u32>,
     base: Option<u32>,
     host_next: u32,
-    host_snapshot_200: Option<(FightSnapshot, u64)>,
-    host_confirmed_200: Option<u64>,
+    capture_frame: u32,
+    host_snapshot: Option<(FightSnapshot, u64)>,
+    host_confirmed: Option<u64>,
     spectator_faults: bool,
     drop_spectator_packets: bool,
     fault_counter: u32,
@@ -93,7 +97,7 @@ impl RoomTest {
         let mut room = Self { peers: vec![template; count],
             bus: VirtualNetBus::new(VirtualNetConfig { latency_ms: 15, ..VirtualNetConfig::default() }),
             packets: Vec::new(), stream_cap: None, base: None, host_next: 0,
-            host_snapshot_200: None, host_confirmed_200: None,
+            capture_frame: 200, host_snapshot: None, host_confirmed: None,
             spectator_faults: false, drop_spectator_packets: false, fault_counter: 0 };
         online(&mut room.peers[0]);
         pulse(&mut room.peers[0], MenuInput::Right);
@@ -137,11 +141,11 @@ impl RoomTest {
                             NetPacket::Input { current_frame, checksum_frame, checksum, .. } => {
                                 if let Some(base) = self.base {
                                     self.host_next = current_frame.checked_sub(base).unwrap();
-                                    if self.host_next == 200 {
+                                    if self.host_next == self.capture_frame {
                                         let fight = self.peers[0].fight().unwrap();
-                                        self.host_snapshot_200 = Some((fight.save_netplay_snapshot(200), fight.state_checksum()));
+                                        self.host_snapshot = Some((fight.save_netplay_snapshot(self.capture_frame), fight.state_checksum()));
                                     }
-                                    if checksum_frame.checked_sub(base) == Some(199) { self.host_confirmed_200 = Some(*checksum); }
+                                    if checksum_frame.checked_sub(base) == Some(self.capture_frame - 1) { self.host_confirmed = Some(*checksum); }
                                 }
                             }
                             _ => {}
@@ -292,13 +296,13 @@ fn dramatic_host_setup_launches_the_same_fight_for_both_allies_and_late_spectato
     }
     assert_eq!(room.peers[2].spectator_frame(), Some(200));
     let observer = room.peers[2].fight().expect("the spectator starts the committed co-op fight");
-    assert_eq!(observer.state_checksum(), room.host_confirmed_200.expect("host confirmed frame 199"));
+    assert_eq!(observer.state_checksum(), room.host_confirmed.expect("host confirmed frame 199"));
     assert!(!room.packets.iter().any(|(from, _, packet)| *from == 2 && matches!(packet, NetPacket::Input { .. })));
 }
 
 #[test]
-fn dramatic_custom_setup_leaves_the_second_ally_to_the_guest() {
-    let mut room = RoomTest::host_kind(2, true, RoomKind::Dramatic);
+fn dramatic_custom_styles_and_team_meter_survive_rollback_and_spectating() {
+    let mut room = RoomTest::host_kind(3, false, RoomKind::Dramatic);
     room.challenge_kind(1, RoomKind::Dramatic);
     for _ in 0..60 { room.tick(); }
     assert_eq!(room.peers[0].screen(), "dramatic setup");
@@ -313,16 +317,29 @@ fn dramatic_custom_setup_leaves_the_second_ally_to_the_guest() {
         room.tick_frame(Some((0, FrameInputs { pads: input.pads, ..FrameInputs::default() })));
     };
     // The keyboard can confirm host picks with only one pad connected.
-    host_press(&mut room, MenuInput::Confirm); // Ally 1.
-    host_press(&mut room, MenuInput::Start); // Boss.
+    host_press(&mut room, MenuInput::Confirm); // Ally 1's style card.
+    host_press(&mut room, MenuInput::Left); // SF6.
+    host_press(&mut room, MenuInput::Confirm);
+    host_press(&mut room, MenuInput::Start); // Boss's style card.
+    host_press(&mut room, MenuInput::Right); // SF2 ST.
+    host_press(&mut room, MenuInput::Right); // SFZ3.
+    host_press(&mut room, MenuInput::Start);
     assert_eq!(room.peers[0].screen(), "stage select");
     room.press(0, MenuInput::Right);
     host_press(&mut room, MenuInput::Confirm);
     for _ in 0..30 { room.tick(); }
     assert_eq!(room.peers[1].screen(), "dramatic guest");
     room.press(1, MenuInput::Left); // Move from the default Ken to Ryu.
+    room.press(1, MenuInput::Confirm); // Ally 2's style card.
+    room.press(1, MenuInput::Right); // SF2 ST.
     room.press(1, MenuInput::Confirm);
-    for _ in 0..30 { room.tick(); }
+    for _ in 0..1_500 {
+        if room.peers[..2].iter().all(|peer| peer.fight()
+            .is_some_and(|fight| flow_position(fight.machine()) == 0x3eafa && !fight.driving())) {
+            break;
+        }
+        room.tick();
+    }
 
     let config = |side: usize| room.peers[side].fight().expect("the committed custom fight starts").setup().config;
     assert_eq!(config(0), config(1));
@@ -331,6 +348,73 @@ fn dramatic_custom_setup_leaves_the_second_ally_to_the_guest() {
     assert_eq!(rules.rivalry, None);
     assert_eq!(rules.stage, TournamentFighter::Geki);
     assert_eq!(rules.lifebar, LifebarMode::Shared);
+    assert_eq!(rules.styles, [Revision::Sf6, Revision::Sfz3, Revision::St]);
+
+    let host = &room.peers[0];
+    let assets = host.fight_assets().unwrap();
+    let mut direct = host.fight().unwrap().clone();
+    assert_eq!(flow_position(direct.machine()), 0x3eafa, "the native round is live");
+    let active_styles = |fight: &Fight| {
+        fight.machine().dramatic_era_fighters().map(|state| state.style.revision)
+    };
+    assert_eq!(active_styles(&direct), rules.styles);
+    let mut predicted = direct.clone();
+    let meters = |fight: &Fight| {
+        let states = fight.machine().dramatic_era_fighters();
+        [states[0].super_meter, states[2].super_meter]
+    };
+    let initial_meter = meters(&direct)[0];
+    let uppercut = move_list(rules.ally2, config(0).preset)
+        .into_iter()
+        .find(|entry| entry.name == "SHORYUKEN")
+        .expect("the guest Ryu has his native Shoryuken");
+    let command = uppercut.input.frames(true, Strength::Light);
+
+    // Withhold the guest pad until the host has already predicted this frame.
+    // The activation must be a correction, and the meter award must occur once.
+    let mut rollback = RollbackEngine::new(0, 0, 8);
+    let mut corrected_punch = false;
+    for (frame, &pad) in command.iter().enumerate() {
+        direct.step(assets, PlayerInputs::default(), pad, false);
+        rollback.step(&mut predicted, assets, PlayerInputs::default());
+        rollback.apply_remote_inputs(&mut predicted, assets, frame as u32, &[encode_inputs(pad)]);
+        corrected_punch |= pad.buttons[0] && rollback.last_rollback_frames() > 0;
+    }
+    assert!(corrected_punch, "the delayed guest punch caused a rollback");
+    assert_eq!(meters(&direct), [initial_meter + 7; 2], "the ST guest's Shoryuken built the shared gauge once");
+    assert_eq!(meters(&predicted), meters(&direct));
+    assert_eq!(predicted.state_checksum(), direct.state_checksum());
+
+    for pad in command {
+        room.tick_frame(Some((1, FrameInputs { p1: pad, ..FrameInputs::default() })));
+    }
+    // Stop playback at a confirmed frame well after the input correction.
+    // The 15-frame playback buffer leaves exactly this frame visible.
+    let capture_frame = room.host_next + 60;
+    room.capture_frame = capture_frame;
+    room.stream_cap = Some(capture_frame + 15);
+    room.spectate_code(2);
+    for _ in 0..750 {
+        if room.peers[2].spectator_frame() == Some(capture_frame) { break; }
+        room.tick();
+    }
+    assert_eq!(room.peers[2].spectator_frame(), Some(capture_frame));
+    let observer = room.peers[2].fight().expect("the spectator starts the negotiated fight");
+    assert_eq!(observer.setup().config.dramatic.unwrap().styles, rules.styles);
+    assert_eq!(active_styles(observer), rules.styles);
+    let (host_snapshot, captured_hash) = room.host_snapshot.as_ref().expect("host snapshot at playback boundary");
+    let confirmed_hash = room.host_confirmed.expect("host confirmed the playback boundary");
+    assert_eq!(*captured_hash, confirmed_hash);
+    let host_meter = host_snapshot.machine.toggle_state.era.fighters[0].super_meter;
+    assert!(host_meter > initial_meter, "the confirmed stream contains the gauge gain");
+    assert_eq!(meters(observer), [host_meter; 2]);
+    assert!(observer.save_netplay_snapshot(capture_frame).machine == host_snapshot.machine);
+    assert_eq!(observer.state_checksum(), confirmed_hash);
+    assert!(room.packets.iter().any(|(from, _, packet)| *from == 1 && matches!(packet,
+        NetPacket::Input { checksum_frame, checksum, .. }
+            if checksum_frame.checked_sub(room.base.unwrap()) == Some(capture_frame - 1) && *checksum == confirmed_hash
+    )), "the guest confirms the same native state");
+    assert!(!room.packets.iter().any(|(from, _, packet)| *from == 2 && matches!(packet, NetPacket::Input { .. })));
 }
 
 #[test]
@@ -443,8 +527,8 @@ fn pre_match_and_mid_match_spectators_replay_the_same_confirmed_native_frame_200
     }
     assert_eq!(previous, [200, 200], "both observers reach the same buffered confirmed boundary");
     assert!(caught_up_more_than_one, "the frame120 join uses faster catch-up instead of staying behind");
-    let (reference, captured_hash) = room.host_snapshot_200.as_ref().expect("host frame200 is captured at the public wire boundary");
-    let confirmed_hash = room.host_confirmed_200.expect("host frame199 is subsequently confirmed");
+    let (reference, captured_hash) = room.host_snapshot.as_ref().expect("host frame200 is captured at the public wire boundary");
+    let confirmed_hash = room.host_confirmed.expect("host frame199 is subsequently confirmed");
     assert_eq!(*captured_hash, confirmed_hash, "the captured native reference was confirmed without correction");
     for id in [2, 3] {
         let fight = room.peers[id].fight().unwrap();

@@ -647,6 +647,7 @@ impl Bus<'_> {
             {
                 runtime.install_frames = 120;
             }
+            self.era_share_gauge(side);
             return true;
         }
 
@@ -714,6 +715,7 @@ impl Bus<'_> {
             button_strength(special.input.button, held)
         };
         self.set_eb(entity, 0x34, strength);
+        self.era_share_gauge(side);
         true
     }
 }

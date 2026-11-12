@@ -652,6 +652,7 @@ impl Bus<'_> {
         ) {
             state.sf3.ex_flash = 8;
         }
+        self.era_share_gauge(side);
         true
     }
 

@@ -94,7 +94,7 @@ impl SyncedMatchRules {
                 && self.config.preset != RulesetPreset::Faithful1987
                 && self.config.roster.mode == PlayMode::Versus
                 && !self.config.p2_fair_cpu
-                && rules.styles.into_iter().all(DramaticRules::supports_style)
+                && rules.styles_available(&self.config)
         })
     }
 

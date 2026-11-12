@@ -230,7 +230,7 @@ pub(crate) struct EraRules {
 impl From<MatchConfig> for EraRules {
     fn from(config: MatchConfig) -> Self {
         Self {
-            enabled: config.era_select_enabled() && config.dramatic.is_none(),
+            enabled: config.era_select_enabled(),
             gauge_mode: config.gauge_mode,
             fill_meters: config.fill_meters && config.roster.mode == PlayMode::Training,
             untechable_sf2_throws: config.sf1plus.untechable_sf2_throws,
@@ -308,6 +308,15 @@ impl GuardPower {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct DeathMark {
+    // The native EraCombatState fighter slot that applied the mark.
+    source: u8,
+    frames: u8,
+}
+
+crate::canonical::canonical_struct!(DeathMark, "DeathMark.v1", { source, frames });
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EraFighterState {
     pub style: StylePick,
@@ -316,7 +325,7 @@ pub struct EraFighterState {
     pub max_sub_hp: u16,
     pub super_meter: u8,
     super_capacity: u8,
-    unified_gauge: bool,
+    pub(crate) unified_gauge: bool,
     what_if: bool,
     super_motion: MotionTracker,
     extra_motion: MotionTracker,
@@ -340,7 +349,7 @@ pub struct EraFighterState {
     pub(crate) command_throw_damage: u8,
     sagat_charge: bool,
     pub(crate) charged_tiger_blow: bool,
-    death_mark_frames: u8,
+    death_mark: Option<DeathMark>,
     dizzy_frames: u8,
     active_alpha_slot: u8,
     active_alpha_super_level: u8,
@@ -350,16 +359,24 @@ pub struct EraFighterState {
     attack_reached_active: bool,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v7", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v8", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
-    gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark_frames, dizzy_frames,
+    gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
     active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active,
 });
 
 impl EraFighterState {
     pub fn gauge(&self) -> Option<EraGauge> {
+        self.gauge_with_trigger_timer(true)
+    }
+
+    pub(crate) fn team_gauge(&self) -> Option<EraGauge> {
+        self.gauge_with_trigger_timer(false)
+    }
+
+    fn gauge_with_trigger_timer(&self, show_trigger_timer: bool) -> Option<EraGauge> {
         if self.super_capacity == 0 {
             return None;
         }
@@ -378,7 +395,7 @@ impl EraFighterState {
             if self.is_sf4() {
                 return Some(EraGauge::two(main, self.sf4.revenge_row()));
             }
-            if let Some(v_gauge) = self.sf5.gauge_row(GaugeMode::EraDefault) {
+            if let Some(v_gauge) = self.sf5.gauge_row(show_trigger_timer) {
                 return Some(EraGauge::two(main, v_gauge));
             }
         }
@@ -722,14 +739,14 @@ impl EraFighterState {
 pub struct EraCombatState {
     pub(crate) selections: [StylePick; 2],
     /// Authoritative fight-side state exposed in saved snapshots.
-    pub fighters: [EraFighterState; 2],
+    pub fighters: [EraFighterState; 3],
     arcade_step: Option<u16>,
     pub(crate) freeze: u8,
-    pub(crate) super_events: [Option<TournamentFighter>; 2],
-    pub(crate) alpha_super_events: [Option<&'static str>; 2],
-    pub(crate) alpha_counter_events: [bool; 2],
-    pub(crate) guard_crush_events: [bool; 2],
-    pub(crate) style_callouts: [Option<CalloutKind>; 2],
+    pub(crate) super_events: [Option<TournamentFighter>; 3],
+    pub(crate) alpha_super_events: [Option<&'static str>; 3],
+    pub(crate) alpha_counter_events: [bool; 3],
+    pub(crate) guard_crush_events: [bool; 3],
+    pub(crate) style_callouts: [Option<CalloutKind>; 3],
     projectiles: [EraProjectileState; PROJECTILE_SLOTS],
 }
 
@@ -786,7 +803,7 @@ impl crate::canonical::Canonical for EraCombatState {
             style_callouts: _,
             projectiles,
         } = self;
-        out.tag("EraCombatState.v1");
+        out.tag("EraCombatState.v2");
         selections.encode(out);
         fighters.encode(out);
         arcade_step.encode(out);
@@ -796,6 +813,50 @@ impl crate::canonical::Canonical for EraCombatState {
 }
 
 impl Bus<'_> {
+    fn era_player_slots(&self) -> [Option<u32>; 3] {
+        if self.dramatic_rules().is_some() {
+            return crate::fighter::DRAMATIC_PLAYERS.map(Some);
+        }
+        let mode = self.rb(GAME_MODE);
+        [Some(player_struct(Side::P1, mode)), Some(player_struct(Side::P2, mode)), None]
+    }
+
+    fn era_shared_gauge(&self, index: usize) -> Option<usize> {
+        use crate::dramatic::LifebarMode;
+
+        (matches!(index, 0 | 2)
+            && self.dramatic_rules().is_some_and(|rules| rules.lifebar == LifebarMode::Shared))
+            .then(|| 2 - index)
+    }
+
+    pub(crate) fn era_gauge_mode(&self, index: usize) -> GaugeMode {
+        if self.era_shared_gauge(index).is_some()
+            && self.dramatic_rules().is_some_and(|rules| {
+                rules.styles[0].family() != rules.styles[2].family()
+            })
+        {
+            GaugeMode::Unified
+        } else {
+            self.era_rules.gauge_mode
+        }
+    }
+
+    /// Keep both views of the shared gauge current before the next fighter
+    /// acts. Temporary move effects and motion history stay fighter-local.
+    fn era_share_gauge(&mut self, index: usize) {
+        if self.era_shared_gauge(index).is_none() {
+            return;
+        }
+        let [ally1, _, ally2] = &mut self.toggle_state.era.fighters;
+        let (source, target) = if index == 0 { (ally1, ally2) } else { (ally2, ally1) };
+        target.super_meter = source.super_meter;
+        if !source.unified_gauge {
+            target.sf4.revenge = source.sf4.revenge;
+            target.sf5.share_meter(source.sf5);
+            target.sf6.share_meter(source.sf6);
+        }
+    }
+
     pub(crate) fn era_begin_round(&mut self) {
         use TournamentFighter::{Adon, Birdie, Geki, Gen, Mike, Sagat};
 
@@ -803,23 +864,24 @@ impl Bus<'_> {
             return;
         }
         let arcade = self.roster.mode == PlayMode::Arcade;
-        let mode = self.rb(GAME_MODE);
+        let dramatic = self.dramatic_rules();
         let state = self.toggle_state.era;
         let step = arcade.then(|| u16::from(self.rb(0xffc003)) * 2 + u16::from(self.rb(0xffc004)));
         let new_match = step != state.arcade_step;
         self.toggle_state.era.arcade_step = step;
         self.toggle_state.era.freeze = 0;
-        self.toggle_state.era.super_events = [None; 2];
-        self.toggle_state.era.alpha_super_events = [None; 2];
-        self.toggle_state.era.alpha_counter_events = [false; 2];
-        self.toggle_state.era.guard_crush_events = [false; 2];
-        self.toggle_state.era.style_callouts = [None; 2];
+        self.toggle_state.era.super_events = [None; 3];
+        self.toggle_state.era.alpha_super_events = [None; 3];
+        self.toggle_state.era.alpha_counter_events = [false; 3];
+        self.toggle_state.era.guard_crush_events = [false; 3];
+        self.toggle_state.era.style_callouts = [None; 3];
         self.toggle_state.era.projectiles = [EraProjectileState::default(); PROJECTILE_SLOTS];
-        for side in Side::BOTH {
-            let index = side.index();
-            let ps = player_struct(side, mode);
+        for (index, ps) in self.era_player_slots().into_iter().enumerate() {
+            let Some(ps) = ps else { continue };
             let fighter = TournamentFighter::from_move_table(self.rl(ps + 0x12));
-            let style = if arcade {
+            let style = if let Some(rules) = dramatic {
+                crate::dramatic::DramaticRules::style_pick(rules.styles[index])
+            } else if arcade {
                 let pick = state.selections[0];
                 if ps == CPU_STRUCT {
                     fighter.map_or_else(StylePick::default, |opponent| {
@@ -835,14 +897,18 @@ impl Bus<'_> {
             } else {
                 state.selections[index]
             };
-            let hp = match (style.family, fighter) {
-                (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
-                    Some(Gen) => 864,
-                    Some(Adon | Geki) => 912,
-                    Some(Sagat | Mike | Birdie) => 1008,
+            let hp = if dramatic.is_some() {
+                self.toggle_state.dramatic.health[index]
+            } else {
+                match (style.family, fighter) {
+                    (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
+                        Some(Gen) => 864,
+                        Some(Adon | Geki) => 912,
+                        Some(Sagat | Mike | Birdie) => 1008,
+                        _ => FULL_SUB_HP,
+                    },
                     _ => FULL_SUB_HP,
-                },
-                _ => FULL_SUB_HP,
+                }
             };
             let mut next = EraFighterState {
                 style,
@@ -855,7 +921,10 @@ impl Bus<'_> {
                 max_sub_hp: hp,
                 ..EraFighterState::default()
             };
-            next.set_gauge_mode(self.era_rules.gauge_mode);
+            next.set_gauge_mode(self.era_gauge_mode(index));
+            if index == 2 && self.era_shared_gauge(index).is_some() {
+                next.super_capacity = self.toggle_state.era.fighters[0].super_capacity;
+            }
             let previous = state.fighters[index];
             next.super_meter = if self.era_rules.fill_meters {
                 next.super_capacity
@@ -866,14 +935,15 @@ impl Bus<'_> {
             };
             self.toggle_state.era.fighters[index] = next;
         }
+        self.era_share_gauge(0);
     }
 
     pub(crate) fn era_reconfigure(&mut self, was_enabled: bool) {
-        let mode = self.rb(GAME_MODE);
-        for side in Side::BOTH {
-            let ps = player_struct(side, mode);
+        for (index, ps) in self.era_player_slots().into_iter().enumerate() {
+            let Some(ps) = ps else { continue };
+            let mode = self.era_gauge_mode(index);
             let native_points = u16::from(self.rb(ps + 7)) * 4 + u16::from(self.rb(ps + 6));
-            let fighter = &mut self.toggle_state.era.fighters[side.index()];
+            let fighter = &mut self.toggle_state.era.fighters[index];
             if !self.era_rules.enabled {
                 fighter.set_gauge_mode(GaugeMode::NoGauges);
                 fighter.super_motion = MotionTracker::default();
@@ -882,17 +952,22 @@ impl Bus<'_> {
                 if !was_enabled && fighter.max_sub_hp != 0 {
                     fighter.sub_hp = (native_points * SUB_HP_PER_POINT).min(fighter.max_sub_hp);
                 }
-                fighter.set_gauge_mode(self.era_rules.gauge_mode);
+                fighter.set_gauge_mode(mode);
             }
+        }
+        if self.era_shared_gauge(0).is_some() {
+            let [ally1, _, ally2] = &mut self.toggle_state.era.fighters;
+            ally2.super_capacity = ally1.super_capacity;
+            self.era_share_gauge(0);
         }
         if !self.era_rules.enabled {
             let era = &mut self.toggle_state.era;
             era.freeze = 0;
-            era.super_events = [None; 2];
-            era.alpha_super_events = [None; 2];
-            era.alpha_counter_events = [false; 2];
-            era.guard_crush_events = [false; 2];
-            era.style_callouts = [None; 2];
+            era.super_events = [None; 3];
+            era.alpha_super_events = [None; 3];
+            era.alpha_counter_events = [false; 3];
+            era.guard_crush_events = [false; 3];
+            era.style_callouts = [None; 3];
             era.projectiles = [EraProjectileState::default(); PROJECTILE_SLOTS];
         }
     }
@@ -901,12 +976,8 @@ impl Bus<'_> {
         if !self.era_rules.enabled {
             return None;
         }
-        let mode = self.rb(GAME_MODE);
-        Side::BOTH.into_iter().find_map(|side| {
-            let i = side.index();
-            (player_struct(side, mode) == ps && self.toggle_state.era.fighters[i].max_sub_hp != 0)
-                .then_some(i)
-        })
+        self.era_player_slots().into_iter().position(|slot| slot == Some(ps))
+            .filter(|&index| self.toggle_state.era.fighters[index].max_sub_hp != 0)
     }
 
     pub(crate) fn era_state(&self, ps: u32) -> Option<&EraFighterState> {
@@ -1085,6 +1156,7 @@ impl Bus<'_> {
         state.super_motion = MotionTracker::default();
         self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
         self.toggle_state.era.super_events[index] = state.fighter;
+        self.era_share_gauge(index);
     }
 
     pub(crate) fn era_read_buttons(&mut self, ps: u32, buttons: u8) {
@@ -1154,6 +1226,7 @@ impl Bus<'_> {
             state.super_meter -= cost;
             self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
             self.toggle_state.era.alpha_super_events[index] = Some(entry.name);
+            self.era_share_gauge(index);
         }
     }
 
@@ -1165,7 +1238,7 @@ impl Bus<'_> {
 
     pub(crate) fn era_begin_custom_combo(&mut self, ps: u32) -> bool {
         let Some(side) = self.era_side(ps) else { return false };
-        let unified = self.era_rules.gauge_mode == GaugeMode::Unified;
+        let unified = self.era_gauge_mode(side) == GaugeMode::Unified;
         let state = &mut self.toggle_state.era.fighters[side];
         let minimum = if unified { 2 * STOCK_AT } else { STOCK_AT };
         if !state.custom_combo_available() || state.custom_combo_active() || state.super_meter < minimum {
@@ -1182,6 +1255,7 @@ impl Bus<'_> {
         self.era_stage_banked_move(ps, crate::data_bank::ALPHA_COUNTER_SLOT, 0, None);
         self.toggle_state.era.freeze = 8;
         self.era_emit_callout(ps, CalloutKind::CustomCombo);
+        self.era_share_gauge(side);
         true
     }
 
@@ -1230,25 +1304,31 @@ impl Bus<'_> {
     }
 
     pub(crate) fn era_alpha_damage_effects(&mut self, owner: u32, target: u32, move_id: u8, level: u8) {
-        let is_gen = |fighter: &EraFighterState| fighter.fighter == Some(TournamentFighter::Gen);
-        if let Some(target) = self.era_side(target) {
-            let states = &mut self.toggle_state.era.fighters;
-            states[target].dizzy_frames = 0;
-            if states[target].custom_combo_active() {
-                states[target].custom_frames = 0;
-                if self.era_rules.gauge_mode != GaugeMode::Unified {
-                    states[target].super_meter = 0;
-                }
-            }
-            if is_gen(&states[target]) {
-                states[1 - target].death_mark_frames = 0;
-            }
-        }
-        if move_id == 0x2a && level != 0 && self.alpha_state(owner).is_some_and(is_gen) {
-            if let Some(target) = self.era_side(target) {
-                self.toggle_state.era.fighters[target].death_mark_frames = 240 - 60 * level;
+        let Some(target) = self.era_side(target) else { return };
+        let mode = self.era_gauge_mode(target);
+        let source = self.era_side(owner).filter(|_| {
+            move_id == 0x2a && matches!(level, 1..=3)
+                && self.alpha_state(owner).is_some_and(|state| state.fighter == Some(TournamentFighter::Gen))
+        });
+        let states = &mut self.toggle_state.era.fighters;
+        states[target].dizzy_frames = 0;
+        if states[target].custom_combo_active() {
+            states[target].custom_frames = 0;
+            if mode != GaugeMode::Unified {
+                states[target].super_meter = 0;
             }
         }
+        // A clean hit on a marking fighter breaks every mark they own.
+        // Other Gen fighters may have live marks in a Dramatic match.
+        for state in states.iter_mut() {
+            if state.death_mark.is_some_and(|mark| usize::from(mark.source) == target) {
+                state.death_mark = None;
+            }
+        }
+        if let Some(source) = source {
+            states[target].death_mark = Some(DeathMark { source: source as u8, frames: 240 - 60 * level });
+        }
+        self.era_share_gauge(target);
     }
 
     pub(crate) fn era_track_alpha_counter(&mut self, ps: u32, relative_direction: u8) {
@@ -1295,6 +1375,7 @@ impl Bus<'_> {
         state.super_meter -= STOCK_AT;
         state.alpha_counter_motion = MotionTracker::default();
         self.toggle_state.era.alpha_counter_events[index] = true;
+        self.era_share_gauge(index);
         true
     }
 
@@ -1324,6 +1405,7 @@ impl Bus<'_> {
             let state = &mut self.toggle_state.era.fighters[index];
             if !state.custom_combo_active() {
                 state.super_meter = state.super_meter.saturating_add(gain).min(state.super_capacity);
+                self.era_share_gauge(index);
             }
         }
     }
@@ -1332,6 +1414,13 @@ impl Bus<'_> {
         let Some(index) = self.era_side(ps) else {
             return false;
         };
+        if self.dramatic_rules().is_some() {
+            let hp = self.toggle_state.dramatic.health[index];
+            if hp != 0 {
+                self.dramatic_set_health(ps, hp.saturating_sub(damage).max(u16::from(preserve_one)));
+            }
+            return true;
+        }
         let fighter = &mut self.toggle_state.era.fighters[index];
         if fighter.sub_hp != 0 {
             fighter.sub_hp = fighter
@@ -1355,35 +1444,59 @@ impl Bus<'_> {
         Some((u32::from(fighter.sub_hp), u32::from(fighter.max_sub_hp)))
     }
 
+    fn era_reconcile_health(&mut self, ps: u32, index: usize) {
+        if self.dramatic_rules().is_some() {
+            let hp = self.toggle_state.era.fighters[index].sub_hp;
+            if hp != self.toggle_state.dramatic.health[index] {
+                self.dramatic_set_health(ps, hp);
+            }
+        }
+    }
+
     pub(crate) fn era_sync_frame(&mut self) {
-        let mode = self.rb(GAME_MODE);
-        for side in Side::BOTH {
-            let ps = player_struct(side, mode);
+        let dramatic = self.dramatic_rules().is_some();
+        for ps in self.era_player_slots().into_iter().flatten() {
             if let Some(index) = self.era_side(ps) {
+                let gauge_mode = self.era_gauge_mode(index);
+                if dramatic {
+                    let hp = self.toggle_state.dramatic.health[index];
+                    self.toggle_state.era.fighters[index].sub_hp = hp;
+                    if hp == 0 { continue; }
+                }
                 self.era_sf4_tick(ps);
-                self.era_sync_health(ps, index);
+                if !dramatic {
+                    self.era_sync_health(ps, index);
+                }
                 let entity = self.rw(ps + 0x10);
                 let guarding = self.eb(entity, 9) & 0x20 != 0 || matches!(self.eb(entity, 0xa), 4 | 8);
                 let ready = self.eb(entity, 9) & 0xc1 == 0 && self.eb(entity, 8) == 2;
+                // Shared Drive recovers once per frame and a held parry
+                // on either ally pauses that recovery.
+                let drive_tick = self.era_shared_gauge(index).map_or(true, |partner| {
+                    index == 0 && !self.toggle_state.era.fighters[partner].sf6.parrying()
+                });
                 let state = &mut self.toggle_state.era.fighters[index];
                 state.sf3_tick();
                 state.what_if_tick();
-                state.sf6.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp);
+                state.sf6.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp, drive_tick);
                 state.sf5.tick(self.era_rules.fill_meters, ready, &mut state.sub_hp, state.max_sub_hp);
                 if state.is_sf4() && self.era_rules.fill_meters && ready && state.super_capacity != 0 {
                     state.sf4.fill();
                 }
                 let was_custom = state.custom_combo_active();
                 state.custom_frames = state.custom_frames.saturating_sub(1);
-                if was_custom && state.custom_frames % 2 == 0 && self.era_rules.gauge_mode != GaugeMode::Unified {
+                if was_custom && state.custom_frames % 2 == 0 && gauge_mode != GaugeMode::Unified {
                     state.super_meter = state.super_meter.saturating_sub(1);
                 }
                 state.guard_power.tick(guarding);
                 state.dizzy_frames = state.dizzy_frames.saturating_sub(1);
-                if state.death_mark_frames != 0 {
-                    state.death_mark_frames -= 1;
-                    if state.death_mark_frames == 0 && state.sub_hp != 0 {
-                        state.dizzy_frames = 60;
+                if let Some(mark) = &mut state.death_mark {
+                    mark.frames -= 1;
+                    if mark.frames == 0 {
+                        state.death_mark = None;
+                        if state.sub_hp != 0 {
+                            state.dizzy_frames = 60;
+                        }
                     }
                 }
                 if self.eb(entity, 9) & 3 != 1 {
@@ -1396,6 +1509,8 @@ impl Bus<'_> {
                     let fighter = &mut self.toggle_state.era.fighters[index];
                     fighter.super_meter = fighter.super_capacity;
                 }
+                self.era_share_gauge(index);
+                self.era_reconcile_health(ps, index);
             }
         }
     }
@@ -1465,6 +1580,68 @@ mod tests {
             assert_eq!(guard.remaining, guard.maximum);
         }
         assert_eq!(guard.maximum, GUARD_POWER_X_ISM / 2);
+    }
+
+    #[test]
+    fn shared_sf5_gauge_shows_spendable_meter_during_one_allys_trigger() {
+        let mut fighter = EraFighterState {
+            style: StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+            fighter: Some(TournamentFighter::Ryu),
+            sub_hp: FULL_SUB_HP,
+            max_sub_hp: FULL_SUB_HP,
+            ..EraFighterState::default()
+        };
+        fighter.set_gauge_mode(GaugeMode::EraDefault);
+        fighter.set_sf5_practice_points((STOCK_AT, 30, 40));
+
+        let stock = GaugeRow::stock(2, 1, Fill::of(0, STOCK_AT.into()));
+        assert_eq!(fighter.team_gauge().unwrap().second, Some(stock));
+        assert_ne!(fighter.gauge().unwrap().second, Some(stock));
+    }
+
+    #[test]
+    fn dramatic_death_marks_clear_by_source_slot() {
+        use crate::config::RulesetPreset;
+        use crate::dramatic::{DramaticRules, LifebarMode};
+        use crate::fighter::{Program, P1_STRUCT, P2_STRUCT};
+        use crate::machine::MachineState;
+        use TournamentFighter::{Gen, Retsu, Ryu};
+
+        let mut program = Program::power_on(vec![]);
+        program.match_config = MatchConfig::from_preset(RulesetPreset::DefinitiveOverhaul);
+        program.match_config.dramatic = Some(DramaticRules {
+            co_op: true,
+            ally2: Gen,
+            stage: Retsu,
+            lifebar: LifebarMode::Independent,
+            friendly_fire: true,
+            styles: [Revision::Sf1Plus, Revision::Sfz3, Revision::Sfz3],
+            rivalry: None,
+        });
+        let mut machine = MachineState::new(vec![], vec![], vec![], 0, 0, 0, false, 0xff, 0);
+        let mut bus = program.bus(&mut machine);
+        bus.wb(GAME_MODE, 2);
+        bus.wb(0xff8003, 1);
+        for (index, fighter) in [Ryu, Gen, Gen].into_iter().enumerate() {
+            bus.toggle_state.era.fighters[index] = EraFighterState {
+                fighter: Some(fighter),
+                style: DramaticRules::style_pick(if fighter == Gen { Revision::Sfz3 } else { Revision::Sf1Plus }),
+                sub_hp: FULL_SUB_HP,
+                max_sub_hp: FULL_SUB_HP,
+                ..EraFighterState::default()
+            };
+        }
+
+        let marks = |bus: &Bus<'_>| bus.toggle_state.era.fighters.map(|state| state.death_mark.map(|mark| mark.source));
+        bus.era_alpha_damage_effects(CPU_STRUCT, P1_STRUCT, 0x2a, 3);
+        assert_eq!(marks(&bus), [Some(1), None, None]);
+        bus.era_alpha_damage_effects(P2_STRUCT, CPU_STRUCT, 0x2a, 3);
+        assert_eq!(marks(&bus), [None, Some(2), None]);
+        bus.era_alpha_damage_effects(CPU_STRUCT, P1_STRUCT, 0x2a, 3);
+        bus.era_alpha_damage_effects(P1_STRUCT, CPU_STRUCT, 0x0e, 0);
+        assert_eq!(marks(&bus), [None, Some(2), None]);
+        bus.era_alpha_damage_effects(P1_STRUCT, P2_STRUCT, 0x0e, 0);
+        assert_eq!(marks(&bus), [None, None, None]);
     }
 
     #[test]

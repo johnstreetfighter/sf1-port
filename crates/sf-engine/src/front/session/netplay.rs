@@ -5,7 +5,6 @@ use std::collections::BTreeSet;
 
 use super::*;
 use crate::front::settings::NetplayHudMode;
-use crate::era::Revision;
 use crate::netplay::protocol::LobbyPhase;
 use crate::netplay::{AfterMatchChoice, NetPacket, RollbackEvent};
 
@@ -503,7 +502,7 @@ impl GameSession {
                     self.net_return_online(&notice);
                 }
             } else if local_side == Some(0) {
-                self.stack.push(Screen::DramaticSetup(DramaticSetupScreen::from_rules(dramatic)));
+                self.stack.push(Screen::DramaticSetup(DramaticSetupScreen::from_rules(dramatic, &rules.config)));
             } else {
                 self.net_wait_for_dramatic_host();
             }
@@ -583,7 +582,7 @@ impl GameSession {
     }
 
     fn net_dramatic_input(&mut self, event: MenuInput) -> Option<Transition> {
-        if event == MenuInput::Back {
+        if event == MenuInput::Back && !matches!(self.stack.last(), Some(Screen::DramaticGuest(_))) {
             if self.net_connection.as_ref().is_some_and(Connection::is_host) {
                 self.net_advance_epoch(LobbyPhase::Fighters);
             } else {
@@ -595,14 +594,18 @@ impl GameSession {
         let (setup_seq, _) = setup.flow.dramatic_offer?;
         let Some(Screen::DramaticGuest(screen)) = self.stack.last_mut() else { return None };
         let transition = screen.apply(event)?;
+        if transition == Transition::Back {
+            self.net_return_online("LEFT ROOM");
+            return Some(transition);
+        }
         if screen.locked() {
             let packet = NetPacket::DramaticAllyPick {
                 generation: setup.flow.generation, setup_seq,
-                fighter: screen.fighter(), revision: Revision::Sf1Plus,
+                fighter: screen.fighter(), revision: screen.revision(),
             };
             self.net_send_dramatic_lobby(packet);
             self.sounds.push_back(sound::CONFIRM);
-        } else if transition == Transition::CursorMoved {
+        } else if matches!(transition, Transition::CursorMoved | Transition::StyleOpened | Transition::Unpicked) {
             self.sounds.push_back(sound::CURSOR);
         }
         Some(transition)
@@ -778,8 +781,8 @@ impl GameSession {
                 let Some((seq, mut rules)) = setup.flow.dramatic_offer else { return };
                 let Some(dramatic) = rules.config.dramatic else { return };
                 if seq != setup_seq
-                    || !DramaticRules::supports_style(revision)
-                    || (dramatic.rivalry.is_some() && dramatic.ally2 != fighter)
+                    || !DramaticRules::style_available(&rules.config, fighter, revision)
+                    || (dramatic.rivalry.is_some() && (dramatic.ally2 != fighter || dramatic.styles[2] != revision))
                     || !SelectScreen::fighter_available(&rules.config, self.player_tables(), 1, fighter)
                 {
                     return;

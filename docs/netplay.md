@@ -15,7 +15,7 @@ adapter detection requires **iproute2** (the `ip` command). Hosting selects a
 local adapter, including on a LAN with no default route; joining selects the
 route to the peer. Both queries run away from the game thread.
 
-Online supports 1v1 Versus and SF1+ co-op Dramatic Battle. Up to four spectators
+Online supports 1v1 Versus and co-op Dramatic Battle. Up to four spectators
 can watch either mode.
 
 In Versus rooms with Style Cards enabled, each player locks their own era,
@@ -25,9 +25,14 @@ pair of locked styles for the match.
 For co-op, open **Host Match**, set **Room Kind** to **Dramatic 2v1**, and open
 the room. The guest can select the room in Browse or choose **Dramatic Ally 2**
 under **Join As** in Direct Join. The host chooses a rivalry or sets up a custom
-team, then sets the lifebar and friendly fire rules. The guest confirms the
-preset ally or chooses Ally 2 for a custom team. Both peers run the same CPU
-boss. Use the matching SF1+ art pack to enable the full cast.
+team, then sets the lifebar and friendly fire rules. With Era Styles enabled,
+the host chooses one era for a rivalry or chooses the Ally 1 and boss styles
+in Custom 2v1. The guest confirms the preset ally and its style or picks Ally 2
+and its style for a custom team. Both peers run the same CPU boss.
+
+Shared Lifebar gives the allies one Team Era Gauge. Mixed-era allies share
+three unified stocks. Independent Lifebar gives each ally their own gauge,
+with Ally 2's compact gauge above Ally 1's. The boss keeps a separate gauge.
 
 Choose **JOIN AS → SPECTATOR** in Browse or Direct Join to watch a room before
 the match or join by a private room code. **PLAYER** requests the challenger

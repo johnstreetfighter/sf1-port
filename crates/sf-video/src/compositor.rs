@@ -117,6 +117,8 @@ pub struct OverhaulScene<'a> {
     pub sprites: &'a [IndexedSprite],
     /// The era gauges, drawn in the bottom corners in `gauge_art`.
     pub hud: EraHud,
+    /// Compact gauge above Ally 1's corner in independent Dramatic Battle.
+    pub ally2_gauge: Option<era_hud::EraGauge>,
     pub gauge_art: GaugeArt,
     /// Rows the gauge corners sit above the bottom, for the Training frame
     /// meter (see [`era_hud::lift_above_rows`]).
@@ -131,6 +133,7 @@ pub struct OverhaulScene<'a> {
     pub fighters: [&'a [IndexedSprite]; 2],
     pub fighter_tints: [Option<PaletteTint>; 2],
     pub afterimages: [Option<&'a AfterimageTrail>; 2],
+    pub ally2_afterimages: Option<&'a AfterimageTrail>,
     /// The hardware pixels that are stage (the bg and fg layers), which the
     /// super dim darkens. `None` dims the whole hardware frame.
     pub stage: Option<&'a [bool]>,
@@ -145,6 +148,7 @@ impl OverhaulScene<'static> {
     pub const EMPTY: Self = Self {
         sprites: &[],
         hud: EraHud::NONE,
+        ally2_gauge: None,
         gauge_art: GaugeArt::Ruled,
         hud_lift: 0,
         font: None,
@@ -152,6 +156,7 @@ impl OverhaulScene<'static> {
         fighters: [&[], &[]],
         fighter_tints: [None; 2],
         afterimages: [None; 2],
+        ally2_afterimages: None,
         stage: None,
         select_lines: &[],
         training: None,
@@ -177,7 +182,7 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
     for sprite in scene.sprites {
         blit_sprite(&mut argb, sprite);
     }
-    for trail in scene.afterimages.iter().flatten() {
+    for trail in scene.afterimages.into_iter().flatten().chain(scene.ally2_afterimages) {
         trail.draw(&mut argb, scene.stage);
     }
     for (side, fighter) in scene.fighters.iter().enumerate() {
@@ -197,6 +202,9 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
         }
     }
     era_hud::draw_lifted(&mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font, scene.hud_lift);
+    if let Some(gauge) = &scene.ally2_gauge {
+        era_hud::draw_ally2(&mut argb, gauge, scene.gauge_art, scene.font, scene.hud_lift);
+    }
     callouts::draw(&mut argb, &scene.callouts, scene.font);
     blit_select(&mut argb, scene.select_lines);
     if let Some(training) = scene.training {

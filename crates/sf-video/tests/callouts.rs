@@ -847,3 +847,29 @@ fn a_super_names_hyphen_is_drawn_in_the_roms_style_where_the_font_has_none() {
     assert!(pixels_in(&frame, regions::Rect::new(cell.x - 8, cell.y, 8, 8)).contains(&LETTER_PENS[2]));
     assert!(pixels_in(&frame, regions::Rect::new(cell.x + 8, cell.y, 8, 8)).contains(&LETTER_PENS[2]));
 }
+
+#[test]
+fn dramatic_ally2_effects_follow_its_own_gauge_and_style() {
+    let hud = gauges();
+    let ally2 = hud.p2.unwrap();
+    let mut board = CalloutBoard::new();
+    board.step_with_ally2(&[], [CalloutKind::AlphaCounter], true);
+    assert_eq!(board.frame().gauges(hud), hud);
+    assert_eq!(
+        board.ally2_gauge(ally2).main,
+        ally2.main.with_state(GaugeState::Flashing { lit: true })
+    );
+    assert_eq!(board.frame().side(Side::P1).words[0], Some(CalloutKind::AlphaCounter));
+
+    let mut shared = CalloutBoard::new();
+    shared.step_with_ally2(&[], [CalloutKind::AlphaCounter], false);
+    assert_ne!(shared.frame().gauges(hud).p1, hud.p1);
+    assert_eq!(shared.ally2_gauge(ally2), ally2);
+
+    let mut supers = CalloutBoard::new();
+    let super_callout = CalloutKind::Super { name: "SUPER" };
+    supers.step_with_ally2(&[], [super_callout], true);
+    assert!(supers.frame_with_ally2_quarter_dim([false; 2], true).dim_quarter);
+    supers.step(&[CalloutEvent::new(Side::P1, super_callout)]);
+    assert!(!supers.frame_with_ally2_quarter_dim([false; 2], true).dim_quarter);
+}

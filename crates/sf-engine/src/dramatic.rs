@@ -6,7 +6,8 @@
 //! until the match asks for it. The boss starts with more health and hits harder.
 
 use crate::canonical::{canonical_enum, canonical_struct};
-use crate::era::Revision;
+use crate::config::MatchConfig;
+use crate::era::{loadouts, Revision, StylePick};
 use crate::front::PlayerInputs;
 use crate::roster::TournamentFighter;
 use sf_video::compositor::{present, IndexedSprite, OverhaulScene, PresentMode};
@@ -50,8 +51,31 @@ pub struct DramaticRules {
 }
 
 impl DramaticRules {
-    pub const fn supports_style(style: Revision) -> bool {
-        matches!(style, Revision::Sf1Plus)
+    pub const STYLE_REVISIONS: [Revision; 7] = [
+        Revision::Sf1Plus, Revision::St, Revision::Sfz3, Revision::Sf3ThreeS,
+        Revision::Usf4, Revision::Sf5Ce, Revision::Sf6,
+    ];
+
+    pub fn supports_style(style: Revision) -> bool {
+        Self::STYLE_REVISIONS.contains(&style)
+    }
+
+    pub(crate) fn style_pick(revision: Revision) -> StylePick {
+        StylePick::for_revision(revision, loadouts(revision)[0])
+    }
+
+    pub(crate) fn style_available(config: &MatchConfig, fighter: TournamentFighter, revision: Revision) -> bool {
+        revision == Revision::Sf1Plus || (config.era_select_enabled()
+            && Self::supports_style(revision)
+            && Self::style_pick(revision).available_for(fighter, config.roster.what_if_styles))
+    }
+
+    pub(crate) fn styles_available(self, config: &MatchConfig) -> bool {
+        (self.rivalry.is_none() || self.styles == [self.styles[0]; 3])
+            && [config.roster.p1, config.roster.p2, self.ally2]
+                .into_iter()
+                .zip(self.styles)
+                .all(|(fighter, revision)| Self::style_available(config, fighter, revision))
     }
 }
 

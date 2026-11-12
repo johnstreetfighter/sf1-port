@@ -89,6 +89,7 @@ pub struct SelectScreen {
     locked: [Option<TournamentFighter>; 2],
     /// What-If availability when era selection is active.
     styles: Option<bool>,
+    dramatic_styles: bool,
     preferred_eras: [EraFamily; 2],
     cards: [Option<StyleCard>; 2],
     /// The cursor that moved last (Arcade's large frame follows P1's).
@@ -107,6 +108,7 @@ impl SelectScreen {
             cursors: [first(0, 0), first(1, 1)],
             locked: [None, None],
             styles: None,
+            dramatic_styles: false,
             preferred_eras: [EraFamily::Sf1Plus; 2],
             cards: [None, None],
             last_moved: 0,
@@ -202,6 +204,12 @@ impl SelectScreen {
             }
         });
         Self::open(Picks::One, allowed, caption)
+    }
+
+    pub(super) fn dramatic(config: &MatchConfig, player_tables: &[TournamentFighter], side: usize) -> Self {
+        let mut select = Self::single(config, player_tables, side).with_style_cards(config);
+        select.dramatic_styles = true;
+        select
     }
 
     pub fn name(&self) -> &'static str {
@@ -399,7 +407,8 @@ impl SelectScreen {
                     return None;
                 }
                 if let Some(what_if) = self.styles {
-                    self.cards[side] = Some(StyleCard::open(self.fighter(side), self.preferred_eras[side], what_if));
+                    let open = if self.dramatic_styles { StyleCard::open_dramatic } else { StyleCard::open };
+                    self.cards[side] = Some(open(self.fighter(side), self.preferred_eras[side], what_if));
                     return Some(Transition::StyleOpened);
                 }
                 return Some(self.lock(side));

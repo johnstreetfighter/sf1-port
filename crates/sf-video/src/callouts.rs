@@ -242,17 +242,10 @@ impl CalloutFrame {
     /// `hud` with this frame's gauge effects: a flashing side's main row
     /// flashes (a greyed row stays grey).
     pub fn gauges(&self, hud: EraHud) -> EraHud {
-        let flash = |gauge: Option<era_hud::EraGauge>, side: &SideCallouts| {
-            gauge.map(|mut gauge| {
-                if let Some(lit) = side.flash {
-                    if gauge.main.state() != GaugeState::Greyed {
-                        gauge.main = gauge.main.with_state(GaugeState::Flashing { lit });
-                    }
-                }
-                gauge
-            })
-        };
-        EraHud { p1: flash(hud.p1, &self.sides[0]), p2: flash(hud.p2, &self.sides[1]) }
+        EraHud {
+            p1: hud.p1.map(|gauge| flash_gauge(gauge, self.sides[0].flash)),
+            p2: hud.p2.map(|gauge| flash_gauge(gauge, self.sides[1].flash)),
+        }
     }
 
     /// Every element this frame draws, with its box.
@@ -276,6 +269,17 @@ impl CalloutFrame {
         }
         out
     }
+}
+
+fn flash_gauge(mut gauge: era_hud::EraGauge, flash: Option<bool>) -> era_hud::EraGauge {
+    if let Some(lit) = flash.filter(|_| gauge.main.state() != GaugeState::Greyed) {
+        gauge.main = gauge.main.with_state(GaugeState::Flashing { lit });
+    }
+    gauge
+}
+
+fn flash_phase(left: u16) -> Option<bool> {
+    (left > 0).then(|| ((FLASH_FRAMES - left) / FLASH_PHASE).is_multiple_of(2))
 }
 
 /// A drawn call-out element.
@@ -311,6 +315,8 @@ struct Column {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CalloutBoard {
     columns: [Column; 2],
+    ally2_flash_left: u16,
+    ally2_dim_left: u16,
     drop: usize,
 }
 
@@ -322,6 +328,19 @@ impl CalloutBoard {
     /// One frame: what was showing ages a frame and what has run its time
     /// goes, then this frame's `events` arrive in order.
     pub fn step(&mut self, events: &[CalloutEvent]) {
+        self.step_with_ally2(events, std::iter::empty(), false);
+    }
+
+    /// Ally 2's call-outs use the allies' column and track its own gauge and
+    /// Super effects. In Shared Lifebar both allies flash the Team Era Gauge.
+    pub fn step_with_ally2(
+        &mut self,
+        events: &[CalloutEvent],
+        ally2: impl IntoIterator<Item = CalloutKind>,
+        independent: bool,
+    ) {
+        self.ally2_flash_left = self.ally2_flash_left.saturating_sub(1);
+        self.ally2_dim_left = self.ally2_dim_left.saturating_sub(1);
         for column in &mut self.columns {
             for (_, left) in column.words.iter_mut() {
                 *left -= 1;
@@ -331,7 +350,9 @@ impl CalloutBoard {
             column.dim_left = column.dim_left.saturating_sub(1);
             column.flash_left = column.flash_left.saturating_sub(1);
         }
-        for event in events {
+        let ordinary = events.iter().copied().map(|event| (event, false));
+        let allies = ally2.into_iter().map(|kind| (CalloutEvent::new(Side::P1, kind), true));
+        for (event, from_ally2) in ordinary.chain(allies) {
             let column = &mut self.columns[event.side.index()];
             if column.words.len() == WORD_SLOTS {
                 column.words.pop_front();
@@ -340,12 +361,24 @@ impl CalloutBoard {
             match event.kind {
                 CalloutKind::Super { name } => {
                     column.name = Some((name, WORD_FRAMES));
-                    column.dim_left = SUPER_DIM_FRAMES;
+                    if from_ally2 {
+                        self.ally2_dim_left = SUPER_DIM_FRAMES;
+                    } else {
+                        column.dim_left = SUPER_DIM_FRAMES;
+                    }
+                }
+                CalloutKind::AlphaCounter if from_ally2 && independent => {
+                    self.ally2_flash_left = FLASH_FRAMES;
                 }
                 CalloutKind::AlphaCounter => column.flash_left = FLASH_FRAMES,
                 _ => {}
             }
         }
+    }
+
+    /// Apply Ally 2's own call-out effects to the independent gauge.
+    pub fn ally2_gauge(&self, gauge: era_hud::EraGauge) -> era_hud::EraGauge {
+        flash_gauge(gauge, flash_phase(self.ally2_flash_left))
     }
 
     /// The combo count in `side`'s top slot, or none (`EH5` sets it each frame).
@@ -372,8 +405,14 @@ impl CalloutBoard {
     /// Select the lighter Super dim for each side. An overlapping stronger
     /// Super still darkens the stage just once.
     pub fn frame_with_quarter_dim(&self, quarter: [bool; 2]) -> CalloutFrame {
-        let mut out = CalloutFrame { drop: self.drop, ..CalloutFrame::NONE };
-        let mut half = false;
+        self.frame_with_ally2_quarter_dim(quarter, false)
+    }
+
+    /// Select the Super dim for the two corners and Dramatic Ally 2.
+    pub fn frame_with_ally2_quarter_dim(&self, quarter: [bool; 2], ally2_quarter: bool) -> CalloutFrame {
+        let ally2_dim = self.ally2_dim_left > 0;
+        let mut out = CalloutFrame { drop: self.drop, dim: ally2_dim, ..CalloutFrame::NONE };
+        let mut half = ally2_dim && !ally2_quarter;
         for side in Side::BOTH {
             let column = &self.columns[side.index()];
             let shown = &mut out.sides[side.index()];
@@ -383,8 +422,7 @@ impl CalloutBoard {
             }
             shown.move_name = column.name.map(|(name, _)| name);
             shown.greyed = column.greyed;
-            shown.flash =
-                (column.flash_left > 0).then(|| ((FLASH_FRAMES - column.flash_left) / FLASH_PHASE).is_multiple_of(2));
+            shown.flash = flash_phase(column.flash_left);
             let active = column.dim_left > 0;
             out.dim |= active;
             half |= active && !quarter[side.index()];

@@ -92,6 +92,8 @@ pub(super) struct DramaticMatch {
 pub struct DramaticSetupScreen {
     co_op: bool,
     matchup: usize,
+    style: Revision,
+    preset_styles: [Vec<Revision>; RIVALRIES.len()],
     lifebar: LifebarMode,
     friendly_fire: bool,
     row: usize,
@@ -99,28 +101,38 @@ pub struct DramaticSetupScreen {
 
 impl DramaticSetupScreen {
     pub fn open(co_op: bool) -> Self {
+        Self::for_config(co_op, &MatchConfig::definitive())
+    }
+
+    pub(super) fn for_config(co_op: bool, config: &MatchConfig) -> Self {
+        let preset_styles = RIVALRIES.map(|rivalry| {
+            DramaticRules::STYLE_REVISIONS.into_iter().filter(|&style| {
+                [rivalry.ally1, rivalry.ally2, rivalry.boss].into_iter()
+                    .all(|fighter| DramaticRules::style_available(config, fighter, style))
+            }).collect()
+        });
         Self {
             co_op,
             matchup: 0,
+            style: NATIVE_STYLE,
+            preset_styles,
             lifebar: LifebarMode::Shared,
             friendly_fire: false,
             row: 0,
         }
     }
 
-    pub(super) fn from_rules(rules: DramaticRules) -> Self {
-        let matchup = rules
+    pub(super) fn from_rules(rules: DramaticRules, config: &MatchConfig) -> Self {
+        let mut setup = Self::for_config(rules.co_op, config);
+        setup.matchup = rules
             .rivalry
             .map(usize::from)
             .filter(|&index| index < RIVALRIES.len())
             .unwrap_or(RIVALRIES.len());
-        Self {
-            co_op: rules.co_op,
-            matchup,
-            lifebar: rules.lifebar,
-            friendly_fire: rules.friendly_fire,
-            row: 0,
-        }
+        setup.style = rules.styles[0];
+        setup.lifebar = rules.lifebar;
+        setup.friendly_fire = rules.friendly_fire;
+        setup
     }
 
     pub fn name(&self) -> &'static str {
@@ -148,8 +160,16 @@ impl DramaticSetupScreen {
                             choices - 1
                         };
                         self.matchup = (self.matchup + step) % choices;
+                        if self.preset_styles.get(self.matchup).is_some_and(|styles| !styles.contains(&self.style)) {
+                            self.style = NATIVE_STYLE;
+                        }
                     }
-                    // SF1+ is the currently supported native style.
+                    1 => {
+                        let styles = self.preset_styles.get(self.matchup).filter(|styles| styles.len() > 1)?;
+                        let current = styles.iter().position(|&style| style == self.style).unwrap_or(0);
+                        let step = if input == MenuInput::Right { 1 } else { styles.len() - 1 };
+                        self.style = styles[(current + step) % styles.len()];
+                    }
                     2 => {
                         self.lifebar = match self.lifebar {
                             LifebarMode::Shared => LifebarMode::Independent,
@@ -174,7 +194,7 @@ impl DramaticSetupScreen {
         Some(DramaticMatch {
             ally1: rivalry.ally1,
             boss: rivalry.boss,
-            rules: self.rules(rivalry.ally2, rivalry.stage, Some(self.matchup as u8)),
+            rules: self.rules(rivalry.ally2, rivalry.stage, [self.style; 3], Some(self.matchup as u8)),
         })
     }
 
@@ -182,6 +202,7 @@ impl DramaticSetupScreen {
         &self,
         ally2: TournamentFighter,
         stage: TournamentFighter,
+        styles: [Revision; 3],
         rivalry: Option<u8>,
     ) -> DramaticRules {
         DramaticRules {
@@ -190,7 +211,7 @@ impl DramaticSetupScreen {
             stage,
             lifebar: self.lifebar,
             friendly_fire: self.friendly_fire,
-            styles: [NATIVE_STYLE; 3],
+            styles,
             rivalry,
         }
     }
@@ -215,7 +236,7 @@ impl DramaticSetupScreen {
         }
         let values = [
             rivalry.map_or("CUSTOM 2V1", |rivalry| rivalry.label),
-            NATIVE_STYLE.name(),
+            if rivalry.is_some() { self.style.name() } else { "PER FIGHTER" },
             match self.lifebar {
                 LifebarMode::Shared => "SHARED",
                 LifebarMode::Independent => "INDEPENDENT",
@@ -246,7 +267,7 @@ impl DramaticSetupScreen {
 pub(super) struct DramaticPicks {
     setup: DramaticSetupScreen,
     selects: [SelectScreen; 3],
-    chosen: [Option<TournamentFighter>; 3],
+    chosen: [Option<(TournamentFighter, Revision)>; 3],
     role: usize,
     remote_ally: bool,
 }
@@ -258,11 +279,11 @@ impl DramaticPicks {
         tables: &[TournamentFighter],
         remote_ally: Option<TournamentFighter>,
     ) -> Self {
-        let selects = [0, 1, 1].map(|side| SelectScreen::single(config, tables, side));
+        let selects = [0, 1, 1].map(|side| SelectScreen::dramatic(config, tables, side));
         Self {
             setup,
             selects,
-            chosen: [None, remote_ally, None],
+            chosen: [None, remote_ally.map(|fighter| (fighter, NATIVE_STYLE)), None],
             role: 0,
             remote_ally: remote_ally.is_some(),
         }
@@ -300,7 +321,14 @@ impl DramaticPicks {
     }
 
     pub fn pick(&mut self, fighter: TournamentFighter) -> Option<DramaticMatch> {
-        self.chosen[self.role] = Some(fighter);
+        let select = &mut self.selects[self.role];
+        let revision = select.locked_style(0).map_or(NATIVE_STYLE, |style| style.revision);
+        if select.locked(0).is_some() {
+            // Keep the chosen style with the fighter. Returning from a later
+            // pick or the stage screen reopens this picker at the same era.
+            select.apply(MenuInput::Back);
+        }
+        self.chosen[self.role] = Some((fighter, revision));
         if self.role == PICK_TITLES.len() - 1 {
             self.match_on(fighter)
         } else {
@@ -320,10 +348,13 @@ impl DramaticPicks {
     }
 
     pub fn match_on(&self, stage: TournamentFighter) -> Option<DramaticMatch> {
+        let (ally1, ally1_style) = self.chosen[0]?;
+        let (ally2, ally2_style) = self.chosen[1]?;
+        let (boss, boss_style) = self.chosen[2]?;
         Some(DramaticMatch {
-            ally1: self.chosen[0]?,
-            boss: self.chosen[2]?,
-            rules: self.setup.rules(self.chosen[1]?, stage, None),
+            ally1,
+            boss,
+            rules: self.setup.rules(ally2, stage, [ally1_style, boss_style, ally2_style], None),
         })
     }
 }
@@ -342,13 +373,18 @@ pub(super) struct DramaticGuest {
 
 impl DramaticGuest {
     pub fn open(config: &MatchConfig, tables: &[TournamentFighter]) -> Self {
-        let mut select = SelectScreen::single(config, tables, 1);
         let fixed = config
             .dramatic
             .filter(|rules| rules.rivalry.is_some())
             .map(|rules| rules.ally2);
+        let mut select = if fixed.is_some() {
+            SelectScreen::single(config, tables, 1)
+        } else {
+            SelectScreen::dramatic(config, tables, 1)
+        };
         if let Some(rules) = config.dramatic {
             select.focus(rules.ally2);
+            select = select.with_preferred_eras([rules.styles[2].family(); 2]);
         }
         Self {
             select,
@@ -365,12 +401,19 @@ impl DramaticGuest {
         self.fixed.unwrap_or_else(|| self.select.fighter(0))
     }
 
+    pub fn revision(&self) -> Revision {
+        if self.fixed.is_some() {
+            return self.rules.map_or(NATIVE_STYLE, |rules| rules.styles[2]);
+        }
+        self.select.locked_style(0).map_or(NATIVE_STYLE, |style| style.revision)
+    }
+
     pub fn locked(&self) -> bool {
         self.locked
     }
 
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
-        if input == MenuInput::Back {
+        if input == MenuInput::Back && (self.locked || self.fixed.is_some()) {
             return Some(Transition::Back);
         }
         if self.locked
@@ -407,8 +450,8 @@ impl DramaticGuest {
             };
             let fire = if rules.friendly_fire { "ON" } else { "OFF" };
             let details = [
-                format!("ALLY 1 {}", self.ally1.name()),
-                format!("BOSS {}", self.boss.name()),
+                format!("ALLY 1 {} {}", self.ally1.name(), rules.styles[0].name()),
+                format!("BOSS {} {}", self.boss.name(), rules.styles[1].name()),
                 format!("STAGE {stage}"),
                 format!("LIFEBAR {lifebar}"),
                 format!("FRIENDLY FIRE {fire}"),
@@ -419,11 +462,13 @@ impl DramaticGuest {
             }
         }
         let status = if self.locked {
-            "WAITING FOR HOST"
+            "WAITING FOR HOST".into()
+        } else if self.fixed.is_some() {
+            format!("CONFIRM ALLY 2 {}", self.revision().name())
         } else {
-            "CONFIRM ALLY 2"
+            "CONFIRM ALLY 2".into()
         };
-        font.text_centred(&mut frame.argb, 26, notice.unwrap_or(status), ink::YELLOW);
+        font.text_centred(&mut frame.argb, 26, notice.unwrap_or(&status), ink::YELLOW);
         frame
     }
 }
@@ -438,10 +483,6 @@ pub(super) fn boot_flag(stage: TournamentFighter) -> u8 {
         Ken | Joe | Mike => 2,
         Birdie | Eagle => 3,
     }
-}
-
-pub(super) fn supported_styles(rules: DramaticRules) -> bool {
-    rules.styles == [NATIVE_STYLE; 3]
 }
 
 #[cfg(test)]
@@ -474,7 +515,13 @@ mod tests {
             assert_eq!(matchup.rules.rivalry, Some(index as u8));
             assert_eq!(matchup.rules.lifebar, LifebarMode::Shared);
             assert!(!matchup.rules.friendly_fire && !matchup.rules.co_op);
-            assert!(supported_styles(matchup.rules));
+            setup.apply(MenuInput::Down);
+            for style in DramaticRules::STYLE_REVISIONS {
+                assert_eq!(setup.preset().unwrap().rules.styles, [style; 3], "rivalry {index}");
+                assert_eq!(setup.apply(MenuInput::Right), Some(Transition::ValueChanged));
+            }
+            assert_eq!(setup.preset().unwrap().rules.styles, [NATIVE_STYLE; 3]);
+            setup.apply(MenuInput::Up);
             setup.apply(MenuInput::Right);
         }
         assert!(setup.preset().is_none(), "custom follows the six rivalries");
@@ -484,9 +531,11 @@ mod tests {
 
     #[test]
     fn guest_locks_the_preset_ally_and_can_leave_after_locking() {
-        let setup = DramaticSetupScreen::open(true).preset().unwrap();
         let mut config = MatchConfig::definitive();
-        config.dramatic = Some(setup.rules);
+        let mut setup = DramaticSetupScreen::for_config(true, &config);
+        setup.apply(MenuInput::Down);
+        setup.apply(MenuInput::Left);
+        config.dramatic = Some(setup.preset().unwrap().rules);
         let mut guest = DramaticGuest::open(&config, &[]);
         assert_eq!(guest.fighter(), TournamentFighter::Ken);
         assert_eq!(guest.apply(MenuInput::Left), None);
@@ -495,6 +544,7 @@ mod tests {
             Some(Transition::Picked(TournamentFighter::Ken))
         );
         assert!(guest.locked());
+        assert_eq!(guest.revision(), Revision::Sf6);
         assert_eq!(guest.apply(MenuInput::Right), None);
         assert_eq!(guest.apply(MenuInput::Back), Some(Transition::Back));
         assert_eq!(guest.fighter(), TournamentFighter::Ken);

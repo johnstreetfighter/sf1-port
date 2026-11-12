@@ -285,9 +285,27 @@ pub fn draw(argb: &mut [u32], hud: &EraHud, art: GaugeArt, font: Option<&RomFont
 pub fn draw_lifted(argb: &mut [u32], hud: &EraHud, art: GaugeArt, font: Option<&RomFont<'_>>, lift: usize) {
     for (side, gauge) in [(Side::P1, hud.p1), (Side::P2, hud.p2)] {
         if let Some(gauge) = gauge {
-            draw_corner(&mut Corner { argb, side }, &gauge, art, font, lift);
+            draw_corner(&mut Corner { argb, side }, &gauge, art, font, lift, MAIN_ROW);
         }
     }
+}
+
+/// The independent ally's compact gauge, above the primary left corner.
+pub(crate) fn draw_ally2(
+    argb: &mut [u32],
+    gauge: &EraGauge,
+    art: GaugeArt,
+    font: Option<&RomFont<'_>>,
+    lift: usize,
+) {
+    draw_corner(
+        &mut Corner { argb, side: Side::P1 },
+        gauge,
+        art,
+        font,
+        lift.saturating_add(CORNER_HEIGHT + ROW_GAP),
+        SECOND_ROW,
+    );
 }
 
 /// One corner, addressed from its screen edge: local `x` 0 is the column
@@ -322,12 +340,18 @@ impl Corner<'_> {
     }
 }
 
-fn draw_corner(corner: &mut Corner<'_>, gauge: &EraGauge, art: GaugeArt, font: Option<&RomFont<'_>>, lift: usize) {
-    let height = match gauge.second {
-        Some(_) => CORNER_HEIGHT,
-        None => MAIN_ROW,
-    };
-    let top = HEIGHT - CORNER_BOTTOM - lift - height;
+fn draw_corner(
+    corner: &mut Corner<'_>,
+    gauge: &EraGauge,
+    art: GaugeArt,
+    font: Option<&RomFont<'_>>,
+    lift: usize,
+    main_height: usize,
+) {
+    let height = main_height + gauge.second.map_or(0, |_| ROW_GAP + SECOND_ROW);
+    let bottom = HEIGHT.saturating_sub(CORNER_BOTTOM.saturating_add(lift));
+    let Some(top) = bottom.checked_sub(height) else { return };
+    let floor = bottom.saturating_sub(CORNER_HEIGHT);
     let levelled = std::iter::once(gauge.main)
         .chain(gauge.second)
         .any(|row| matches!(row, GaugeRow::Level { .. }));
@@ -336,13 +360,12 @@ fn draw_corner(corner: &mut Corner<'_>, gauge: &EraGauge, art: GaugeArt, font: O
         GaugeArt::Plate => PLATE_COLUMN,
     };
     let bar_x = if levelled { lead } else { 0 };
-    let rows = [(top, MAIN_ROW, gauge.main, Ink::GOLD), (top + MAIN_ROW + ROW_GAP, SECOND_ROW, gauge.second.unwrap_or(gauge.main), Ink::LAVENDER)];
-    for (i, (y0, height, row, ink)) in rows.into_iter().enumerate() {
-        if i == 1 && gauge.second.is_none() {
-            break;
-        }
+    let main = (top, main_height, gauge.main, Ink::GOLD);
+    let second = gauge.second.map(|row| {
+        (top + main_height + ROW_GAP, SECOND_ROW, row, Ink::LAVENDER)
+    });
+    for (i, (y0, height, row, ink)) in std::iter::once(main).chain(second).enumerate() {
         let avail = (CORNER_WIDTH - bar_x).min(BAR_WIDTH + 2);
-        let floor = HEIGHT - CORNER_BOTTOM - lift - CORNER_HEIGHT;
         let at = Slot { x0: bar_x, avail, floor, y0, height };
         match art {
             GaugeArt::Ruled => draw_row(corner, bar_x, y0, height, row, ink, font),
@@ -424,7 +447,7 @@ fn draw_row(
                     Side::P1 => corner.screen_x(0),
                     Side::P2 => corner.screen_x(7),
                 };
-                font.tile_in(corner.argb, x, y0 + height - 8, u16::from(level.min(9)), digit_pens);
+                font.tile_in(corner.argb, x, (y0 + height).saturating_sub(8), u16::from(level.min(9)), digit_pens);
             }
         }
     }
@@ -652,7 +675,7 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
                 let x = corner.text_x(0, 8 * text.len());
                 for (i, ch) in text.chars().enumerate() {
                     if let Some(code) = small_glyph(ch) {
-                        font.tile_in(corner.argb, x + 8 * i, at.y0 + at.height - 8, code, digit_pens);
+                        font.tile_in(corner.argb, x + 8 * i, (at.y0 + at.height).saturating_sub(8), code, digit_pens);
                     }
                 }
             }

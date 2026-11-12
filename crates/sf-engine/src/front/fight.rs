@@ -16,7 +16,7 @@ use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
 use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
-use sf_video::era_hud::GaugeArt;
+use sf_video::era_hud::{EraGauge, GaugeArt};
 use sf_video::render::{capture_sprite_pose, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan};
 use sf_video::scene::SceneState;
 use sf_video::romset::Assets;
@@ -365,7 +365,7 @@ pub struct Fight {
     hold_combo: bool,
     /// The preview gauges supplied through the renderer's test hook.
     era_hud: EraHud,
-    trails: [AfterimageTrail; 2],
+    trails: [AfterimageTrail; 3],
     /// Training's Show of a move (ticket #230): its input stands in for the
     /// player's pad until the move ends.
     show: Option<Show>,
@@ -411,7 +411,7 @@ pub struct FightSnapshot {
     pub moments: RoundMoments,
     pub hold_combo: bool,
     pub era_hud: EraHud,
-    pub trails: [AfterimageTrail; 2],
+    pub trails: [AfterimageTrail; 3],
     /// Training-only input driver and observer; both None in Local.
     pub show: Option<Show>,
     pub coach: Option<Coach>,
@@ -751,6 +751,9 @@ impl Fight {
     }
 
     pub(crate) fn set_selected_styles(&mut self, styles: [Option<StylePick>; 2]) {
+        if self.setup.config.dramatic.is_some() {
+            return;
+        }
         let fixed = StylePick::for_preset(self.setup.config.preset);
         self.selected_styles = styles.map(|pick| pick.unwrap_or(fixed));
         self.machine.set_era_styles(self.selected_styles);
@@ -759,6 +762,10 @@ impl Fight {
     /// The selected style for a side. Arcade's second side follows the current
     /// ladder opponent and is absent before a country is picked.
     pub fn fighter_style(&self, side: usize) -> Option<StylePick> {
+        if let Some(rules) = self.setup.config.dramatic {
+            let slot = *[0, 2].get(side)?;
+            return Some(crate::dramatic::DramaticRules::style_pick(rules.styles[slot]));
+        }
         if side == 1 && self.setup.kind == FightKind::Arcade {
             let opponent = self.machine.arcade_opponent()?;
             return Some(self.selected_styles[0].arcade_opponent(
@@ -768,6 +775,11 @@ impl Fight {
             ));
         }
         self.selected_styles.get(side).copied()
+    }
+
+    pub(super) fn pad_era_state(&self, side: usize) -> &crate::era_fight::EraFighterState {
+        let slot = if side == 1 && self.setup.config.dramatic.is_some() { 2 } else { side };
+        &self.era_combatants()[slot]
     }
 
     /// Fighters assigned to the two local or network pads.
@@ -919,7 +931,35 @@ impl Fight {
             return self.era_hud;
         }
         let [p1, p2] = self.machine.era_fighters();
-        EraHud { p1: p1.gauge(), p2: p2.gauge() }
+        let shared = self.setup.config.dramatic.is_some_and(|rules| {
+            rules.lifebar == crate::dramatic::LifebarMode::Shared
+        });
+        EraHud {
+            p1: if shared { p1.team_gauge() } else { p1.gauge() },
+            p2: p2.gauge(),
+        }
+    }
+
+    fn independent_ally_lifebars(&self) -> bool {
+        self.setup.config.dramatic.is_some_and(|rules| {
+            rules.lifebar == crate::dramatic::LifebarMode::Independent
+        })
+    }
+
+    fn ally2_gauge(&self) -> Option<EraGauge> {
+        if !self.independent_ally_lifebars() {
+            return None;
+        }
+        self.machine.dramatic_era_fighters()[2].gauge()
+            .map(|gauge| self.callouts.ally2_gauge(gauge))
+    }
+
+    fn era_combatants(&self) -> &[crate::era_fight::EraFighterState] {
+        if self.setup.config.dramatic.is_some() {
+            self.machine.dramatic_era_fighters()
+        } else {
+            self.machine.era_fighters()
+        }
     }
 
     /// Call-out events that arrive with the next stepped frame. They change
@@ -1250,12 +1290,10 @@ impl Fight {
     }
 
     fn draw_ally_lifebar(&self, frame: &mut Frame) {
-        use crate::dramatic::{LifebarMode, ALLY_SUB_HP};
+        use crate::dramatic::ALLY_SUB_HP;
         use sf_video::render::{HEIGHT, VISAREA_X, VISAREA_Y, WIDTH};
 
-        if self.last_flow != FIGHT_LOOP
-            || !self.setup.config.dramatic.is_some_and(|rules| rules.lifebar == LifebarMode::Independent)
-        {
+        if self.last_flow != FIGHT_LOOP || !self.independent_ally_lifebars() {
             return;
         }
         // The cabinet's Ally 1 bar begins at text-RAM offset 0x2bc.
@@ -1285,7 +1323,7 @@ impl Fight {
         let freeze = self.machine.era_super_freeze();
         if freeze != 0 {
             let telemetry = self.machine.diagnostic_telemetry();
-            for fighter in [telemetry.p1, telemetry.p2] {
+            for fighter in [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2].into_iter().flatten() {
                 if !fighter.active || fighter.move_id != crate::data_bank::SF2_SUPER_SLOT {
                     continue;
                 }
@@ -1298,10 +1336,11 @@ impl Fight {
                 });
             }
         }
-        let states = self.machine.era_fighters();
+        let states = self.era_combatants();
         if states.iter().any(|state| state.fighter_tint().is_some()) {
             let telemetry = self.machine.diagnostic_telemetry();
-            for (state, fighter) in states.into_iter().zip([telemetry.p1, telemetry.p2]) {
+            let fighters = [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2];
+            for (state, fighter) in states.iter().zip(fighters.into_iter().flatten()) {
                 let Some(tint) = state.fighter_tint().filter(|_| fighter.active) else { continue };
                 let start = usize::from(fighter.entity_offset);
                 let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
@@ -1322,18 +1361,22 @@ impl Fight {
     }
 
     fn update_era_trails(&mut self, assets: &Assets) {
-        let colors = self.machine.era_fighters().map(|state| state.trail_color());
+        let mut colors = [None; 3];
+        for (color, state) in colors.iter_mut().zip(self.era_combatants()) {
+            *color = state.trail_color();
+        }
         for (trail, color) in self.trails.iter_mut().zip(colors) {
             if color.is_none() {
                 trail.clear();
             }
         }
-        if colors == [None; 2] || self.machine.state.frame % 4 != 0 {
+        if colors == [None; 3] || self.machine.state.frame % 4 != 0 {
             return;
         }
         let scene = self.machine.state.scene();
         let telemetry = self.machine.diagnostic_telemetry();
-        for (index, fighter) in [telemetry.p1, telemetry.p2].into_iter().enumerate() {
+        let fighters = [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2];
+        for (index, fighter) in fighters.into_iter().flatten().enumerate() {
             let Some(color) = colors[index].filter(|_| fighter.active) else { continue };
             let start = usize::from(fighter.entity_offset);
             let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
@@ -1346,8 +1389,10 @@ impl Fight {
         let scene = self.machine.state.scene();
         let layout = self.layout(&scene);
         let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
-        let callouts = self.callouts.frame_with_quarter_dim(quarter_dim);
+        let ally2_quarter_dim = self.era_combatants().get(2).is_some_and(|state| state.is_sf2());
+        let callouts = self.callouts.frame_with_ally2_quarter_dim(quarter_dim, ally2_quarter_dim);
         let era_hud = self.era_hud();
+        let ally2_gauge = self.ally2_gauge();
         let tints = self.era_sprite_tints(&scene);
         let (boxes, meter) = self.overlay.parts();
         let telemetry = || self.machine.diagnostic_telemetry();
@@ -1356,7 +1401,8 @@ impl Fight {
             // path, as every Faithful 1987 frame.
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
-                    && (!callouts.is_empty() || era_hud != EraHud::NONE || !tints.is_empty()) =>
+                    && (!callouts.is_empty() || era_hud != EraHud::NONE || ally2_gauge.is_some()
+                        || !tints.is_empty()) =>
             {
                 let (mut hardware, stage) = render_frame_staged_with_tints(assets, &scene, edits, &tints);
                 if boxes {
@@ -1369,10 +1415,12 @@ impl Fight {
                     &OverhaulScene {
                         callouts,
                         hud: era_hud,
+                        ally2_gauge,
                         gauge_art: self.gauge_art,
                         hud_lift: gauge_lift(meter),
                         stage: Some(&stage),
                         afterimages: [Some(&self.trails[0]), Some(&self.trails[1])],
+                        ally2_afterimages: self.setup.config.dramatic.is_some().then_some(&self.trails[2]),
                         font: Some(&font),
                         ..OverhaulScene::EMPTY
                     },
@@ -1410,6 +1458,7 @@ impl Fight {
             };
         }
         let mut event = None;
+        let mut ally2_events = [None; 5];
         if !self.over {
             // A Training dummy's pad is held still, and the fair CPU plays
             // P2's in the machine (SP21), so the pad's never reaches it.
@@ -1501,6 +1550,9 @@ impl Fight {
                     self.pending_callouts.push(CalloutEvent::new(side, CalloutKind::Move { word: "GUARD CRUSH" }));
                 }
             }
+            if self.setup.config.dramatic.is_some() {
+                ally2_events = m.take_dramatic_ally_era_events();
+            }
             let flow = flow_position(m);
             if self.country.is_none() && flow == STAGE_START {
                 self.country = Some(chosen_country(m));
@@ -1582,11 +1634,15 @@ impl Fight {
         // A Training Try's strip has a second line, so its call-out columns sit
         // lower; every other fight keeps the era HUD's layout.
         self.callouts.set_drop(if self.coach.is_some() { regions::TRY_DROP } else { 0 });
-        self.callouts.step(&events);
+        let independent = self.independent_ally_lifebars();
+        self.callouts.step_with_ally2(&events, ally2_events.into_iter().flatten(), independent);
         // The announcer says the word on screen (never a move's name), then
         // any finished combo's count; the 1987 preset has no announcer.
-        let mut announcements: Vec<AnnouncerLine> =
-            events.iter().filter_map(|e| AnnouncerLine::for_callout(e.kind)).collect();
+        let mut announcements: Vec<AnnouncerLine> = events.iter()
+            .map(|event| event.kind)
+            .chain(ally2_events.into_iter().flatten())
+            .filter_map(AnnouncerLine::for_callout)
+            .collect();
         announcements.append(&mut self.pending_combos);
         if self.setup.config.preset == RulesetPreset::Faithful1987 {
             announcements.clear();

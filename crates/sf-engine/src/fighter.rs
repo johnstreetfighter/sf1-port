@@ -2781,8 +2781,9 @@ impl Bus<'_> {
         }
         let record = damage.div_ceil(crate::era_fight::SUB_HP_PER_POINT).min(u16::from(u8::MAX)) as u8;
         self.training_hit(ps, record);
-        if let Some(rules) = self.dramatic_rules() {
-            self.damage_dramatic(me, ps, dmg, is_chip, rules.lifebar);
+        if self.dramatic_rules().is_some() {
+            let damage = self.dramatic_scale_damage(owner, damage);
+            self.damage_dramatic(ps, damage, is_chip);
             return;
         }
         let prevent_chip_ko = self.toggles.balanced_roster && is_chip && !self.toggles.chip_death;
@@ -2851,30 +2852,37 @@ impl Bus<'_> {
         self.draw_health(ps);
     }
 
-    fn damage_dramatic(
-        &mut self,
-        me: u16,
-        defender: u32,
-        damage: u8,
-        chip: bool,
-        lifebar: crate::dramatic::LifebarMode,
-    ) {
-        use crate::dramatic::{ALLY_SUB_HP, BOSS_SUB_HP, LifebarMode};
+    pub(crate) fn dramatic_scale_damage(&self, owner: u32, damage: u16) -> u16 {
+        if owner == CPU_STRUCT && self.dramatic_rules().is_some() {
+            damage.saturating_add(damage / 4)
+        } else {
+            damage
+        }
+    }
 
-        let Some(slot) = self.player_slot_index(defender) else {
-            return;
-        };
-        if self.toggle_state.dramatic.health[slot] == 0 {
+    fn damage_dramatic(&mut self, defender: u32, damage: u16, chip: bool) {
+        let Some(slot) = self.player_slot_index(defender) else { return };
+        let hp = self.toggle_state.dramatic.health[slot];
+        if hp == 0 {
             return;
         }
-        let damage = u16::from(damage) * if self.el(me, 0x38) == CPU_STRUCT { 25 } else { 20 };
-        let health = &mut self.toggle_state.dramatic.health;
         let floor = u16::from(chip && self.toggles.balanced_roster && !self.toggles.chip_death);
-        health[slot] = health[slot].saturating_sub(damage).max(floor);
-        if slot != 1 && lifebar == LifebarMode::Shared {
-            let shared = health[slot];
-            health[0] = shared;
-            health[2] = shared;
+        self.dramatic_set_health(defender, hp.saturating_sub(damage).max(floor));
+    }
+
+    pub(crate) fn dramatic_set_health(&mut self, defender: u32, hp: u16) {
+        use crate::dramatic::{ALLY_SUB_HP, BOSS_SUB_HP, LifebarMode};
+
+        let Some(rules) = self.dramatic_rules() else { return };
+        let Some(slot) = self.player_slot_index(defender) else { return };
+        let health = &mut self.toggle_state.dramatic.health;
+        health[slot] = hp;
+        if slot != 1 && rules.lifebar == LifebarMode::Shared {
+            health[0] = hp;
+            health[2] = hp;
+        }
+        for (state, hp) in self.toggle_state.era.fighters.iter_mut().zip(*health) {
+            state.sub_hp = hp;
         }
 
         let [ally1, boss, ally2] = *health;
@@ -6201,11 +6209,12 @@ impl Bus<'_> {
     pub(crate) fn clear_frozen_attack_inputs(&mut self) {
         let mode = self.rb(GAME_MODE);
         let players = match mode {
-            2 => [P1_STRUCT, CPU_STRUCT],
-            4 => [P2_STRUCT, CPU_STRUCT],
-            _ => [P1_STRUCT, P2_STRUCT],
+            _ if self.dramatic_rules().is_some() => [Some(P1_STRUCT), Some(CPU_STRUCT), Some(P2_STRUCT)],
+            2 => [Some(P1_STRUCT), Some(CPU_STRUCT), None],
+            4 => [Some(P2_STRUCT), Some(CPU_STRUCT), None],
+            _ => [Some(P1_STRUCT), Some(P2_STRUCT), None],
         };
-        for ps in players {
+        for ps in players.into_iter().flatten() {
             self.ww(ps, 0);
             self.clear_neg_edge_latches_for_player(ps);
             self.era_finish_input(ps);
@@ -6730,7 +6739,7 @@ impl Bus<'_> {
         );
         if !can_air_block
             || !fighter.is_alpha() || fighter.custom_combo_active()
-            || self.era_rules.gauge_mode == GaugeMode::NoGauges
+            || self.era_gauge_mode(side) == GaugeMode::NoGauges
             || self.era_guard_crushed(ps)
             || self.eb(defender, 9) & 0x40 != 0
             || !self.is_jump_airborne(defender)

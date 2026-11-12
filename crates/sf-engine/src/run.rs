@@ -1602,7 +1602,7 @@ impl PowerOnMachine {
         } else {
             cfg.roster.p2
         };
-        let ctx = self.fair_cpu_context(fighter);
+        let ctx = self.fair_cpu_context(fighter, None);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let pad = self.fair_cpu.get_or_insert_with(FairCpu::new).press(step, in_fight, &ctx);
@@ -1612,26 +1612,36 @@ impl PowerOnMachine {
         true
     }
 
-    fn fair_cpu_context(&self, fighter: crate::roster::TournamentFighter) -> crate::fair_cpu::Context {
+    fn fair_cpu_context(
+        &self,
+        fighter: crate::roster::TournamentFighter,
+        dramatic_slot: Option<usize>,
+    ) -> crate::fair_cpu::Context {
         use crate::fair_cpu::{Context, EraControl, Kit, Level};
-        let cfg = self.program.match_config;
+        let mut cfg = self.program.match_config;
         let slots = match self.program.data_bank.as_deref().and_then(|b| b.table(fighter).map(|t| (b, t))) {
             Some((bank, table)) => Some([0x19, 0x1a, 0x1b].map(|slot| crate::data_bank::special_slot(|a| bank.rb(a), table, slot))),
             None if fighter.is_shoto() => Some([0x19, 0x1a, 0x1b].map(crate::data_bank::SpecialSlot::ryu)),
             None => None,
         };
-        let era = &self.era_fighters()[1];
+        let era = &self.dramatic_era_fighters()[dramatic_slot.unwrap_or(1)];
+        if era.unified_gauge {
+            cfg.gauge_mode = crate::era::GaugeMode::Unified;
+        }
         let level = Level::from_difficulty(cfg.difficulty);
         if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
             && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
         {
             use crate::fighter::{CPU_STRUCT, P2_STRUCT, WORK_BASE};
             let game_mode = self.program.work[0x4002];
-            let ps = if game_mode == 2 { CPU_STRUCT } else { P2_STRUCT };
+            let ps = dramatic_slot.map_or_else(
+                || if game_mode == 2 { CPU_STRUCT } else { P2_STRUCT },
+                |slot| crate::fighter::DRAMATIC_PLAYERS[slot],
+            );
             let entity_word = (ps + 0x10 - WORK_BASE) as usize;
             let entity = u16::from_be_bytes(self.program.work[entity_word..entity_word + 2].try_into().unwrap()) as usize;
             let control = self.state.objectram.get(entity..entity + 0x40).map(|obj| {
-                let slot = crate::combo::slot_in_fight(ps, game_mode, false);
+                let slot = crate::combo::slot_in_fight(ps, game_mode, dramatic_slot.is_some());
                 let combo = &self.program.toggle_state.combo;
                 let cancel = &self.program.toggle_state.cancel;
                 let move_id = obj[0xa];
@@ -1671,8 +1681,8 @@ impl PowerOnMachine {
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let [_, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
-        let boss = self.fair_cpu_context(self.program.match_config.roster.p2);
-        let ally = (!rules.co_op).then(|| self.fair_cpu_context(rules.ally2));
+        let boss = self.fair_cpu_context(self.program.match_config.roster.p2, Some(1));
+        let ally = (!rules.co_op).then(|| self.fair_cpu_context(rules.ally2, Some(2)));
         let cpu = self.dramatic_cpu.get_or_insert_with(Default::default);
         let (directions, buttons) = pad_parts(cpu[0].press(step, in_fight && boss_hp > 0, &boss));
         self.program.toggle_state.dramatic.boss_pad = PlayerInputs { directions, buttons };
@@ -1917,6 +1927,11 @@ impl PowerOnMachine {
 
     /// Era state by displayed fight side, including the current Arcade CPU.
     pub fn era_fighters(&self) -> &[crate::era_fight::EraFighterState; 2] {
+        self.program.toggle_state.era.fighters.first_chunk().expect("two native fight sides")
+    }
+
+    /// Native Dramatic slot order: Ally 1, boss, Ally 2.
+    pub fn dramatic_era_fighters(&self) -> &[crate::era_fight::EraFighterState; 3] {
         &self.program.toggle_state.era.fighters
     }
 
@@ -1939,23 +1954,38 @@ impl PowerOnMachine {
 
     /// Consume presentation events earned by the native fight's pad inputs.
     pub fn take_era_super_events(&mut self) -> [Option<crate::roster::TournamentFighter>; 2] {
-        std::mem::take(&mut self.program.toggle_state.era.super_events)
+        std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.super_events[i]))
     }
 
     pub(crate) fn take_alpha_super_events(&mut self) -> [Option<&'static str>; 2] {
-        std::mem::take(&mut self.program.toggle_state.era.alpha_super_events)
+        std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.alpha_super_events[i]))
     }
 
     pub(crate) fn take_alpha_counter_events(&mut self) -> [bool; 2] {
-        std::mem::take(&mut self.program.toggle_state.era.alpha_counter_events)
+        std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.alpha_counter_events[i]))
     }
 
     pub(crate) fn take_era_style_callouts(&mut self) -> [Option<sf_video::callouts::CalloutKind>; 2] {
-        std::mem::take(&mut self.program.toggle_state.era.style_callouts)
+        std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.style_callouts[i]))
     }
 
     pub(crate) fn take_guard_crush_events(&mut self) -> [bool; 2] {
-        std::mem::take(&mut self.program.toggle_state.era.guard_crush_events)
+        std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.guard_crush_events[i]))
+    }
+
+    pub(crate) fn take_dramatic_ally_era_events(&mut self) -> [Option<sf_video::callouts::CalloutKind>; 5] {
+        use sf_video::callouts::CalloutKind;
+
+        let era = &mut self.program.toggle_state.era;
+        [
+            era.style_callouts[2].take(),
+            era.super_events[2].take().map(|fighter| CalloutKind::Super {
+                name: crate::era::super_label(fighter),
+            }),
+            era.alpha_super_events[2].take().map(|name| CalloutKind::Super { name }),
+            std::mem::take(&mut era.alpha_counter_events[2]).then_some(CalloutKind::AlphaCounter),
+            std::mem::take(&mut era.guard_crush_events[2]).then_some(CalloutKind::Move { word: "GUARD CRUSH" }),
+        ]
     }
 
     /// Take the stage tune command a stand-in fight fell back to when Ryu's

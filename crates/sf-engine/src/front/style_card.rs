@@ -2,6 +2,7 @@
 
 use sf_video::compositor::{darken, fallback_text, ink, outline, RomFont};
 
+use crate::dramatic::DramaticRules;
 use crate::era::{
     listed_families, listed_revisions, loadouts, EraFamily, Loadout, Revision, StylePick,
 };
@@ -26,6 +27,7 @@ const ADVANCE: usize = 4;
 pub(super) struct StyleCard {
     fighter: TournamentFighter,
     what_if: bool,
+    dramatic: bool,
     families: Vec<EraFamily>,
     revisions: Vec<Revision>,
     loadouts: Vec<Loadout>,
@@ -49,25 +51,35 @@ impl StyleCard {
     }
 
     pub(super) fn open(fighter: TournamentFighter, preferred: EraFamily, what_if: bool) -> Self {
+        Self::with_mode(fighter, preferred, what_if, false)
+    }
+
+    pub(super) fn open_dramatic(fighter: TournamentFighter, preferred: EraFamily, what_if: bool) -> Self {
+        Self::with_mode(fighter, preferred, what_if, true)
+    }
+
+    fn with_mode(fighter: TournamentFighter, preferred: EraFamily, what_if: bool, dramatic: bool) -> Self {
         let available = listed_families(fighter, what_if);
-        let families = ERA_ORDER
+        let families: Vec<_> = ERA_ORDER
             .into_iter()
-            .filter(|family| available.contains(family))
+            .filter(|family| available.contains(family)
+                && (!dramatic || !Self::revisions_for(fighter, *family, what_if, true).is_empty()))
             .collect();
-        let family = if available.contains(&preferred) {
+        let family = if families.contains(&preferred) {
             preferred
         } else {
             EraFamily::Sf1Plus
         };
-        let revisions = listed_revisions(fighter, family, what_if);
+        let revisions = Self::revisions_for(fighter, family, what_if, dramatic);
         let revision = *revisions
             .last()
             .expect("an available era has a flagship revision");
-        let loadouts = loadouts(revision);
+        let loadouts = Self::loadouts_for(revision, dramatic);
         let pick = StylePick::for_revision(revision, loadouts[0]);
         Self {
             fighter,
             what_if,
+            dramatic,
             families,
             revisions,
             loadouts,
@@ -108,7 +120,7 @@ impl StyleCard {
         match self.row {
             0 => {
                 let family = cycle(&self.families, self.pick.family, delta);
-                self.revisions = listed_revisions(self.fighter, family, self.what_if);
+                self.revisions = Self::revisions_for(self.fighter, family, self.what_if, self.dramatic);
                 self.set_revision(
                     *self
                         .revisions
@@ -122,8 +134,24 @@ impl StyleCard {
         true
     }
 
+    fn revisions_for(fighter: TournamentFighter, family: EraFamily, what_if: bool, dramatic: bool) -> Vec<Revision> {
+        let mut revisions = listed_revisions(fighter, family, what_if);
+        if dramatic {
+            revisions.retain(|&revision| DramaticRules::supports_style(revision));
+        }
+        revisions
+    }
+
+    fn loadouts_for(revision: Revision, dramatic: bool) -> Vec<Loadout> {
+        let mut choices = loadouts(revision);
+        if dramatic {
+            choices.truncate(1);
+        }
+        choices
+    }
+
     fn set_revision(&mut self, revision: Revision) {
-        self.loadouts = loadouts(revision);
+        self.loadouts = Self::loadouts_for(revision, self.dramatic);
         self.pick = StylePick::for_revision(revision, self.loadouts[0]);
     }
 

@@ -94,7 +94,20 @@ impl DriveState {
         }
     }
 
-    pub(super) fn tick(&mut self, fill: bool, ready: bool, hp: &mut u16, max_hp: u16) {
+    pub(super) fn parrying(self) -> bool {
+        self.parry_age != 0
+    }
+
+    pub(super) fn share_meter(&mut self, source: Self) {
+        self.points = source.points;
+        self.burnout = source.burnout;
+        self.regen_delay = source.regen_delay;
+        if self.burnout {
+            self.parry_age = 0;
+        }
+    }
+
+    pub(super) fn tick(&mut self, fill: bool, ready: bool, hp: &mut u16, max_hp: u16, meter_tick: bool) {
         self.parry_flash = self.parry_flash.saturating_sub(1);
         self.perfect_scale = self.perfect_scale.saturating_sub(1);
         self.reversal_left = self.reversal_left.saturating_sub(1);
@@ -108,7 +121,7 @@ impl DriveState {
             *hp = hp.saturating_add(gain).min(max_hp);
             self.recoverable_hp -= gain;
         }
-        if !self.enabled {
+        if !self.enabled || !meter_tick {
             return;
         }
         if fill && ready {
@@ -366,10 +379,12 @@ impl Bus<'_> {
         let Some(side) = self.era_side(ps) else {
             return false;
         };
+        let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
-        if self.era_rules.gauge_mode == GaugeMode::Unified {
+        if mode == GaugeMode::Unified {
             if let Some(meter) = state.super_meter.checked_sub(STOCK_AT) {
                 state.super_meter = meter;
+                self.era_share_gauge(side);
                 return true;
             }
             return false;
@@ -386,12 +401,13 @@ impl Bus<'_> {
             drive.regen_delay = 150;
             self.era_emit_callout(ps, CalloutKind::Burnout);
         }
+        self.era_share_gauge(side);
         true
     }
 
     pub(crate) fn sf6_can_spend(&self, ps: u32, cost: u8) -> bool {
         self.era_state(ps).is_some_and(|state| {
-            if self.era_rules.gauge_mode == GaugeMode::Unified {
+            if state.unified_gauge {
                 state.super_meter >= STOCK_AT
             } else {
                 state.sf6.enabled && !state.sf6.burnout && state.sf6.points >= u16::from(cost)
@@ -415,6 +431,7 @@ impl Bus<'_> {
             return false;
         };
         let (held, fresh) = self.era_buttons(ps);
+        let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
         for (i, tracker) in state.sf6.motions.iter_mut().enumerate() {
             tracker.step(relative, motion(i));
@@ -503,7 +520,7 @@ impl Bus<'_> {
             return true;
         }
         if was_parrying && parry_chord {
-            if self.era_rules.gauge_mode != GaugeMode::Unified {
+            if mode != GaugeMode::Unified {
                 self.sf6_spend(ps, 1);
             }
             let drive = &mut self.toggle_state.era.fighters[side].sf6;
@@ -515,9 +532,10 @@ impl Bus<'_> {
         if free
             && forward_edge
             && state_forward(self.era_state(ps))
-            && self.era_rules.gauge_mode == GaugeMode::EraDefault
+            && mode == GaugeMode::EraDefault
         {
             self.toggle_state.era.fighters[side].sf6.recover(1);
+            self.era_share_gauge(side);
         }
         self.sf6_attacks(ps, entity, free, cancel, held, fresh)
     }
@@ -648,6 +666,7 @@ impl Bus<'_> {
         if slot == JINRAI {
             state.sf6.jinrai_left = 35;
         }
+        self.era_share_gauge(side);
         true
     }
 
@@ -664,7 +683,7 @@ impl Bus<'_> {
         }
         let perfect = state.sf6.parry_age <= 2;
         state.sf6.parry_flash = 6;
-        if self.era_rules.gauge_mode == GaugeMode::Unified {
+        if state.unified_gauge {
             state.super_meter = state
                 .super_meter
                 .saturating_add(STOCK_AT / 2)
@@ -677,6 +696,7 @@ impl Bus<'_> {
             self.toggle_state.era.freeze = self.toggle_state.era.freeze.max(8);
             self.era_emit_callout(ps, CalloutKind::PerfectParry);
         }
+        self.era_share_gauge(side);
         self.queue_sound(8);
         true
     }
@@ -721,14 +741,16 @@ impl Bus<'_> {
             }
         }
         if let Some(side) = self.era_side(target) {
+            let absorbed_damage = self.dramatic_scale_damage(owner, damage);
             let state = &mut self.toggle_state.era.fighters[side];
             if !chip && state.sf6.armor != 0 && !armor_break {
                 state.sf6.armor -= 1;
                 state.sf6.armored_hit = true;
-                let lost = damage.min(state.sub_hp.saturating_sub(1));
+                let lost = absorbed_damage.min(state.sub_hp.saturating_sub(1));
                 state.sub_hp -= lost;
                 state.sf6.recoverable_hp = state.sf6.recoverable_hp.saturating_add(lost);
                 state.sf6.recovery_delay = 75;
+                self.era_reconcile_health(target, side);
                 return None;
             }
             if !chip {
@@ -793,8 +815,7 @@ impl Bus<'_> {
     }
 
     fn sf6_is_punish(&self, owner: u32, target: u32) -> bool {
-        if self.era_rules.gauge_mode == GaugeMode::NoGauges
-            || !self.era_state(owner).is_some_and(EraFighterState::is_sf6)
+        if !self.era_state(owner).is_some_and(|state| state.is_sf6() && state.super_capacity != 0)
             || !self.era_state(target).is_some_and(|state| state.attack_reached_active)
         {
             return false;
@@ -836,6 +857,7 @@ impl Bus<'_> {
             state.burnout = true;
             self.era_emit_callout(ps, CalloutKind::Burnout);
         }
+        self.era_share_gauge(side);
     }
 
     pub(crate) fn sf6_impact_block(&mut self, owner: u32, target: u32, corner: bool) -> bool {

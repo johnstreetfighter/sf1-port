@@ -230,7 +230,7 @@ cargo run -p sf-dev --release -- rebind <input> <Key>
 
 - **SF1+ (Spec #246).** All twelve tournament fighters have their own standing, crouching and jumping attacks, blocks, techable throws and specials on the translated engine. True combos, cancels and throws have independent modern-rule switches. Balanced roster retunes the original character values. Each fighter can play the real Arcade ladder, with Ryu standing in for the player's own opponent slot. Ryu's approved theme is integrated (SP15 #267).
 - **Online 1v1 and live spectating (Spec #303).** The twelve-fighter roster runs with rollback up to eight frames and 0–4 frames of input delay. Up to four observers can join before or during a match. Rooms use shareable codes or IPv4 addresses, LAN discovery, and an optional community directory. The host synchronizes fighters, styles, match rules, DIPs, stage and seed. Peers must match engine, data and art identities. Display, sound, bindings and Jukebox preferences stay local. Pause and MOVES keep the match running, and rematch/reselect decisions are shared. The browser shows measured ping/jitter, rollback limit and the actual Ethernet/Wi-Fi link. Wired Only filters Wi-Fi rooms and can reject Wi-Fi challengers. See the [netplay guide](docs/netplay.md).
-- **SF1+ Dramatic Battle (#287, #352).** Fight a CPU boss with a CPU partner, a second local player, or an online guest. Choose one of six rivalries or set up a custom team and stage. The allies can share a lifebar or fight with independent lifebars, and friendly fire is optional. Online co-op uses the same rollback and live spectating as Versus. The matching SF1+ art pack enables the full cast.
+- **Dramatic Battle.** Fight a CPU boss with a CPU partner, a second local player, or an online guest. Choose a rivalry and its era, or set each fighter's style and the stage in Custom 2v1. Shared Lifebar gives the allies one Team Era Gauge, with three unified stocks for mixed eras. Independent Lifebar gives each ally their own gauge. The boss has a separate gauge. Online co-op supports rollback and live spectating.
 
 ### Era Styles
 
@@ -256,7 +256,7 @@ Haute42 S16 DirectInput Up and Down passed in the Main Menu and Training. Charge
 
 Next, in this order:
 
-1. **Endings, Dramatic Battle and World Tour.** Later-era styles and gauges for Dramatic Battle are tracked in [#120](https://github.com/johnstreetfighter/sf1-port/issues/120).
+1. **Endings and World Tour.** Native character endings, win quotes, and the 1987 World Tour campaign are tracked in [#19](https://github.com/johnstreetfighter/sf1-port/issues/19).
 2. **Bonus challengers by 1987 lore ([Spec #2](https://github.com/johnstreetfighter/sf1-port/issues/2)).** Twenty-eight challengers chosen by 1987 lore, in three roster waves. Tickets start when a wave does and extend netplay roster compatibility.
 
 ## Technical documentation

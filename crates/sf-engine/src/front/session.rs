@@ -18,7 +18,7 @@ use sf_video::sprite_bank::SpriteBank;
 use super::after_match::AfterMatchBox;
 use super::attract::{FreePlay, TitleLogo};
 use super::cabinet::Players;
-use super::dramatic_select::{boot_flag, supported_styles, DramaticGuest, DramaticPicks, DramaticSetupScreen};
+use super::dramatic_select::{boot_flag, DramaticGuest, DramaticPicks, DramaticSetupScreen};
 use super::faithful::{Cabinet, CabinetEvent, DipScreen};
 use super::fight::{first_opponent_flag, Fight, FightDips, FightEvent, FightKind, FightSetup};
 use super::menu::{MenuItem, MenuScreen};
@@ -878,8 +878,8 @@ impl GameSession {
 
     pub(super) fn start_dramatic(&mut self, config: MatchConfig) -> bool {
         let Some(rules) = config.dramatic else { return false };
-        if config.preset == RulesetPreset::Faithful1987 || !supported_styles(rules) {
-            self.notice = Some("DRAMATIC BATTLE REQUIRES SF1+".into());
+        if config.preset == RulesetPreset::Faithful1987 || !rules.styles_available(&config) {
+            self.notice = Some("DRAMATIC BATTLE STYLE IS UNAVAILABLE".into());
             return false;
         }
         let picks = [(0, config.roster.p1), (1, rules.ally2), (1, config.roster.p2)];
@@ -1134,7 +1134,7 @@ impl GameSession {
             self.backgrounds.as_ref()?.listed_stages().first().map(|stage| StagePick::Bank(stage.index))
         }).unwrap_or(StagePick::Bank(0));
         let (config, stage) = if kind == RoomKind::Dramatic {
-            let initial = DramaticSetupScreen::open(true).preset().expect("the default rivalry");
+            let initial = DramaticSetupScreen::for_config(true, &self.config).preset().expect("the default rivalry");
             let stage = self.dramatic_stage_pick(initial.rules.stage).unwrap_or(stage);
             (self.stamp_dramatic(initial.ally1, initial.boss, initial.rules, Some(stage)), stage)
         } else {
@@ -1680,7 +1680,7 @@ impl GameSession {
                                 if let Some(at) = self.stack.iter().rposition(|screen| matches!(screen, Screen::DramaticSetup(_))) {
                                     self.stack.truncate(at);
                                 }
-                                self.stack.push(Screen::DramaticSetup(DramaticSetupScreen::from_rules(rules)));
+                                self.stack.push(Screen::DramaticSetup(DramaticSetupScreen::from_rules(rules, &setup.config)));
                             } else {
                                 let select = self.select_for(setup.kind);
                                 if let Some(top) = self.stack.last_mut() {
@@ -1851,7 +1851,7 @@ impl GameSession {
                         MenuItem::Training => Some(self.menu(MenuScreen::training())),
                         MenuItem::DramaticBattle | MenuItem::LocalCoopDramatic => {
                             let co_op = item == MenuItem::LocalCoopDramatic;
-                            Some(Screen::DramaticSetup(DramaticSetupScreen::open(co_op)))
+                            Some(Screen::DramaticSetup(DramaticSetupScreen::for_config(co_op, &self.config)))
                         }
                         MenuItem::Settings => Some(Screen::Settings(Box::new(
                             {
@@ -2254,7 +2254,7 @@ fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel
     let facing_right = facing_right(machine.work_ram(), &machine.state.objectram, player);
     let fighter = fight.player_fighter(side);
     let player_table = machine.data_bank().is_some_and(|b| b.table(fighter).is_some());
-    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, &machine.era_fighters()[side]);
+    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, fight.pad_era_state(side));
     MovesPanel::from_entries(fighter, entries)
         .with_inputs(notation, facing_right)
         .with_show(fight.training())

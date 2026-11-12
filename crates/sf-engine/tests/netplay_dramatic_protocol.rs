@@ -32,9 +32,17 @@ fn dramatic_rules() -> SyncedMatchRules {
     )
 }
 
+fn mixed_dramatic_rules() -> SyncedMatchRules {
+    let mut rules = dramatic_rules();
+    let dramatic = rules.config.dramatic.as_mut().unwrap();
+    dramatic.rivalry = None;
+    dramatic.styles = [Revision::Sf6, Revision::St, Revision::Sf3ThreeS];
+    rules
+}
+
 #[test]
 fn dramatic_rules_round_trip_the_native_roster_and_second_ally() {
-    let rules = dramatic_rules();
+    let rules = mixed_dramatic_rules();
     let bytes = rules.to_bytes();
     assert_eq!(bytes[0], 2, "Dramatic rules carry an extended schema");
     assert_eq!(SyncedMatchRules::from_bytes(&bytes), Some(rules));
@@ -115,7 +123,7 @@ fn dramatic_changes_are_included_in_the_advertised_config_hash() {
 
 #[test]
 fn setup_packets_round_trip_the_host_draft_reference_and_ally_lock() {
-    let rules = dramatic_rules();
+    let rules = mixed_dramatic_rules();
     for packet in [
         NetPacket::DramaticSetup {
             generation: 9,
@@ -126,7 +134,7 @@ fn setup_packets_round_trip_the_host_draft_reference_and_ally_lock() {
             generation: 9,
             setup_seq: 12,
             fighter: TournamentFighter::Ken,
-            revision: Revision::Sf1Plus,
+            revision: Revision::Sf3ThreeS,
         },
     ] {
         assert_eq!(NetPacket::from_bytes(&packet.to_bytes()), Some(packet));
@@ -170,7 +178,7 @@ fn request(kind: RoomKind, rules: SyncedMatchRules) -> NetPacket {
 
 #[test]
 fn dramatic_version_rejection_uses_original_rules_schema() {
-    let rules = dramatic_rules();
+    let rules = mixed_dramatic_rules();
     let mut outdated = rules;
     outdated.protocol_hash ^= 1;
     let reply = policy(rules)
@@ -219,8 +227,20 @@ fn dramatic_admission_rejects_versus_and_unsupported_era_rules() {
 }
 
 #[test]
+fn dramatic_admission_respects_the_host_what_if_rule() {
+    let mut rules = mixed_dramatic_rules();
+    rules.config.dramatic.as_mut().unwrap().styles[1] = Revision::Sf6;
+    assert!(rules.supports_online(), "Sagat has a What-If SF6 style");
+    rules.config.roster.what_if_styles = false;
+    let reply = policy(rules).welcome(&request(RoomKind::Dramatic, rules), 0, false);
+    assert!(matches!(reply, Some(NetPacket::Welcome {
+        accepted: false, reason: RejectReason::UnsupportedMode, ..
+    })));
+}
+
+#[test]
 fn dramatic_admission_uses_host_rules_for_ally_and_spectator() {
-    let rules = dramatic_rules();
+    let rules = mixed_dramatic_rules();
     let mut preferred = rules;
     preferred.config.dramatic = None;
     for role in [RoomKind::Dramatic, RoomKind::Spectate] {
