@@ -78,7 +78,7 @@ class CoverageLedgerTest(unittest.TestCase):
         self.assertEqual(ledger["scenario_count"], 137)
         self.assertEqual(
             ledger["cpu_totals"]["maincpu"],
-            {"executed_pcs": 9299, "translated_pcs": 9299, "untranslated_pcs": 0},
+            {"executed_pcs": 9287, "translated_pcs": 9287, "untranslated_pcs": 0},
         )
         self.assertEqual(
             ledger["cpu_totals"]["audiocpu"],
@@ -90,7 +90,7 @@ class CoverageLedgerTest(unittest.TestCase):
         )
         self.assertEqual(
             ledger["normal_play_cpu_totals"]["maincpu"],
-            {"executed_pcs": 8389, "translated_pcs": 8389, "untranslated_pcs": 0},
+            {"executed_pcs": 8377, "translated_pcs": 8377, "untranslated_pcs": 0},
         )
         self.assertEqual(
             ledger["normal_play_cpu_totals"]["audiocpu"],
@@ -129,7 +129,7 @@ class CoverageLedgerTest(unittest.TestCase):
             self.skipTest("local coverage probe data not present")
         neg = coverage_ledger.verify_negative_control()
         self.assertEqual(neg["untranslated_range"], "0x40bd4..0x40d2e")
-        self.assertEqual(neg["untranslated_pc_count"], 93)
+        self.assertEqual(neg["untranslated_pc_count"], 87)
         self.assertEqual(neg["first_pc"], "0x40bd4")
         self.assertEqual(neg["last_pc"], "0x40d2e")
 

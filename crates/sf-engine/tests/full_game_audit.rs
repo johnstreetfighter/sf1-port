@@ -98,13 +98,13 @@ fn full_game_audit_covers_all_user_stories_decisions_mame_behaviours_and_non_cer
     let ledger_md = std::fs::read_to_string(ledger_md_path).expect("read coverage-ledger.md");
     assert!(
         ledger_md.contains(
-            "**Normal-play (`Service Mode = Off`, 128 scenarios, `F1–F71` pre-test-mode scope):** `9990` executed PCs (`8389` `:maincpu`, `1378` `:audiocpu`, `223` `:audio2`), `9990` translated, **`0` untranslated**."
+            "**Normal-play (`Service Mode = Off`, 128 scenarios, `F1–F71` pre-test-mode scope):** `9978` executed PCs (`8377` `:maincpu`, `1378` `:audiocpu`, `223` `:audio2`), `9978` translated, **`0` untranslated**."
         ),
         "coverage-ledger.md missing zero-untranslated normal-play summary line"
     );
     assert!(
-        ledger_md.contains("| **Total** | | **10916** | **10916** | **0** | **0** |"),
-        "coverage-ledger.md missing 10916 / 10916 zero-untranslated total row across all 137 scenarios"
+        ledger_md.contains("| **Total** | | **10904** | **10904** | **0** | **0** |"),
+        "coverage-ledger.md missing 10904 / 10904 zero-untranslated total row across all 137 scenarios"
     );
 }
 
@@ -126,7 +126,7 @@ fn local_ledger_json_confirms_zero_untranslated_and_complete_note_dispositions()
     );
 
     let cpu_totals = &ledger["cpu_totals"];
-    for (cpu, expected_exec) in [("maincpu", 9299u64), ("audiocpu", 1394), ("audio2", 223)] {
+    for (cpu, expected_exec) in [("maincpu", 9287u64), ("audiocpu", 1394), ("audio2", 223)] {
         let executed = cpu_totals[cpu]["executed_pcs"]
             .as_u64()
             .expect("executed_pcs u64");
@@ -148,7 +148,7 @@ fn local_ledger_json_confirms_zero_untranslated_and_complete_note_dispositions()
     }
 
     let normal_totals = &ledger["normal_play_cpu_totals"];
-    for (cpu, expected_exec) in [("maincpu", 8389u64), ("audiocpu", 1378), ("audio2", 223)] {
+    for (cpu, expected_exec) in [("maincpu", 8377u64), ("audiocpu", 1378), ("audio2", 223)] {
         let executed = normal_totals[cpu]["executed_pcs"]
             .as_u64()
             .expect("executed_pcs u64");

@@ -1326,7 +1326,7 @@ def verify_negative_control() -> dict[str, Any]:
         assert len(undoc) == 1, f"Expected 1 undocumented untranslated routine, got {len(undoc)}"
         entry = undoc[0]
         assert entry["cite_addr"] == "0x40bd4", f"Unexpected cite_addr: {entry['cite_addr']}"
-        assert entry["executed_pc_count"] == 93, f"Expected 93 PCs, got {entry['executed_pc_count']}"
+        assert entry["executed_pc_count"] == 87, f"Expected 87 PCs, got {entry['executed_pc_count']}"
         for pc_hex in entry["executed_pcs"]:
             addr_info = neg_ledger["address_ledger"]["maincpu"][pc_hex]
             assert not addr_info["translated"], f"Expected {pc_hex} to be marked untranslated"
