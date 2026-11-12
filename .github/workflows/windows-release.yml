@@ -1,0 +1,116 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'push' || !github.event.deleted
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: '1.96.0'
+    outputs:
+      tag: ${{ steps.source.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Identify the tagged source
+        id: source
+        shell: pwsh
+        run: |
+          $version = python -c "import tomllib; from pathlib import Path; print(tomllib.loads(Path('Cargo.toml').read_text(encoding='utf-8'))['workspace']['package']['version'])"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tag = "v$version"
+          if ($tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw "Invalid workspace release version" }
+
+          if ($env:GITHUB_EVENT_NAME -eq 'push') {
+            if ($env:GITHUB_REF -cne "refs/tags/$tag") { throw "The release tag must match the workspace version $version" }
+          } elseif ($env:GITHUB_REF_TYPE -eq 'branch') {
+            # Manual branch runs use a local tag in the runner checkout.
+            git -c user.name="Release verification" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" tag -a "$tag" -m "Package verification"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+          $tagRef = "refs/tags/$tag"
+          $tagType = git cat-file -t "$tagRef"
+          if ($LASTEXITCODE -ne 0 -or $tagType -ne 'tag') { throw "Expected an annotated tag for $tag" }
+          $commit = git rev-parse "$tagRef^{commit}"
+          if ($LASTEXITCODE -ne 0 -or $commit -cne $env:GITHUB_SHA) { throw "The tag must point to the workflow commit" }
+          $head = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $head -cne $commit) { throw "Checkout does not match the release tag" }
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "commit=$commit" >> $env:GITHUB_OUTPUT
+
+      - name: Install the release Rust toolchain
+        run: rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal --target x86_64-pc-windows-msvc
+
+      - name: Build the Windows executable
+        run: python tools/release/build-windows.py "$env:RUNNER_TEMP/sf1-build"
+
+      - name: Package the ZIP and checksum
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./tools/release/package-windows.ps1 -Tag $env:RELEASE_TAG -BuildDirectory "$env:RUNNER_TEMP/sf1-build/release" -OutputDirectory "$env:RUNNER_TEMP/sf1-release"
+
+      - name: Verify the extracted Windows package
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          $archive = "$env:RUNNER_TEMP/sf1-release/sf1-port-${env:RELEASE_TAG}-windows-x86_64.zip"
+          python tools/release/verify-windows-package.py $archive "$env:RUNNER_TEMP/sf1-build/release/sf-game.exe" "$env:GITHUB_WORKSPACE" $env:RELEASE_TAG $env:RELEASE_COMMIT
+
+      - name: Keep the verified release files
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-${{ steps.source.outputs.tag }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/sf1-release/sf1-port-${{ steps.source.outputs.tag }}-windows-x86_64.zip
+            ${{ runner.temp }}/sf1-release/sf1-port-${{ steps.source.outputs.tag }}-windows-x86_64.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/sf1-release
+
+      - name: Publish and verify the GitHub downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          python3 tools/release/publish-windows.py "$GITHUB_REPOSITORY" "$RELEASE_TAG" "$RELEASE_COMMIT" \
+            "$RUNNER_TEMP/sf1-release/sf1-port-$RELEASE_TAG-windows-x86_64.zip"

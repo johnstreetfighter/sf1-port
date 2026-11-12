@@ -1,5 +1,23 @@
 # Windows release packages
 
+## Publish with GitHub Actions
+
+Push an annotated `vMAJOR.MINOR.PATCH` tag for the tested commit. The tag must
+match the workspace version. GitHub Actions builds the tagged source on Windows,
+verifies the ZIP and checksum, publishes a stable GitHub Release, then downloads
+and verifies both assets. The run retains the verified files as an Actions
+artifact. Its build job uses the runner's read-only token for public dependency
+notices. The publishing job uses the runner's repository contents permission.
+
+Run **Windows release** manually from the Actions tab to test the build,
+packaging, and extracted executable on a branch. The run creates its tag inside
+the checkout and uploads the verified files as an Actions artifact. Release
+publication runs on tag pushes. The hosted check runs the extracted
+`sf-game.exe --version` and inspects PE imports. Record desktop launch checks in
+the release notes when performed on a Windows desktop.
+
+## Build and package locally
+
 When a release changes the edition name, update the first heading in the
 [root README](../../README.md) and the Main Menu logo in the release
 commit before tagging it. Use the exact edition name for the new version from
@@ -12,7 +30,7 @@ enabled. Use a separate real target directory when another checkout is building;
 shared target junctions can reuse an executable from the wrong revision.
 
 ```powershell
-rtk cargo build --release --locked -j 2 --target-dir C:/path/to/isolated-target -p sf-game --bin sf-game
+rtk proxy python tools/release/build-windows.py C:/path/to/isolated-target
 rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File tools/release/package-windows.ps1 -Tag v1.2.1 -BuildDirectory C:/path/to/isolated-target/release -OutputDirectory C:/path/to/release-packages -SourceRoot C:/path/to/tagged-checkout
 ```
 

@@ -9,6 +9,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$npRtk = Get-Command rtk -CommandType Application -ErrorAction SilentlyContinue
+function Invoke-ReleaseCommand([string]$Command) {
+    if ($npRtk) { & $npRtk.Source proxy $Command @args }
+    else { & $Command @args }
+}
 function Get-Sha256([string]$Path) {
     $npSha = [Security.Cryptography.SHA256]::Create()
     $npStream = [IO.File]::OpenRead($Path)
@@ -22,18 +27,18 @@ if (-not (Test-Path -LiteralPath $npExe -PathType Leaf)) { throw 'BuildDirectory
 
 Push-Location -LiteralPath $npSource
 try {
-    $npHead = (& rtk proxy git rev-parse HEAD).Trim()
+    $npHead = (Invoke-ReleaseCommand git rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read the source revision.' }
-    $npTagged = (& rtk proxy git rev-parse "$Tag^{commit}").Trim()
+    $npTagged = (Invoke-ReleaseCommand git rev-parse "$Tag^{commit}").Trim()
     if ($LASTEXITCODE -ne 0 -or $npHead -ne $npTagged) { throw 'Source HEAD must equal the release tag.' }
-    & rtk proxy git diff --quiet HEAD --
+    Invoke-ReleaseCommand git diff --quiet HEAD --
     if ($LASTEXITCODE -ne 0) { throw 'Commit tracked source changes before packaging.' }
 
     # Only metadata is read here; builds must have completed separately.
     $npPreviousTarget = $env:CARGO_TARGET_DIR
     try {
         $env:CARGO_TARGET_DIR = Split-Path -Parent $npBuild
-        $npMetadataText = & rtk proxy cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc
+        $npMetadataText = Invoke-ReleaseCommand cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc
         if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve locked dependency metadata.' }
         $npMetadata = $npMetadataText | ConvertFrom-Json
     } finally { $env:CARGO_TARGET_DIR = $npPreviousTarget }
@@ -41,12 +46,22 @@ try {
 
 $npBanner = 'This historical baseline predates the workspace version and --version flag; its Cargo packages are 0.1.0. The v1.0.0 tag and source commit identify this release.'
 if ([Version]$Tag.Substring(1) -ge [Version]'1.1.0') {
-    $npBanner = (& rtk proxy $npExe --version | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $npBanner.Contains($Tag) -or -not $npBanner.Contains($npHead.Substring(0, 8))) {
+    # PowerShell can return before a GUI executable closes its output pipe.
+    $npStart = [Diagnostics.ProcessStartInfo]::new($npExe, '--version')
+    $npStart.UseShellExecute = $false
+    $npStart.CreateNoWindow = $true
+    $npStart.RedirectStandardOutput = $true
+    $npVersion = [Diagnostics.Process]::Start($npStart)
+    try {
+        $npBanner = $npVersion.StandardOutput.ReadToEnd().Trim()
+        $npVersion.WaitForExit()
+        $npVersionExit = $npVersion.ExitCode
+    } finally { $npVersion.Dispose() }
+    if ($npVersionExit -ne 0 -or -not $npBanner.Contains($Tag) -or -not $npBanner.Contains($npHead.Substring(0, 8))) {
         throw 'Executable --version must identify both the requested version and the exact source revision.'
     }
 }
-$npRust = (& rtk proxy rustc --version | Out-String).Trim()
+$npRust = (Invoke-ReleaseCommand rustc --version | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the Rust compiler.' }
 
 $npOutput = [IO.Path]::GetFullPath($OutputDirectory)
@@ -89,7 +104,7 @@ function Get-UpstreamNotices($Dependency, [string]$ManifestFolder) {
     $npCacheKey = "$npRepository@$npRevision"
     if ($npNoticeCache.ContainsKey($npCacheKey)) { return $npNoticeCache[$npCacheKey] }
     if ($npRepository.Host -eq 'github.com') {
-        $npEntries = & rtk proxy gh api "repos/$npRepoPath/contents?ref=$npRevision" | ConvertFrom-Json
+        $npEntries = Invoke-ReleaseCommand gh api "repos/$npRepoPath/contents?ref=$npRevision" | ConvertFrom-Json
         if ($LASTEXITCODE -ne 0) { throw "Cannot read pinned upstream notices for $($Dependency.name)." }
     } elseif ($npRepository.Host -eq 'gitlab.com') {
         $npProject = [Uri]::EscapeDataString($npRepoPath)
@@ -103,7 +118,7 @@ function Get-UpstreamNotices($Dependency, [string]$ManifestFolder) {
     while ($npFolders.Count) {
         $npFolderPath = $npFolders.Pop()
         if ($npRepository.Host -eq 'github.com') {
-            $npChildren = & rtk proxy gh api "repos/$npRepoPath/contents/$npFolderPath`?ref=$npRevision" | ConvertFrom-Json
+            $npChildren = Invoke-ReleaseCommand gh api "repos/$npRepoPath/contents/$npFolderPath`?ref=$npRevision" | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw "Cannot read pinned upstream license folder for $($Dependency.name)." }
         } else {
             $npFolderEncoded = [Uri]::EscapeDataString($npFolderPath)
@@ -126,7 +141,7 @@ function Get-UpstreamNotices($Dependency, [string]$ManifestFolder) {
     $npNotices = @()
     foreach ($npEntry in $npEntries) {
         if ($npRepository.Host -eq 'github.com') {
-            $npFile = & rtk proxy gh api "repos/$npRepoPath/contents/$($npEntry.path)?ref=$npRevision" | ConvertFrom-Json
+            $npFile = Invoke-ReleaseCommand gh api "repos/$npRepoPath/contents/$($npEntry.path)?ref=$npRevision" | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw "Cannot download pinned notice $($npEntry.name)." }
         } else {
             $npEntryPath = [Uri]::EscapeDataString($npEntry.path)
