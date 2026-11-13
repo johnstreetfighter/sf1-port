@@ -32,7 +32,8 @@ const TOBIGERI: u8 = 0x19;
 const INSTALL_INPUT: &[Dir] = &[Down, Neutral, Down];
 const HALF_CIRCLE_BACK: &[Dir] = &[Forward, DownForward, Down, DownBack, Back];
 const HALF_CIRCLE_FORWARD: &[Dir] = &[Back, DownBack, Down, DownForward, Forward];
-const FULL_DRIVE: u16 = 6 * STOCK_AT as u16;
+pub(super) const FULL_DRIVE: u16 = 6 * STOCK_AT as u16;
+pub(super) const DRIVE_PARRY_START_COST: u8 = STOCK_AT / 2;
 const QCF: &[Dir] = &[Down, DownForward, Forward];
 const QCB: &[Dir] = &[Down, DownBack, Back];
 const DP: &[Dir] = &[Forward, Down, DownForward];
@@ -249,6 +250,10 @@ impl EraFighterState {
 
     pub fn sf6_drive_points(&self) -> Option<u16> {
         self.is_sf6().then_some(self.sf6.points)
+    }
+
+    pub(super) fn sf6_can_pay_drive(&self, cost: u8) -> bool {
+        self.sf6.enabled && !self.sf6.burnout && self.sf6.points >= u16::from(self.meter_cost(cost))
     }
 
     pub(crate) fn set_sf6_practice_drive(&mut self, points: Option<u16>) {
@@ -477,6 +482,14 @@ impl Bus<'_> {
             drive.regen_delay = 150;
             self.era_emit_callout(ps, CalloutKind::Burnout);
         }
+        // Sustaining parry consumes one point per frame. The drain tail is
+        // for a discrete payment, such as starting parry or using Impact.
+        if cost > 1 {
+            self.toggle_state.era.gauge_drive_spends[side] = true;
+            if let Some(partner) = self.era_shared_gauge(side) {
+                self.toggle_state.era.gauge_drive_spends[partner] = true;
+            }
+        }
         self.era_share_gauge(side);
         true
     }
@@ -486,7 +499,7 @@ impl Bus<'_> {
             if state.unified_gauge {
                 state.super_meter >= state.meter_cost(STOCK_AT)
             } else {
-                state.sf6.enabled && !state.sf6.burnout && state.sf6.points >= u16::from(state.meter_cost(cost))
+                state.sf6_can_pay_drive(cost)
             }
         })
     }
@@ -610,10 +623,10 @@ impl Bus<'_> {
         }
         if new_parry
             && free
-            && self.sf6_can_spend(ps, STOCK_AT / 2)
+            && self.sf6_can_spend(ps, DRIVE_PARRY_START_COST)
             && self.era_start_banked_move(ps, entity, PARRY, 0, None)
         {
-            self.sf6_spend(ps, STOCK_AT / 2);
+            self.sf6_spend(ps, DRIVE_PARRY_START_COST);
             let drive = &mut self.toggle_state.era.fighters[side].sf6;
             if !drive.burnout {
                 drive.parry_age = 1;

@@ -16,10 +16,17 @@
 //! a level gauge as a thin ruled line with its number in a small bevelled
 //! box. **Plate** sets the bar in a gold frame with a light top edge and a
 //! dark-gold shadow, stock cells split by dark gold, and `LV` with the
-//! number in PLAYER1 gold. Both fit the same corner box as Ruled.
+//! number in PLAYER1 gold. Both fit the same corner box as Ruled. These
+//! default pens are also the fallback for gauges with no presentation data.
+//! With a [`GaugePresentation`], each art uses the era's palette and meter
+//! effects in the same bar shape, with a small emblem label beside the row.
 
 use crate::compositor::{small_glyph, RomFont};
 use crate::render::{HEIGHT, WIDTH};
+
+mod signature;
+pub use signature::{GaugeKind, GaugePresentation, RowPresentation};
+use signature::{draw_label, GaugeColumn, RowPaint};
 
 /// A portion of a whole: `num` out of `den`, clamped to `0..=1` when drawn.
 /// A zero `den` is empty.
@@ -259,6 +266,9 @@ const LEVEL_BOX: usize = 10;
 pub const CORNER_HEIGHT: usize = MAIN_ROW + ROW_GAP + SECOND_ROW;
 /// The widest a corner draws: the level number's column and a full bar with its caps.
 pub const CORNER_WIDTH: usize = DIGIT_COLUMN + BAR_WIDTH + 2;
+/// The widest corner with an Era Signature: gauge, one pixel of separation,
+/// and the backing for a nine-letter label. Measured from [`CORNER_EDGE`].
+pub const SIGNATURE_CORNER_WIDTH: usize = CORNER_WIDTH + 1 + 45;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Side {
@@ -283,20 +293,33 @@ pub fn draw(argb: &mut [u32], hud: &EraHud, art: GaugeArt, font: Option<&RomFont
 /// [`draw`] with the corners `lift` rows higher: the Training frame meter
 /// takes the bottom rows and the corners sit directly above it.
 pub fn draw_lifted(argb: &mut [u32], hud: &EraHud, art: GaugeArt, font: Option<&RomFont<'_>>, lift: usize) {
-    for (side, gauge) in [(Side::P1, hud.p1), (Side::P2, hud.p2)] {
+    draw_lifted_presented(argb, hud, art, font, lift, [None; 2]);
+}
+
+/// Draws the same gauges with optional Era Signatures and meter feedback.
+pub fn draw_lifted_presented(
+    argb: &mut [u32],
+    hud: &EraHud,
+    art: GaugeArt,
+    font: Option<&RomFont<'_>>,
+    lift: usize,
+    [p1, p2]: [Option<GaugePresentation>; 2],
+) {
+    for (side, gauge, presentation) in [(Side::P1, hud.p1, p1), (Side::P2, hud.p2, p2)] {
         if let Some(gauge) = gauge {
-            draw_corner(&mut Corner { argb, side }, &gauge, art, font, lift, MAIN_ROW);
+            draw_corner(&mut Corner { argb, side }, &gauge, art, font, lift, MAIN_ROW, presentation);
         }
     }
 }
 
 /// The independent ally's compact gauge, above the primary left corner.
-pub(crate) fn draw_ally2(
+pub(crate) fn draw_ally2_presented(
     argb: &mut [u32],
     gauge: &EraGauge,
     art: GaugeArt,
     font: Option<&RomFont<'_>>,
     lift: usize,
+    presentation: Option<GaugePresentation>,
 ) {
     draw_corner(
         &mut Corner { argb, side: Side::P1 },
@@ -305,6 +328,7 @@ pub(crate) fn draw_ally2(
         font,
         lift.saturating_add(CORNER_HEIGHT + ROW_GAP),
         SECOND_ROW,
+        presentation,
     );
 }
 
@@ -347,6 +371,7 @@ fn draw_corner(
     font: Option<&RomFont<'_>>,
     lift: usize,
     main_height: usize,
+    presentation: Option<GaugePresentation>,
 ) {
     let height = main_height + gauge.second.map_or(0, |_| ROW_GAP + SECOND_ROW);
     let bottom = HEIGHT.saturating_sub(CORNER_BOTTOM.saturating_add(lift));
@@ -360,17 +385,21 @@ fn draw_corner(
         GaugeArt::Plate => PLATE_COLUMN,
     };
     let bar_x = if levelled { lead } else { 0 };
-    let main = (top, main_height, gauge.main, Ink::GOLD);
+    let main = (top, main_height, gauge.main, Ink::GOLD, presentation.map(|gauge| gauge.main));
     let second = gauge.second.map(|row| {
-        (top + main_height + ROW_GAP, SECOND_ROW, row, Ink::LAVENDER)
+        (top + main_height + ROW_GAP, SECOND_ROW, row, Ink::LAVENDER, presentation.and_then(|gauge| gauge.second))
     });
-    for (i, (y0, height, row, ink)) in std::iter::once(main).chain(second).enumerate() {
+    for (i, (y0, height, row, ink, presentation)) in std::iter::once(main).chain(second).enumerate() {
         let avail = (CORNER_WIDTH - bar_x).min(BAR_WIDTH + 2);
         let at = Slot { x0: bar_x, avail, floor, y0, height };
-        match art {
-            GaugeArt::Ruled => draw_row(corner, bar_x, y0, height, row, ink, font),
-            GaugeArt::Blocks => draw_blocks_row(corner, at, row, ink, font),
-            GaugeArt::Plate => draw_plate_row(corner, at, row, i == 1, font),
+        let paint = RowPaint::new(row, presentation, corner.side);
+        let end = match art {
+            GaugeArt::Ruled => draw_row(corner, at, row, ink, paint, font),
+            GaugeArt::Blocks => draw_blocks_row(corner, at, row, ink, paint, font),
+            GaugeArt::Plate => draw_plate_row(corner, at, row, i == 1, paint, font),
+        };
+        if let Some(presentation) = presentation {
+            draw_label(corner, end + 1, at, presentation.kind, paint);
         }
     }
 }
@@ -402,20 +431,19 @@ fn lit_pen(state: GaugeState, ink: Ink, fy: usize) -> u32 {
 
 fn draw_row(
     corner: &mut Corner<'_>,
-    x0: usize,
-    y0: usize,
-    height: usize,
+    at: Slot,
     row: GaugeRow,
     ink: Ink,
+    paint: RowPaint,
     font: Option<&RomFont<'_>>,
-) {
+) -> usize {
+    let Slot { x0, y0, height, .. } = at;
     let state = row.state();
-    let rule = if state == GaugeState::Greyed { pens::GREY } else { pens::RULE };
-    // Fill rows `y0 + 1 ..= y0 + height - 3`, the top one lit when full.
-    let fill_pen = |fy: usize| lit_pen(state, ink, fy);
+    let rule = paint.rail(if state == GaugeState::Greyed { pens::GREY } else { pens::RULE });
+    let shadow = paint.shadow(pens::SHADOW);
     let fill_rows = height - 3;
-    // Interior columns, each lit or not; dividers and caps are `None`.
-    let mut columns: Vec<Option<bool>> = Vec::with_capacity(BAR_WIDTH + 2);
+    // Interior columns carry their stock position. Dividers and caps are `None`.
+    let mut columns = Vec::with_capacity(BAR_WIDTH + 2);
     columns.push(None);
     match row {
         GaugeRow::Stock { cells, full, part, .. } => {
@@ -432,17 +460,17 @@ fn draw_row(
                 } else {
                     0
                 };
-                columns.extend((0..cell_w).map(|i| Some(i < lit)));
+                columns.extend((0..cell_w).map(|i| Some(GaugeColumn::new(i, cell_w, lit, cell, cells))));
             }
         }
         GaugeRow::Level { fill, length, .. } | GaugeRow::Bar { fill, length, .. } => {
             let width = length.px(BAR_WIDTH).max(1);
             let lit = fill.px(width);
-            columns.extend((0..width).map(|i| Some(i < lit)));
+            columns.extend((0..width).map(|i| Some(GaugeColumn::continuous(i, width, lit))));
             if let (GaugeRow::Level { level, .. }, Some(font)) = (row, font) {
                 // The ROM's 8×8 digit (tiles `0x00`–`0x09`), bottom-aligned
                 // with the row: a second row's number reaches up into the gap.
-                let digit_pens = if state == GaugeState::Greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD };
+                let digit_pens = paint.digit(if state == GaugeState::Greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD });
                 let x = match corner.side {
                     Side::P1 => corner.screen_x(0),
                     Side::P2 => corner.screen_x(7),
@@ -452,29 +480,31 @@ fn draw_row(
         }
     }
     columns.push(None);
-    for (i, column) in columns.iter().enumerate() {
+    let end = columns.len();
+    for (i, column) in columns.into_iter().enumerate() {
         let lx = x0 + i;
-        let edge_cap = i == 0 || i == columns.len() - 1;
+        let edge_cap = i == 0 || i == end - 1;
         match column {
             None => {
                 for dy in 0..height - 1 {
                     corner.put(lx, y0 + dy, rule);
                 }
                 if !edge_cap {
-                    corner.put(lx, y0 + height - 1, pens::SHADOW);
+                    corner.put(lx, y0 + height - 1, shadow);
                 }
             }
-            Some(lit) => {
+            Some(column) => {
                 corner.put(lx, y0, rule);
                 for fy in 0..fill_rows {
-                    let pen = if *lit { fill_pen(fy) } else { pens::SHADOW };
+                    let pen = paint.fill(ink, column, fy, pens::SHADOW);
                     corner.put(lx, y0 + 1 + fy, pen);
                 }
                 corner.put(lx, y0 + height - 2, rule);
-                corner.put(lx, y0 + height - 1, pens::SHADOW);
+                corner.put(lx, y0 + height - 1, shadow);
             }
         }
     }
+    x0 + end
 }
 
 /// Where a row sits in its corner: the first local column, the columns it
@@ -500,6 +530,7 @@ fn bevel_box(
     (x, y): (usize, usize),
     (w, h): (usize, usize),
     (light, dark): (u32, u32),
+    shadow: u32,
     inside: impl Fn(usize, usize) -> u32,
 ) {
     // A column counted from the box's screen-left edge, as a local column.
@@ -508,9 +539,9 @@ fn bevel_box(
     // P2's inside starts past the dark edge and its shadow.
     let inner = if mirrored { 2 } else { 1 };
     for sx in 0..w {
-        corner.put(x + col(sx), y, if sx + 1 < w { light } else { pens::SHADOW });
-        corner.put(x + col(sx), y + h - 2, if sx + 2 < w { dark } else { pens::SHADOW });
-        corner.put(x + col(sx), y + h - 1, pens::SHADOW);
+        corner.put(x + col(sx), y, if sx + 1 < w { light } else { shadow });
+        corner.put(x + col(sx), y + h - 2, if sx + 2 < w { dark } else { shadow });
+        corner.put(x + col(sx), y + h - 1, shadow);
     }
     for dy in 1..h - 2 {
         corner.put(x + col(0), y + dy, light);
@@ -519,14 +550,21 @@ fn bevel_box(
             corner.put(x + lx, y + dy, inside(lx - inner, dy - 1));
         }
         corner.put(x + col(w - 2), y + dy, dark);
-        corner.put(x + col(w - 1), y + dy, pens::SHADOW);
+        corner.put(x + col(w - 1), y + dy, shadow);
     }
 }
 
 /// Blocks: a stock row is a run of bevelled boxes, a full box lit in the
 /// row's ink and the next one lit up to its `part`; a level row is a thin
 /// ruled line with the level in a bevelled box.
-fn draw_blocks_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, ink: Ink, font: Option<&RomFont<'_>>) {
+fn draw_blocks_row(
+    corner: &mut Corner<'_>,
+    at: Slot,
+    row: GaugeRow,
+    ink: Ink,
+    paint: RowPaint,
+    font: Option<&RomFont<'_>>,
+) -> usize {
     let state = row.state();
     let greyed = state == GaugeState::Greyed;
     let lit_bevel = match state {
@@ -536,6 +574,9 @@ fn draw_blocks_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, ink: Ink, f
     };
     let dark_bevel = if greyed { (pens::GREY_LIGHT, pens::GREY) } else { (pens::BEVEL_LIGHT, pens::BEVEL_DARK) };
     let empty = if greyed { pens::SHADOW } else { pens::BEVEL };
+    let lit_bevel = (paint.light_rail(lit_bevel.0), paint.rail(lit_bevel.1));
+    let dark_bevel = (paint.rail(dark_bevel.0), paint.dark_rail(dark_bevel.1));
+    let shadow = paint.shadow(pens::SHADOW);
     match row {
         GaugeRow::Stock { cells, full, part, .. } => {
             let cells = cells.max(1) as usize;
@@ -547,40 +588,40 @@ fn draw_blocks_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, ink: Ink, f
                 let size = (cell_w, at.height);
                 let origin = x;
                 x += cell_w;
-                if cell < full as usize {
-                    bevel_box(corner, (origin, at.y0), size, lit_bevel, |_, fy| lit_pen(state, ink, fy));
+                let content_width = cell_w - 3;
+                let (bevel, lit) = if cell < full as usize {
+                    (lit_bevel, content_width)
                 } else {
-                    let lit = if cell == full as usize { part.px(cell_w - 3) } else { 0 };
-                    bevel_box(corner, (origin, at.y0), size, dark_bevel, |dx, fy| {
-                        if dx < lit {
-                            lit_pen(state, ink, fy)
-                        } else {
-                            empty
-                        }
-                    });
-                }
+                    let lit = if cell == full as usize { part.px(content_width) } else { 0 };
+                    (dark_bevel, lit)
+                };
+                bevel_box(corner, (origin, at.y0), size, bevel, shadow, |dx, fy| {
+                    paint.fill(ink, GaugeColumn::new(dx, content_width, lit, cell, cells), fy, empty)
+                });
             }
+            x
         }
         GaugeRow::Bar { fill, length, .. } => {
             let width = length.px(at.avail - 3).max(1);
             let lit = fill.px(width);
             let border = if state == GaugeState::Full { lit_bevel } else { dark_bevel };
-            bevel_box(corner, (at.x0, at.y0), (width + 3, at.height), border, |dx, fy| {
-                if dx < lit { lit_pen(state, ink, fy) } else { empty }
+            bevel_box(corner, (at.x0, at.y0), (width + 3, at.height), border, shadow, |dx, fy| {
+                paint.fill(ink, GaugeColumn::continuous(dx, width, lit), fy, empty)
             });
+            at.x0 + width + 3
         }
         GaugeRow::Level { level, fill, length, .. } => {
             let bottom = at.y0 + at.height;
             let top = bottom.saturating_sub(LEVEL_BOX).max(at.floor);
-            level_box(corner, top, dark_bevel);
+            level_box(corner, top, dark_bevel, paint.track(pens::BEVEL));
             if let Some(font) = font {
-                let digit_pens = if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD };
+                let digit_pens = paint.digit(if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD });
                 let x = corner.text_x(1, 8);
                 font.tile_in(corner.argb, x, top + 1, u16::from(level.min(9)), digit_pens);
             }
             // The line leaves the box's right side: rule, one fill row,
             // rule and shadow, in the box's middle.
-            let rule = if greyed { pens::GREY } else { pens::RULE };
+            let rule = paint.rail(if greyed { pens::GREY } else { pens::RULE });
             let width = length.px(at.avail - 1).max(1);
             let lit = fill.px(width);
             let line = top + 3;
@@ -590,24 +631,23 @@ fn draw_blocks_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, ink: Ink, f
                 corner.put(lx, line, rule);
                 let pen = if cap {
                     rule
-                } else if i < lit {
-                    lit_pen(state, ink, 0)
                 } else {
-                    pens::SHADOW
+                    paint.fill(ink, GaugeColumn::continuous(i, width, lit), 0, pens::SHADOW)
                 };
                 corner.put(lx, line + 1, pen);
                 corner.put(lx, line + 2, rule);
                 if !cap {
-                    corner.put(lx, line + 3, pens::SHADOW);
+                    corner.put(lx, line + 3, shadow);
                 }
             }
+            at.x0 + width + 1
         }
     }
 }
 
 /// The level number's box: a bevel around the glyph, which carries its own
 /// shadow. Lit from the screen's top left on both sides, as [`bevel_box`].
-fn level_box(corner: &mut Corner<'_>, top: usize, (light, dark): (u32, u32)) {
+fn level_box(corner: &mut Corner<'_>, top: usize, (light, dark): (u32, u32), inner: u32) {
     let mirrored = corner.side == Side::P2;
     let col = |sx: usize| if mirrored { LEVEL_BOX - 1 - sx } else { sx };
     for d in 0..LEVEL_BOX {
@@ -618,7 +658,7 @@ fn level_box(corner: &mut Corner<'_>, top: usize, (light, dark): (u32, u32)) {
     }
     for dy in 1..LEVEL_BOX - 1 {
         for dx in 1..LEVEL_BOX - 1 {
-            corner.put(dx, top + dy, pens::BEVEL);
+            corner.put(dx, top + dy, inner);
         }
     }
 }
@@ -627,7 +667,14 @@ fn level_box(corner: &mut Corner<'_>, top: usize, (light, dark): (u32, u32)) {
 /// dark-gold shadow row), stock cells split by dark gold. A level row has
 /// `LV` and its number in PLAYER1 gold to its left. A second row's plate is
 /// lavender, as Ruled's second bar.
-fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool, font: Option<&RomFont<'_>>) {
+fn draw_plate_row(
+    corner: &mut Corner<'_>,
+    at: Slot,
+    row: GaugeRow,
+    second: bool,
+    paint: RowPaint,
+    font: Option<&RomFont<'_>>,
+) -> usize {
     let state = row.state();
     let greyed = state == GaugeState::Greyed;
     let (light, body, dark) = match (greyed, second) {
@@ -635,6 +682,7 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
         (false, false) => (pens::GOLD_LIGHT, pens::GOLD, pens::GOLD_DARK),
         (false, true) => (pens::LAVENDER_LIGHT, pens::RULE, pens::LAVENDER_DARK),
     };
+    let (light, body, dark) = (paint.light_rail(light), paint.rail(body), paint.dark_rail(dark));
     let ink = if second {
         Ink { body: pens::LAVENDER_LIGHT, light: pens::CREAM, dark: pens::RULE }
     } else {
@@ -643,7 +691,7 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
     let inner = at.avail - 2;
     let fill_rows = at.height - 3;
     // Interior columns, each lit or not; `None` is a divider.
-    let mut columns: Vec<Option<bool>> = Vec::with_capacity(inner);
+    let mut columns = Vec::with_capacity(inner);
     match row {
         GaugeRow::Stock { cells, full, part, .. } => {
             let cells = cells.max(1) as usize;
@@ -662,15 +710,15 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
                 } else {
                     0
                 };
-                columns.extend((0..cell_w).map(|i| Some(i < lit)));
+                columns.extend((0..cell_w).map(|i| Some(GaugeColumn::new(i, cell_w, lit, cell, cells))));
             }
         }
         GaugeRow::Level { fill, length, .. } | GaugeRow::Bar { fill, length, .. } => {
             let width = length.px(inner).max(1);
             let lit = fill.px(width);
-            columns.extend((0..width).map(|i| Some(i < lit)));
+            columns.extend((0..width).map(|i| Some(GaugeColumn::continuous(i, width, lit))));
             if let (GaugeRow::Level { level, .. }, Some(font)) = (row, font) {
-                let digit_pens = if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD };
+                let digit_pens = paint.digit(if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD });
                 let text = format!("LV{}", level.min(9));
                 let x = corner.text_x(0, 8 * text.len());
                 for (i, ch) in text.chars().enumerate() {
@@ -691,13 +739,13 @@ fn draw_plate_row(corner: &mut Corner<'_>, at: Slot, row: GaugeRow, second: bool
         let y = at.y0 + 1 + fy;
         corner.put(at.x0, y, body);
         corner.put(at.x0 + right, y, body);
-        for (i, column) in columns.iter().enumerate() {
+        for (i, &column) in columns.iter().enumerate() {
             let pen = match column {
-                None => pens::GOLD_DARK,
-                Some(true) => lit_pen(state, ink, fy),
-                Some(false) => pens::SHADOW,
+                None => paint.dark_rail(pens::GOLD_DARK),
+                Some(column) => paint.fill(ink, column, fy, pens::SHADOW),
             };
             corner.put(at.x0 + 1 + i, y, pen);
         }
     }
+    at.x0 + right + 1
 }

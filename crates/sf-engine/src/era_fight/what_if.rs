@@ -261,6 +261,17 @@ impl EraFighterState {
         }
     }
 
+    pub(super) fn what_if_ex_super_cost(&self) -> Option<u8> {
+        let kit = self.what_if_kit()?;
+        if !kit.specials.iter().any(|special| special.enhancement.is_some()) {
+            return None;
+        }
+        match self.what_if_ex_spend()? {
+            Spend::Super(cost) => Some(cost),
+            _ => None,
+        }
+    }
+
     fn what_if_finisher(&self, kit: &WhatIfKit, index: usize, strength: u8) -> Option<Finisher> {
         if self.super_capacity == 0 {
             return None;

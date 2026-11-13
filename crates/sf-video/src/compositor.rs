@@ -117,8 +117,11 @@ pub struct OverhaulScene<'a> {
     pub sprites: &'a [IndexedSprite],
     /// The era gauges, drawn in the bottom corners in `gauge_art`.
     pub hud: EraHud,
+    /// Labels, source palettes, and animation for each gauge corner.
+    pub gauge_presentation: [Option<era_hud::GaugePresentation>; 2],
     /// Compact gauge above Ally 1's corner in independent Dramatic Battle.
     pub ally2_gauge: Option<era_hud::EraGauge>,
+    pub ally2_gauge_presentation: Option<era_hud::GaugePresentation>,
     pub gauge_art: GaugeArt,
     /// Rows the gauge corners sit above the bottom, for the Training frame
     /// meter (see [`era_hud::lift_above_rows`]).
@@ -148,7 +151,9 @@ impl OverhaulScene<'static> {
     pub const EMPTY: Self = Self {
         sprites: &[],
         hud: EraHud::NONE,
+        gauge_presentation: [None; 2],
         ally2_gauge: None,
+        ally2_gauge_presentation: None,
         gauge_art: GaugeArt::Ruled,
         hud_lift: 0,
         font: None,
@@ -201,9 +206,15 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
             }
         }
     }
-    era_hud::draw_lifted(&mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font, scene.hud_lift);
+    era_hud::draw_lifted_presented(
+        &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font,
+        scene.hud_lift, scene.gauge_presentation,
+    );
     if let Some(gauge) = &scene.ally2_gauge {
-        era_hud::draw_ally2(&mut argb, gauge, scene.gauge_art, scene.font, scene.hud_lift);
+        era_hud::draw_ally2_presented(
+            &mut argb, gauge, scene.gauge_art, scene.font, scene.hud_lift,
+            scene.ally2_gauge_presentation,
+        );
     }
     callouts::draw(&mut argb, &scene.callouts, scene.font);
     blit_select(&mut argb, scene.select_lines);
