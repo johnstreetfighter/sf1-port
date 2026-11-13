@@ -58,6 +58,8 @@ impl State {
 
     /// Playback consumes confirmed pairs only. The trailing fifteen remain a
     /// jitter buffer; a late join can replay at most eight pairs per display.
+    /// An impact ends the batch on its contact picture so the sound and spark
+    /// start together even while playback is catching up.
     pub(super) fn step(&mut self, fight: &mut Fight, assets: &Assets) -> FightFrame {
         let count = self.confirmed.len().saturating_sub(self.played as usize)
             .saturating_sub(15).min(8);
@@ -67,6 +69,7 @@ impl State {
         let mut last = None;
         let mut announcements = Vec::new();
         let mut impacts = Vec::new();
+        let mut clear_impacts = false;
         let mut event = None;
         for _ in 0..count {
             let (p1, p2) = self.confirmed[self.played as usize];
@@ -78,9 +81,13 @@ impl State {
                 self.latches.push_back(latch);
             }
             announcements.append(&mut frame.announcements);
+            clear_impacts |= frame.clear_impacts;
             impacts.append(&mut frame.impacts);
             if event.is_none() { event = frame.event.take(); }
             last = Some(frame);
+            if !impacts.is_empty() {
+                break;
+            }
         }
         let mut frame = last.unwrap_or_else(|| FightFrame {
             frame: if fight.driving() {
@@ -88,13 +95,14 @@ impl State {
             } else { fight.render(assets) },
             sound_latch: sound::IDLE, latch_cycles: 0, theme: None,
             theme_frame: None, theme_event: None,
-            announcements: Vec::new(), impacts: Vec::new(), event: None,
+            announcements: Vec::new(), impacts: Vec::new(), clear_impacts: false, event: None,
         });
         if let Some(latch) = self.latches.pop_front() {
             frame.put_latch(latch);
         }
         frame.announcements = announcements;
         frame.impacts = impacts;
+        frame.clear_impacts = clear_impacts;
         frame.event = event;
         frame
     }
@@ -241,23 +249,27 @@ mod tests {
         let heavy = PlayerInputs { buttons: [false, false, true, false, false, false], ..idle };
         let pads = std::iter::once(heavy).chain(std::iter::repeat_n(idle, 95));
         let mut confirmed = Vec::new();
-        let mut expected = Vec::new();
+        let mut contact = None;
         for p1 in pads {
             let out = direct.step(&assets, p1, idle, false);
             confirmed.push((crate::netplay::encode_inputs(p1), 0));
-            expected.extend(out.impacts);
+            if !out.impacts.is_empty() {
+                assert!(contact.is_none(), "only one clean standing heavy");
+                contact = Some((out.frame, out.impacts));
+            }
         }
-        assert_eq!(expected.len(), 1, "the fight has a clean standing heavy");
+        let (expected_frame, expected_cues) = contact.expect("the heavy connects");
         let mut spectator = State { confirmed, ..State::default() };
         let mut actual = Vec::new();
         for _ in 0..15 {
             let out = spectator.step(&mut observer, &assets);
-            if !out.impacts.is_empty() {
-                assert!(observer.machine().state.frame >= out.impacts[0].frame);
+            if let Some(cue) = out.impacts.first() {
+                assert_eq!(observer.machine().state.frame, cue.frame);
+                assert_eq!(out.frame.argb, expected_frame.argb);
             }
             actual.extend(out.impacts);
         }
-        assert_eq!(actual, expected, "confirmed catch-up emits the cue once on its original clock");
+        assert_eq!(actual, expected_cues, "the spectator presents the impact once on its contact frame");
     }
 
     #[test]

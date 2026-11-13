@@ -15,11 +15,11 @@ use std::sync::Arc;
 use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side, Strip};
-use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
+use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont, SurfaceImpactBurst};
 use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeRow, GaugeState};
 use sf_video::render::{
     capture_sprite_pose_with_art, render_frame, render_frame_edited, render_frame_staged_with_art,
-    render_frame_staged_with_tints, Frame, SpriteArt, SpriteArtOverride, SpriteTint, TextEdits, TextSpan,
+    render_frame_staged_with_motion, render_frame_staged_with_tints, Frame, SpriteArt, SpriteArtOverride, SpriteTint, TextEdits, TextSpan,
 };
 use sf_video::scene::SceneState;
 use sf_video::romset::Assets;
@@ -41,7 +41,7 @@ use crate::fight_reader::FIGHTER_SLOTS;
 use crate::fighter::{CPU_STRUCT, DEMON_SPARK_MARKER, GAME_MODE, P1_STRUCT, P2_STRUCT};
 use crate::moves::{InputNotation, MachineRead, MoveEntry};
 use crate::roster::{PlayMode, TournamentFighter};
-use crate::overlay::{gauge_lift, render_diagnostic_overlay_parts};
+use crate::overlay::{draw_boxes, gauge_lift, render_diagnostic_overlay_parts};
 use crate::run::{PowerOnMachine, PowerOnSnapshot};
 use crate::tasks::Io;
 use crate::utility::{ComboTrialSpec, Drill, DrillController, RosterFighter, TrialController, TrialFrame};
@@ -358,6 +358,7 @@ pub struct FightFrame {
     /// none under the Faithful 1987 preset.
     pub announcements: Vec<AnnouncerLine>,
     pub impacts: Vec<ImpactCue>,
+    pub(crate) clear_impacts: bool,
     pub event: Option<FightEvent>,
 }
 
@@ -410,6 +411,7 @@ pub struct Fight {
     gauge_art: GaugeArt,
     gauge_effects: GaugeEffects,
     impact_visuals: [Option<ImpactCue>; 3],
+    screen_shake: bool,
     /// The machine at the start of the current round (`0x3ea3e`).
     round_start: Option<PowerOnSnapshot>,
     last_flow: u32,
@@ -583,7 +585,7 @@ impl Fight {
         let Self {
             machine, setup, country, black, over, continuing, round_start,
             last_flow, show, read, fed_reads,
-            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, callouts: _, pending_callouts: _,
+            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, screen_shake: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
             drill, trial: _,
@@ -633,7 +635,7 @@ impl Fight {
         // Exhaustive destructuring makes new wrapper fields require an audit.
         let Self {
             machine, setup, country, black, sounds, over, continuing,
-            overlay: _, gauge_art: _, gauge_effects, impact_visuals, selected_styles: _, round_start, last_flow, callouts,
+            overlay: _, gauge_art: _, gauge_effects, impact_visuals, screen_shake: _, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
             drill, trial,
@@ -787,6 +789,7 @@ impl Fight {
             gauge_art: GaugeArt::default(),
             gauge_effects: GaugeEffects::default(),
             impact_visuals: [None; 3],
+            screen_shake: true,
             round_start: None,
             last_flow,
             callouts: CalloutBoard::new(),
@@ -1026,6 +1029,11 @@ impl Fight {
 
     pub fn gauge_art(&self) -> GaugeArt {
         self.gauge_art
+    }
+
+    /// Set the local presentation preference without changing the match.
+    pub fn set_screen_shake(&mut self, enabled: bool) {
+        self.screen_shake = enabled;
     }
 
     pub fn set_gauge_art(&mut self, art: GaugeArt) {
@@ -1835,11 +1843,61 @@ impl Fight {
         }
     }
 
-    fn heavy_impact_sparks(&self, scene: &mut SceneState) -> Vec<sf_video::compositor::HeavyImpactSpark> {
-        use crate::impact::{ImpactDirection, ImpactFighter, ImpactKind};
-        use sf_video::compositor::HeavyImpactSpark;
+    fn impact_screen_point(&self, cue: ImpactCue, flip: bool) -> (i32, i32) {
         use sf_video::render::{VISAREA_X, VISAREA_Y};
 
+        let x = i32::from(cue.x) - i32::from(self.machine.camera_x());
+        let y = i32::from(cue.y);
+        let (x, y) = if flip { (512 - x, 256 - y) } else { (x, y) };
+        (x - VISAREA_X as i32, y - VISAREA_Y as i32)
+    }
+
+    fn surface_impacts(&self, flip: bool) -> ([i32; 2], Vec<SurfaceImpactBurst>) {
+        use crate::impact::{ImpactDirection, ImpactKind};
+
+        const MAT: [i32; 10] = [8, 6, 3, -2, -3, -2, 1, 1, 0, 0];
+        const WALL: [i32; 10] = [9, 7, 4, -2, -3, -2, 1, 1, 0, 0];
+        let flip_sign = if flip { -1 } else { 1 };
+        let mut offset = [0_i32, 0_i32];
+        let mut bursts = Vec::new();
+        for (cue, age) in self.impact_visuals() {
+            if age >= MAT.len() as u32 {
+                continue;
+            }
+            let wall_direction = match cue.kind {
+                ImpactKind::HeavyStrike => continue,
+                ImpactKind::MatSlam => 0,
+                ImpactKind::WallSlam => if cue.direction == ImpactDirection::Left { -flip_sign } else { flip_sign },
+            };
+            let jolt = if wall_direction == 0 {
+                [0, MAT[age as usize] * flip_sign]
+            } else {
+                [WALL[age as usize] * wall_direction, 0]
+            };
+            // Strict comparison keeps stable fighter order on equal jolts.
+            if self.screen_shake && jolt[0].abs() + jolt[1].abs() > offset[0].abs() + offset[1].abs() {
+                offset = jolt;
+            }
+            let (x, y) = self.impact_screen_point(cue, flip);
+            // Keep the contact at the visible stage edge when the camera has
+            // scrolled up to the boundary.
+            let x = if wall_direction == 0 {
+                x
+            } else {
+                x.clamp(0, sf_video::render::WIDTH as i32 - 1)
+            };
+            bursts.push(SurfaceImpactBurst { x, y, age, wall_direction });
+        }
+        for burst in &mut bursts {
+            burst.x += offset[0];
+            burst.y += offset[1];
+        }
+        (offset, bursts)
+    }
+
+    fn heavy_impact_sparks(&self, scene: &mut SceneState, offset: [i32; 2]) -> Vec<sf_video::compositor::HeavyImpactSpark> {
+        use crate::impact::{ImpactDirection, ImpactFighter, ImpactKind};
+        use sf_video::compositor::HeavyImpactSpark;
         const RECOIL: [i16; 6] = [4, 3, 2, 1, 0, 0];
         const OBJECT_BYTES: usize = 0x40;
         let mut sparks = Vec::new();
@@ -1848,13 +1906,8 @@ impl Fight {
             if cue.kind != ImpactKind::HeavyStrike || age >= RECOIL.len() as u32 {
                 continue;
             }
-            let mut x = i32::from(cue.x) - i32::from(self.machine.camera_x());
-            let mut y = i32::from(cue.y);
-            if scene.flip_screen {
-                x = 512 - x;
-                y = 256 - y;
-            }
-            sparks.push(HeavyImpactSpark { x: x - VISAREA_X as i32, y: y - VISAREA_Y as i32, age });
+            let (x, y) = self.impact_screen_point(cue, scene.flip_screen);
+            sparks.push(HeavyImpactSpark { x: x + offset[0], y: y + offset[1], age });
 
             let fighters = telemetry.get_or_insert_with(|| self.machine.diagnostic_telemetry());
             let player = match cue.fighter {
@@ -1883,7 +1936,9 @@ impl Fight {
     fn render_scene(&self, assets: &Assets) -> Frame {
         let mut scene = self.machine.state.scene();
         let layout = self.layout(&scene);
-        let heavy_impacts = self.heavy_impact_sparks(&mut scene);
+        let (world_offset, surface_impacts) = self.surface_impacts(scene.flip_screen);
+        let heavy_impacts = self.heavy_impact_sparks(&mut scene, world_offset);
+        let impact_active = !heavy_impacts.is_empty() || !surface_impacts.is_empty();
         let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
         let ally2_quarter_dim = self.era_combatants().get(2).is_some_and(|state| state.is_sf2());
         let callouts = self.callouts.frame_with_ally2_quarter_dim(quarter_dim, ally2_quarter_dim);
@@ -1899,11 +1954,11 @@ impl Fight {
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
                     && (!callouts.is_empty() || era_hud != EraHud::NONE || ally2_gauge.is_some()
-                        || !tints.is_empty() || !sprite_art.is_empty() || !heavy_impacts.is_empty()) =>
+                        || !tints.is_empty() || !sprite_art.is_empty() || impact_active) =>
             {
-                let (mut hardware, stage) = render_frame_staged_with_art(assets, &scene, edits, &tints, &sprite_art);
+                let (mut hardware, stage) = render_frame_staged_with_motion(assets, &scene, edits, &tints, &sprite_art, world_offset);
                 if boxes {
-                    hardware = render_diagnostic_overlay_parts(&hardware, &telemetry(), true, false);
+                    draw_boxes(&mut hardware, &telemetry(), world_offset);
                 }
                 let font = RomFont::new(&assets.gfx4, &assets.maincpu);
                 let [p1, p2, ally2] = self.gauge_corners(era_hud, ally2_gauge);
@@ -1912,6 +1967,8 @@ impl Fight {
                     &hardware,
                     &OverhaulScene {
                         heavy_impacts: &heavy_impacts,
+                        surface_impacts: &surface_impacts,
+                        world_offset,
                         callouts,
                         hud: era_hud,
                         gauge_presentation: [
@@ -1934,12 +1991,19 @@ impl Fight {
                 }
                 return render_diagnostic_overlay_parts(&hud, &telemetry(), false, true);
             }
-            _ if !heavy_impacts.is_empty() => {
-                let (hardware, _) = render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &tints, &sprite_art);
-                present(PresentMode::Overhaul, &hardware, &OverhaulScene {
+            _ if impact_active => {
+                let (mut hardware, _) = render_frame_staged_with_motion(
+                    assets, &scene, &layout.unwrap_or_default(), &tints, &sprite_art, world_offset,
+                );
+                if boxes {
+                    draw_boxes(&mut hardware, &telemetry(), world_offset);
+                }
+                let frame = present(PresentMode::Overhaul, &hardware, &OverhaulScene {
                     heavy_impacts: &heavy_impacts,
+                    surface_impacts: &surface_impacts,
                     ..OverhaulScene::EMPTY
-                })
+                });
+                return if meter { render_diagnostic_overlay_parts(&frame, &telemetry(), false, true) } else { frame };
             }
             _ if !sprite_art.is_empty() => {
                 render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &[], &sprite_art).0
@@ -1983,11 +2047,13 @@ impl Fight {
                 theme_event: None,
                 announcements: Vec::new(),
                 impacts: Vec::new(),
+                clear_impacts: false,
                 event: None,
             };
         }
         let was_over = self.over;
         let mut impacts = Vec::new();
+        let mut clear_impacts = false;
         let mut event = None;
         let mut ally2_events = [None; 5];
         if !self.over {
@@ -2115,6 +2181,7 @@ impl Fight {
             if flow == ROUND_START && self.last_flow != ROUND_START {
                 self.round_start = Some(m.save_snapshot());
                 self.impact_visuals.fill(None);
+                clear_impacts = true;
                 self.moments.new_round();
             }
             self.last_flow = flow;
@@ -2244,6 +2311,7 @@ impl Fight {
             theme_event: music.map(|music| music.event),
             announcements,
             impacts,
+            clear_impacts,
             event,
         }
     }
@@ -2251,3 +2319,56 @@ impl Fight {
 
 #[cfg(test)]
 mod arcade_tests;
+
+#[cfg(test)]
+mod impact_tests {
+    use super::*;
+    use crate::dramatic::{DramaticRules, LifebarMode};
+    use crate::era::Revision;
+    use crate::impact::{ImpactDirection, ImpactKind};
+    use std::path::Path;
+
+    #[test]
+    fn simultaneous_dramatic_slams_keep_both_bursts_and_use_one_stable_jolt() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !Path::new(roms).is_dir() {
+            return;
+        }
+        let assets = sf_video::romset::load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let mut config = MatchConfig::definitive();
+        config.roster.mode = PlayMode::Versus;
+        config.dramatic = Some(DramaticRules {
+            co_op: true,
+            ally2: TournamentFighter::Ken,
+            stage: TournamentFighter::Ryu,
+            lifebar: LifebarMode::Independent,
+            friendly_fire: false,
+            styles: [Revision::Sf1Plus; 3],
+            rivalry: None,
+        });
+        let setup = FightSetup {
+            kind: FightKind::Dramatic { co_op: true },
+            players: Players::One,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start(&assets.maincpu, setup, Some(0), None).unwrap();
+        let frame = fight.machine.state.frame;
+        let contact = |fighter, kind, direction, x| ImpactCue { fighter, kind, direction, x, y: 128, frame };
+        let left = contact(ImpactFighter::P1, ImpactKind::WallSlam, ImpactDirection::Left, 300);
+        let right = contact(ImpactFighter::Ally2, ImpactKind::WallSlam, ImpactDirection::Right, 100);
+        fight.impact_visuals = [Some(left), None, Some(right)];
+        let (offset, bursts) = fight.surface_impacts(false);
+        assert_eq!(offset, [-9, 0], "P1's equal jolt wins in fighter order");
+        assert_eq!(bursts.iter().map(|burst| burst.wall_direction).collect::<Vec<_>>(), [-1, 1]);
+
+        let mat = contact(ImpactFighter::P1, ImpactKind::MatSlam, ImpactDirection::Down, 300);
+        fight.impact_visuals[0] = Some(mat);
+        assert_eq!(fight.surface_impacts(false).0, [9, 0], "the stronger wall jolt wins");
+        fight.set_screen_shake(false);
+        let (offset, bursts) = fight.surface_impacts(false);
+        assert_eq!(offset, [0, 0]);
+        assert_eq!(bursts.len(), 2, "both contacts still produce bursts");
+    }
+}

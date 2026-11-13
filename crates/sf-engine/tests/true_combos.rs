@@ -125,6 +125,7 @@ const MP: usize = 1;
 const HP: usize = 2;
 const LK: usize = 3;
 const MK: usize = 4;
+const HK: usize = 5;
 const MODERN: RulesetPreset = RulesetPreset::DefinitiveOverhaul;
 const CLASSIC: RulesetPreset = RulesetPreset::ClassicCompetitive;
 
@@ -290,6 +291,7 @@ struct Frame {
     p1: FighterRead,
     p2: FighterRead,
     landed: Option<sf_engine::fight_reader::LandedHit>,
+    heavy: Option<sf_engine::impact::ImpactCue>,
     combo: Option<ComboCount>,
     /// P2's entity +0xf: bit 3 is the invulnerable flag.
     p2_flags: u8,
@@ -311,6 +313,7 @@ fn step(s: &mut GameSession, input: FrameInputs) -> Frame {
         p1: fighter(s, Side::P1),
         p2: fighter(s, Side::P2),
         landed: s.fight().unwrap().fight_read().landed_by(Side::P1),
+        heavy: out.impacts.into_iter().find(|cue| cue.kind == sf_engine::impact::ImpactKind::HeavyStrike),
         combo: s.fight().unwrap().callouts().frame().side(Side::P1).combo,
         p2_flags: obj(s, p2e, 0xf),
         slot,
@@ -358,6 +361,60 @@ fn stun_frames(frames: &[Frame]) -> (usize, usize) {
 }
 
 // ---- the tests ---------------------------------------------------------------
+
+#[test]
+fn clean_heavy_impact_covers_standing_crouching_and_jumping_normals() {
+    use sf_engine::impact::ImpactFighter;
+
+    let Some(mut close) = ryu_ken(MODERN) else { return };
+    let mut far = close.clone();
+    close_in(&mut close, 0x30);
+    for (button, dirs, expected_move) in [
+        (HP, &[][..], 0x10),
+        (HK, &[][..], 0x16),
+        (HP, &[DOWN][..], 0x1c),
+        (HK, &[DOWN][..], 0x18),
+        (HP, &[UP][..], 0x20),
+        (HK, &[UP][..], 0x26),
+    ] {
+        let mut s = close.clone();
+        let mut contacts = Vec::new();
+        for frame in 0..75 {
+            let input = if dirs == [UP] {
+                let jump = if frame == 0 { dirs } else { &[] };
+                press((frame == 22).then_some(button), jump, &[])
+            } else {
+                press((frame == 0).then_some(button), dirs, &[])
+            };
+            let out = step(&mut s, input);
+            if out.landed.is_some() {
+                let cue = out.heavy.expect("a heavy normal produces a cue on the contact frame");
+                assert_eq!(cue.fighter, ImpactFighter::P2);
+                assert_eq!(cue.frame, s.fight_machine().unwrap().state.frame);
+                contacts.push(out.p1.move_id);
+            } else {
+                assert!(out.heavy.is_none());
+            }
+        }
+        if expected_move == 0x1c {
+            assert!(matches!(contacts.as_slice(), [0x1c..=0x1e]), "{contacts:?}");
+        } else {
+            assert_eq!(contacts, [expected_move], "input {button} {dirs:?}");
+        }
+    }
+
+    for button in [LP, MP] {
+        let frames = string(&mut close.clone(), button, &[], &[], 60, 60);
+        assert_eq!(hits(&frames).len(), 1);
+        assert!(frames.iter().all(|frame| frame.heavy.is_none()));
+    }
+    let guarded = string(&mut close, HP, &[], &[RIGHT], 60, 60);
+    assert!(stun_frames(&guarded).1 > 0);
+    assert!(guarded.iter().all(|frame| frame.heavy.is_none() && frame.landed.is_none()));
+    let whiff = string(&mut far, HP, &[], &[], 60, 60);
+    assert!(whiff.iter().any(|frame| frame.p1.attack_active));
+    assert!(whiff.iter().all(|frame| frame.heavy.is_none() && frame.landed.is_none()));
+}
 
 #[test]
 fn a_light_punch_links_into_a_second_and_the_era_hud_counts_two() {
@@ -1879,6 +1936,9 @@ fn sagat_follows_the_same_rule_on_his_bank_table() {
         "Sagat plays his bank table"
     );
     close_in(&mut s, 0x28);
+    let heavy = string(&mut s.clone(), HP, &[], &[], 80, 60);
+    assert_eq!(hits(&heavy).len(), 1);
+    assert!(heavy.iter().all(|frame| frame.heavy.is_some() == frame.landed.is_some()));
     for (button, dirs, hurt, guard, id, level) in [
         (LP, &[DOWN][..], &[][..], &[DOWN, RIGHT][..], 0x11, 1),
         (LK, &[DOWN][..], &[][..], &[DOWN, RIGHT][..], 0x17, 1),

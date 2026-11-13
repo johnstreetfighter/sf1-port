@@ -38,6 +38,8 @@ struct Slot {
     heard_latches: [bool; 256],
     heard_announcements: Vec<AnnouncerLine>,
     heard_impacts: Vec<(crate::impact::ImpactKind, crate::impact::ImpactFighter)>,
+    impact_boundary: bool,
+    cleared_impacts: bool,
 }
 
 /// Rollback bookkeeping borrowing the session's existing Fight on each call.
@@ -236,7 +238,16 @@ impl RollbackEngine {
             output.put_latch(latch);
         }
         output.announcements.append(&mut self.pending_announcements);
+        // A corrected frame can reveal a round start before the next step.
+        // Preserve that boundary until presentation and discard older accents.
+        let boundary = self.slots.iter_mut().flatten().filter(|slot| slot.impact_boundary)
+            .max_by_key(|slot| slot.frame);
+        let boundary_frame = boundary.as_ref().map(|slot| slot.frame);
+        output.clear_impacts = boundary.is_some_and(|slot| !std::mem::replace(&mut slot.cleared_impacts, true));
         for (frame, mut cues) in std::mem::take(&mut self.pending_impacts) {
+            if boundary_frame.is_some_and(|boundary| frame < boundary) {
+                continue;
+            }
             let slot = self.slots[frame as usize % RING].as_mut()
                 .filter(|slot| slot.frame == frame)
                 .expect("pending contacts remain inside the rollback ring");
@@ -357,9 +368,9 @@ impl RollbackEngine {
         let (p1, p2) = self.player_order(self.local[frame as usize], remote);
         let index = frame as usize % RING;
         let previous = self.slots[index].take().filter(|s| s.frame == frame);
-        let (heard_latches, heard_announcements, heard_impacts) = previous
-            .map_or(([false; 256], Vec::new(), Vec::new()), |s| {
-                (s.heard_latches, s.heard_announcements, s.heard_impacts)
+        let (heard_latches, heard_announcements, heard_impacts, cleared_impacts) = previous
+            .map_or(([false; 256], Vec::new(), Vec::new(), false), |s| {
+                (s.heard_latches, s.heard_announcements, s.heard_impacts, s.cleared_impacts)
             });
         let before = fight.save_netplay_snapshot(frame);
         let mut output = fight.step(assets, decode_inputs(p1), decode_inputs(p2), false);
@@ -372,6 +383,8 @@ impl RollbackEngine {
             heard_latches,
             heard_announcements,
             heard_impacts,
+            impact_boundary: output.clear_impacts,
+            cleared_impacts,
         };
         let new_latch = match output.theme.zip(output.theme_event) {
             Some((theme, event)) => self.heard_themes.insert((event, theme.id)),
@@ -548,6 +561,41 @@ mod tests {
 
         let delivered = rollback.step(&mut fight, &assets, idle).unwrap();
         assert!(delivered.impacts.is_empty(), "the brief prediction was never presented");
+    }
+
+    #[test]
+    fn a_round_start_discovered_in_rollback_clears_impacts_once() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config: MatchConfig::definitive(),
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, None).unwrap();
+        let idle = PlayerInputs::default();
+        let before = (0..1000).find_map(|_| {
+            let before = fight.save_netplay_snapshot(1);
+            fight.step(&assets, idle, idle, false).clear_impacts.then_some(before)
+        }).expect("the direct fight entered its first round");
+        let mut missed = before.clone();
+        missed.last_flow = crate::front::cabinet::flow_position(fight.machine());
+        fight.restore_netplay_snapshot(&missed);
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        assert!(!rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
+        rollback.slots[0].as_mut().unwrap().before = before;
+
+        let corrected = PlayerInputs { directions: [true, false, false, false], ..idle };
+        rollback.apply_remote_inputs(&mut fight, &assets, 0, &[encode_inputs(corrected)]);
+        assert_eq!(rollback.last_rollback_frames(), 1);
+        assert!(rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
+        assert!(!rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
     }
 
     #[test]

@@ -1579,7 +1579,7 @@ pub fn render_diagnostic_overlay_parts(
         argb: base_frame.argb.clone(),
     };
     if boxes {
-        draw_boxes(&mut out, telemetry);
+        draw_boxes(&mut out, telemetry, [0, 0]);
     }
     if meter {
         // 3. Draw live per-player input & command-tracker telemetry HUD panels.
@@ -1596,8 +1596,12 @@ pub fn render_diagnostic_overlay_parts(
 }
 
 /// Steps 1 and 2 of the overlay: fighter and projectile boxes.
-fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry) {
-    let flip = telemetry.flip_screen;
+pub(crate) fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry, offset: [i32; 2]) {
+    let screen = |bounds: &BoundingBox| {
+        let (left, top, right, bottom) = bounds.screen_rect(telemetry.flip_screen);
+        let [dx, dy] = offset;
+        (left + dx, top + dy, right + dx, bottom + dy)
+    };
 
     // 1. Draw fighter bounding boxes (pushbox -> loose hurtbox -> tight hurtbox -> invuln -> melee hitbox).
     for fighter in [&telemetry.p1, &telemetry.p2].into_iter().chain(telemetry.ally2.as_ref()) {
@@ -1606,21 +1610,21 @@ fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry) {
         }
         draw_box(
             &mut out.argb,
-            fighter.pushbox.screen_rect(flip),
+            screen(&fighter.pushbox),
             OverlayColors::PUSHBOX_FILL,
             OverlayColors::PUSHBOX_BORDER,
             48,
         );
         draw_box(
             &mut out.argb,
-            fighter.loose_hurtbox.screen_rect(flip),
+            screen(&fighter.loose_hurtbox),
             OverlayColors::LOOSE_HURTBOX_FILL,
             OverlayColors::LOOSE_HURTBOX_BORDER,
             56,
         );
         draw_box(
             &mut out.argb,
-            fighter.tight_hurtbox.screen_rect(flip),
+            screen(&fighter.tight_hurtbox),
             OverlayColors::TIGHT_HURTBOX_FILL,
             OverlayColors::TIGHT_HURTBOX_BORDER,
             64,
@@ -1628,7 +1632,7 @@ fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry) {
         if fighter.invulnerable {
             draw_box(
                 &mut out.argb,
-                fighter.loose_hurtbox.screen_rect(flip),
+                screen(&fighter.loose_hurtbox),
                 OverlayColors::INVULNERABLE_FILL,
                 OverlayColors::INVULNERABLE_BORDER,
                 80,
@@ -1637,7 +1641,7 @@ fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry) {
         if let Some(atk) = &fighter.attack_hitbox {
             draw_box(
                 &mut out.argb,
-                atk.screen_rect(flip),
+                screen(atk),
                 OverlayColors::MELEE_HITBOX_FILL,
                 OverlayColors::MELEE_HITBOX_BORDER,
                 88,
@@ -1649,7 +1653,7 @@ fn draw_boxes(out: &mut Frame, telemetry: &DiagnosticTelemetry) {
     for proj in &telemetry.projectiles {
         draw_box(
             &mut out.argb,
-            proj.hitbox.screen_rect(flip),
+            screen(&proj.hitbox),
             OverlayColors::PROJECTILE_HITBOX_FILL,
             OverlayColors::PROJECTILE_HITBOX_BORDER,
             88,

@@ -273,6 +273,9 @@ impl Audio {
             sound.clear_impacts(frame);
             return;
         }
+        if out.clear_impacts {
+            sound.clear_impacts(frame);
+        }
         for cue in &out.impacts {
             let accent = match cue.kind {
                 ImpactKind::HeavyStrike => ImpactAccent::HeavyStrike,

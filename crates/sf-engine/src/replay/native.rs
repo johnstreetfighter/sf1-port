@@ -111,6 +111,10 @@ impl ReplayCommand {
         })
     }
 
+    fn clears_impacts(self) -> bool {
+        matches!(self, Self::Restart | Self::ResetPositions | Self::Preset(_))
+    }
+
     fn apply(self, fight: &mut Fight, input: PlayerInputs) {
         match self {
             Self::Restart => {
@@ -450,10 +454,13 @@ impl ReplayPlayback {
             return None;
         }
         let ([p1, p2], start) = self.recorded();
+        let mut clear_impacts = false;
         for command in commands_at(&self.replay, self.frame) {
+            clear_impacts |= command.clears_impacts();
             command.apply(&mut self.fight, p1);
         }
-        let result = self.fight.step(assets, p1, p2, start);
+        let mut result = self.fight.step(assets, p1, p2, start);
+        result.clear_impacts |= clear_impacts;
         self.frame += 1;
         if self.frame.is_multiple_of(KEYFRAME) {
             self.keyframes

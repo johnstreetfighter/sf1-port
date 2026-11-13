@@ -33,6 +33,8 @@ pub struct Settings {
     /// Present on the display's vsync (the Video tab's `VSYNC`); off shows
     /// frames as soon as they are ready, the game on a 60 Hz clock.
     pub vsync: bool,
+    /// Local scene motion for mat and wall impacts.
+    pub screen_shake: bool,
     /// Milliseconds to wait after each vblank before stepping the game
     /// (the Video tab's `FRAME DELAY`), 0 to [`FRAME_DELAY_CAP_MS`]: the
     /// delay saved. The delay used is clamped to the cap for the look
@@ -347,6 +349,7 @@ impl Default for Settings {
             scale: 3,
             fullscreen: true,
             vsync: true,
+            screen_shake: true,
             frame_delay_ms: 0,
             gauge_art: GaugeArt::Ruled,
             aspect: Aspect::default(),
@@ -474,6 +477,7 @@ impl Settings {
              scale = {}\n\
              fullscreen = {}\n\
              vsync = {}\n\
+             screen_shake = {}\n\
              frame_delay_ms = {}\n\
              gauge_art = \"{}\"\n\
              aspect = \"{}\"\n\
@@ -501,6 +505,7 @@ impl Settings {
             self.scale,
             self.fullscreen,
             self.vsync,
+            self.screen_shake,
             self.frame_delay_ms,
             self.gauge_art.slug(),
             self.aspect.slug(),
@@ -610,7 +615,7 @@ impl Settings {
                 // A delay past the cap (the cap was higher once) is
                 // clamped, never refused: the rest of the file still loads.
                 "frame_delay_ms" => s.frame_delay_ms = num(u32::MAX)?.min(u32::from(FRAME_DELAY_CAP_MS)) as u8,
-                "fullscreen" | "vsync" | "hold_combo" | "fill_meters" | "wired_only" => {
+                "fullscreen" | "vsync" | "screen_shake" | "hold_combo" | "fill_meters" | "wired_only" => {
                     let on = match v {
                         "true" => true,
                         "false" => false,
@@ -619,6 +624,7 @@ impl Settings {
                     match k {
                         "fullscreen" => s.fullscreen = on,
                         "vsync" => s.vsync = on,
+                        "screen_shake" => s.screen_shake = on,
                         "hold_combo" => s.hold_combo = on,
                         "wired_only" => s.wired_only = on,
                         _ => s.fill_meters = on,
@@ -847,6 +853,7 @@ pub enum Row {
     TuneLook,
     Vsync,
     FrameDelay,
+    ScreenShake,
     Master,
     Announcer,
     AnnouncerVoice,
@@ -908,6 +915,7 @@ pub fn rows(tab: Tab) -> Vec<Row> {
             Row::Heading("MOTION"),
             Row::Vsync,
             Row::FrameDelay,
+            Row::ScreenShake,
         ],
         Tab::Sound => vec![Row::Master, Row::Announcer, Row::AnnouncerVoice, Row::Fm, Row::Samples, Row::Jukebox],
         Tab::Controls => vec![
@@ -1124,6 +1132,7 @@ impl SettingsScreen {
             Row::TuneLook => "TUNE CRT LOOK >",
             Row::Vsync => "VSYNC",
             Row::FrameDelay => "FRAME DELAY",
+            Row::ScreenShake => "SCREEN SHAKE",
             Row::Master => "MASTER",
             Row::Announcer => "ANNOUNCER",
             Row::AnnouncerVoice => "ANNOUNCER VOICE",
@@ -1188,6 +1197,7 @@ impl SettingsScreen {
             Row::Scale => format!("{}X", self.settings.scale),
             Row::Fullscreen => if self.settings.fullscreen { "FULLSCREEN" } else { "WINDOWED" }.to_string(),
             Row::Vsync => on(self.settings.vsync),
+            Row::ScreenShake => on(self.settings.screen_shake),
             Row::FrameDelay => format!("{}MS", self.frame_delay()),
             Row::Aspect => self.settings.aspect.label().to_string(),
             Row::GaugeArt => self.settings.gauge_art.label().to_string(),
@@ -1261,6 +1271,7 @@ impl SettingsScreen {
             }
             Row::Fullscreen => self.settings.fullscreen = !self.settings.fullscreen,
             Row::Vsync => self.settings.vsync = !self.settings.vsync,
+            Row::ScreenShake => self.settings.screen_shake = !self.settings.screen_shake,
             Row::FrameDelay => {
                 // From the delay in use, within the look's cap.
                 let cap = i32::from(frame_delay_cap(self.look()));
@@ -1352,6 +1363,7 @@ impl SettingsScreen {
                 self.settings.scale = first.scale;
                 self.settings.fullscreen = first.fullscreen;
                 self.settings.vsync = first.vsync;
+                self.settings.screen_shake = first.screen_shake;
                 self.settings.frame_delay_ms = first.frame_delay_ms;
                 self.settings.aspect = first.aspect;
                 self.settings.gauge_art = first.gauge_art;
@@ -1549,7 +1561,7 @@ impl SettingsScreen {
                     self.reset_tab();
                     Some(Transition::ValueChanged)
                 }
-                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
+                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::ScreenShake | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
                     if let Row::Toggle(i) = row {
                         if TOGGLES[i].frames.is_some() {
                             return None;

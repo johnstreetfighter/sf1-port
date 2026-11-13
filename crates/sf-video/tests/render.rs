@@ -129,3 +129,37 @@ fn tx_pen_3_is_transparent_but_other_pens_are_not() {
     assert_eq!(frame.argb[1], 0xff00ff00, "pen 2 drawn");
     assert_eq!(frame.argb[2], 0xffff00ff, "pen 1 drawn");
 }
+
+#[test]
+fn scene_shake_moves_the_world_under_stationary_native_text() {
+    use sf_video::render::{render_frame_staged_with_motion, TextEdits};
+    let mut assets = empty_assets();
+    let mut scene = empty_scene();
+    scene.active = 0x88;
+    // The sprite has a red pen and the text tile a green pen.
+    assets.gfx3.fill(0x00);
+    assets.gfx4.resize(32, 0xff);
+    assets.gfx4.fill(0xff);
+    assets.gfx4[0] = 0x7f;
+    // Only the first visible text cell uses tile 0.
+    for cell in scene.videoram.chunks_exact_mut(2) {
+        cell.copy_from_slice(&1u16.to_be_bytes());
+    }
+    scene.videoram[2 * (2 * 64 + 8)..2 * (2 * 64 + 8) + 2].fill(0);
+    set_palette_entry(&mut scene, 512, 0x0f00);
+    set_palette_entry(&mut scene, 768 + 2, 0x00f0);
+    // Leave all but one sprite offscreen. The visible one starts at (120, 80).
+    scene.objectram[4..6].copy_from_slice(&96u16.to_be_bytes());
+    scene.objectram[6..8].copy_from_slice(&184u16.to_be_bytes());
+    let render = |offset| render_frame_staged_with_motion(
+        &assets, &scene, &TextEdits::default(), &[], &[], offset,
+    ).0;
+    let still = render([0, 0]);
+    let shaken = render([9, 8]);
+    let at = |x, y| y * sf_video::render::WIDTH + x;
+    assert_eq!(still.argb[at(120, 80)], 0xffff0000);
+    assert_ne!(shaken.argb[at(120, 80)], 0xffff0000);
+    assert_eq!(shaken.argb[at(129, 88)], 0xffff0000);
+    assert_eq!(still.argb[at(0, 0)], 0xff00ff00);
+    assert_eq!(shaken.argb[at(0, 0)], still.argb[at(0, 0)]);
+}

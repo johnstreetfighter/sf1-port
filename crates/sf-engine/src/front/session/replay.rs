@@ -233,6 +233,7 @@ impl GameSession {
         fight.set_satsui_art(self.satsui_art.clone());
         fight.set_selected_styles([Some(replay.p1_style), Some(replay.p2_style)]);
         fight.set_gauge_art(self.settings.gauge_art);
+        fight.set_screen_shake(self.settings.screen_shake);
         Self::seed_replay_fight(&mut fight, replay.seed);
         let assets = fight_assets(&self.assets, &self.bank_assets, setup.config.preset);
         while fight.driving() {
@@ -358,9 +359,9 @@ impl GameSession {
         }
         let font = RomFont::new(&self.assets.gfx4, &self.assets.maincpu);
         let fight = watching.playback.fight();
-        let (mut frame, latch, latch_cycles, announcements, theme, theme_frame, impacts) = match ff {
-            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements, ff.theme, ff.theme_frame, ff.impacts),
-            None => (fight.render(assets), sound_latch, 0, Vec::new(), None, None, Vec::new()),
+        let (mut frame, latch, latch_cycles, announcements, theme, theme_frame, impacts, clear_impacts) = match ff {
+            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements, ff.theme, ff.theme_frame, ff.impacts, ff.clear_impacts),
+            None => (fight.render(assets), sound_latch, 0, Vec::new(), None, None, Vec::new(), used_input),
         };
         if let ReplayMode::Takeover {
             player,
@@ -414,6 +415,7 @@ impl GameSession {
             theme: theme.filter(|_| !exit),
             theme_frame: theme_frame.filter(|_| !exit),
             impacts: if exit { Vec::new() } else { impacts },
+            clear_impacts,
             announcements,
             overhaul_fight: !exit && preset != RulesetPreset::Faithful1987,
             tune_table: preset != RulesetPreset::Faithful1987,
