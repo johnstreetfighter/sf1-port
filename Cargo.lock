@@ -1873,7 +1873,7 @@ dependencies = [
 
 [[package]]
 name = "mugen-extract"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "sf-engine",
 ]
@@ -3025,7 +3025,7 @@ dependencies = [
 
 [[package]]
 name = "sf-art"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "png 0.17.16",
  "serde",
@@ -3036,7 +3036,7 @@ dependencies = [
 
 [[package]]
 name = "sf-audio"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "clap",
  "cxx",
@@ -3050,7 +3050,7 @@ dependencies = [
 
 [[package]]
 name = "sf-compare"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "clap",
  "crc32fast",
@@ -3061,7 +3061,7 @@ dependencies = [
 
 [[package]]
 name = "sf-dev"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "minifb",
  "serde",
@@ -3075,7 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "sf-engine"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "clap",
  "crc32fast",
@@ -3087,7 +3087,7 @@ dependencies = [
 
 [[package]]
 name = "sf-game"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "find-msvc-tools",
  "minifb",
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "sf-host"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "cpal",
  "gilrs",
@@ -3126,14 +3126,14 @@ dependencies = [
 
 [[package]]
 name = "sf-openmpt"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "sf-video"
-version = "1.5.2"
+version = "1.5.9"
 dependencies = [
  "png 0.17.16",
  "serde",

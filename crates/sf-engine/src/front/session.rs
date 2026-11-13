@@ -1619,8 +1619,12 @@ impl GameSession {
                 } else {
                     play.paused_by = if online { local_side } else { 0 };
                     play.stop_recorded_try();
-                    play.pause = Some(if online { PauseBox::with_online_notice(notice) }
-                        else { PauseBox::with_notice(training, notice) });
+                    let mut pause = if online { PauseBox::with_online_notice(notice) }
+                        else { PauseBox::with_notice(training, notice) };
+                    if !online {
+                        pause.set_move_effects(play.fight.move_effects_preview());
+                    }
+                    play.pause = Some(pause);
                     return Some(Transition::Paused);
                 }
             }
@@ -1648,7 +1652,11 @@ impl GameSession {
             play.paused_by = if online { local_side }
                 else { (0..2).find(|&s| pad_edge(prev, now, s, |m| m.start)).unwrap_or(0) };
             play.stop_recorded_try();
-            play.pause = Some(if online { PauseBox::open_online() } else { PauseBox::open(training) });
+            let mut pause = if online { PauseBox::open_online() } else { PauseBox::open(training) };
+            if !online {
+                pause.set_move_effects(play.fight.move_effects_preview());
+            }
+            play.pause = Some(pause);
             return Some(Transition::Paused);
         }
         None
@@ -1753,6 +1761,14 @@ impl GameSession {
                             let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
                             play.last = play.fight.render(assets);
                         }
+                        MenuItem::MoveEffects => {
+                            play.fight.toggle_move_effects();
+                            if let Some(pause) = &mut play.pause {
+                                pause.set_move_effects(play.fight.move_effects_preview());
+                            }
+                            let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
+                            play.last = play.fight.render(assets);
+                        }
                         MenuItem::RestartRound | MenuItem::ResetPositions => {
                             // Training's reset keeps the settings the fight has now.
                             let done = if item == MenuItem::ResetPositions {
@@ -1775,6 +1791,9 @@ impl GameSession {
                         MenuItem::LivePreset => {
                             let next = next_live_preset(play.fight.setup().config.preset);
                             play.fight.set_preset(next);
+                            if let Some(pause) = &mut play.pause {
+                                pause.set_move_effects(play.fight.move_effects_preview());
+                            }
                             play.record_command(ReplayCommand::Preset(next));
                         }
                         MenuItem::Moves => {

@@ -1580,6 +1580,10 @@ impl PowerOnMachine {
         &self.latch_writes
     }
 
+    pub(crate) fn move_effect_cues(&self) -> crate::fight_reader::MoveEffectCues {
+        self.program.toggle_state.era.move_effects
+    }
+
     /// Advance the machine by one 60 Hz frame: the fair CPU's pad first,
     /// when one plays, then the frame, then the CPU's look at it.
     pub fn step(&mut self) {
@@ -1615,7 +1619,11 @@ impl PowerOnMachine {
     /// Whether a round is being fought: the game flow's task is at the
     /// fight loop.
     pub(crate) fn in_fight(&self) -> bool {
-        self.scheduler.positions().iter().any(|&(slot, at)| slot == 1 && at == crate::fair_cpu::FIGHT_LOOP)
+        self.scheduler.in_fight_loop()
+    }
+
+    pub(crate) fn settling_knockout(&self) -> bool {
+        self.scheduler.settling_knockout()
     }
 
     /// The fair CPU's pad for the coming frame (SP21, `#264`), set as P2's
@@ -1941,8 +1949,11 @@ impl PowerOnMachine {
         self.latch_writes.clear();
         self.program.toggle_state.latched_theme = None;
         let io = self.io;
+        let effects_preview = self.program.match_config.preset == crate::config::RulesetPreset::DefinitiveOverhaul;
+        let in_fight = effects_preview && self.in_fight();
         let scheduler = &mut self.scheduler;
         let mut bus = self.program.bus_with_dsw1(&mut self.state, io.dsw1);
+        let before = effects_preview.then(|| bus.begin_move_effects(in_fight));
         let latch = if frame == 1 {
             let l = crate::tasks::reset(scheduler, &mut bus, &io);
             if let Some(lw) = l {
@@ -1993,6 +2004,11 @@ impl PowerOnMachine {
         if let Some(latch) = latch {
             self.state.sound_latch = latch.value;
             self.state.latch_cycles = latch.cycles;
+        }
+        if let Some(before) = before {
+            let in_fight = self.in_fight();
+            let settling_knockout = self.settling_knockout();
+            self.program.bus_with_dsw1(&mut self.state, io.dsw1).finish_move_effects(in_fight, settling_knockout, before);
         }
         self.overlay
             .record_post_step(&self.program.rom, self.program.data_bank.as_deref(), &self.program.work, &self.state);

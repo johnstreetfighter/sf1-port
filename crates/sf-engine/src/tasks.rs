@@ -1128,6 +1128,14 @@ fn enter_new_task(k: u32, entry: u32, bus: &mut Bus) -> Option<Task> {
 }
 
 impl Scheduler {
+    pub(crate) fn in_fight_loop(&self) -> bool {
+        matches!(self.tasks[1], Some(Task::Flow(Flow::FightLoop)))
+    }
+
+    pub(crate) fn settling_knockout(&self) -> bool {
+        matches!(self.tasks[1], Some(Task::Flow(Flow::KoStart | Flow::KoSettle)))
+    }
+
     /// Empty slot table at power-on before reset spawns slot 0.
     pub fn new() -> Self {
         Scheduler {

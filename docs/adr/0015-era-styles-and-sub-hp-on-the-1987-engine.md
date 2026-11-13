@@ -15,3 +15,9 @@ Each fighter's post-1987 era styles (`SF2`, `SFZ`, `SF3`, `SF4`, `SF5`, `SF6`, a
 ## Consequences
 
 The standalone `CombatSession` stepping wrappers are retired once real-fight era integration tests replace them; pure era data tables (`era.rs`, revision deltas, What-If and Flagship kits) remain. Every era move and stance uses existing 1987 ROM tiles and approved `sf1-port-art` sprite packs, differentiated at runtime by palette flashes/tints, afterimage shadow trails, and `#216`'s `EraHud` and `CalloutBoard` stage dim / burnout grey effects.
+
+## Move effects
+
+The SF1 era style uses its arcade move effects, including in Definitive Overhaul. A new move effect follows the style of the fighter who produces it. In mixed-era fights, an eligible opponent can still show their own move effects, including effects on contact with the SF1 fighter. SF1+ is a separate, eligible era style.
+
+Move Effects Preview uses original light, medium, and heavy hit sparks for eligible styles. Drive Impact has larger contact effects with a paint burst on a hit and a cool arc on guard. Throws and hard knockdowns use a wider dust burst when the defender hits the floor.

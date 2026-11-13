@@ -7,17 +7,135 @@ use sf_video::asset_pack::{
     validate_pack, validate_tile, AdpcmClip, FmPatch, Rgba,
 };
 use sf_video::compositor::{
-    present, render_player_select, select_cell_origin, AfterimageTrail, IndexedSprite, OverhaulScene,
+    present, present_with_move_effects, render_player_select, select_cell_origin, AfterimageTrail,
+    IndexedSprite, OverhaulScene,
     PaletteTint, PresentMode, SelectPortrait,
     SELECT_BLUE, SELECT_GOLD, SELECT_YELLOW,
 };
 use sf_video::era_hud::{EraGauge, EraHud, Fill, GaugeRow};
+use sf_video::move_effects::signature::{
+    denjin_hands, signature_impact, signature_projectile, ImpactKind, ProjectileKind,
+};
+use sf_video::move_effects::{effect_frame, EffectKind};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 fn blank() -> Frame {
     Frame {
         argb: vec![0xff_11_22_33; WIDTH * HEIGHT],
     }
+}
+
+#[test]
+fn signature_effects_stay_anchored_when_flipped_and_impacts_expire() {
+    let center = (72, 80);
+    let draw = |sprites: &[IndexedSprite]| {
+        present_with_move_effects(
+            PresentMode::Overhaul,
+            &blank(),
+            &OverhaulScene::EMPTY,
+            sprites,
+        )
+    };
+    let check_frames = |frame: &dyn Fn(u8, bool) -> Vec<IndexedSprite>, duration: u8| {
+        for age in 0..duration {
+            let right = draw(&frame(age, false));
+            let left = draw(&frame(age, true));
+            assert_ne!(right.argb, blank().argb, "effect frame {age} has no color");
+            for row in 48..112 {
+                for x in 42..=102 {
+                    assert_eq!(
+                        right.argb[row * WIDTH + x],
+                        left.argb[row * WIDTH + 2 * center.0 as usize - x]
+                    );
+                }
+            }
+        }
+    };
+    check_frames(
+        &|age, flip| denjin_hands(age, center.0, center.1, flip),
+        8,
+    );
+    for kind in [ProjectileKind::Denjin, ProjectileKind::TigerCannon] {
+        check_frames(
+            &|age, flip| signature_projectile(kind, age, center.0, center.1, flip),
+            12,
+        );
+    }
+    for kind in [
+        ImpactKind::Denjin,
+        ImpactKind::TigerCannon,
+        ImpactKind::Zanei,
+        ImpactKind::LightHit,
+        ImpactKind::MediumHit,
+        ImpactKind::HeavyHit,
+        ImpactKind::DriveImpactHit,
+        ImpactKind::DriveImpactGuard,
+        ImpactKind::SlamDust,
+    ] {
+        check_frames(
+            &|age, flip| signature_impact(kind, age, center.0, center.1, flip),
+            kind.lifetime(),
+        );
+        assert!(signature_impact(kind, kind.lifetime(), center.0, center.1, false).is_empty());
+    }
+}
+
+#[test]
+fn hit_sparks_increase_in_size_with_strength() {
+    let frame = |kind| signature_impact(kind, 0, 72, 80, false);
+    let colored_pixels = |kind| {
+        frame(kind).iter()
+            .map(|sprite| sprite.pixels.iter().filter(|&&pen| pen != 0).count())
+            .sum::<usize>()
+    };
+    let light = colored_pixels(ImpactKind::LightHit);
+    let medium = colored_pixels(ImpactKind::MediumHit);
+    let heavy = colored_pixels(ImpactKind::HeavyHit);
+    let drive = colored_pixels(ImpactKind::DriveImpactHit);
+    assert!(light < medium && medium < heavy && heavy * 2 < drive);
+    assert_ne!(frame(ImpactKind::DriveImpactHit), frame(ImpactKind::DriveImpactGuard));
+}
+
+#[test]
+fn embedded_move_effects_have_visible_frames_and_only_draw_in_overhaul() {
+    let kinds = [
+        EffectKind::LandingDust,
+        EffectKind::Parry,
+        EffectKind::KenFire,
+        EffectKind::KenBurn,
+    ];
+    for kind in kinds {
+        for age in 0..kind.lifetime() {
+            let sprite = effect_frame(kind, age, 40, 40, false).expect("active effect frame");
+            assert!(sprite.pixels.iter().any(|&pen| pen != 0), "{kind:?} at {age}");
+        }
+        let next = effect_frame(kind, kind.lifetime(), 40, 40, false);
+        if kind == EffectKind::KenFire {
+            assert_eq!(next, effect_frame(kind, 0, 40, 40, false));
+        } else {
+            assert!(next.is_none());
+        }
+    }
+
+    let sprites = signature_impact(ImpactKind::HeavyHit, 0, 40, 40, false);
+    let sprite = &sprites[0];
+    let index = sprite.pixels.iter().position(|&pen| pen != 0).unwrap();
+    let x = sprite.x + (index % 16) as i32;
+    let y = sprite.y + (index / 16) as i32;
+    let fighter = [IndexedSprite::solid(x, y, 0xff_20_40_60)];
+    let scene = OverhaulScene {
+        fighters: [&fighter, &[]],
+        ..OverhaulScene::EMPTY
+    };
+    let hardware = blank();
+    let effects = &sprites;
+    let faithful = present_with_move_effects(PresentMode::Faithful, &hardware, &scene, effects);
+    assert_eq!(faithful.argb, hardware.argb);
+    let overhaul = present_with_move_effects(PresentMode::Overhaul, &hardware, &scene, effects);
+    assert_eq!(
+        overhaul.argb[y as usize * WIDTH + x as usize],
+        sprite.palette[usize::from(sprite.pixels[index])]
+    );
 }
 
 #[test]

@@ -99,6 +99,13 @@ impl AfterimageTrail {
         self.poses.iter_mut().for_each(Vec::clear);
     }
 
+    /// Reproject past poses after horizontal camera movement.
+    pub fn shift_x(&mut self, dx: i32) {
+        for sprite in self.poses.iter_mut().flatten() {
+            sprite.x += dx;
+        }
+    }
+
     fn draw(&self, argb: &mut [u32], stage: Option<&[bool]>) {
         for (pose, strength) in self.poses.iter().zip([144, 96, 48]).rev() {
             for sprite in pose {
@@ -172,6 +179,16 @@ impl OverhaulScene<'static> {
 ///
 /// `Faithful` clones `hardware` and does not read `scene`.
 pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -> Frame {
+    present_with_move_effects(mode, hardware, scene, &[])
+}
+
+/// Compose a frame with move effects above the fighters and below the HUD.
+pub fn present_with_move_effects(
+    mode: PresentMode,
+    hardware: &Frame,
+    scene: &OverhaulScene<'_>,
+    effects: &[IndexedSprite],
+) -> Frame {
     debug_assert_eq!(hardware.argb.len(), WIDTH * HEIGHT);
     if mode == PresentMode::Faithful {
         return Frame {
@@ -205,6 +222,9 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
                 blit_sprite(&mut argb, sprite);
             }
         }
+    }
+    for sprite in effects {
+        blit_sprite(&mut argb, sprite);
     }
     era_hud::draw_lifted_presented(
         &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font,

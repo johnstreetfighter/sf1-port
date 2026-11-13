@@ -39,6 +39,8 @@ use crate::data_bank::{
 use crate::machine::MachineState;
 use crate::roster::PlayMode;
 
+mod move_effects;
+
 /// A4: object RAM base (entity offsets are relative to it).
 pub const OBJ_BASE: u32 = 0xffe000;
 /// A5: work RAM base.
@@ -1128,7 +1130,7 @@ impl Bus<'_> {
                 && self.eb(me, 0x30) == 4
             {
                 self.toggle_state.raging_demon.blackout_frames = Some(DEMON_BLACKOUT_FRAMES);
-                self.spawn_demon_spark(other);
+                self.spawn_demon_spark(ps, other);
             }
         }
         if self.eb(me, 8) == 1 {
@@ -1474,6 +1476,7 @@ impl Bus<'_> {
             0x45a96 => self.set_eb(me, 9, (st & 0xfc) | 4),
             // 0x454ee: the move's landing sound (header byte +0x12).
             0x454ee => {
+                self.finish_knockdown_dust(me);
                 self.clear_air_attack_trajectory(self.el(me, 0x38));
                 let snd = self.eb(me, 0x12);
                 if snd != 0 {
@@ -1986,7 +1989,8 @@ impl Bus<'_> {
             self.effective_entry_damage(me, entry, is_blocked)
         };
         self.damage_with_source(me, dmg, is_blocked, Some(era));
-        self.react_projectile(me, other, entry, is_blocked, air_block);
+        // The bank specifies its own impact, such as the Kiai Shot breakup.
+        self.react_projectile(me, other, entry, HitSource::projectile(is_blocked), air_block);
     }
 
     /// 0x45630: the CPU opponent's follow-up decision, called at the end of
@@ -2624,7 +2628,7 @@ impl Bus<'_> {
         ));
         let defender = self.el(other, 0x38);
         let parried = self.what_if_eagle_riposte(other, self.center_x(me))
-            || self.sf3_parry(other, self.center_x(me), low, false, self.era_airborne(other));
+            || self.sf3_parry(other, self.center_x(me), (ax, ay), low, false, self.era_airborne(other));
         if parried || self.sf5_defend(defender, other, false) || self.sf6_defend(defender) {
             self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
             let attacker_slot = self.combo_slot(me);
@@ -2697,11 +2701,15 @@ impl Bus<'_> {
                         self.show_score(ps);
                     }
                     self.damage(me, dmg);
-                    self.react(me, other, entry);
+                    let reacted = self.react_as(me, other, entry, HitSource::Melee);
                     if self.player_score_entry(me, depth).is_some() {
                         self.check_hiscore(me);
                     }
-                    self.spawn_effect(me, template);
+                    if reacted {
+                        self.spawn_melee_hit_effect(me, template);
+                    } else {
+                        self.spawn_effect(me, template);
+                    }
                 }
                 self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
             }
@@ -2965,14 +2973,22 @@ impl Bus<'_> {
         let punish = !chip && self.sf6_impact_punish(ps, defender, self.eb(me, 0xa));
         let crush = self.sf5_strike(me, other, self.eb(me, 0xa), chip);
         self.damage_with_chip(me, dmg, chip);
-        self.react_as(me, other, if punish { 0x45b6e } else if crush { 0x45f52 } else { entry }, src);
+        let reacted = self.react_as(me, other, if punish { 0x45b6e } else if crush { 0x45f52 } else { entry }, src);
         if crush {
             let slot = self.combo_slot(other);
             let stun = &mut self.toggle_state.combo.hitstun[slot];
             *stun = stun.saturating_add(10);
         }
         self.check_hiscore(me);
-        self.spawn_effect(me, if metsu { 0x186fc } else { template });
+        let template = if metsu { 0x186fc } else { template };
+        if reacted && src == HitSource::Melee && !chip {
+            self.spawn_melee_hit_effect(me, template);
+        } else if src == HitSource::Melee && !chip && self.has_drive_impact_contact(me) {
+            let slot = self.spawn_contact_effect(me, template, false);
+            self.hide_move_effect_spark(slot);
+        } else {
+            self.spawn_effect(me, template);
+        }
     }
 
     /// 0x3b9f0: add the 7-digit decimal score at 0x146d6 + idx to the
@@ -3301,23 +3317,23 @@ impl Bus<'_> {
     /// 4, 1, or anything else — standing Ken has 2), start its stream from the
     /// per-player reaction table (alive) or knock-down table (no health
     /// left), queue the table's sound, and cut the current hold short.
-    /// Every landed hit, chip included, comes here, so in Training it also
-    /// starts the defender's refill wait over ([`Self::training_contact`]).
-    fn react(&mut self, me: u16, other: u16, entry: u32) {
-        self.react_as(me, other, entry, HitSource::Melee);
-    }
-
-    /// [`Self::react`] for a hit landed by `src`, which the true-combo gate
-    /// reads at the end ([`Self::combo_react`]).
-    fn react_as(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
+    /// Every landed hit, chip included, comes here. `src` is read by the
+    /// true-combo gate. Return whether the defender took the reaction.
+    fn react_as(&mut self, me: u16, other: u16, entry: u32, src: HitSource) -> bool {
         let target = self.el(other, 0x38);
         if self.era_sf4_take_absorbed(target) || self.sf5_take_absorbed(target) || self.sf6_take_absorbed(target) {
-            return;
+            if src == HitSource::Melee {
+                self.record_drive_impact_contact(me, other, true);
+            }
+            return false;
         }
         if src == HitSource::Chip && self.guard_power_contact(me, other, GUARD_SPECIAL_PRESSURE) {
-            return;
+            return false;
         }
         if src == HitSource::Melee {
+            self.record_drive_impact_contact(me, other, false);
+            self.record_ken_burn(me, other);
+            self.record_zanei_hit(me);
             self.era_normal_contact(me, false);
         }
         self.react_one(me, other, entry, src);
@@ -3329,12 +3345,15 @@ impl Bus<'_> {
             self.era_crumple_hit(owner, target, move_id, grounded_alive);
         }
         self.dramatic_shared_knockdown(me, other, entry, src);
+        true
     }
 
-    fn react_projectile(&mut self, me: u16, other: u16, entry: u32, blocked: bool, air_block: bool) {
+    /// Whether an unguarded projectile hit reached the defender's reaction.
+    fn react_projectile(&mut self, me: u16, other: u16, entry: u32, src: HitSource, air_block: bool) -> bool {
+        let blocked = src == HitSource::Chip;
         let defender = self.el(other, 0x38);
         if self.era_sf4_take_absorbed(defender) || self.sf5_take_absorbed(defender) || self.sf6_take_absorbed(defender) {
-            return;
+            return false;
         }
         if blocked {
             self.record_guard_contact(other);
@@ -3343,7 +3362,7 @@ impl Bus<'_> {
             let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
             self.block_contact(other);
             self.alpha_guard_contact(other, if burnout { 22 } else { 18 });
-            return;
+            return false;
         }
         let can_counter = matches!(self.eb(other, 0xa), 4 | 8) && (self.can_alpha_counter(defender)
             || self.era_state(defender).is_some_and(|state| state.is_sf3()));
@@ -3355,10 +3374,9 @@ impl Bus<'_> {
                     self.alpha_guard_contact(other, 18);
                 }
             }
-            return;
+            return false;
         }
-        let src = if blocked { HitSource::Chip } else { HitSource::Projectile };
-        self.react_as(me, other, entry, src);
+        self.react_as(me, other, entry, src) && !blocked
     }
 
     fn dramatic_shared_knockdown(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
@@ -3501,6 +3519,7 @@ impl Bus<'_> {
             // reaction is started here, not through `start_move`).
             self.cancel_close(other);
         }
+        self.arm_knockdown_dust(self.el(me, 0x38), other, src);
     }
 
     /// 0x3b934..0x3b96a: clear 4 words (8 bytes) starting at `a0` (`D1 = 3`
@@ -3604,8 +3623,10 @@ impl Bus<'_> {
         self.spawn_contact_effect(me, template, false);
     }
 
-    fn spawn_demon_spark(&mut self, victim: u16) {
-        self.spawn_contact_effect(victim, DEMON_SPARK, true);
+    fn spawn_demon_spark(&mut self, owner: u32, victim: u16) {
+        if let Some(slot) = self.spawn_contact_effect(victim, DEMON_SPARK, true) {
+            self.record_demon_spark(owner, slot);
+        }
     }
 
     fn clear_raging_demon_blackout(&mut self) {
@@ -3619,13 +3640,8 @@ impl Bus<'_> {
         }
     }
 
-    fn spawn_contact_effect(&mut self, me: u16, template: u32, demon_spark: bool) {
-        let Some(s) = (0..12u16)
-            .map(|k| 0x100 + 0x40 * k)
-            .find(|&s| self.eb(s, 8) == 0)
-        else {
-            return;
-        };
+    fn spawn_contact_effect(&mut self, me: u16, template: u32, demon_spark: bool) -> Option<u16> {
+        let s = self.free_effect_slot()?;
         for i in 0..0x20u32 {
             let b = self.rb(template + i);
             self.set_eb(s, i, b);
@@ -3654,7 +3670,8 @@ impl Bus<'_> {
         self.set_el(s, 0x20, owner);
         self.set_el(s, 0x24, self.el(me, 0x3c));
         if self.eb(s, 0xe) & 0x20 != 0 {
-            self.era_spawn_projectile(s, self.el(me, 0x38), self.eb(me, 0xa));
+            let strength = crate::combo::level(self.eb(me, 0x34));
+            self.era_spawn_projectile(s, owner, self.eb(me, 0xa), strength);
         } else {
             self.era_clear_projectile(s);
         }
@@ -3668,6 +3685,7 @@ impl Bus<'_> {
         let half = if self.ew(s, 2) & 0x400 != 0 { 0x10 } else { 8 };
         self.set_ew(s, 4, self.ew(s, 4).wrapping_add(y).wrapping_sub(half));
         self.set_ew(s, 6, self.ew(s, 6).wrapping_add(x).wrapping_sub(half));
+        Some(s)
     }
 
     /// 0x42f1e: spawn an effect from an absolute-position 0x20-byte template.
@@ -3687,12 +3705,7 @@ impl Bus<'_> {
     }
 
     fn spawn_effect_with_bias(&mut self, template: u32, owner: u16, bias: u16) {
-        let Some(s) = (0..12u16)
-            .map(|k| 0x100 + 0x40 * k)
-            .find(|&s| self.eb(s, 8) == 0)
-        else {
-            return;
-        };
+        let Some(s) = self.free_effect_slot() else { return; };
         self.era_clear_projectile(s);
         for i in 0..0x20u32 {
             let b = self.rb(template + i);
@@ -3710,6 +3723,12 @@ impl Bus<'_> {
             self.set_el(s, 0x20, self.el(owner, 0x38));
             self.set_el(s, 0x24, self.el(owner, 0x3c));
         }
+    }
+
+    fn free_effect_slot(&mut self) -> Option<u16> {
+        let index = (0..12).find(|&index| self.eb(0x100 + 0x40 * index, 8) == 0)?;
+        self.toggle_state.era.move_effects.native_sparks[usize::from(index)] = false;
+        Some(0x100 + 0x40 * index)
     }
 
     /// 0x4329c: count all 12 effect slots whose state byte is nonzero.
@@ -4095,8 +4114,9 @@ impl Bus<'_> {
         if !self.effect_overlaps_fighter(s, defender) {
             return;
         }
-        let parried = self.what_if_eagle_riposte(defender, self.effect_centre(s).0)
-            || self.sf3_parry(defender, self.effect_centre(s).0, false, true, self.era_airborne(defender));
+        let contact = self.effect_centre(s);
+        let parried = self.what_if_eagle_riposte(defender, contact.0)
+            || self.sf3_parry(defender, contact.0, contact, false, true, self.era_airborne(defender));
         if parried || self.sf5_defend(self.el(defender, 0x38), defender, false)
             || self.sf6_defend(self.el(defender, 0x38))
         {
@@ -4217,6 +4237,7 @@ impl Bus<'_> {
                 if self.eb(me, 8) & 8 != 0 {
                     return;
                 }
+                self.record_signature_projectile_contact(s);
                 let air_block = self.alpha_air_blocks(other, self.effect_centre(s).0);
                 self.transform_effect(s, 0x18944);
                 if air_block
@@ -4229,12 +4250,18 @@ impl Bus<'_> {
                     return;
                 }
                 self.damage(me, self.rb(0x4338f));
-                self.react_as(me, other, 0x4338e, HitSource::Projectile);
+                if self.react_as(me, other, 0x4338e, HitSource::Projectile) {
+                    self.record_projectile_hit_spark(s, None, true);
+                }
             }
             (0x43396, _) => {
                 // 0x43396: deflect this shuriken (or disappearing smoke) when struck
                 // by the opponent's attack box (0x43144 -> jmp 0x431c0). +0xa = 4
                 // makes the effect runner animate it.
+                if let Some(index) = crate::era_fight::projectile_index(s) {
+                    self.toggle_state.era.signature_projectiles[index] = None;
+                    self.toggle_state.era.projectile_sparks[index] = None;
+                }
                 self.set_eb(s, 9, 0x63);
                 self.set_eb(s, 0xb, self.eb(s, 0xb).wrapping_neg());
                 self.set_eb(s, 0xa, 4);
@@ -4357,7 +4384,9 @@ impl Bus<'_> {
             (0x43652, None) => {
                 let attack_x = self.effect_centre(s).0;
                 let era = self.era_projectile(s);
-                if self.era_projectile_hit(s) {
+                let spark = self.projectile_spark(s);
+                let ends = self.era_projectile_hit(s);
+                if ends {
                     self.transform_effect(s, 0x186fc);
                 }
                 let (me, other) = self.player_entities(self.el(s, 0x20));
@@ -4378,7 +4407,9 @@ impl Bus<'_> {
                         self.wb(0xff8e36, 9);
                     }
                 }
-                self.react_projectile(me, other, entry, is_blocked, air_block);
+                if self.react_projectile(me, other, entry, HitSource::projectile(is_blocked), air_block) {
+                    self.record_projectile_hit_spark(s, spark, ends);
+                }
             }
             (h, _) => self.note_unrecovered(h),
         }
@@ -4407,7 +4438,9 @@ impl Bus<'_> {
     fn fireball_hits_fighter(&mut self, s: u16) {
         let attack_x = self.effect_centre(s).0;
         let era = self.era_projectile(s);
-        if self.era_projectile_hit(s) {
+        let spark = self.projectile_spark(s);
+        let ends = self.era_projectile_hit(s);
+        if ends {
             self.transform_effect(s, 0x186fc);
         }
         let owner_ps = self.el(s, 0x20);
@@ -4452,7 +4485,9 @@ impl Bus<'_> {
                 self.wb(0xff8e36, 9);
             }
         }
-        self.react_projectile(me, other, entry, is_blocked, air_block);
+        if self.react_projectile(me, other, entry, HitSource::projectile(is_blocked), air_block) {
+            self.record_projectile_hit_spark(s, spark, ends);
+        }
     }
 
     /// 0x42eb4: turn effect `s` into `template` in place: the template's
@@ -5038,7 +5073,7 @@ impl Bus<'_> {
             if remaining != 0 && remaining % DEMON_SPARK_INTERVAL == 0 {
                 let owner = self.toggle_state.satsui_awakening.map_or(P1_STRUCT, |form| form.side.fighter_struct());
                 let (_, victim) = self.player_entities(owner);
-                self.spawn_demon_spark(victim);
+                self.spawn_demon_spark(owner, victim);
             }
         }
         if self.dramatic_rules().is_some() {
@@ -8067,6 +8102,7 @@ impl Bus<'_> {
     /// P1 or P2 structure; the 1987 CPU's guards are its own streams) takes
     /// the move's blockstun.
     fn combo_blocked(&mut self, me: u16, other: u16) {
+        self.record_drive_impact_contact(me, other, true);
         self.record_guard_contact(other);
         self.era_normal_contact(me, true);
         self.era_sf4_blocked(self.el(me, 0x38), self.eb(me, 0xa));
@@ -8793,6 +8829,7 @@ impl Bus<'_> {
     /// [`crate::data_bank::ROUTINE_THROW_SLAM`]: `victim` hits the mat from
     /// `thrower`'s throw.
     fn throw_slam(&mut self, victim: u16, thrower: u16) -> bool {
+        self.record_throw_dust(self.el(thrower, 0x38), victim);
         let victim_slot = self.combo_slot(victim);
         self.toggle_state.throw.crosses[victim_slot] = false;
         self.training_contact(victim);

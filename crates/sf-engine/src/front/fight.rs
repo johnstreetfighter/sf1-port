@@ -15,7 +15,7 @@ use std::sync::Arc;
 use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side, Strip};
-use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
+use sf_video::compositor::{present_with_move_effects, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
 use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeRow, GaugeState};
 use sf_video::render::{
     capture_sprite_pose_with_art, render_frame, render_frame_edited, render_frame_staged_with_art,
@@ -47,8 +47,10 @@ use crate::tasks::Io;
 use crate::utility::{ComboTrialSpec, Drill, DrillController, RosterFighter, TrialController, TrialFrame};
 
 mod gauge_effects;
+mod move_effects;
 
 use gauge_effects::{Corner as GaugeCorner, GaugeEffects, Spends};
+use move_effects::MoveEffects;
 
 /// The game flow's round start (`0x3ea3e`): Training's restart point.
 const ROUND_START: u32 = 0x3ea3e;
@@ -428,6 +430,8 @@ pub struct Fight {
     /// The preview gauges supplied through the renderer's test hook.
     era_hud: EraHud,
     trails: [AfterimageTrail; 3],
+    move_effects_preview: bool,
+    move_effects: MoveEffects,
     satsui_art: Option<Arc<SatsuiArt>>,
     /// Training's Show of a move (ticket #230): its input stands in for the
     /// player's pad until the move ends.
@@ -483,6 +487,7 @@ pub struct FightSnapshot {
     pub hold_combo: bool,
     pub era_hud: EraHud,
     pub trails: [AfterimageTrail; 3],
+    move_effects: MoveEffects,
     /// Training-only input driver and observer; both None in Local.
     pub show: Option<Show>,
     pub coach: Option<Coach>,
@@ -580,7 +585,8 @@ impl Fight {
             last_flow, show, read, fed_reads,
             sounds: _, overlay: _, gauge_art: _, gauge_effects: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
-            era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
+            era_hud: _, trails: _, move_effects_preview: _, move_effects: _, satsui_art: _,
+            coach, notation: _, selected_styles: _, practice_meters,
             drill, trial: _,
         } = self;
         let mut out = CanonicalHasher::new();
@@ -630,7 +636,8 @@ impl Fight {
             machine, setup, country, black, sounds, over, continuing,
             overlay: _, gauge_art: _, gauge_effects, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
-            combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
+            combo, moments, hold_combo, era_hud, trails, move_effects_preview: _, move_effects,
+            satsui_art: _, show, coach, practice_meters, notation: _,
             drill, trial,
         } = self;
         FightSnapshot {
@@ -656,6 +663,7 @@ impl Fight {
             hold_combo: *hold_combo,
             era_hud: *era_hud,
             trails: trails.clone(),
+            move_effects: move_effects.clone(),
             show: show.clone(),
             coach: coach.clone(),
             practice_meters: *practice_meters,
@@ -672,7 +680,7 @@ impl Fight {
         let FightSnapshot {
             frame: _, machine, setup, country, black, sounds, over, continuing,
             round_start, last_flow, callouts, gauge_effects, pending_callouts, pending_combos,
-            reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails,
+            reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails, move_effects,
             show, coach, practice_meters, drill, trial,
         } = snap;
         self.machine.restore_snapshot(machine);
@@ -696,6 +704,7 @@ impl Fight {
         self.hold_combo = *hold_combo;
         self.era_hud = *era_hud;
         self.trails.clone_from(trails);
+        self.move_effects.clone_from(move_effects);
         self.show.clone_from(show);
         self.coach.clone_from(coach);
         self.practice_meters = *practice_meters;
@@ -792,6 +801,8 @@ impl Fight {
             hold_combo: false,
             era_hud: EraHud::NONE,
             trails: Default::default(),
+            move_effects_preview: false,
+            move_effects: MoveEffects::default(),
             satsui_art: None,
             show: None,
             coach: None,
@@ -1017,6 +1028,18 @@ impl Fight {
         self.gauge_art = art;
     }
 
+    /// The local comparison choice, available under Definitive Overhaul.
+    pub fn move_effects_preview(&self) -> Option<bool> {
+        (self.setup.config.preset == RulesetPreset::DefinitiveOverhaul && self.setup.config.dramatic.is_none())
+            .then_some(self.move_effects_preview)
+    }
+
+    pub fn toggle_move_effects(&mut self) {
+        if let Some(preview) = self.move_effects_preview() {
+            self.move_effects_preview = !preview;
+        }
+    }
+
     /// The machine at the current round's start, if one has started.
     pub fn round_start(&self) -> Option<&PowerOnSnapshot> {
         self.round_start.as_ref()
@@ -1035,6 +1058,7 @@ impl Fight {
         // The abandoned attempt's words go with it.
         self.callouts = CalloutBoard::new();
         self.gauge_effects = GaugeEffects::default();
+        self.move_effects = MoveEffects::default();
         self.pending_callouts.clear();
         self.show = None;
         self.coach = None;
@@ -1086,6 +1110,7 @@ impl Fight {
             self.set_drill(None);
         }
         self.gauge_effects = GaugeEffects::default();
+        self.move_effects = MoveEffects::default();
     }
 
     pub(crate) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
@@ -1690,11 +1715,18 @@ impl Fight {
                 });
             }
         }
-        if tints.is_empty() {
+        let frame = if tints.is_empty() {
             render_frame(assets, &scene)
         } else {
             render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0
+        };
+        if self.move_effects_preview() == Some(true) {
+            let sparks = self.move_effects.demon_sparks();
+            if !sparks.is_empty() {
+                return present_with_move_effects(PresentMode::Overhaul, &frame, &OverhaulScene::EMPTY, &sparks);
+            }
         }
+        frame
     }
 
     fn draw_ally_lifebar(&self, frame: &mut Frame) {
@@ -1745,11 +1777,16 @@ impl Fight {
             }
         }
         let states = self.era_combatants();
-        if states.iter().any(|state| state.fighter_tint().is_some()) {
+        let burn_tints = [0, 1, 2].map(|side| {
+            (side < 2 && self.move_effects_preview() == Some(true))
+                .then(|| self.move_effects.burn_tint(side))
+                .flatten()
+        });
+        if burn_tints.iter().any(Option::is_some) || states.iter().any(|state| state.fighter_tint().is_some()) {
             let telemetry = self.machine.diagnostic_telemetry();
             let fighters = [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2];
-            for (state, fighter) in states.iter().zip(fighters.into_iter().flatten()) {
-                let Some(tint) = state.fighter_tint().filter(|_| fighter.active) else { continue };
+            for (side, (state, fighter)) in states.iter().zip(fighters.into_iter().flatten()).enumerate() {
+                let Some(tint) = burn_tints[side].or_else(|| state.fighter_tint()).filter(|_| fighter.active) else { continue };
                 let start = usize::from(fighter.entity_offset);
                 let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
                 let cells = ((usize::from(grid[0]) + 1) * (usize::from(grid[1]) + 1)).min(24);
@@ -1800,7 +1837,11 @@ impl Fight {
                 trail.clear();
             }
         }
-        if colors == [None; 3] || self.machine.state.frame % 4 != 0 {
+        let zanei = self.move_effects.zanei_rush();
+        let tick = self.machine.state.frame;
+        let record_era = colors != [None; 3] && tick % 4 == 0;
+        let record_zanei = zanei.contains(&true) && tick % 2 == 0;
+        if !record_era && !record_zanei {
             return;
         }
         let scene = self.machine.state.scene();
@@ -1809,18 +1850,35 @@ impl Fight {
         let satsui_art = self.satsui_art.as_ref().map(|art| &art.body);
         let fighters = [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2];
         for (index, fighter) in fighters.into_iter().flatten().enumerate() {
-            let Some(color) = colors[index].filter(|_| fighter.active) else { continue };
+            let color = colors[index].filter(|_| record_era);
+            let zanei = record_zanei && zanei.get(index).copied().unwrap_or(false);
+            if !fighter.active || (color.is_none() && !zanei) {
+                continue;
+            }
             let start = usize::from(fighter.entity_offset);
             let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
             let cells = ((usize::from(grid[0]) + 1) * (usize::from(grid[1]) + 1)).min(24);
             let art = satsui_art.filter(|_| satsui_owner == Some(fighter.player_struct));
-            self.trails[index].record_colored(capture_sprite_pose_with_art(assets, &scene, start, cells, art), color);
+            let pose = capture_sprite_pose_with_art(assets, &scene, start, cells, art);
+            if zanei {
+                self.move_effects.zanei_trails[index].record_colored(pose.clone(), 0xffa286e8);
+            }
+            if let Some(color) = color {
+                self.trails[index].record_colored(pose, color);
+            }
         }
     }
 
     fn render_scene(&self, assets: &Assets) -> Frame {
-        let scene = self.machine.state.scene();
+        let mut scene = self.machine.state.scene();
         let layout = self.layout(&scene);
+        let preview = layout.is_some() && self.move_effects_preview() == Some(true);
+        let move_effects = if preview {
+            self.move_effects.hide_native_sparks(&mut scene.objectram);
+            self.move_effects.sprites(self.machine.state.frame)
+        } else {
+            Vec::new()
+        };
         let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
         let ally2_quarter_dim = self.era_combatants().get(2).is_some_and(|state| state.is_sf2());
         let callouts = self.callouts.frame_with_ally2_quarter_dim(quarter_dim, ally2_quarter_dim);
@@ -1836,7 +1894,8 @@ impl Fight {
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
                     && (!callouts.is_empty() || era_hud != EraHud::NONE || ally2_gauge.is_some()
-                        || !tints.is_empty() || !sprite_art.is_empty()) =>
+                        || !tints.is_empty() || !sprite_art.is_empty() || !move_effects.is_empty()
+                        || (preview && self.move_effects.zanei_rush().contains(&true))) =>
             {
                 let (mut hardware, stage) = render_frame_staged_with_art(assets, &scene, edits, &tints, &sprite_art);
                 if boxes {
@@ -1844,7 +1903,7 @@ impl Fight {
                 }
                 let font = RomFont::new(&assets.gfx4, &assets.maincpu);
                 let [p1, p2, ally2] = self.gauge_corners(era_hud, ally2_gauge);
-                let hud = present(
+                let hud = present_with_move_effects(
                     PresentMode::Overhaul,
                     &hardware,
                     &OverhaulScene {
@@ -1859,11 +1918,16 @@ impl Fight {
                         gauge_art: self.gauge_art,
                         hud_lift: gauge_lift(meter),
                         stage: Some(&stage),
-                        afterimages: [Some(&self.trails[0]), Some(&self.trails[1])],
+                        afterimages: [0, 1].map(|side| Some(if preview && self.move_effects.zanei_rush()[side] {
+                            &self.move_effects.zanei_trails[side]
+                        } else {
+                            &self.trails[side]
+                        })),
                         ally2_afterimages: self.setup.config.dramatic.is_some().then_some(&self.trails[2]),
                         font: Some(&font),
                         ..OverhaulScene::EMPTY
                     },
+                    &move_effects,
                 );
                 if !meter {
                     return hud;
@@ -2027,6 +2091,15 @@ impl Fight {
                 ally2_events = m.take_dramatic_ally_era_events();
             }
             let flow = flow_position(m);
+            if in_fight && self.setup.config.preset == RulesetPreset::DefinitiveOverhaul
+                && self.setup.config.dramatic.is_none()
+            {
+                self.move_effects.step(m.move_effect_cues());
+            } else if self.setup.config.preset == RulesetPreset::DefinitiveOverhaul && m.settling_knockout() {
+                self.move_effects.settle_knockout(m.move_effect_cues());
+            } else if flow != FIGHT_LOOP {
+                self.move_effects = MoveEffects::default();
+            }
             if self.country.is_none() && flow == STAGE_START {
                 self.country = Some(chosen_country(m));
             }
