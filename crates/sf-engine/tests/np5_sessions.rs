@@ -1115,7 +1115,9 @@ fn an_observer_plays_the_confirmed_terminal_tail_and_waits_for_players_after_mat
     let observed = observer.take_saved_replay().expect("spectator match auto-saves");
     let hosted = pair.peers[0].take_saved_replay().expect("host match auto-saves");
     assert!(observed.online && hosted.online);
+    assert_eq!(observed.frames.len(), hosted.frames.len(), "both replays end on the terminal input");
     assert_eq!(observed.frames, hosted.frames);
+    let last_played = observer.spectator_frame();
     let confirmed = observer_step(
         &mut pair,
         &mut observer,
@@ -1132,6 +1134,7 @@ fn an_observer_plays_the_confirmed_terminal_tail_and_waits_for_players_after_mat
         FrameInputs::default(),
         &mut packets,
     );
+    assert_eq!(observer.spectator_frame(), last_played, "the observer stops consuming inputs after match over");
     let left = observer_step(&mut pair, &mut observer, key(MenuInput::Back), &mut packets);
     assert_eq!(left.screen, "online");
     assert!(

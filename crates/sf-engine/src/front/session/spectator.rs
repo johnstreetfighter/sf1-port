@@ -59,10 +59,13 @@ impl State {
     /// Playback consumes confirmed pairs only. The trailing fifteen remain a
     /// jitter buffer; a late join can replay at most eight pairs per display.
     /// An impact ends the batch on its contact picture so the sound and spark
-    /// start together even while playback is catching up.
+    /// start together. A terminal event ends playback at the exact last input.
     pub(super) fn step(&mut self, fight: &mut Fight, assets: &Assets) -> FightFrame {
-        let count = self.confirmed.len().saturating_sub(self.played as usize)
-            .saturating_sub(15).min(8);
+        let count = if fight.is_over() {
+            0
+        } else {
+            self.confirmed.len().saturating_sub(self.played as usize).saturating_sub(15).min(8)
+        };
         if self.played == 0 && count > 0 {
             fight.select_theme(self.theme);
         }
@@ -83,9 +86,9 @@ impl State {
             announcements.append(&mut frame.announcements);
             clear_impacts |= frame.clear_impacts;
             impacts.append(&mut frame.impacts);
-            if event.is_none() { event = frame.event.take(); }
+            event = frame.event.take();
             last = Some(frame);
-            if !impacts.is_empty() {
+            if event.is_some() || !impacts.is_empty() {
                 break;
             }
         }

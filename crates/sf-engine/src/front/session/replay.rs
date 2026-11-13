@@ -155,7 +155,15 @@ impl GameSession {
         let confirmed_inputs = play
             .netplay
             .as_ref()
-            .map(crate::netplay::RollbackEngine::confirmed_inputs)
+            .map(|rollback| {
+                let inputs = rollback.confirmed_inputs();
+                // The host can confirm idle frames while delivering the terminal
+                // event and while the spectator drains its jitter buffer.
+                let end = rollback.confirmed_events().iter()
+                    .find(|(_, event)| *event == FightEvent::MatchOver)
+                    .map_or(inputs.len(), |(frame, _)| *frame as usize + 1);
+                &inputs[..end]
+            })
             .or_else(|| {
                 self.net_setup
                     .as_ref()
