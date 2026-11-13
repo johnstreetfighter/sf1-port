@@ -40,9 +40,8 @@ fn valid_tag(tag: [u8; 12]) -> bool {
 }
 
 /// Authoritative match configuration. Physical bindings, video,
-/// audio and observer preferences have no fields here. Scheme selectors are
-/// currently inert in translated fights and are normalized to Classic on wire;
-/// TRD1 must synchronize/normalize their effects before activating them. The
+/// audio and observer preferences have no fields here. Control schemes
+/// affect the meaning of the synchronized pad bits and travel with the rules. The
 /// constructor's explicit fighters/DIPs/resolved stage are authoritative over
 /// their configuration copies; decoding rejects contradictory copies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,8 +62,7 @@ impl SyncedMatchRules {
         mut config: MatchConfig, fighters: [TournamentFighter; 2], dips: FightDips,
         stage: StagePick, seed: u64, bank_hash: u64, art_pack_hash: u64,
     ) -> Self {
-        config.p1_scheme = ControlScheme::Classic;
-        config.p2_scheme = ControlScheme::Classic;
+        [config.p1_scheme, config.p2_scheme] = config.effective_control_schemes();
         [config.roster.p1, config.roster.p2] = fighters;
         config.roster.stage = Some(stage);
         config.difficulty = dips.difficulty;
@@ -98,10 +96,14 @@ impl SyncedMatchRules {
         })
     }
 
-    /// Explicit, little-endian schema. Inert scheme choices are never written.
+    /// Explicit, little-endian schema. Classic matches retain the original
+    /// layout so older peers can read a protocol-mismatch response.
     pub fn to_bytes(&self) -> Vec<u8> {
         let Self { config, fighters, styles, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash } = self;
-        let mut out = vec![if config.dramatic.is_some() { 2 } else if *styles != [None; 2] { 3 } else { 1 }];
+        let layout = if config.dramatic.is_some() { 2 } else if *styles != [None; 2] { 3 } else { 1 };
+        let schemes = config.effective_control_schemes();
+        let extended = schemes != [ControlScheme::Classic; 2];
+        let mut out = vec![layout + if extended { 3 } else { 0 }];
         write_config(config, &mut out);
         for fighter in fighters { write_fighter(*fighter, &mut out); }
         dips.difficulty.write(&mut out);
@@ -115,8 +117,13 @@ impl SyncedMatchRules {
         if let Some(rules) = config.dramatic {
             write_dramatic_rules(rules, &mut out);
         }
-        if out[0] == 3 {
+        if layout == 3 {
             for style in styles { write_style(*style, &mut out); }
+        }
+        if extended {
+            for scheme in schemes {
+                write_scheme(scheme, &mut out);
+            }
         }
         out
     }
@@ -129,7 +136,9 @@ impl SyncedMatchRules {
 
     fn read(read: &mut Reader<'_>) -> Option<Self> {
         let schema = read.u8()?;
-        if !matches!(schema, 1..=3) { return None; }
+        if !matches!(schema, 1..=6) { return None; }
+        let extended = schema > 3;
+        let schema = if extended { schema - 3 } else { schema };
         let mut config = read_config(read)?;
         let fighters = [read_fighter(read)?, read_fighter(read)?];
         let dips = FightDips { difficulty: read.u8()?, round_time: read.u16()? };
@@ -160,6 +169,13 @@ impl SyncedMatchRules {
         } else {
             [None; 2]
         };
+        if extended {
+            config.p1_scheme = read_scheme(read)?;
+            config.p2_scheme = read_scheme(read)?;
+            if config.effective_control_schemes() == [ControlScheme::Classic; 2] {
+                return None;
+            }
+        }
         Some(Self { config, fighters, styles, dips, stage, seed, bank_hash, art_pack_hash, protocol_hash })
     }
 }
@@ -206,6 +222,12 @@ macro_rules! enum_codec {
         fn $read(read: &mut Reader<'_>) -> Option<$ty> { match read.u8()? { $($id => Some($ty::$variant),)* _ => None } }
     };
 }
+mod replay_codec;
+pub(crate) use replay_codec::{read_replay_header, write_replay_header};
+
+enum_codec!(write_scheme, read_scheme, ControlScheme, {
+    Classic => 0, Pneumatic => 1, Modern => 2,
+});
 enum_codec!(write_preset, read_preset, RulesetPreset, {
     DefinitiveOverhaul => 0, Faithful1987 => 1, ClassicCompetitive => 2, PureFootsies1987Plus => 3, Custom => 4,
 });
@@ -577,6 +599,8 @@ impl HandshakePolicy {
         if reason == RejectReason::VersionMismatch {
             // A peer with the original rules decoder can still read this rejection.
             config.config.dramatic = None;
+            config.config.p1_scheme = ControlScheme::Classic;
+            config.config.p2_scheme = ControlScheme::Classic;
             config.styles = [None; 2];
         }
         Some(NetPacket::Welcome {

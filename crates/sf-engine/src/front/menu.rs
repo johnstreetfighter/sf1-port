@@ -17,6 +17,7 @@ use crate::version::EDITION_NAME;
 pub enum MenuItem {
     SinglePlayer,
     MultiPlayer,
+    Replays,
     Settings,
     Cabinet1987,
     Exit,
@@ -49,6 +50,12 @@ pub enum MenuItem {
     HoldCombo,
     /// Training's `FILL METERS`: every era gauge's resource kept full.
     FillMeters,
+    TrainingDrill,
+    ComboTrial,
+    TakeoverP1,
+    TakeoverP2,
+    RewindBookmark,
+    QuitToReplays,
     /// The pause box's `MOVES`: the fighter's move list.
     Moves,
     PowerOn,
@@ -70,6 +77,7 @@ impl MenuItem {
         match self {
             MenuItem::SinglePlayer => "SINGLE PLAYER",
             MenuItem::MultiPlayer => "MULTI PLAYER",
+            MenuItem::Replays => "REPLAYS",
             MenuItem::Settings => "SETTINGS",
             MenuItem::Cabinet1987 => "1987",
             MenuItem::Exit => "EXIT",
@@ -96,6 +104,12 @@ impl MenuItem {
             MenuItem::LivePreset => "PRESET",
             MenuItem::HoldCombo => "HOLD COMBO",
             MenuItem::FillMeters => "FILL METERS",
+            MenuItem::TrainingDrill => "DRILL",
+            MenuItem::ComboTrial => "TRIAL",
+            MenuItem::TakeoverP1 => "TAKEOVER P1",
+            MenuItem::TakeoverP2 => "TAKEOVER P2",
+            MenuItem::RewindBookmark => "REWIND TO BOOKMARK",
+            MenuItem::QuitToReplays => "QUIT TO REPLAYS",
             MenuItem::Moves => "MOVES",
             MenuItem::PowerOn => "POWER ON",
             MenuItem::Retry => "RETRY",
@@ -116,6 +130,7 @@ impl MenuItem {
             self,
             MenuItem::SinglePlayer
                 | MenuItem::MultiPlayer
+                | MenuItem::Replays
                 | MenuItem::Settings
                 | MenuItem::Cabinet1987
                 | MenuItem::PowerOn
@@ -146,6 +161,12 @@ impl MenuItem {
                 | MenuItem::LivePreset
                 | MenuItem::HoldCombo
                 | MenuItem::FillMeters
+                | MenuItem::TrainingDrill
+                | MenuItem::ComboTrial
+                | MenuItem::TakeoverP1
+                | MenuItem::TakeoverP2
+                | MenuItem::RewindBookmark
+                | MenuItem::QuitToReplays
                 | MenuItem::Moves
                 | MenuItem::Rematch
                 | MenuItem::Reselect
@@ -165,6 +186,7 @@ enum MenuKind {
 const MAIN: &[MenuItem] = &[
     MenuItem::SinglePlayer,
     MenuItem::MultiPlayer,
+    MenuItem::Replays,
     MenuItem::Settings,
     MenuItem::Cabinet1987,
     MenuItem::Exit,
@@ -187,9 +209,9 @@ const FIRST_ROW: usize = 8;
 const ROW_STEP: usize = 2;
 /// Give the full-size logo a tile of space below the top border.
 const MAIN_FRAME_ROW: usize = FRAME_ROW - 1;
-const SF1_PLUS_SUBTITLE_Y: usize = 15 * 8;
-/// Leave room after the subtitle and fit all five choices above the notice.
-const MAIN_FIRST_ITEM_Y: usize = 134;
+const SF1_PLUS_SUBTITLE_Y: usize = 104;
+/// Fit all six choices between the logo and the notice.
+const MAIN_FIRST_ITEM_Y: usize = 118;
 const MAIN_ITEM_STEP: usize = 14;
 /// The row of a one-line notice (an untranslated branch, say).
 pub const NOTICE_ROW: usize = 21;
@@ -262,6 +284,33 @@ impl MenuScreen {
             MenuKind::MultiPlayer => 2,
             MenuKind::Training => 3,
         }
+    }
+
+    /// Main Menu saved positions predate the Replays row.
+    pub(super) fn at_saved(self, row: u8) -> Self {
+        if self.kind == MenuKind::Main {
+            self.at(match row {
+                2..=4 => row + 1,
+                5 => 2,
+                _ => row,
+            })
+        } else {
+            self.at(row)
+        }
+    }
+
+    pub(super) fn saved_position(&self) -> Option<u8> {
+        self.cursor().map(|(row, _)| {
+            if self.kind == MenuKind::Main {
+                match row {
+                    2 => 5,
+                    3..=5 => row - 1,
+                    _ => row,
+                }
+            } else {
+                row
+            }
+        })
     }
 
     /// The cursor's row and item, if any row is live.
@@ -356,7 +405,7 @@ impl MenuScreen {
                 0..0,
             );
             if let Some(logo) = logo {
-                logo.draw(font, &mut argb);
+                logo.draw_at(font, &mut argb, 2);
                 if let Some(subtitle) = EDITION_NAME.strip_prefix("Street Fighter': ") {
                     draw_sf1_plus_branding(font, &mut argb, subtitle);
                 }
@@ -391,7 +440,7 @@ impl MenuScreen {
 fn draw_sf1_plus_branding(font: &RomFont<'_>, argb: &mut [u32], subtitle: &str) {
     // The accent sits just above and to the right of the ROM logo's final R.
     const PRIME_X: usize = 304;
-    const PRIME_Y: usize = 41;
+    const PRIME_Y: usize = 33;
     const PRIME: [&str; 13] = [
         "       ##",
         "      ###+",

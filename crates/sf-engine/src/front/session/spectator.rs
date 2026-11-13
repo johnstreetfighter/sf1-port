@@ -46,6 +46,10 @@ impl State {
         self.confirmed.extend_from_slice(&pairs[overlap..count]);
     }
 
+    pub(super) fn played_inputs(&self) -> &[(u16, u16)] {
+        &self.confirmed[..self.played as usize]
+    }
+
     /// Playback consumes confirmed pairs only. The trailing fifteen remain a
     /// jitter buffer; a late join can replay at most eight pairs per display.
     pub(super) fn step(&mut self, fight: &mut Fight, assets: &Assets) -> FightFrame {

@@ -738,7 +738,7 @@ struct ToggleRow {
     frames: Option<(u8, u8)>,
 }
 
-const TOGGLES: [ToggleRow; 20] = [
+const TOGGLES: [ToggleRow; 21] = [
     ToggleRow { label: "POSITIVE EDGE", key: "positive_edge_attacks", frames: None },
     ToggleRow { label: "NEGATIVE EDGE SPECIALS", key: "negative_edge_specials", frames: None },
     ToggleRow { label: "RECOVERY BUFFER", key: "recovery_input_buffer", frames: None },
@@ -759,6 +759,7 @@ const TOGGLES: [ToggleRow; 20] = [
     ToggleRow { label: "REAL SECOND TIMER", key: "real_second_timer_and_draws", frames: None },
     ToggleRow { label: "FAIR CPU", key: "fair_cpu_and_sagat_scaling", frames: None },
     ToggleRow { label: "CPU REACTION", key: "cpu_reaction_delay", frames: Some((0, 30)) },
+    ToggleRow { label: "MODERN PENALTY", key: "modern_control_damage_penalty", frames: None },
 ];
 
 /// A toggle's current value, read from the configuration's toggles.
@@ -785,6 +786,7 @@ fn toggle_value(config: &MatchConfig, key: &str) -> u8 {
         "real_second_timer_and_draws" => t.real_second_timer_and_draws as u8,
         "fair_cpu_and_sagat_scaling" => t.fair_cpu_and_sagat_scaling as u8,
         "cpu_reaction_delay" => t.cpu_reaction_delay,
+        "modern_control_damage_penalty" => config.modern_control_damage_penalty as u8,
         _ => 0,
     }
 }
@@ -1164,7 +1166,7 @@ impl SettingsScreen {
             Row::Samples => self.settings.samples.to_string(),
             Row::Device(side) => self.settings.devices[side].label().to_string(),
             Row::MoveInputs => self.settings.move_inputs.label().to_string(),
-            Row::Scheme(_) => "CLASSIC".to_string(),
+            Row::Scheme(side) => self.config.control_schemes()[side].label().to_string(),
             Row::PlayerTag => self.settings.player_tag.clone(),
             Row::InputDelay => self.settings.netplay_input_delay.label(),
             Row::MaxRollback => format!("{}F", self.settings.netplay_max_rollback),
@@ -1255,6 +1257,10 @@ impl SettingsScreen {
                 let at = all.iter().position(|&d| d == self.settings.devices[side]).unwrap_or(0) as i32;
                 self.settings.devices[side] = all[(at + delta).rem_euclid(all.len() as i32) as usize];
             }
+            Row::Scheme(side) => {
+                let scheme = if side == 0 { &mut self.config.p1_scheme } else { &mut self.config.p2_scheme };
+                *scheme = if delta < 0 { scheme.prev() } else { scheme.next() };
+            }
             Row::MoveInputs => {
                 let n = self.settings.move_inputs;
                 self.settings.move_inputs = if delta < 0 { n.prev() } else { n.next() };
@@ -1272,7 +1278,7 @@ impl SettingsScreen {
                 self.settings.netplay_hud = all[(at + delta).rem_euclid(all.len() as i32) as usize];
             }
             Row::UdpPort => self.settings.netplay_port = step(i32::from(self.settings.netplay_port), 1024, 65535) as u16,
-            Row::Scheme(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Greyed(_) | Row::Heading(_) | Row::ResetTab => {}
+            Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Greyed(_) | Row::Heading(_) | Row::ResetTab => {}
         }
     }
 
@@ -1285,6 +1291,8 @@ impl SettingsScreen {
                 let roster = self.config.roster;
                 self.config = MatchConfig {
                     roster,
+                    p1_scheme: self.config.p1_scheme,
+                    p2_scheme: self.config.p2_scheme,
                     ..defaults
                 };
             }
@@ -1316,6 +1324,8 @@ impl SettingsScreen {
                 self.settings.samples = first.samples;
             }
             Tab::Controls => {
+                self.config.p1_scheme = defaults.p1_scheme;
+                self.config.p2_scheme = defaults.p2_scheme;
                 self.settings.devices = first.devices;
                 self.settings.move_inputs = first.move_inputs;
                 self.reset_bindings = true;
@@ -1476,7 +1486,7 @@ impl SettingsScreen {
             }
             MenuInput::Left | MenuInput::Right => {
                 let row = self.row();
-                if matches!(row, Row::ResetTab | Row::Greyed(_) | Row::Heading(_) | Row::Scheme(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag)
+                if matches!(row, Row::ResetTab | Row::Greyed(_) | Row::Heading(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag)
                     || self.dim(row)
                 {
                     return None;
@@ -1496,7 +1506,7 @@ impl SettingsScreen {
                     self.reset_tab();
                     Some(Transition::ValueChanged)
                 }
-                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
+                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
                     if let Row::Toggle(i) = row {
                         if TOGGLES[i].frames.is_some() {
                             return None;

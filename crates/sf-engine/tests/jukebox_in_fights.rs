@@ -190,6 +190,7 @@ impl Rec {
         self.tap(with(|i| i.menu.start = true));
         self.tap(down());
         self.tap(down());
+        self.tap(down());
         assert_eq!(self.tap(confirm()), "settings");
         for _ in 0..3 {
             self.tap(with(|i| i.menu.tab_right = true));

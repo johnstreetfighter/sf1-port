@@ -61,11 +61,7 @@ impl Tactics {
         } else {
             era.sf6_drive_points().unwrap_or(0)
         };
-        let reserve = if matches!(level, Level::Easy | Level::Normal) {
-            u16::from(STOCK_AT) * 3 / 2
-        } else {
-            0
-        };
+        let reserve = super::drive_reserve(level);
         let can_drive = |native_cost| {
             let cost = if unified { STOCK_AT } else { native_cost };
             enabled && !era.sf6_burnout() && drive >= reserve + u16::from(cost)
@@ -242,6 +238,36 @@ impl Tactics {
 
     pub(super) fn can_interrupt(self) -> bool {
         self.control.airborne || self.control.cancel || self.control.special
+    }
+
+    pub(super) fn can_tap_parry(self) -> bool {
+        self.can_parry && (self.control.free || self.control.airborne)
+    }
+
+    pub(super) fn can_fadc(self) -> bool {
+        self.fadc && self.control.special
+    }
+
+    pub(super) fn utility_command(
+        self,
+        spot: crate::utility::Spot,
+        action: crate::utility::Action,
+    ) -> Option<(MoveEntry, usize)> {
+        use crate::utility::Action::*;
+        match action {
+            Super if self.control.cancel || (self.control.free && spot.distance < 105) => self.super_move,
+            AlphaCounter if self.control.blockstun => self.guard_cancel.map(|entry| (entry, 2)),
+            VTrigger if (self.control.cancel || self.control.free) && spot.distance < 108 => {
+                self.install.map(|entry| (entry, 2))
+            }
+            DriveImpact if self.control.cancel || (self.control.free && spot.attack_incoming) => {
+                self.armor.map(|entry| (entry, 2))
+            }
+            DriveRush if self.control.free && (80..=148).contains(&spot.distance) => {
+                self.rush.map(|entry| (entry, 1))
+            }
+            _ => None,
+        }
     }
 
     fn pad(&self, entry: &MoveEntry, view: Percept, strength: usize) -> Plan {

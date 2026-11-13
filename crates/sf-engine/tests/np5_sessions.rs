@@ -1112,6 +1112,10 @@ fn an_observer_plays_the_confirmed_terminal_tail_and_waits_for_players_after_mat
         observer.fight().unwrap().state_checksum(),
         pair.peers[0].fight().unwrap().state_checksum()
     );
+    let observed = observer.take_saved_replay().expect("spectator match auto-saves");
+    let hosted = pair.peers[0].take_saved_replay().expect("host match auto-saves");
+    assert!(observed.online && hosted.online);
+    assert_eq!(observed.frames, hosted.frames);
     let confirmed = observer_step(
         &mut pair,
         &mut observer,

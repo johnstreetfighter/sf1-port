@@ -64,20 +64,22 @@ fn config_identity_preserves_no_stage_versus_explicit_bank_zero() {
 }
 
 #[test]
-fn inert_scheme_choices_stay_local_but_the_gameplay_penalty_is_hashed() {
+fn active_schemes_and_the_shortcut_penalty_are_hashed() {
     let mut config = MatchConfig::from_preset(RulesetPreset::DefinitiveOverhaul);
     let original = config_hash(&config, 42);
     config.p1_scheme = ControlScheme::Modern;
     config.p2_scheme = ControlScheme::Pneumatic;
-    assert_eq!(
-        config_hash(&config, 42),
-        original,
-        "currently inert local selectors do not split peers"
-    );
+    let configured = config_hash(&config, 42);
+    assert_ne!(configured, original, "different pad semantics split peers");
     config.modern_control_damage_penalty = !config.modern_control_damage_penalty;
     assert_ne!(
         config_hash(&config, 42),
-        original,
+        configured,
         "the synchronized gameplay rule remains authoritative"
     );
+    config.apply_preset(RulesetPreset::Faithful1987);
+    let faithful = config_hash(&config, 42);
+    config.p1_scheme = ControlScheme::Classic;
+    config.p2_scheme = ControlScheme::Classic;
+    assert_eq!(config_hash(&config, 42), faithful, "Faithful always reads Classic pads");
 }

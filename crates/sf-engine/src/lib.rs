@@ -64,6 +64,7 @@ pub mod replay;
 pub mod roster;
 pub mod run;
 pub mod session_io;
+mod control;
 pub mod utility;
 pub mod world_tour;
 pub mod netplay;

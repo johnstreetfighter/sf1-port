@@ -7,6 +7,9 @@
 use crate::era::EraFamily;
 use crate::roster::{PlayMode, TournamentFighter};
 
+mod live;
+pub use live::{UtilityAi, UtilityState};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Difficulty {
     Easy,
@@ -150,6 +153,10 @@ pub enum Drill {
     ThrowTech,
     Survival,
 }
+
+mod training;
+pub use training::{ComboTrialSpec, DrillController, RosterFighter, TrialStep};
+pub(crate) use training::{TrialController, TrialFrame};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DrillRun {

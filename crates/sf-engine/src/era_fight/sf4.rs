@@ -409,6 +409,18 @@ impl EraFighterState {
             })
     }
 
+    pub(super) fn modern_sf4(&mut self, entry: MoveEntry, motion: MotionTracker) -> bool {
+        let Some(index) = self.sf4_commands().iter().position(|command| {
+            command.slot == entry.produces && command.input == entry.input && command.usable(self)
+        }) else { return false };
+        self.sf4.reset_command_motions();
+        self.sf4.motions[index] = motion;
+        if entry.input.button == MashPunch {
+            self.sf4.punch_taps = 4;
+        }
+        true
+    }
+
     pub(crate) fn sf4_airborne_move(&self, slot: u8) -> bool {
         self.is_sf4()
             && self.alpha_move_active(slot)

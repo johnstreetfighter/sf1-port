@@ -26,6 +26,7 @@ use super::online::{OnlineAction, OnlineScreen};
 use super::moves::MovesPanel;
 use super::pause::{next_live_preset, PauseBox};
 use super::rebind::{Binds, Press, RebindScreen, Walk};
+use super::replays::ReplaysScreen;
 use super::select::SelectScreen;
 use super::jukebox::{entries as jukebox_entries, listed_tracks, JukeboxScreen};
 use crate::jukebox::TrackFormats;
@@ -43,6 +44,7 @@ use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
 use crate::roster::{MenuInput, PlayMode, StagePick, TournamentFighter};
 use crate::run::PowerOnMachine;
+use crate::replay::{MatchReplay, ReplayCommand, ReplayMode, ReplayPlayback};
 use crate::netplay::{Link, NetTransportCommand, NetTransportEvent, RoomAnnouncement, RoomKind, SyncedMatchRules};
 use crate::netplay::protocol::tag_from_str;
 use crate::netplay::connection::{Connection, ConnectionEvent};
@@ -51,6 +53,7 @@ use crate::canonical::{Canonical, CanonicalHasher};
 use crate::world_tour::native::WorldTourProfile;
 
 mod netplay;
+mod replay;
 mod spectator;
 mod world_tour;
 
@@ -170,6 +173,7 @@ enum Screen {
     Tune(Box<TuneScreen>),
     Jukebox(Box<JukeboxScreen>),
     Online(Box<OnlineScreen>),
+    Replays(ReplaysScreen),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -194,6 +198,7 @@ impl Screen {
             Screen::Tune(t) => t.name(),
             Screen::Jukebox(j) => j.name(),
             Screen::Online(o) => o.name(),
+            Screen::Replays(_) => "replays",
         }
     }
 
@@ -213,7 +218,7 @@ impl Screen {
             // The walk takes presses, not menu inputs.
             Screen::Rebind(_) => None,
             // World Tour also takes the shared campaign profile.
-            Screen::WorldTour(_) => None,
+            Screen::WorldTour(_) | Screen::Replays(_) => None,
         }
     }
 }
@@ -223,6 +228,7 @@ impl Screen {
 #[derive(Clone)]
 struct Play {
     fight: Fight,
+    recording: Option<MatchReplay>,
     world_tour: Option<world_tour::WorldTourRun>,
     netplay: Option<crate::netplay::RollbackEngine>,
     pause: Option<PauseBox>,
@@ -304,6 +310,9 @@ pub struct GameSession {
     world_tour_profile: WorldTourProfile,
     world_tour_changed: bool,
     play: Option<Play>,
+    replays: VecDeque<Arc<MatchReplay>>,
+    saved_replays: VecDeque<Arc<MatchReplay>>,
+    playback: Option<replay::Watching>,
     /// The faithful cabinet, when the 1987 item has powered it on.
     cabinet: Option<Cabinet>,
     /// Sound commands for the attract's next frames, which hold it still
@@ -395,6 +404,9 @@ impl GameSession {
             bindings_changed: false,
             lost_pad: None,
             play: None,
+            replays: VecDeque::new(),
+            saved_replays: VecDeque::new(),
+            playback: None,
             cabinet: None,
             attract_hold: VecDeque::new(),
             prev: FrameInputs::default(),
@@ -624,7 +636,7 @@ impl GameSession {
     fn menu(&self, screen: MenuScreen) -> Screen {
         let row = self.settings.menu_positions[screen.slot()];
         let overhaul = self.config.preset != RulesetPreset::Faithful1987;
-        Screen::Menu(screen.with_overhaul_modes(overhaul).at(row))
+        Screen::Menu(screen.with_overhaul_modes(overhaul).at_saved(row))
     }
 
     /// The item under the cursor, when a menu is showing.
@@ -849,6 +861,9 @@ impl GameSession {
         if self.cabinet.is_some() {
             return "cabinet";
         }
+        if let Some(watching) = &self.playback {
+            return if watching.pause.is_some() { "replay pause" } else { "replay" };
+        }
         match &self.play {
             Some(p) if p.after.is_some() => "after match",
             Some(p) if p.pause.is_some() => "pause",
@@ -1006,15 +1021,15 @@ impl GameSession {
             Ok(mut fight) => {
                 fight.set_satsui_art(self.satsui_art.clone());
                 fight.set_selected_styles(styles);
-                if setup.config.dramatic.is_some() && self.net_setup.is_some() {
-                    if let Some(connection) = &self.net_connection {
-                        fight.seed_dramatic_cpu(connection.rules().seed);
-                    }
-                }
+                let seed = self.net_connection.as_ref().filter(|_| self.net_setup.is_some())
+                    .map_or(u64::from(self.frames), |connection| connection.rules().seed);
+                Self::seed_replay_fight(&mut fight, seed);
                 fight.set_gauge_art(self.settings.gauge_art);
                 fight.set_hold_combo(self.settings.hold_combo);
+                let recording = self.begin_replay_recording(&fight, flag, seed);
                 self.play = Some(Play {
                     fight,
+                    recording: Some(recording),
                     world_tour: None,
                     netplay: self.net_setup.as_ref().and_then(|setup| setup.local_side
                         .map(|side| crate::netplay::RollbackEngine::new(side, setup.delay, setup.max_rollback))),
@@ -1206,11 +1221,7 @@ impl GameSession {
 
     fn online_rules(&mut self, kind: RoomKind) -> SyncedMatchRules {
         let data = self.data_bank.get_or_insert_with(|| Arc::new(DataBank::build(&self.assets.maincpu, &[])));
-        let mut bank = CanonicalHasher::new();
-        bank.tag("sf1-port/online-bank/v1");
-        self.assets.maincpu.encode(&mut bank);
-        data.encode_compatibility(&mut bank);
-        self.backgrounds.as_ref().map(|backgrounds| backgrounds.compatibility_bytes()).encode(&mut bank);
+        let bank_hash = fight_data_hash(&self.assets.maincpu, Some(data), self.backgrounds.as_deref());
         let mut art = CanonicalHasher::new();
         art.tag("sf1-port/online-art/v1");
         let assets = self.bank_assets.as_deref().unwrap_or(&self.assets);
@@ -1232,7 +1243,7 @@ impl GameSession {
             (config, stage)
         };
         SyncedMatchRules::new(config, [config.roster.p1, config.roster.p2], self.fight_dips(),
-            stage, u64::from(self.frames), bank.finish(), art.finish())
+            stage, u64::from(self.frames), bank_hash, art.finish())
     }
 
     fn online_actions(&mut self) {
@@ -1372,6 +1383,7 @@ impl GameSession {
     /// on for the session, as on a cabinet left switched on), every toggle
     /// off, and the Main Menu shows.
     fn arcade_over(&mut self) {
+        self.finish_replay_recording(true);
         if let Some(play) = self.play.take() {
             let mut machine = play.fight.into_machine();
             machine.set_match_config(MatchConfig::faithful());
@@ -1412,11 +1424,16 @@ impl GameSession {
     /// one that ends the driver's music (the stops, the win jingle) stops
     /// it; leaving the fight stops it too ([`Cues::step`]).
     fn track_cue(&mut self, latch: u8) -> Option<TrackCue> {
-        let fighting = self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987);
+        let fighting = self.music_fight().is_some_and(|fight| fight.setup().config.preset != RulesetPreset::Faithful1987);
         let mut cues = std::mem::take(&mut self.track_cues);
         let cue = cues.step(latch, fighting, |command| self.fight_track(command));
         self.track_cues = cues;
         cue
+    }
+
+    fn music_fight(&self) -> Option<&Fight> {
+        self.play.as_ref().map(|play| &play.fight)
+            .or_else(|| self.replay_playback().map(ReplayPlayback::fight))
     }
 
     /// The track for the running fight if `latch` is its stage theme (with
@@ -1435,9 +1452,9 @@ impl GameSession {
         if self.settings.jukebox.is_empty() {
             return None;
         }
-        let play = self.play.as_ref()?;
-        let setup = play.fight.setup();
-        let arcade_ryu = play.fight.machine().arcade_opponent() == Some(TournamentFighter::Ryu);
+        let fight = self.music_fight()?;
+        let setup = fight.setup();
+        let arcade_ryu = fight.machine().arcade_opponent() == Some(TournamentFighter::Ryu);
         let stage_info = self.fight_stage_info(&setup);
         if let Some(command) = latch {
             let (_, theme) = stage_info.as_ref()?;
@@ -1465,7 +1482,7 @@ impl GameSession {
                 Some((name, theme))
             }
             None if setup.kind == FightKind::Arcade => {
-                let machine = self.play.as_ref()?.fight.machine();
+                let machine = self.music_fight()?.machine();
                 let ram = machine.work_ram();
                 let country = usize::from(ram[(super::cabinet::COUNTRY - 0xff8000) as usize]);
                 let step = machine.arcade_ladder_step();
@@ -1509,6 +1526,7 @@ impl GameSession {
             let config = play.fight.setup().config;
             self.stop_extended_theme(&config);
         }
+        self.finish_replay_recording(false);
         self.play = None;
         if !on_tour {
             self.stack.truncate(1);
@@ -1549,7 +1567,7 @@ impl GameSession {
                     self.lost_pad = Some(side);
                 } else {
                     play.paused_by = if online { local_side } else { 0 };
-                    play.fight.stop_try();
+                    play.stop_recorded_try();
                     play.pause = Some(if online { PauseBox::with_online_notice(notice) }
                         else { PauseBox::with_notice(training, notice) });
                     return Some(Transition::Paused);
@@ -1572,12 +1590,13 @@ impl GameSession {
             || edge(prev.cabinet[3], now.cabinet[3]);
         if can_pause && (p1_start || other_pause) {
             if !other_pause && play.fight.try_alpha2_feint(now.p1) {
+                play.record_command(ReplayCommand::Alpha2Feint);
                 return None;
             }
             // The side whose pad's Start did it; a key is P1's.
             play.paused_by = if online { local_side }
                 else { (0..2).find(|&s| pad_edge(prev, now, s, |m| m.start)).unwrap_or(0) };
-            play.fight.stop_try();
+            play.stop_recorded_try();
             play.pause = Some(if online { PauseBox::open_online() } else { PauseBox::open(training) });
             return Some(Transition::Paused);
         }
@@ -1613,12 +1632,16 @@ impl GameSession {
                     Some(Transition::Choose(MenuItem::Resume)) => {
                         // Only the player's own side is shown (never a Local P2's list).
                         let (shown, tried) = (moves.take_show(), moves.take_try());
+                        let shown = shown.map(|entry| (entry, moves.replay_entry_index(entry)));
+                        let tried = tried.map(|entry| (entry, moves.replay_entry_index(entry)));
                         // The coach's fixes are written the way the list was.
                         play.fight.set_move_inputs(self.settings.move_inputs);
-                        if let Some(entry) = shown.filter(|_| play.moves_side == 0) {
+                        if let Some((entry, index)) = shown.filter(|_| play.moves_side == 0) {
+                            if let Some(index) = index { play.record_command(ReplayCommand::Show(index)); }
                             play.fight.show(entry);
                         }
-                        if let Some(entry) = tried.filter(|_| play.moves_side == 0) {
+                        if let Some((entry, index)) = tried.filter(|_| play.moves_side == 0) {
+                            if let Some(index) = index { play.record_command(ReplayCommand::Try(index)); }
                             play.fight.try_move(entry);
                         }
                         play.moves = None;
@@ -1687,6 +1710,9 @@ impl GameSession {
                                 play.fight.restart_round()
                             };
                             if done {
+                                play.record_command(if item == MenuItem::ResetPositions {
+                                    ReplayCommand::ResetPositions
+                                } else { ReplayCommand::Restart });
                                 play.pause = None;
                                 play.held = true;
                                 let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
@@ -1698,6 +1724,7 @@ impl GameSession {
                         MenuItem::LivePreset => {
                             let next = next_live_preset(play.fight.setup().config.preset);
                             play.fight.set_preset(next);
+                            play.record_command(ReplayCommand::Preset(next));
                         }
                         MenuItem::Moves => {
                             // Local opens for the side whose pad paused; every
@@ -1713,13 +1740,34 @@ impl GameSession {
                             // Saved with the settings, like the menus' rows.
                             self.settings.hold_combo = !self.settings.hold_combo;
                             play.fight.set_hold_combo(self.settings.hold_combo);
+                            play.record_command(ReplayCommand::HoldCombo(self.settings.hold_combo));
                             self.settings_changed = true;
                         }
                         MenuItem::FillMeters => {
                             // Saved with the settings; the machine carries it too.
                             self.settings.fill_meters = !self.settings.fill_meters;
                             play.fight.set_fill_meters(self.settings.fill_meters);
+                            play.record_command(ReplayCommand::FillMeters(self.settings.fill_meters));
                             self.settings_changed = true;
+                        }
+                        MenuItem::TrainingDrill => {
+                            let drills: Vec<_> = crate::utility::Drill::ALL.into_iter()
+                                .filter(|&drill| play.fight.drill_available(drill)).collect();
+                            let current = play.fight.active_drill().and_then(|d| drills.iter().position(|&x| x == d))
+                                .map_or(0, |index| index + 1);
+                            let delta = if event == MenuInput::Left { drills.len() } else { 1 };
+                            let next = (current + delta) % (drills.len() + 1);
+                            let drill = next.checked_sub(1).map(|i| drills[i]);
+                            play.fight.set_drill(drill);
+                            play.record_command(ReplayCommand::Drill(drill));
+                        }
+                        MenuItem::ComboTrial => {
+                            let current = play.fight.active_trial().unwrap_or(0);
+                            let next = (current + if event == MenuInput::Left { 5 } else { 1 }) % 6;
+                            play.fight.set_move_inputs(self.settings.move_inputs);
+                            let trial = (next != 0).then_some(next);
+                            play.fight.set_combo_trial(trial);
+                            play.record_command(ReplayCommand::Trial(trial));
                         }
                         MenuItem::QuitToMenu if self.net_setup.is_some() => {
                             self.net_quit();
@@ -1730,6 +1778,7 @@ impl GameSession {
                         _ => {
                             let config = play.fight.setup().config;
                             self.stop_extended_theme(&config);
+                            self.finish_replay_recording(false);
                             self.play = None;
                             self.stack.truncate(1);
                         }
@@ -1761,6 +1810,7 @@ impl GameSession {
                     if item != MenuItem::Rematch {
                         self.stop_extended_theme(&setup.config);
                     }
+                    self.finish_replay_recording(true);
                     self.play = None;
                     match item {
                         MenuItem::Rematch if setup.config.dramatic.is_some() => {
@@ -1803,6 +1853,15 @@ impl GameSession {
     /// The menus' and the select's inputs. The Local select takes each
     /// side's own inputs; everything else takes the merged cursor's.
     fn screen_input(&mut self, prev: &FrameInputs, now: &FrameInputs, typed: Vec<TypedKey>, quit: &mut bool) -> Option<Transition> {
+        if let Some(Screen::Replays(screen)) = self.stack.last_mut() {
+            let action = menu_events(prev, now).into_iter().find_map(|input| screen.apply(input, self.replays.len()))?;
+            match action {
+                Transition::WatchReplay(index) => self.watch_replay(index),
+                Transition::Back => { self.stack.pop(); }
+                _ => {}
+            }
+            return Some(action);
+        }
         let dramatic_host = self.net_dramatic_editing();
         if self.net_dramatic_waiting() || matches!(self.stack.last(), Some(Screen::DramaticGuest(_)))
             || (self.net_setup.is_some() && !dramatic_host
@@ -1882,7 +1941,7 @@ impl GameSession {
             transition = Some(t);
             // A menu remembers its cursor (saved with the settings).
             if let Some(Screen::Menu(m)) = self.stack.last() {
-                if let Some((row, _)) = m.cursor() {
+                if let Some(row) = m.saved_position() {
                     self.settings.menu_positions[m.slot()] = row;
                 }
             }
@@ -2015,6 +2074,7 @@ impl GameSession {
                             Screen::Settings(s) => Some(Screen::Jukebox(Box::new(self.jukebox_screen(s)))),
                             _ => None,
                         }),
+                        MenuItem::Replays => Some(Screen::Replays(ReplaysScreen::default())),
                         MenuItem::Local => Some(Screen::Select(self.select_for(FightKind::Local))),
                         MenuItem::Online => {
                             self.net_commands.push(NetTransportCommand::RefreshRooms);
@@ -2100,7 +2160,7 @@ impl GameSession {
                         self.save_look = t.take_save();
                     }
                 }
-                Transition::OpenMainMenu | Transition::MatchOver | Transition::Paused => {}
+                Transition::OpenMainMenu | Transition::MatchOver | Transition::Paused | Transition::WatchReplay(_) => {}
             }
         }
         transition
@@ -2157,6 +2217,9 @@ impl GameSession {
         let events = menu_events(&prev, &input);
         let typed = std::mem::take(&mut self.typed);
         let mut quit = false;
+        if self.playback.is_some() {
+            return self.step_replay(&prev, &input, &events);
+        }
 
         // The faithful cabinet takes every input itself; only a one-second
         // Esc hold leaves it.
@@ -2240,7 +2303,12 @@ impl GameSession {
                 let local = if online_menu_was_open || play.pause.is_some() { PlayerInputs::default() } else { input.p1 };
                 rollback.step(&mut play.fight, assets, local)
             } else {
-                Some(play.fight.step(assets, input.p1, input.p2, start))
+                let driving = play.fight.driving();
+                let result = play.fight.step(assets, input.p1, input.p2, start);
+                if !driving {
+                    replay::record_frame(&mut play.recording, input.p1, input.p2, start);
+                }
+                Some(result)
             };
             if let Some(fallback) = play.fight.take_missing_ryu_theme() {
                 self.log.push(format!(
@@ -2276,6 +2344,9 @@ impl GameSession {
         }
         if let Some(event) = abandoned {
             self.abandon(event, "a fight");
+        }
+        if transition == Some(Transition::MatchOver) {
+            self.finish_replay_recording(true);
         }
         if let Some(result) = world_tour_result {
             self.finish_world_tour_match(result);
@@ -2315,7 +2386,7 @@ impl GameSession {
                 (Some(after), _) => after.render(&font, &frame),
                 // The move list is a layer beside the fight: the fight shows as it was.
                 (None, Some(_)) if play.moves.is_some() => frame,
-                (None, Some(pause)) => pause.render(
+                (None, Some(pause)) => pause.render_with_training(
                     &font,
                     &frame,
                     play.fight.overlay().label(),
@@ -2324,6 +2395,8 @@ impl GameSession {
                     play.fight.setup().config.preset,
                     play.fight.hold_combo(),
                     play.fight.setup().config.fill_meters,
+                    play.fight.active_drill(),
+                    play.fight.active_trial(),
                 ),
                 (None, None) => frame,
             };
@@ -2385,6 +2458,7 @@ impl GameSession {
                     Screen::Rebind(r) => r.render(&font),
                     Screen::Jukebox(j) => j.render(&font),
                     Screen::Online(screen) => screen.render(&font),
+                    Screen::Replays(screen) => screen.render(&font, self.replays.iter(), self.notice.as_deref()),
                     // The demo fight loops behind the panel, silent but for
                     // the screen's own sounds; no input reaches it.
                     Screen::Tune(_) => {
@@ -2436,6 +2510,18 @@ impl GameSession {
 /// nowhere.
 const HIDDEN_FLAG: u8 = 0;
 
+/// Gameplay assets must agree before re-simulating network or replay inputs.
+fn fight_data_hash(rom: &[u8], data: Option<&DataBank>, backgrounds: Option<&BackgroundBank>) -> u64 {
+    let mut hash = CanonicalHasher::new();
+    hash.tag("sf1-port/online-bank/v1");
+    rom.encode(&mut hash);
+    if let Some(data) = data {
+        data.encode_compatibility(&mut hash);
+    }
+    backgrounds.map(BackgroundBank::compatibility_bytes).encode(&mut hash);
+    hash.finish()
+}
+
 /// The graphics a fight under `preset` draws with: the bank's under an
 /// overhaul preset, the ROM's own under Faithful 1987 or with no bank.
 fn fight_assets<'a>(rom: &'a Arc<Assets>, bank: &'a Option<Arc<Assets>>, preset: RulesetPreset) -> &'a Assets {
@@ -2447,7 +2533,7 @@ fn fight_assets<'a>(rom: &'a Arc<Assets>, bank: &'a Option<Arc<Assets>>, preset:
 
 /// The move list for `side` (0 Player 1, 1 Player 2) of `fight`: that
 /// fighter's moves, written in `notation` for the way he faces now.
-fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel {
+pub(crate) fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel {
     let setup = fight.setup();
     let machine = fight.machine();
     let game_mode = machine.work_ram()[(crate::fighter::GAME_MODE - crate::fighter::WORK_BASE) as usize];

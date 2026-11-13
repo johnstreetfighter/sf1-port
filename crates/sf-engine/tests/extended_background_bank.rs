@@ -306,7 +306,7 @@ fn the_attract_the_cabinet_and_faithful_1987_never_load_the_bank() {
         out.screen
     };
     tap(with(|i| i.menu.start = true));
-    for _ in 0..3 {
+    for _ in 0..4 {
         tap(with(|i| i.p1.directions[2] = true)); // to 1987
     }
     assert_eq!(tap(with(|i| i.menu.confirm = true)), "1987 cabinet");

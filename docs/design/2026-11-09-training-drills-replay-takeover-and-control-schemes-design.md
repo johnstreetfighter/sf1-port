@@ -123,7 +123,7 @@ When a `Drill` is active in Training, `DrillController` feeds real `PlayerInputs
 #### C. Per-Fighter & Per-Era Combo Trials (`Trial 1..=5`) on the `Coach` Strip
 1. **5 Graded Trials per `(RosterFighter, EraFamily)` (`ComboTrialSpec`):**
    - `Trial 1 (Basic 2-Hit)`: `Close Normal -> Special` (e.g., Ryu `ST.MP -> HADOKEN`).
-   - `Trial 2 (Jump-In 3-Hit)`: `Jump HK -> Crouch MK -> Special` (e.g., `J.HK -> CR.MK -> TATSUMAKI`).
+   - `Trial 2 (Jump-In 3-Hit)`: `Jump HK -> Crouch MK -> Special` (e.g., `J.HK -> CR.MK -> HADOKEN` for Ryu). The Training Dummy crouches so the native jump-in gives enough grounded hitstun to link Crouch MK. The shoto recipe uses Hadoken because the native Tatsumaki skips that crouching recoil state.
    - `Trial 3 (Target / Command Confirm)`: `Close HP -> Command Normal / Heavy Special`.
    - `Trial 4 (Era Mechanic Extension)`: Uses the active `EraFamily`'s signature cancel (`SF1`/`SF1+`: Link into Heavy Special; `SF2`: Cancel into Super; `SFZ`: Alpha Custom Combo / EX link; `SF3`: EX Special -> Super Art; `SF4`: Special -> FADC -> Ultra; `SF5`: Normal -> V-Trigger Cancel -> Special; `SF6`: Cancel Drive Rush -> Normal -> Special).
    - `Trial 5 (Master Finisher)`: Full jump-in + era extension + Super/Ultra/Critical Art/Level 3 finisher.

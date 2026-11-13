@@ -169,8 +169,12 @@ impl TitleLogo {
 
     /// Draw the logo where the title screen has it, as the text layer does.
     pub fn draw(&self, font: &RomFont<'_>, argb: &mut [u32]) {
+        self.draw_at(font, argb, self.row);
+    }
+
+    pub(super) fn draw_at(&self, font: &RomFont<'_>, argb: &mut [u32], row: usize) {
         for (i, &w) in self.cells.iter().enumerate() {
-            let (c, r) = (self.col + i % self.cols, self.row + i / self.cols);
+            let (c, r) = (self.col + i % self.cols, row + i / self.cols);
             font.tile(argb, c, r, w & 0x3ff, (w >> 12) as u8);
         }
     }

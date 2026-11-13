@@ -119,6 +119,13 @@ pub struct MovesPanel {
 }
 
 impl MovesPanel {
+    pub(crate) fn replay_entry_index(&self, entry: MoveEntry) -> Option<u8> {
+        self.entries.iter().position(|&candidate| candidate == entry).and_then(|i| u8::try_from(i).ok())
+    }
+
+    pub(crate) fn replay_entry(&self, index: u8) -> Option<MoveEntry> {
+        self.entries.get(usize::from(index)).copied()
+    }
     /// The list for `fighter` in a fight under `preset`.
     pub fn open(fighter: TournamentFighter, preset: RulesetPreset) -> Self {
         Self::from_entries(fighter, move_list(fighter, preset).into_iter().copied().collect())

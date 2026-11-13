@@ -321,6 +321,7 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     let main = [
         MenuItem::SinglePlayer,
         MenuItem::MultiPlayer,
+        MenuItem::Replays,
         MenuItem::Settings,
         MenuItem::Cabinet1987,
         MenuItem::Exit,
@@ -329,14 +330,14 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     let colors: Vec<_> = main.iter().enumerate().map(|(i, it)| row_color(&out.frame, &a, &menu, *it, i)).collect();
     assert_eq!(
         colors,
-        [Some(ink::YELLOW), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE)],
+        [Some(ink::YELLOW), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE), Some(ink::BLUE)],
         "cursor on SINGLE PLAYER, every row live"
     );
     let arrow_col = MenuScreen::item_col(MenuItem::SinglePlayer) - 2;
     assert!(text_shows(&out.frame, &a, arrow_col, menu.item_y(0), ">", ink::YELLOW));
     assert!(row_is_black(&out.frame, 25, 6, 41), "no preset line (the maintainer, 2026-11-07)");
 
-    // Down through MULTI PLAYER, SETTINGS, 1987 and EXIT, wrapping to
+    // Down through MULTI PLAYER, REPLAYS, SETTINGS, 1987 and EXIT, wrapping to
     // SINGLE PLAYER; up wraps back to EXIT. Each move sounds 0x09.
     let expect_cursor = |s: &mut GameSession, input: FrameInputs, at: usize| {
         let out = tap(s, input);
@@ -348,7 +349,9 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     expect_cursor(&mut s, p_dir(2, DOWN), 2); // either player's stick drives the one cursor
     expect_cursor(&mut s, p_dir(1, DOWN), 3);
     expect_cursor(&mut s, p_dir(1, DOWN), 4);
+    expect_cursor(&mut s, p_dir(1, DOWN), 5);
     expect_cursor(&mut s, p_dir(1, DOWN), 0);
+    expect_cursor(&mut s, p_dir(1, UP), 5);
     expect_cursor(&mut s, p_dir(1, UP), 4);
     expect_cursor(&mut s, p_dir(1, UP), 3);
     expect_cursor(&mut s, p_dir(1, UP), 2);
@@ -530,12 +533,12 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
     if has_prime || edition == "Street Fighter: The World Tournament" {
         let mut rom_ink = 0;
         let mut prime_ink = 0;
-        for y in 3 * 8..15 * 8 {
+        for y in 2 * 8..13 * 8 {
             for x in 8 * 8..40 * 8 {
                 let i = y * WIDTH + x;
                 let pixel = menu.frame.argb[i];
-                let original = title.frame.argb[i];
-                if has_prime && (304..316).contains(&x) && (41..56).contains(&y) {
+                let original = title.frame.argb[i + 8 * WIDTH];
+                if has_prime && (304..316).contains(&x) && (33..48).contains(&y) {
                     prime_ink += usize::from(pixel != original);
                 } else {
                     assert_eq!(pixel, original, "ROM logo pixel at ({x}, {y})");
@@ -547,7 +550,7 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
         if has_prime {
             assert!(prime_ink > 15, "the prime is drawn ({prime_ink} pixels)");
             let mut subtitle_ink = 0;
-            for y in 15 * 8..16 * 8 {
+            for y in 104..112 {
                 for x in 110..276 {
                     let i = y * WIDTH + x;
                     let pixel = menu.frame.argb[i];
@@ -578,7 +581,7 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
         }
     }
 
-    for (gap, rows) in [("above the logo", 16..24), ("under the subtitle", 128..134)] {
+    for (gap, rows) in [("under the subtitle", 112..118)] {
         for y in rows {
             let interior = &menu.frame.argb[y * WIDTH + 6 * 8..y * WIDTH + 42 * 8];
             assert!(interior.iter().all(|&pixel| pixel == 0xff00_0000), "expected blank space {gap} at y={y}");
@@ -588,7 +591,7 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
     // The rows sit under the logo, the last one clear of the frame.
     let main = MenuScreen::main();
     let item_y: Vec<_> = (0..main.items().len()).map(|i| main.item_y(i)).collect();
-    assert_eq!(item_y, [134, 148, 162, 176, 190]);
+    assert_eq!(item_y, [118, 132, 146, 160, 174, 188]);
     assert_eq!(row_color(&menu.frame, &a, &main, MenuItem::SinglePlayer, 0), Some(ink::YELLOW));
 }
 
@@ -635,6 +638,7 @@ fn no_framed_screen_shows_the_preset_line() {
 
     let mut s = fresh();
     tap(&mut s, start());
+    tap(&mut s, p_dir(1, DOWN));
     tap(&mut s, p_dir(1, DOWN));
     tap(&mut s, p_dir(1, DOWN));
     clear(&tap(&mut s, confirm()), "settings", true);

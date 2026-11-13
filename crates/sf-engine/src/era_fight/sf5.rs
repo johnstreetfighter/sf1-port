@@ -561,6 +561,29 @@ impl EraFighterState {
         self.sf5.motion(pattern)
     }
 
+    pub(super) fn modern_sf5(&mut self, entry: MoveEntry, motion: MotionTracker) -> bool {
+        self.sf5.clear_motions();
+        if let EvilRyuKit::Kage { v } = &mut self.evil_ryu_kit {
+            v.clear_motions();
+            if entry.input.motion == HALF_FORWARD {
+                v.half_forward = motion;
+                return true;
+            }
+            if entry.input.motion == HALF_BACK {
+                v.half_back = motion;
+                return true;
+            }
+        }
+        match entry.input.motion {
+            pattern if pattern == QCF => self.sf5.quarter_forward = motion,
+            pattern if pattern == QCB => self.sf5.quarter_back = motion,
+            pattern if pattern == DP => self.sf5.rising = motion,
+            pattern if pattern == DOUBLE_QUARTER_CIRCLE => self.sf5.critical = motion,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn sf5_keep_senha_hold(&mut self, buttons: u8) {
         if let EvilRyuKit::Kage { v } = &mut self.evil_ryu_kit {
             if v.senha_hold.is_none() || !ButtonClass::MediumPair.held(buttons) {
@@ -895,6 +918,25 @@ impl Bus<'_> {
         if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
             v.step(relative);
         }
+        self.sf5_start_attack(ps, entity, side, fighter, mode, held, pressed, relative, free_ground,
+            cancel_ground, special_cancel, blockstun, in_jump)
+    }
+
+    pub(crate) fn sf5_modern_attack(&mut self, ps: u32, entity: u16, canceling: bool) -> bool {
+        let Some(side) = self.era_side(ps) else { return false };
+        let Some(fighter) = self.toggle_state.era.fighters[side].fighter else { return false };
+        let (held, pressed) = self.era_buttons(ps);
+        self.sf5_start_attack(ps, entity, side, fighter, self.era_gauge_mode(side), held, pressed,
+            0, !canceling, canceling, false, false, false)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn sf5_start_attack(
+        &mut self, ps: u32, entity: u16, side: usize, fighter: TournamentFighter, mode: GaugeMode,
+        held: u8, pressed: u8, relative: u8, free_ground: bool, cancel_ground: bool,
+        special_cancel: bool, blockstun: bool, in_jump: bool,
+    ) -> bool {
+        let state = &self.toggle_state.era.fighters[side];
         let Some(action) = sf5_action(
             state,
             fighter,
