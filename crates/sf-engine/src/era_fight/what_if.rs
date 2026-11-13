@@ -396,6 +396,27 @@ impl EraFighterState {
             })
     }
 
+    pub(super) fn modern_what_if(&mut self, entry: MoveEntry, motion: MotionTracker) -> bool {
+        let Some(kit) = self.what_if_kit() else { return false };
+        let normal = self.what_if_command_slot(entry.produces);
+        let finisher = (0..3).find(|&index| self.what_if_finisher(kit, index, 1)
+            .is_some_and(|item| item.slot == entry.produces && item.input == entry.input));
+        let special = kit.specials.iter().position(|item| item.slot == normal && item.input == entry.input);
+        self.what_if_kit.supers.fill(MotionTracker::default());
+        self.what_if_kit.specials.fill(MotionTracker::default());
+        if let Some(index) = finisher {
+            self.what_if_kit.supers[index] = motion;
+        } else if let Some(index) = special {
+            self.what_if_kit.specials[index] = motion;
+            if entry.input.button == MashPunch {
+                self.what_if_kit.punch_taps = 4;
+            }
+        } else {
+            return false;
+        }
+        true
+    }
+
     fn what_if_command_slot(&self, slot: u8) -> u8 {
         use super::what_if_others::{EAGLE_COUNTER, EAGLE_RIPOSTE};
 

@@ -24,6 +24,7 @@ pub mod moves;
 pub mod online;
 pub mod pause;
 pub mod rebind;
+mod replays;
 pub mod rom_missing;
 pub mod select;
 pub mod session;
@@ -81,6 +82,7 @@ pub enum Transition {
     ValueChanged,
     /// The tuning screen asked to save its look: the host writes the file.
     SaveLook,
+    WatchReplay(usize),
 }
 
 /// The ROM's FM effects the menus play (both verified by the service sound

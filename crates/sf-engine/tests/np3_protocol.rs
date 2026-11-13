@@ -100,7 +100,7 @@ fn ping_uses_the_documented_header_and_stable_little_endian_fields() {
 }
 
 #[test]
-fn synchronized_rules_cover_numeric_rules_and_preserve_local_scheme_exclusion() {
+fn synchronized_rules_carry_the_live_control_schemes() {
     let base = rules();
     let mut changed = base;
     changed.config.toggles.recovery_buffer_window += 1;
@@ -111,9 +111,9 @@ fn synchronized_rules_cover_numeric_rules_and_preserve_local_scheme_exclusion() 
     changed = base;
     changed.config.p1_scheme = ControlScheme::Modern;
     changed.config.p2_scheme = ControlScheme::Pneumatic;
-    assert_eq!(base.config_hash(), changed.config_hash());
-    let bytes = base.to_bytes();
-    assert_eq!(SyncedMatchRules::from_bytes(&bytes), Some(base));
+    assert_ne!(base.config_hash(), changed.config_hash());
+    let bytes = changed.to_bytes();
+    assert_eq!(SyncedMatchRules::from_bytes(&bytes), Some(changed));
     for end in 0..bytes.len() {
         assert_eq!(SyncedMatchRules::from_bytes(&bytes[..end]), None);
     }

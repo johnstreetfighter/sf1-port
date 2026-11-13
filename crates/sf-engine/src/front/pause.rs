@@ -38,11 +38,10 @@ const VALUE_END_COL: usize = 36;
 
 /// The Training settings box's cells: a smaller box inside the pause box's,
 /// its title in the 2x2 header font under the top edge.
-const SETTINGS_COL: usize = 12;
-const SETTINGS_ROW: usize = 10;
-const SETTINGS_COLS: usize = 24;
-/// The rows the box has room for: `PRESET`, `HOLD COMBO` and `FILL METERS`.
-const SETTINGS_SLOTS: usize = 3;
+const SETTINGS_COL: usize = 11;
+const SETTINGS_ROW: usize = 8;
+const SETTINGS_COLS: usize = 26;
+const SETTINGS_SLOTS: usize = 5;
 const SETTINGS_TITLE: &str = "TRAINING";
 /// Where its labels start (the arrow is two cells before) and its values end.
 const SETTINGS_LABEL_COL: usize = SETTINGS_COL + 3;
@@ -95,13 +94,14 @@ pub struct TrainingBox {
 impl TrainingBox {
     /// The rows, top to bottom.
     pub fn items() -> &'static [MenuItem] {
-        const ITEMS: &[MenuItem] = &[MenuItem::LivePreset, MenuItem::HoldCombo, MenuItem::FillMeters];
+        const ITEMS: &[MenuItem] = &[MenuItem::LivePreset, MenuItem::HoldCombo, MenuItem::FillMeters,
+            MenuItem::TrainingDrill, MenuItem::ComboTrial];
         ITEMS
     }
 
     /// The text row of item `index`.
     pub fn item_row(index: usize) -> usize {
-        SETTINGS_ROW + 4 + 2 * index
+        SETTINGS_ROW + 3 + 2 * index
     }
 
     /// The label column.
@@ -144,7 +144,8 @@ impl TrainingBox {
 
     /// The box drawn over `frame`: the title, the rows (the cursor's yellow
     /// with the arrow) and the preset, hold and fill values.
-    fn render(&self, font: &RomFont<'_>, frame: &mut Frame, preset: RulesetPreset, hold_combo: bool, fill_meters: bool) {
+    fn render(&self, font: &RomFont<'_>, frame: &mut Frame, preset: RulesetPreset, hold_combo: bool, fill_meters: bool,
+        drill: Option<crate::utility::Drill>, trial: Option<u8>) {
         let rows = Self::bottom_row() - SETTINGS_ROW + 1;
         boxed(frame, font, SETTINGS_COL, SETTINGS_ROW, SETTINGS_COLS, rows);
         let (col, row) = Self::title_cell();
@@ -158,12 +159,15 @@ impl TrainingBox {
                 ink::BLUE
             };
             font.text(&mut frame.argb, SETTINGS_LABEL_COL, row, item.label(), color);
+            let trial_label = trial.map(|index| format!("TRIAL {index}"));
             let value = match item {
                 MenuItem::LivePreset => short_preset_name(preset),
                 MenuItem::HoldCombo if hold_combo => "ON",
                 MenuItem::HoldCombo => "OFF",
                 MenuItem::FillMeters if fill_meters => "ON",
                 MenuItem::FillMeters => "OFF",
+                MenuItem::TrainingDrill => drill.map_or("OFF", crate::utility::Drill::label),
+                MenuItem::ComboTrial => trial_label.as_deref().unwrap_or("OFF"),
                 _ => continue,
             };
             font.text(&mut frame.argb, SETTINGS_VALUE_END_COL - value.len(), row, value, color);
@@ -174,20 +178,26 @@ impl TrainingBox {
 /// The pause box.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PauseBox {
-    training: bool,
-    online: bool,
+    kind: PauseKind,
     cursor: usize,
     notice: Option<String>,
     /// The Training settings box over it, while it shows.
     settings: Option<TrainingBox>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PauseKind {
+    Fight,
+    Training,
+    Online,
+    Replay { has_bookmark: bool, takeover: [bool; 2] },
+}
+
 impl PauseBox {
     /// The box for a fight; `training` gives it Training's rows.
     pub fn open(training: bool) -> Self {
         PauseBox {
-            training,
-            online: false,
+            kind: if training { PauseKind::Training } else { PauseKind::Fight },
             cursor: 0,
             notice: None,
             settings: None,
@@ -197,8 +207,21 @@ impl PauseBox {
     /// The local overlay for an online fight: no restart or Training actions.
     pub fn open_online() -> Self {
         Self {
-            online: true,
+            kind: PauseKind::Online,
             ..Self::open(false)
+        }
+    }
+
+    pub fn open_replay(has_bookmark: bool, takeover: [bool; 2]) -> Self {
+        Self { kind: PauseKind::Replay { has_bookmark, takeover }, ..Self::open(false) }
+    }
+
+    fn enabled(&self, item: MenuItem) -> bool {
+        match (self.kind, item) {
+            (PauseKind::Replay { has_bookmark, .. }, MenuItem::RewindBookmark) => has_bookmark,
+            (PauseKind::Replay { takeover, .. }, MenuItem::TakeoverP1) => takeover[0],
+            (PauseKind::Replay { takeover, .. }, MenuItem::TakeoverP2) => takeover[1],
+            _ => true,
         }
     }
 
@@ -260,12 +283,15 @@ impl PauseBox {
             MenuItem::TrainingSettings,
             MenuItem::Moves,
         ];
-        if self.online {
-            ONLINE
-        } else if self.training {
-            TRAINING
-        } else {
-            FIGHT
+        const REPLAY: &[MenuItem] = &[
+            MenuItem::Resume, MenuItem::TakeoverP1, MenuItem::TakeoverP2,
+            MenuItem::RewindBookmark, MenuItem::Overlays, MenuItem::Look, MenuItem::QuitToReplays,
+        ];
+        match self.kind {
+            PauseKind::Online => ONLINE,
+            PauseKind::Training => TRAINING,
+            PauseKind::Replay { .. } => REPLAY,
+            PauseKind::Fight => FIGHT,
         }
     }
 
@@ -295,15 +321,15 @@ impl PauseBox {
         let items = self.items();
         let item = items[self.cursor];
         match input {
-            MenuInput::Up => {
-                self.cursor = (self.cursor + items.len() - 1) % items.len();
+            MenuInput::Up | MenuInput::Down => {
+                let step = if input == MenuInput::Down { 1 } else { items.len() - 1 };
+                let cursor = (1..items.len())
+                    .map(|distance| (self.cursor + step * distance) % items.len())
+                    .find(|&index| self.enabled(items[index]))?;
+                self.cursor = cursor;
                 Some(Transition::CursorMoved)
             }
-            MenuInput::Down => {
-                self.cursor = (self.cursor + 1) % items.len();
-                Some(Transition::CursorMoved)
-            }
-            MenuInput::Confirm => {
+            MenuInput::Confirm if self.enabled(item) => {
                 if item == MenuItem::TrainingSettings {
                     self.settings = Some(TrainingBox::default());
                 }
@@ -333,6 +359,14 @@ impl PauseBox {
         hold_combo: bool,
         fill_meters: bool,
     ) -> Frame {
+        self.render_with_training(font, last, overlay, look, gauge_art, preset, hold_combo, fill_meters, None, None)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn render_with_training(
+        &self, font: &RomFont<'_>, last: &Frame, overlay: &str, look: &str, gauge_art: GaugeArt,
+        preset: RulesetPreset, hold_combo: bool, fill_meters: bool, drill: Option<crate::utility::Drill>, trial: Option<u8>,
+    ) -> Frame {
         let mut frame = dimmed(last);
         // Training's extra rows take the box deeper, to the screen's last row.
         let rows = BOX_ROWS.max(Self::item_row(self.items().len() - 1) + 2 - BOX_ROW + 1).min(SCREEN_ROWS - BOX_ROW);
@@ -343,7 +377,9 @@ impl PauseBox {
         }
         for (i, item) in self.items().iter().enumerate() {
             let row = Self::item_row(i);
-            let color = if i == self.cursor {
+            let color = if !self.enabled(*item) {
+                ink::DIM
+            } else if i == self.cursor {
                 font.text(&mut frame.argb, LABEL_COL - 2, row, ">", ink::YELLOW);
                 ink::YELLOW
             } else {
@@ -359,7 +395,7 @@ impl PauseBox {
             font.text(&mut frame.argb, VALUE_END_COL - value.len(), row, value, color);
         }
         if let Some(settings) = &self.settings {
-            settings.render(font, &mut frame, preset, hold_combo, fill_meters);
+            settings.render(font, &mut frame, preset, hold_combo, fill_meters, drill, trial);
         }
         frame
     }

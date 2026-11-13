@@ -327,7 +327,11 @@ pub fn assert_training_move_demo(
                 }
                 session.step(input);
                 let [player, opponent] = session.fight().unwrap().fight_read().fighters;
-                if guard { player.blockstun } else { opponent.attacking() }
+                if guard {
+                    player.blockstun
+                } else {
+                    opponent.attacking()
+                }
             }),
             "the counter drill reaches the contact window for {name}"
         );
@@ -480,7 +484,12 @@ pub fn round_two_after_timeout(fight: &mut sf_engine::front::fight::Fight, asset
     fight.restore_netplay_snapshot(&snapshot);
 
     for _ in 0..900 {
-        fight.step(assets, PlayerInputs::default(), PlayerInputs::default(), false);
+        fight.step(
+            assets,
+            PlayerInputs::default(),
+            PlayerInputs::default(),
+            false,
+        );
         let fighters = fight.fight_read().fighters;
         if fight.machine().work_ram()[0x400a] == 1
             && fighters[0].move_id == 1

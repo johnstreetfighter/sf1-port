@@ -112,6 +112,13 @@ pub enum Level {
     VeryHard,
 }
 
+pub(crate) fn drive_reserve(level: Level) -> u16 {
+    match level {
+        Level::Easy | Level::Normal => u16::from(crate::era::STOCK_AT) * 3 / 2,
+        Level::Hard | Level::VeryHard => 0,
+    }
+}
+
 impl Level {
     /// The match settings' `DIFFICULTY` (1 Easy, 2 Normal, 3 Difficult, 4
     /// Very Difficult).
@@ -662,6 +669,76 @@ impl Context {
         context.era = Some(Tactics::of(state, &entries, config, level, control));
         context
     }
+
+    /// Short commands supplement the established spacing, guards, and
+    /// longer charge and jump sequences. A command still has to pass the
+    /// fighter's own motion recognizer and action gates.
+    pub(crate) fn utility_macro(
+        &self,
+        family: crate::era::EraFamily,
+        view: Percept,
+        spot: crate::utility::Spot,
+        action: crate::utility::Action,
+        simple_spacing: bool,
+        max_frames: usize,
+    ) -> Option<Vec<u16>> {
+        use crate::utility::Action::*;
+
+        let forward = if view.me.facing_left { LEFT } else { RIGHT };
+        let back = if forward == LEFT { RIGHT } else { LEFT };
+        if action == Parry && self.era.is_some_and(Tactics::can_tap_parry) {
+            let direction = if view.foe.low_attack() { DOWN } else { forward };
+            return Some(vec![0, direction, 0]);
+        }
+        if action == Fadc && self.era.is_some_and(Tactics::can_fadc) {
+            let focus = button(1) | button(4);
+            return Some(vec![focus, focus | forward, focus, focus | forward, forward, 0]);
+        }
+        let entry = match action {
+            AntiAir if view.me.free() && spot.airborne => {
+                if let Some(entry) = self.kit.anti_air {
+                    Some((entry, 2))
+                } else {
+                    return Some(vec![DOWN | button(2), DOWN, 0]);
+                }
+            }
+            Normal if simple_spacing && view.me.free() && !spot.attack_incoming => {
+                return Some(if spot.distance > 65 {
+                    vec![forward; 6]
+                } else {
+                    vec![button(1), button(1), 0]
+                });
+            }
+            ThrowTech if self.throws => return Some(vec![back | button(2), 0]),
+            SpecialCancel if self.cancels && spot.can_cancel => {
+                // The motion must finish inside the live cancel window.
+                // Longer charge and mash plans remain with the base CPU.
+                [Role::AntiAir, Role::Projectile, Role::Advance].into_iter()
+                    .flat_map(|role| self.kit.by_role(role))
+                    .flatten()
+                    .find(|entry| entry.input.motion.len() <= 3 && !entry.input.motion.iter().any(|d| d.is_charge())
+                        && matches!(entry.input.button, ButtonClass::Punch | ButtonClass::Kick))
+                    .map(|entry| (entry, 2))
+            }
+            _ => self.era.and_then(|tactics| tactics.utility_command(spot, action)),
+        }?;
+        let mut pads = alpha_motion(&entry.0, !view.me.facing_left, entry.1, true);
+        if family == crate::era::EraFamily::Sf6 && entry.0.produces == crate::era_fight::sf6::RUSH {
+            pads.insert(0, 0); // A held Forward must release before the dash.
+        }
+        if !pads.iter().take(max_frames).any(|&pad| pad & !0xf != 0) && entry.0.input.button != ButtonClass::DirectionOnly {
+            // Supers can have six or more motion steps. Preserve the same
+            // directions and edge while leaving longer charges to the base CPU.
+            if entry.0.input.motion.iter().any(|d| d.is_charge() || *d == Dir::Jump)
+                || matches!(entry.0.input.button, ButtonClass::ReleasePair | ButtonClass::MashPunch)
+            {
+                return None;
+            }
+            pads.dedup();
+        }
+        pads.truncate(max_frames);
+        Some(pads)
+    }
 }
 
 /// What a plan is doing.
@@ -856,6 +933,20 @@ impl FairCpu {
     /// Record what frame `p.frame` showed.
     pub fn observe(&mut self, p: Percept) {
         self.seen[p.frame as usize % RING] = p;
+    }
+
+    pub(crate) fn set_utility_pad(&mut self, pad: u16) {
+        if pad != self.pad {
+            self.plan = Plan::default();
+            self.last_normal = None;
+            self.pad = pad;
+        }
+    }
+
+    /// A neutral pause can accept a new tactic. A zero pad inside a motion,
+    /// timed anti-air or stance plan must stay with that plan.
+    pub(crate) fn utility_idle(&self) -> bool {
+        self.pad == 0 && (self.plan.done() || self.plan.kind == PlanKind::Idle)
     }
 
     /// What frame `frame` showed, if the CPU still holds it.

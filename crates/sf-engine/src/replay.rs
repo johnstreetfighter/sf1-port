@@ -1,4 +1,4 @@
-//! Deterministic Replay Takeover session (`#93`, `O2`).
+//! Deterministic replay and live takeover on the legacy and native engines.
 //!
 //! Wraps a [`FightMachine`] and a recorded scenario input schedule so a player
 //! can pause at any frame, take live control of either `P1` or `P2` from that
@@ -12,6 +12,10 @@ use std::path::Path;
 
 use crate::fight::{FightMachine, FightSnapshot};
 use crate::run::{apply_inputs, scenario_input_events, INPUTS};
+
+mod native;
+pub(crate) use native::MAX_REPLAY_COMMANDS;
+pub use native::{MatchReplay, ReplayCommand, ReplayPlayback, MAX_REPLAY_BYTES, MAX_REPLAY_FRAMES, REPLAY_LIMIT};
 
 /// Default Replay Takeover window duration: 10 seconds at 60 Hz (`600` frames).
 pub const DEFAULT_TAKEOVER_WINDOW_FRAMES: u32 = 600;

@@ -260,12 +260,13 @@ impl crate::canonical::Canonical for MatchConfig {
             sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
             tour, dramatic, world_tour, difficulty, round_time, evil_ryu_playtest,
         } = self;
-        out.tag("MatchConfig.v3");
+        out.tag("MatchConfig.v4");
         preset.encode(out);
         toggles.encode(out);
         roster.encode(out);
         fill_meters.encode(out);
         p2_fair_cpu.encode(out);
+        self.effective_control_schemes().encode(out);
         modern_control_damage_penalty.encode(out);
         sf1plus.encode(out);
         gauge_mode.encode(out);
@@ -290,8 +291,6 @@ impl crate::canonical::Canonical for MatchConfig {
             Some(EvilRyuPlaytest::Sf6) => out.tag("EvilRyuSf6"),
             None => {}
         }
-        // Scheme selectors currently affect no translated-machine input.
-        // TRD1 must normalize/synchronize their effects before making them live.
     }
 }
 
@@ -301,9 +300,10 @@ impl crate::canonical::Canonical for CoreToggleState {
             neg_edge_latch, recovery_buffer, tracker_release_age, dp_connected,
             human_attack_frames, air_adj_frames_1, air_adj_rem_1,
             air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic, era,
+            utility, scripted_cpu_pad, cpu_drive_reserve: _, schemes,
             ashura_motion, raging_demon, satsui_awakening, missing_ryu_theme: _,
         } = self;
-        out.tag("CoreToggleState.v3");
+        out.tag("CoreToggleState.v4");
         neg_edge_latch.encode(out);
         recovery_buffer.encode(out);
         tracker_release_age.encode(out);
@@ -318,6 +318,9 @@ impl crate::canonical::Canonical for CoreToggleState {
         throw.encode(out);
         dramatic.encode(out);
         era.encode(out);
+        utility.encode(out);
+        schemes.encode(out);
+        scripted_cpu_pad.encode(out);
         if *ashura_motion != [[0; 2]; 2] {
             out.tag("evil-ryu-ashura-motion/v1");
             ashura_motion.encode(out);
@@ -569,7 +572,7 @@ pub struct MatchConfig {
     /// Per-player cabinet scheme (`#100`, `O9`).
     pub p1_scheme: crate::session_io::ControlScheme,
     pub p2_scheme: crate::session_io::ControlScheme,
-    /// 20% damage and +2 startup on modern 1-button neutral specials and supers.
+    /// Reduce damage from Modern special and super shortcuts by 20%.
     /// On for the competitive preset, off otherwise (`#100`, `O9`).
     pub modern_control_damage_penalty: bool,
     /// SF1+ throw, damage, and freeze rules (`#101`, `O10`).
@@ -730,8 +733,6 @@ impl MatchConfig {
         if preset != RulesetPreset::Custom {
             self.toggles = CoreToggles::for_preset(preset);
             self.roster = crate::roster::RosterSettings::for_preset(preset);
-            self.p1_scheme = crate::session_io::ControlScheme::Classic;
-            self.p2_scheme = crate::session_io::ControlScheme::Classic;
             self.modern_control_damage_penalty =
                 matches!(preset, RulesetPreset::ClassicCompetitive);
             self.sf1plus = crate::sf1plus::Sf1PlusRules::for_preset(preset);
@@ -739,6 +740,18 @@ impl MatchConfig {
             self.disable_comeback_scaling = false;
             self.disable_raw_drive_rush = false;
             self.tour = TourRules::off();
+        }
+    }
+
+    pub const fn control_schemes(&self) -> [crate::session_io::ControlScheme; 2] {
+        [self.p1_scheme, self.p2_scheme]
+    }
+
+    pub const fn effective_control_schemes(&self) -> [crate::session_io::ControlScheme; 2] {
+        if matches!(self.preset, RulesetPreset::Faithful1987) {
+            [crate::session_io::ControlScheme::Classic; 2]
+        } else {
+            self.control_schemes()
         }
     }
 
@@ -1059,6 +1072,7 @@ impl MatchConfig {
             "fair_cpu_and_sagat_scaling" => {
                 self.toggles.fair_cpu_and_sagat_scaling = parse_bool(v)?
             }
+            "modern_control_damage_penalty" => self.modern_control_damage_penalty = parse_bool(v)?,
             "cpu_reaction_delay" => {
                 let d: u8 = v
                     .parse()
@@ -1700,6 +1714,15 @@ pub struct CoreToggleState {
     pub dramatic: crate::dramatic::DramaticState,
     /// Native style picks, health, commands, and meters, by fight side.
     pub era: crate::era_fight::EraCombatState,
+    /// Human control translation, pending shortcuts and the originating move's damage flag.
+    pub(crate) schemes: [crate::control::SchemeState; 3],
+    /// Live CPU input macros in object order, including the Dramatic ally.
+    pub utility: [crate::utility::UtilityState; 3],
+    /// The current step supplies a CPU pad, as in a drill or replay takeover.
+    pub(crate) scripted_cpu_pad: bool,
+    /// Drive left by a CPU-controlled pad this step, indexed by era fighter.
+    /// The step clears this transient policy before a snapshot can be taken.
+    pub(crate) cpu_drive_reserve: [u16; 3],
     /// Stage and age of each private Ashura motion, forward then back.
     pub(crate) ashura_motion: [[u8; 2]; 2],
     /// Private Demon command progress and the current round's throw state.

@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
-use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
+use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side, Strip};
 use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
 use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeRow, GaugeState};
 use sf_video::render::{
@@ -44,6 +44,7 @@ use crate::roster::{PlayMode, TournamentFighter};
 use crate::overlay::{gauge_lift, render_diagnostic_overlay_parts};
 use crate::run::{PowerOnMachine, PowerOnSnapshot};
 use crate::tasks::Io;
+use crate::utility::{ComboTrialSpec, Drill, DrillController, RosterFighter, TrialController, TrialFrame};
 
 mod gauge_effects;
 
@@ -161,6 +162,12 @@ impl Default for FightDips {
 }
 
 impl FightDips {
+    pub(crate) fn from_dsw2(dsw2: u16) -> Self {
+        Self {
+            difficulty: match dsw2 & 0x60 { 0x40 => 1, 0x60 => 2, 0x20 => 3, _ => 4 },
+            round_time: match dsw2 & 0x18 { 0x18 => 100, 0x10 => 150, 0x08 => 200, _ => 250 },
+        }
+    }
     /// The factory DSW1 (`Io::idle`): demo sounds and attract music on,
     /// normal speed, no flip, freeze or service mode.
     pub const DSW1: u16 = 0xdfff;
@@ -386,6 +393,8 @@ pub struct Fight {
     coach: Option<Coach>,
     /// P1's saved meter while Training supplies it for Show and Try.
     practice_meters: Option<PracticeMeters>,
+    drill: Option<DrillController>,
+    trial: Option<TrialController>,
     /// How the coach's fixes write a direction (the Settings value `MOVE
     /// INPUTS`, ticket #232, ML6): a player's own choice, set by the session
     /// when a Show or Try starts.
@@ -433,6 +442,8 @@ pub struct FightSnapshot {
     pub show: Option<Show>,
     pub coach: Option<Coach>,
     pub practice_meters: Option<PracticeMeters>,
+    drill: Option<DrillController>,
+    trial: Option<TrialController>,
 }
 
 /// Meter amounts replaced for a single Training Show or Try.
@@ -525,6 +536,7 @@ impl Fight {
             sounds: _, overlay: _, gauge_art: _, gauge_effects: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
+            drill, trial: _,
         } = self;
         let mut out = CanonicalHasher::new();
         out.tag("sf1-port/fight-gameplay/v2");
@@ -536,6 +548,12 @@ impl Fight {
         continuing.encode(&mut out);
         last_flow.encode(&mut out);
         practice_meters.encode(&mut out);
+        if let Some(drill) = drill {
+            drill.encode(&mut out);
+        }
+        if self.trial_dummy_crouches() {
+            out.tag("trial-2/crouching-dummy");
+        }
         coach.as_ref().and_then(|coach| practice_contact(coach.entry()))
             .map(|contact| contact as u8).encode(&mut out);
         match round_start {
@@ -568,6 +586,7 @@ impl Fight {
             overlay: _, gauge_art: _, gauge_effects, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
+            drill, trial,
         } = self;
         FightSnapshot {
             frame: net_frame,
@@ -595,6 +614,8 @@ impl Fight {
             show: show.clone(),
             coach: coach.clone(),
             practice_meters: *practice_meters,
+            drill: *drill,
+            trial: trial.clone(),
         }
     }
 
@@ -607,7 +628,7 @@ impl Fight {
             frame: _, machine, setup, country, black, sounds, over, continuing,
             round_start, last_flow, callouts, gauge_effects, pending_callouts, pending_combos,
             reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails,
-            show, coach, practice_meters,
+            show, coach, practice_meters, drill, trial,
         } = snap;
         self.machine.restore_snapshot(machine);
         self.setup = *setup;
@@ -633,6 +654,8 @@ impl Fight {
         self.show.clone_from(show);
         self.coach.clone_from(coach);
         self.practice_meters = *practice_meters;
+        self.drill = *drill;
+        self.trial.clone_from(trial);
     }
 
     /// Whether the wrapper stopped after a match end or untranslated path.
@@ -728,6 +751,8 @@ impl Fight {
             show: None,
             coach: None,
             practice_meters: None,
+            drill: None,
+            trial: None,
             notation: InputNotation::default(),
         })
     }
@@ -745,6 +770,41 @@ impl Fight {
     /// extended theme was missing (SP15, `#267`).
     pub fn take_missing_ryu_theme(&mut self) -> Option<u16> {
         self.machine.take_missing_ryu_theme()
+    }
+
+    /// Whether reference playback feeds P2 an internally generated pad.
+    pub(crate) fn replay_automated_p2(&self) -> bool {
+        if let Some(rules) = self.setup.config.dramatic {
+            return !rules.co_op;
+        }
+        let config = &self.setup.config;
+        if config.preset == RulesetPreset::Faithful1987 && self.setup.players == Players::One {
+            return false;
+        }
+        let fair_cpu = config.p2_fair_cpu && (self.setup.players == Players::Two
+            || self.machine.era_fighters()[1].style.family != crate::era::EraFamily::Sf1987);
+        self.drill.is_some() || self.practice_opponent().is_some()
+            || fair_cpu || self.setup.kind == FightKind::TrainingDummy
+    }
+
+    /// In Dramatic Battle the second pad controls Ally 2. The normal fight
+    /// reader reports the boss in the opponent slot.
+    pub(crate) fn replay_fighter_read(&self, side: usize) -> FighterRead {
+        if side == 1 && self.setup.config.dramatic.is_some() {
+            let state = &self.machine.toggle_state().dramatic;
+            let entity = usize::from(crate::fighter::DRAMATIC_ALLY2);
+            let obj = &self.machine.state.objectram[entity..];
+            return FighterRead {
+                present: obj[8] != 0,
+                health: state.health[2],
+                state: obj[9],
+                move_id: obj[0xa],
+                blockstun: self.machine.toggle_state().combo.blockstun[2] != 0,
+                getting_up: obj[0xa] == crate::combo::throw::GET_UP_MOVE && obj[9] & 0x80 != 0,
+                ..FighterRead::default()
+            };
+        }
+        self.read.fighters[side]
     }
 
     /// The fight reader's read of the last stepped frame.
@@ -792,6 +852,10 @@ impl Fight {
         self.machine.set_era_styles(self.selected_styles);
     }
 
+    pub(crate) fn replay_styles(&self) -> [StylePick; 2] {
+        self.selected_styles
+    }
+
     /// The selected style for a side. Arcade's second side follows the current
     /// ladder opponent and is absent before a country is picked.
     pub fn fighter_style(&self, side: usize) -> Option<StylePick> {
@@ -830,6 +894,10 @@ impl Fight {
 
     pub(super) fn seed_dramatic_cpu(&mut self, seed: u64) {
         self.machine.seed_dramatic_cpu(seed);
+    }
+
+    pub(super) fn seed_utility_cpu(&mut self, seed: u64) {
+        self.machine.seed_utility_cpu(seed);
     }
 
     pub fn machine(&self) -> &PowerOnMachine {
@@ -918,6 +986,10 @@ impl Fight {
         self.show = None;
         self.coach = None;
         self.practice_meters = None;
+        self.drill = self.drill.map(|drill| DrillController::new(drill.drill()));
+        if let Some(index) = self.active_trial() {
+            self.set_combo_trial(Some(index));
+        }
         true
     }
 
@@ -939,6 +1011,8 @@ impl Fight {
     /// and no preset's.
     pub fn set_preset(&mut self, preset: RulesetPreset) {
         let mut config = MatchConfig::from_preset(preset);
+        config.p1_scheme = self.setup.config.p1_scheme;
+        config.p2_scheme = self.setup.config.p2_scheme;
         config.roster.mode = self.setup.config.roster.mode;
         config.roster.p1 = self.setup.config.roster.p1;
         config.roster.p2 = self.setup.config.roster.p2;
@@ -955,10 +1029,13 @@ impl Fight {
         }
         self.setup.config = config;
         self.machine.set_match_config(config);
+        if self.active_drill().is_some_and(|drill| !self.drill_available(drill)) {
+            self.set_drill(None);
+        }
         self.gauge_effects = GaugeEffects::default();
     }
 
-    pub(super) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
+    pub(crate) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
         !self.over && flow_position(&self.machine) == FIGHT_LOOP
             && self.machine.try_alpha2_feint(input.directions)
     }
@@ -1085,6 +1162,8 @@ impl Fight {
     /// does nothing. A show already running is replaced.
     pub fn show(&mut self, entry: MoveEntry) {
         if self.training() {
+            self.drill = None;
+            self.trial = None;
             self.begin_meter_practice(&entry);
             self.show = Some(Show::new(entry));
             self.coach = None;
@@ -1097,6 +1176,8 @@ impl Fight {
     /// move that finishes starts it too. Outside Training it does nothing.
     pub fn try_move(&mut self, entry: MoveEntry) {
         if self.training() {
+            self.drill = None;
+            self.trial = None;
             self.begin_meter_practice(&entry);
             self.coach = Some(Coach::new(entry));
             self.show = None;
@@ -1107,6 +1188,118 @@ impl Fight {
     /// INPUTS` choice.
     pub fn set_move_inputs(&mut self, notation: InputNotation) {
         self.notation = notation;
+    }
+
+    pub fn active_drill(&self) -> Option<Drill> {
+        self.drill.map(|d| d.drill())
+    }
+
+    pub fn drill_completed(&self) -> Option<u8> {
+        self.drill.map(|d| d.completed())
+    }
+
+    pub fn active_trial(&self) -> Option<u8> {
+        self.trial.as_ref().map(TrialController::index)
+    }
+
+    pub fn trial_progress(&self) -> Option<usize> {
+        self.trial.as_ref().map(TrialController::progress)
+    }
+
+    pub fn trial_strip(&self) -> Option<Strip> {
+        self.trial.as_ref().map(|trial| {
+            trial.strip(self.notation, p1_facing_right(&self.machine))
+        })
+    }
+
+    pub(super) fn drill_available(&self, drill: Drill) -> bool {
+        if drill != Drill::ThrowTech {
+            return true;
+        }
+        use crate::era::EraFamily;
+        let config = &self.setup.config;
+        let era_rules = crate::era_fight::EraRules::from(*config);
+        let styles = [self.fighter_style(0), self.fighter_style(1)];
+        let throws = styles.map(|style| match style.filter(|_| era_rules.enabled).map(|style| style.family) {
+            Some(EraFamily::Sf1987) => false,
+            Some(EraFamily::Sf1Plus) | None => config.toggles.throws,
+            Some(_) => true,
+        });
+        let sf2_throw = styles[1].is_some_and(|style| era_rules.enabled && style.family == EraFamily::Sf2);
+        let has_tables = self.machine.data_bank().is_some_and(|bank| {
+            [self.player_fighter(0), self.player_fighter(1)].into_iter().all(|fighter| bank.throw_entry(fighter).is_some())
+        });
+        throws == [true; 2] && has_tables && !(sf2_throw && config.sf1plus.untechable_sf2_throws)
+    }
+
+    pub fn set_drill(&mut self, drill: Option<Drill>) {
+        if !self.training() { return; }
+        let drill = drill.filter(|&drill| self.drill_available(drill));
+        self.drill = drill.map(DrillController::new);
+        if drill.is_some() {
+            self.trial = None;
+            self.show = None;
+            self.coach = None;
+            self.end_meter_practice();
+        }
+    }
+
+    fn trial_move_entries(&self, side: usize) -> Vec<MoveEntry> {
+        let era = &self.machine.era_fighters()[side];
+        let fighter = era.fighter.unwrap_or_else(|| self.player_fighter(side));
+        let banked = self.machine.data_bank().is_some_and(|bank| bank.table(fighter).is_some());
+        crate::moves::live_move_list(fighter, self.setup.config.preset, banked, era)
+    }
+
+    pub fn set_combo_trial(&mut self, index: Option<u8>) {
+        if !self.training() { return; }
+        self.trial = index.filter(|index| (1..=5).contains(index)).map(|index| {
+            let fighter = if self.setup.config.evil_ryu_playtest.is_some() {
+                RosterFighter::EvilRyu
+            } else {
+                self.player_fighter(0).into()
+            };
+            let style = self.fighter_style(0).unwrap_or_default();
+            TrialController::new(ComboTrialSpec::for_fighter_era(fighter, style.family, index),
+                style, &self.trial_move_entries(0))
+        });
+        if self.trial.is_some() {
+            self.drill = None;
+            self.show = None;
+            self.coach = None;
+            self.end_meter_practice();
+        }
+    }
+
+    fn drill_pad(&mut self, in_fight: bool) -> Option<PlayerInputs> {
+        let drill = self.active_drill()?;
+        let mode = self.machine.work_ram()[(GAME_MODE - crate::fighter::WORK_BASE) as usize];
+        let cpu = if mode == 2 { CPU_STRUCT } else { P2_STRUCT };
+        let view = crate::fair_cpu::perceive_fighters(
+            self.machine.state.frame, in_fight, self.machine.work_ram(), &self.machine.state.objectram,
+            cpu, P1_STRUCT,
+        );
+        let special = if drill == Drill::Survival {
+            self.trial_move_entries(1).into_iter().find(|entry| entry.kind == crate::moves::MoveKind::Special)
+        } else { None };
+        self.drill.as_mut().map(|drill| drill.input(view, special))
+    }
+
+    fn trial_dummy_crouches(&self) -> bool {
+        self.setup.kind == FightKind::TrainingDummy && self.active_trial() == Some(2)
+    }
+
+    /// Return both pads to direct input for a live replay branch.
+    pub(crate) fn release_training_pads(&mut self) {
+        self.show = None;
+        self.coach = None;
+        self.drill = None;
+        self.trial = None;
+        self.end_meter_practice();
+    }
+
+    pub(crate) fn try_active(&self) -> bool {
+        self.coach.is_some()
     }
 
     /// Stop the Try (the pause box opened).
@@ -1384,6 +1577,16 @@ impl Fight {
         }
         let mut frame = self.render_scene(assets);
         self.draw_ally_lifebar(&mut frame);
+        if self.last_flow == FIGHT_LOOP {
+            let strip = self.drill.map(DrillController::strip).or_else(|| self.trial_strip());
+            if let Some(strip) = strip {
+                let font = RomFont::new(&assets.gfx4, &assets.maincpu);
+                draw_strip(&mut frame.argb, &strip, Some(&font));
+                if self.setup.config.preset == RulesetPreset::Faithful1987 {
+                    draw(&mut frame.argb, &self.callouts.frame(), Some(&font));
+                }
+            }
+        }
         // Training's Show strip, under the health block in every preset.
         if let Some(show) = &self.show {
             let font = RomFont::new(&assets.gfx4, &assets.maincpu);
@@ -1632,6 +1835,17 @@ impl Fight {
     /// is over (Local, Training) or the run has returned to the attract
     /// (Arcade).
     pub fn step(&mut self, assets: &Assets, p1: PlayerInputs, p2: PlayerInputs, start: bool) -> FightFrame {
+        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], false)
+    }
+
+    pub(crate) fn step_with_pad_override(
+        &mut self,
+        assets: &Assets,
+        [p1, p2]: [PlayerInputs; 2],
+        start: bool,
+        bypass: [bool; 2],
+        override_p2: bool,
+    ) -> FightFrame {
         if self.black > 0 {
             self.black -= 1;
             return FightFrame {
@@ -1649,7 +1863,7 @@ impl Fight {
         if !self.over {
             // A Training dummy's pad is held still, and the fair CPU plays
             // P2's in the machine (SP21), so the pad's never reaches it.
-            let p2 = if self.setup.kind == FightKind::TrainingDummy || self.setup.config.p2_fair_cpu {
+            let p2 = if !override_p2 && (self.setup.kind == FightKind::TrainingDummy || self.setup.config.p2_fair_cpu) {
                 PlayerInputs::default()
             } else {
                 p2
@@ -1657,6 +1871,7 @@ impl Fight {
             // A show feeds P1 the move's input in place of the pad's, the
             // way a pad's would reach the machine; its end gives the pad back.
             let in_fight = self.last_flow == FIGHT_LOOP;
+            let showing = self.show.is_some();
             let p1 = match self.show.as_mut().map(|show| {
                 let facing = p1_facing_right(&self.machine);
                 let input = show.input(&self.read.fighters[0], &self.read.fighters[1], facing, p1, in_fight);
@@ -1687,10 +1902,6 @@ impl Fight {
             } else {
                 (false, false)
             };
-            // The coach is told what the player gave, and which way P1 faces.
-            if let Some(coach) = &mut self.coach {
-                coach.input(p1, p1_facing_right(&self.machine));
-            }
             let me = self.read.fighters[0];
             if let Some(saved) = self.practice_meters.filter(|saved| me.move_id != saved.slot
                 && (super::show::gate_free(&me) || me.blockstun)
@@ -1700,9 +1911,22 @@ impl Fight {
                     saved.fill(state);
                 }
             }
-            let scripted_p2 = self.practice_opponent();
+            let scripted_p2 = self.drill_pad(in_fight)
+                .or_else(|| self.practice_opponent())
+                .or_else(|| (in_fight && self.trial_dummy_crouches()).then_some(PlayerInputs {
+                    directions: [false, false, true, false],
+                    ..PlayerInputs::default()
+                }));
             let p2 = scripted_p2.unwrap_or(p2);
+            let p1 = self.machine.translate_player_controls(0, p1, bypass[0] || showing || !in_fight);
+            let p2 = self.machine.translate_player_controls(1, p2, bypass[1] || scripted_p2.is_some()
+                || !in_fight || (!override_p2 && self.setup.config.p2_fair_cpu));
+            if let Some(coach) = &mut self.coach {
+                coach.input(p1, p1_facing_right(&self.machine));
+            }
             let before_gauges = if in_fight { self.current_gauge_corners() } else { [None; 3] };
+            let previous_read = self.read;
+            let previous_tech = self.machine.toggle_state().throw.tech_window[0];
             let m = &mut self.machine;
             let [r, l, d, u] = p1.directions;
             m.set_p1_direction(r, l, d, u);
@@ -1711,7 +1935,7 @@ impl Fight {
             m.set_p2_direction(r, l, d, u);
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
-            m.step_with_training_pad(scripted_p2.is_some());
+            m.step_with_training_pad(scripted_p2.is_some() || override_p2);
             let spends = Spends {
                 drive: m.take_gauge_drive_spends(),
                 v_trigger: m.take_gauge_v_trigger_spends(),
@@ -1779,7 +2003,8 @@ impl Fight {
             let reads_blockstun = m.match_config().toggles.true_combos
                 || m.era_fighters().iter().any(|era| era.alpha_counter_enabled());
             let combo = reads_blockstun.then(|| m.toggle_state().combo);
-            let read = self.reader.read_with_combos(m.work_ram(), &m.state.objectram, m.data_bank(), training, combo.as_ref());
+            let mut read = self.reader.read_with_combos(m.work_ram(), &m.state.objectram, m.data_bank(), training, combo.as_ref());
+            read.blocked = m.toggle_state().era.guard_contacts;
             self.read = self.fed_reads.pop_front().unwrap_or(read);
             // The coach reads the player's fighter and the move's recognizer
             // on the stepped frame, and a move that came out is called.
@@ -1805,6 +2030,25 @@ impl Fight {
             // A finished combo of five hits and up is the announcer's too.
             for hits in self.combo.step(&self.read, self.hold_combo && self.training()).into_iter().flatten() {
                 self.pending_combos.extend(AnnouncerLine::for_combo(hits));
+            }
+            if in_fight && flow == FIGHT_LOOP {
+                let tech = self.machine.toggle_state().throw.tech_window[0];
+                let era = &self.machine.era_fighters()[0];
+                let frame = TrialFrame {
+                    read: self.read,
+                    hits: self.combo.shown(Side::P1, false).map_or(1, |combo| combo.hits),
+                    strength: crate::combo::level(self.machine.state.objectram[FIGHTER_SLOTS[0] as usize + 0x34]),
+                    custom_combo: era.custom_combo_active(),
+                    focus_dash: era.sf4_dash_trail(),
+                    v_trigger: spends.v_trigger[0],
+                };
+                let parries = self.machine.toggle_state().era.player_parry_contacts;
+                let random = self.machine.work_ram()[(crate::fighter::RNG_STATE - crate::fighter::WORK_BASE) as usize];
+                let fix = self.drill.as_mut().and_then(|drill| drill.observe(previous_read, self.read, previous_tech, tech, parries, random))
+                    .or_else(|| self.trial.as_mut().and_then(|trial| trial.observe(previous_read, frame)));
+                if let Some(fix) = fix {
+                    self.pending_callouts.push(CalloutEvent::new(Side::P1, CalloutKind::fix(fix)));
+                }
             }
             // FIRST ATTACK, REVERSAL and PERFECT arrive with this frame, as pushed
             // call-outs do, so the announcer calls them too; a CPU side

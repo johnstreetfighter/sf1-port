@@ -232,7 +232,7 @@ fn the_walk_into_the_cabinet_a_fight_and_the_esc_hold_back() {
     }
     let attract = s.attract_machine().save_snapshot();
     tap(&mut s, with(|i| i.menu.start = true));
-    for _ in 0..3 {
+    for _ in 0..4 {
         tap(&mut s, with(|i| i.p1.directions[2] = true)); // to 1987
     }
     let out = tap(&mut s, with(|i| i.menu.confirm = true));

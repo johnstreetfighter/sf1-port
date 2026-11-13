@@ -318,6 +318,21 @@ impl EraFighterState {
         (tracker.position, tracker.remaining)
     }
 
+    pub(super) fn modern_sf6(&mut self, entry: MoveEntry, ready: MotionTracker) -> bool {
+        let Some(fighter) = self.fighter else { return false };
+        let index = match entry.produces {
+            SA1..=SA3 => self.sf6_arts(fighter)[usize::from(entry.produces - SA1)].2,
+            EXTRA => self.sf6_extra(fighter).2,
+            JINRAI | TOBIGERI => 2,
+            INSTALL => 5,
+            _ => return false,
+        };
+        self.sf6.motions.fill(MotionTracker::default());
+        self.extra_motion = MotionTracker::default();
+        self.sf6.motions[index] = ready;
+        true
+    }
+
     pub(super) fn sf6_active_moves(&self) -> Vec<MoveEntry> {
         if !self.is_sf6() {
             return Vec::new();
@@ -590,7 +605,12 @@ impl Bus<'_> {
                 && parry_chord
                 && (free || was_parrying));
         let stock_cost = if cancel { 3 * STOCK_AT } else { STOCK_AT };
+        let reserve = self.toggle_state.cpu_drive_reserve[side];
+        let state = &self.toggle_state.era.fighters[side];
+        let retains_reserve = reserve == 0 || state.unified_gauge
+            || state.sf6.points >= reserve + u16::from(state.meter_cost(stock_cost));
         if rush
+            && retains_reserve
             && self.sf6_can_spend(ps, stock_cost)
             && self.era_start_banked_move(ps, entity, RUSH, 0, None)
         {
@@ -654,6 +674,11 @@ impl Bus<'_> {
             self.era_share_gauge(side);
         }
         self.sf6_attacks(ps, entity, free, cancel, held, fresh)
+    }
+
+    pub(crate) fn sf6_modern_attack(&mut self, ps: u32, entity: u16, canceling: bool) -> bool {
+        let (held, fresh) = self.era_buttons(ps);
+        self.sf6_attacks(ps, entity, !canceling, canceling, held, fresh)
     }
 
     fn sf6_attacks(
@@ -824,6 +849,10 @@ impl Bus<'_> {
             state.sf6.perfect_scale = 60;
             self.toggle_state.era.freeze = self.toggle_state.era.freeze.max(8);
             self.era_emit_callout(ps, CalloutKind::PerfectParry);
+        }
+        if side == 0 {
+            let contacts = &mut self.toggle_state.era.player_parry_contacts;
+            *contacts = contacts.saturating_add(1);
         }
         self.era_share_gauge(side);
         self.queue_sound(8);

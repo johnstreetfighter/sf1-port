@@ -1349,8 +1349,6 @@ mod canonical_gameplay_tests {
         saved.latch_writes.push(crate::tasks::LatchWrite { value: 8, cycles: 10 });
         saved.toggle_state.missing_ryu_theme = Some(0x41);
         saved.toggle_state.cancel.count[0] = 1;
-        saved.match_config.p1_scheme = crate::session_io::ControlScheme::Modern;
-        saved.match_config.p2_scheme = crate::session_io::ControlScheme::Pneumatic;
         machine.restore_snapshot(&saved);
         assert_eq!(checksum(&machine), original);
         let mut out = CanonicalHasher::new();
@@ -1487,6 +1485,40 @@ impl PowerOnMachine {
         }
     }
 
+    /// Translate a human pad before the cabinet latches it. The physical
+    /// input stays in the replay and on the network; only this frame's
+    /// translated pad and shortcut reach the fight.
+    pub(crate) fn translate_player_controls(
+        &mut self, side: usize, input: crate::front::PlayerInputs, bypass: bool,
+    ) -> crate::front::PlayerInputs {
+        use crate::fighter::{CPU_STRUCT, GAME_MODE, P1_STRUCT, P2_STRUCT};
+        use crate::session_io::ControlScheme;
+
+        let config = self.program.match_config;
+        let scheme = if bypass { ControlScheme::Classic } else { config.effective_control_schemes()[side] };
+        let index = if side == 1 && config.dramatic.is_some() { 2 } else { side };
+        let (facing_right, family, close) = if scheme == ControlScheme::Modern {
+            let bus = self.program.bus(&mut self.state);
+            // The second cabinet pad drives the opponent's CPU structure
+            // when replay takeover overrides a one-player Arcade match.
+            let ps = match (side, config.dramatic.is_some(), bus.rb(GAME_MODE)) {
+                (0, _, _) => P1_STRUCT,
+                (1, false, 2) => CPU_STRUCT,
+                _ => P2_STRUCT,
+            };
+            let (me, other) = bus.player_entities(ps);
+            (
+                bus.eb(me, 0x37) & 4 == 0,
+                bus.chosen_era(ps),
+                bus.center_x(me).abs_diff(bus.center_x(other)) <= crate::combo::throw::RANGE,
+            )
+        } else {
+            (true, None, false)
+        };
+        self.program.toggle_state.schemes[index]
+            .translate(scheme, input, facing_right, family, close, config.modern_control_damage_penalty)
+    }
+
     /// Set P2's logical direction inputs (`IN1` bits 8–11, active low).
     pub fn set_p2_direction(&mut self, right: bool, left: bool, down: bool, up: bool) {
         self.io.in1 |= 0x0f00;
@@ -1558,11 +1590,16 @@ impl PowerOnMachine {
     pub(crate) fn step_with_training_pad(&mut self, scripted_p2: bool) {
         self.program.toggle_state.era.gauge_drive_spends = [false; 3];
         self.program.toggle_state.era.gauge_v_trigger_spends = [false; 3];
+        self.program.toggle_state.era.guard_contacts = [false; 2];
+        self.program.toggle_state.era.player_parry_contacts = 0;
+        self.program.toggle_state.scripted_cpu_pad = scripted_p2;
         if let Some(rules) = self.program.match_config.dramatic {
             self.fair_cpu = None;
-            self.dramatic_cpu_press(rules);
+            self.dramatic_cpu_press(rules, scripted_p2);
             self.step_frame();
             self.dramatic_cpu_observe(rules);
+            self.program.toggle_state.scripted_cpu_pad = false;
+            self.program.toggle_state.cpu_drive_reserve = [0; 3];
             return;
         }
         self.dramatic_cpu = None;
@@ -1571,11 +1608,13 @@ impl PowerOnMachine {
         if cpu {
             self.fair_cpu_observe();
         }
+        self.program.toggle_state.scripted_cpu_pad = false;
+        self.program.toggle_state.cpu_drive_reserve = [0; 3];
     }
 
     /// Whether a round is being fought: the game flow's task is at the
     /// fight loop.
-    fn in_fight(&self) -> bool {
+    pub(crate) fn in_fight(&self) -> bool {
         self.scheduler.positions().iter().any(|&(slot, at)| slot == 1 && at == crate::fair_cpu::FIGHT_LOOP)
     }
 
@@ -1585,6 +1624,7 @@ impl PowerOnMachine {
     /// other machine drops the CPU and its inputs stay as they were set.
     fn fair_cpu_press(&mut self) -> bool {
         use crate::fair_cpu::{pad_parts, FairCpu};
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT, P2_STRUCT};
         let cfg = self.program.match_config;
         if !cfg.p2_fair_cpu || cfg.preset == crate::config::RulesetPreset::Faithful1987 {
             self.fair_cpu = None;
@@ -1592,8 +1632,15 @@ impl PowerOnMachine {
         }
         // His specials' slot records: a boss's from his bank table, Ryu's and
         // Ken's the 1987 ones; none for a boss the fight holds no table for.
-        let fighter = if self.program.work[0x4002] == 2 {
+        let mode = self.program.work[0x4002];
+        let slot = usize::from(mode != 4);
+        let family = self.program.toggle_state.era.fighters[slot].style.family;
+        let fighter = if matches!(mode, 2 | 4) {
             if self.program.work[0x0003] == 0 {
+                return false;
+            }
+            if family == crate::era::EraFamily::Sf1987 {
+                self.fair_cpu = None;
                 return false;
             }
             let table = u32::from_be_bytes(self.program.work[0x4676..0x467a].try_into().unwrap());
@@ -1604,20 +1651,57 @@ impl PowerOnMachine {
         } else {
             cfg.roster.p2
         };
-        let ctx = self.fair_cpu_context(fighter, None);
+        let (me, foe) = match mode {
+            2 => (CPU_STRUCT, P1_STRUCT),
+            4 => (CPU_STRUCT, P2_STRUCT),
+            _ => (P2_STRUCT, P1_STRUCT),
+        };
+        let ctx = self.fair_cpu_context(fighter, slot, me);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
-        let pad = self.fair_cpu.get_or_insert_with(FairCpu::new).press(step, in_fight, &ctx);
-        let ([right, left, down, up], buttons) = pad_parts(pad);
-        self.set_p2_direction(right, left, down, up);
-        self.set_p2_buttons(buttons);
+        let cpu = self.fair_cpu.get_or_insert_with(FairCpu::new);
+        let pad = cpu.press(step, in_fight, &ctx);
+        let idle = cpu.utility_idle();
+        let input = if family == crate::era::EraFamily::Sf1987 {
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
+        } else {
+            self.step_utility_cpu(slot, me, foe, fighter, family, &ctx, Some((pad, idle)))
+        };
+        if family != crate::era::EraFamily::Sf1987 {
+            self.fair_cpu.as_mut().unwrap().set_utility_pad(self.program.toggle_state.utility[slot].pad());
+        }
+        self.apply_cpu_pad(input);
         true
+    }
+
+    /// P2's logical cabinet pad after any CPU or Training script supplied it.
+    pub(crate) fn applied_p2_pad(&self) -> crate::front::PlayerInputs {
+        let held = |port: u16, bit: u8| port & (1 << bit) == 0;
+        crate::front::PlayerInputs {
+            directions: [8, 9, 10, 11].map(|bit| held(self.io.in1, bit)),
+            buttons: [
+                held(self.io.in1, 12),
+                held(self.io.in1, 13),
+                held(self.io.in0, 10),
+                held(self.io.in1, 14),
+                held(self.io.in1, 15),
+                held(self.io.in0, 8),
+            ],
+        }
+    }
+
+    fn apply_cpu_pad(&mut self, input: crate::front::PlayerInputs) {
+        let [right, left, down, up] = input.directions;
+        self.set_p2_direction(right, left, down, up);
+        self.set_p2_buttons(input.buttons);
     }
 
     fn fair_cpu_context(
         &self,
         fighter: crate::roster::TournamentFighter,
-        dramatic_slot: Option<usize>,
+        era_side: usize,
+        ps: u32,
     ) -> crate::fair_cpu::Context {
         use crate::fair_cpu::{Context, EraControl, Kit, Level};
         let mut cfg = self.program.match_config;
@@ -1626,7 +1710,7 @@ impl PowerOnMachine {
             None if fighter.is_shoto() => Some([0x19, 0x1a, 0x1b].map(crate::data_bank::SpecialSlot::ryu)),
             None => None,
         };
-        let era = &self.dramatic_era_fighters()[dramatic_slot.unwrap_or(1)];
+        let era = &self.dramatic_era_fighters()[era_side];
         if era.unified_gauge {
             cfg.gauge_mode = crate::era::GaugeMode::Unified;
         }
@@ -1634,16 +1718,12 @@ impl PowerOnMachine {
         if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
             && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
         {
-            use crate::fighter::{CPU_STRUCT, P2_STRUCT, WORK_BASE};
+            use crate::fighter::WORK_BASE;
             let game_mode = self.program.work[0x4002];
-            let ps = dramatic_slot.map_or_else(
-                || if game_mode == 2 { CPU_STRUCT } else { P2_STRUCT },
-                |slot| crate::fighter::DRAMATIC_PLAYERS[slot],
-            );
             let entity_word = (ps + 0x10 - WORK_BASE) as usize;
             let entity = u16::from_be_bytes(self.program.work[entity_word..entity_word + 2].try_into().unwrap()) as usize;
             let control = self.state.objectram.get(entity..entity + 0x40).map(|obj| {
-                let slot = crate::combo::slot_in_fight(ps, game_mode, dramatic_slot.is_some());
+                let slot = crate::combo::slot_in_fight(ps, game_mode, cfg.dramatic.is_some());
                 let combo = &self.program.toggle_state.combo;
                 let cancel = &self.program.toggle_state.cancel;
                 let move_id = obj[0xa];
@@ -1668,6 +1748,7 @@ impl PowerOnMachine {
 
     pub(crate) fn seed_dramatic_cpu(&mut self, seed: u64) {
         use crate::fair_cpu::FairCpu;
+        self.seed_utility_cpu(seed);
         if self.program.match_config.dramatic.is_some() {
             self.dramatic_cpu = Some(Box::new([
                 FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)),
@@ -1676,61 +1757,164 @@ impl PowerOnMachine {
         }
     }
 
-    fn dramatic_cpu_press(&mut self, rules: crate::dramatic::DramaticRules) {
-        use crate::fair_cpu::pad_parts;
-        use crate::front::PlayerInputs;
+    /// Seed each deterministic utility controller independently.
+    pub fn seed_utility_cpu(&mut self, seed: u64) {
+        if self.program.match_config.preset != crate::config::RulesetPreset::Faithful1987 {
+            for (state, salt) in self.program.toggle_state.utility.iter_mut().zip([
+                0x6a09_e667_f3bc_c909, 0x9e37_79b9_7f4a_7c15, 0xbb67_ae85_84ca_a73b,
+            ]) {
+                *state = crate::utility::UtilityState::seeded(seed ^ salt);
+            }
+        }
+    }
 
+    fn step_utility_cpu(
+        &mut self,
+        slot: usize,
+        me: u32,
+        foe: u32,
+        fighter: crate::roster::TournamentFighter,
+        family: crate::era::EraFamily,
+        context: &crate::fair_cpu::Context,
+        positional_pad: Option<(u16, bool)>,
+    ) -> crate::front::PlayerInputs {
+        self.program.toggle_state.cpu_drive_reserve[slot] = crate::fair_cpu::drive_reserve(
+            crate::fair_cpu::Level::from_difficulty(self.program.match_config.difficulty),
+        );
+        let mut state = std::mem::take(&mut self.program.toggle_state.utility[slot]);
+        let input = crate::utility::UtilityAi::step(self, &mut state, me, foe, fighter, family, context, positional_pad);
+        self.program.toggle_state.utility[slot] = state;
+        input
+    }
+
+    /// A replay branch's opponent uses the live fighter's command bank.
+    /// The playback owns this controller separately from the recorded CPU.
+    pub fn utility_takeover_pad(&self, side: usize, state: &mut crate::utility::UtilityState) -> crate::front::PlayerInputs {
+        use crate::fight_reader::player_struct;
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT, P2_STRUCT};
+        use sf_video::callouts::Side;
+        let mode = self.program.work[0x4002];
+        let (slot, me, foe) = if self.program.match_config.dramatic.is_some() {
+            match side {
+                0 => (0, P1_STRUCT, CPU_STRUCT),
+                1 => (2, P2_STRUCT, CPU_STRUCT),
+                _ => return crate::front::PlayerInputs::default(),
+            }
+        } else {
+            let Some(&player) = Side::BOTH.get(side) else { return crate::front::PlayerInputs::default(); };
+            (side, player_struct(player, mode), player_struct(if player == Side::P1 { Side::P2 } else { Side::P1 }, mode))
+        };
+        let era = &self.dramatic_era_fighters()[slot];
+        let fighter = era.fighter.unwrap_or_else(|| {
+            let config = self.program.match_config;
+            match slot {
+                0 => config.roster.p1,
+                2 => config.dramatic.map_or(config.roster.p2, |rules| rules.ally2),
+                _ => config.roster.p2,
+            }
+        });
+        let context = self.fair_cpu_context(fighter, slot, me);
+        crate::utility::UtilityAi::step(self, state, me, foe, fighter, era.style.family, &context, None)
+    }
+
+    /// Human-controlled sides can always take over. A one-player cabinet
+    /// CPU also needs its player command table to consume the synthetic pad.
+    pub fn utility_takeover_side_available(&self, side: usize) -> bool {
+        use crate::fight_reader::player_struct;
+        use crate::fighter::CPU_STRUCT;
+        use sf_video::callouts::Side;
+        let Some(&player) = Side::BOTH.get(side) else { return false };
+        if self.program.match_config.dramatic.is_some()
+            || player_struct(player, self.program.work[0x4002]) != CPU_STRUCT
+        {
+            return true;
+        }
+        self.arcade_opponent().is_some_and(|fighter| fighter.is_shoto()
+            || self.program.data_bank.as_ref().is_some_and(|bank| bank.table(fighter).is_some()))
+    }
+
+    fn dramatic_cpu_press(&mut self, rules: crate::dramatic::DramaticRules, scripted_p2: bool) {
+        use crate::fair_cpu::pad_parts;
+        use crate::fighter::{CPU_STRUCT, P2_STRUCT};
+        let [_, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
+        let fighter = self.program.match_config.roster.p2;
+        let boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT);
+        let opponent = self.dramatic_boss_target();
+        let families = self.dramatic_era_fighters().map(|era| era.style.family);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
-        let [_, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
-        let boss = self.fair_cpu_context(self.program.match_config.roster.p2, Some(1));
-        let ally = (!rules.co_op).then(|| self.fair_cpu_context(rules.ally2, Some(2)));
-        let cpu = self.dramatic_cpu.get_or_insert_with(Default::default);
-        let (directions, buttons) = pad_parts(cpu[0].press(step, in_fight && boss_hp > 0, &boss));
-        self.program.toggle_state.dramatic.boss_pad = PlayerInputs { directions, buttons };
-        if let Some(ally) = ally {
-            let ([right, left, down, up], buttons) =
-                pad_parts(cpu[1].press(step, in_fight && ally_hp > 0, &ally));
-            self.set_p2_direction(right, left, down, up);
-            self.set_p2_buttons(buttons);
+        let cpu = &mut self.dramatic_cpu.get_or_insert_with(Default::default)[0];
+        let pad = cpu.press(step, in_fight && boss_hp > 0, &boss);
+        let idle = cpu.utility_idle();
+        self.program.toggle_state.dramatic.boss_pad = if boss_hp > 0 {
+            self.step_utility_cpu(1, CPU_STRUCT, opponent, fighter, families[1], &boss, Some((pad, idle)))
+        } else {
+            crate::front::PlayerInputs::default()
+        };
+        if boss_hp > 0 {
+            self.dramatic_cpu.as_mut().unwrap()[0].set_utility_pad(self.program.toggle_state.utility[1].pad());
+        }
+        if !rules.co_op && !scripted_p2 {
+            let ally = self.fair_cpu_context(rules.ally2, 2, P2_STRUCT);
+            let cpu = &mut self.dramatic_cpu.as_mut().unwrap()[1];
+            let pad = cpu.press(step, in_fight && ally_hp > 0, &ally);
+            let idle = cpu.utility_idle();
+            let input = if ally_hp > 0 && boss_hp > 0 {
+                self.step_utility_cpu(2, P2_STRUCT, CPU_STRUCT, rules.ally2, families[2], &ally, Some((pad, idle)))
+            } else {
+                let (directions, buttons) = pad_parts(pad);
+                crate::front::PlayerInputs { directions, buttons }
+            };
+            if ally_hp > 0 && boss_hp > 0 {
+                self.dramatic_cpu.as_mut().unwrap()[1].set_utility_pad(self.program.toggle_state.utility[2].pad());
+            }
+            self.apply_cpu_pad(input);
         }
     }
 
     fn dramatic_cpu_observe(&mut self, rules: crate::dramatic::DramaticRules) {
         use crate::fair_cpu::perceive_fighters;
-        use crate::fighter::{CPU_STRUCT, P1_STRUCT, P2_STRUCT};
-
-        let in_fight = self.in_fight();
-        let [p1_hp, boss_hp, p2_hp] = self.program.toggle_state.dramatic.health;
-        let observe = |me, foe| {
-            perceive_fighters(self.state.frame, in_fight, &self.program.work, &self.state.objectram, me, foe)
-        };
-        let p1 = observe(CPU_STRUCT, P1_STRUCT);
-        let p2 = observe(CPU_STRUCT, P2_STRUCT);
-        let mut boss = if p1_hp == 0
-            || (p2_hp > 0 && p2.me.x.abs_diff(p2.foe.x) < p1.me.x.abs_diff(p1.foe.x))
-        {
-            p2
-        } else {
-            p1
-        };
-        boss.fighting &= boss_hp > 0 && (p1_hp > 0 || p2_hp > 0);
-        let ally = (!rules.co_op).then(|| {
-            let mut p = observe(P2_STRUCT, CPU_STRUCT);
-            p.fighting &= p2_hp > 0 && boss_hp > 0;
-            p
-        });
-        let cpu = self.dramatic_cpu.as_mut().expect("Dramatic controllers step before observing");
+        use crate::fighter::{CPU_STRUCT, P2_STRUCT};
+        let target = self.dramatic_boss_target();
+        let fighting = self.in_fight();
+        let [p1_hp, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
+        let boss = perceive_fighters(self.state.frame, fighting && boss_hp > 0 && (p1_hp > 0 || ally_hp > 0),
+            &self.program.work, &self.state.objectram, CPU_STRUCT, target);
+        let ally = (!rules.co_op).then(|| perceive_fighters(self.state.frame, fighting && boss_hp > 0 && ally_hp > 0,
+            &self.program.work, &self.state.objectram, P2_STRUCT, CPU_STRUCT));
+        let cpu = self.dramatic_cpu.as_mut().unwrap();
         cpu[0].observe(boss);
         if let Some(ally) = ally {
             cpu[1].observe(ally);
         }
     }
 
+    fn dramatic_boss_target(&self) -> u32 {
+        use crate::fair_cpu::perceive_fighters;
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT, P2_STRUCT};
+
+        let in_fight = self.in_fight();
+        let [p1_hp, _, p2_hp] = self.program.toggle_state.dramatic.health;
+        let observe = |me, foe| {
+            perceive_fighters(self.state.frame, in_fight, &self.program.work, &self.state.objectram, me, foe)
+        };
+        let p1 = observe(CPU_STRUCT, P1_STRUCT);
+        let p2 = observe(CPU_STRUCT, P2_STRUCT);
+        if p1_hp == 0
+            || (p2_hp > 0 && p2.me.x.abs_diff(p2.foe.x) < p1.me.x.abs_diff(p1.foe.x))
+        {
+            P2_STRUCT
+        } else {
+            P1_STRUCT
+        }
+    }
+
     /// The fair CPU's look at the frame just stepped.
     fn fair_cpu_observe(&mut self) {
         let in_fight = self.in_fight();
-        let p = crate::fair_cpu::perceive(self.state.frame, in_fight, &self.program.work, &self.state.objectram, sf_video::callouts::Side::P2);
+        use sf_video::callouts::Side;
+        let side = if self.program.work[0x4002] == 4 { Side::P1 } else { Side::P2 };
+        let p = crate::fair_cpu::perceive(self.state.frame, in_fight, &self.program.work, &self.state.objectram, side);
         if let Some(cpu) = self.fair_cpu.as_mut() {
             cpu.observe(p);
         }
@@ -2055,6 +2239,15 @@ impl PowerOnMachine {
     pub fn set_match_config(&mut self, config: crate::config::MatchConfig) {
         let previous_era = crate::era_fight::EraRules::from(self.program.match_config);
         let next_era = crate::era_fight::EraRules::from(config);
+        let previous_schemes = self.program.match_config.effective_control_schemes();
+        for (side, scheme) in config.effective_control_schemes().into_iter().enumerate() {
+            if previous_schemes[side] != scheme {
+                self.program.toggle_state.schemes[side] = crate::control::SchemeState::default();
+                if side == 1 {
+                    self.program.toggle_state.schemes[2] = crate::control::SchemeState::default();
+                }
+            }
+        }
         self.program.match_config = config;
         if config.roster.mode != crate::roster::PlayMode::Arcade
             || !config.roster.full_cast
@@ -2368,6 +2561,31 @@ pub fn observe_power_on_with_io(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn modern_second_pad_uses_the_arcade_opponents_facing() {
+        use crate::control::Shortcut;
+        use crate::fighter::{CPU_STRUCT, GAME_MODE, P2_STRUCT, WORK_BASE};
+        use crate::front::PlayerInputs;
+        use crate::session_io::ControlScheme;
+
+        let mut machine = PowerOnMachine::new(Vec::new());
+        let mut config = crate::config::MatchConfig::definitive();
+        config.p2_scheme = ControlScheme::Modern;
+        machine.set_match_config(config);
+        machine.program.work[(GAME_MODE - WORK_BASE) as usize] = 2;
+
+        for (player, entity, facing) in [(CPU_STRUCT, 0x100u16, 4), (P2_STRUCT, 0x200, 0)] {
+            let at = (player + 0x10 - WORK_BASE) as usize;
+            machine.program.work[at..at + 2].copy_from_slice(&entity.to_be_bytes());
+            machine.state.objectram[usize::from(entity) + 0x37] = facing;
+        }
+        let mut input = PlayerInputs::default();
+        input.directions[1] = true;
+        input.buttons[3] = true;
+        machine.translate_player_controls(1, input, false);
+        assert_eq!(machine.program.toggle_state.schemes[1].shortcut, Some(Shortcut::AntiAir));
+    }
 
     /// Regression: the scenario mapping must not swap the directions —
     /// `p1_right` schedules the machine's right input, `p1_left` the left,

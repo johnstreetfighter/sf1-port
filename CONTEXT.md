@@ -402,12 +402,27 @@ Training's pause-box action putting both fighters back where the fight began, wi
 _Avoid_: restart round (Local and Arcade only), reload, rewind
 
 **Training settings box**:
-The small box the pause box's TRAINING row opens, holding the settings that only Training has: PRESET, HOLD COMBO and FILL METERS.
+The small box the pause box's TRAINING row opens, holding PRESET, HOLD COMBO, FILL METERS, DRILL and TRIAL.
 _Avoid_: training menu, options, sub-menu
 
 **Fill meters**:
 The Training setting that holds every era gauge's resource at its maximum, refilled straight after it is spent; spending it works as it normally does.
 _Avoid_: infinite meter, max meter, free supers
+
+**Control scheme**:
+How a fighter reads the six logical buttons. Classic reads the cabinet buttons directly, Pneumatic resolves a punch or kick pad by press duration, and Modern provides Light, Medium, Heavy, Special, Assist and Macro. Faithful 1987 always reads Classic. Online matches agree on both fighters' schemes and the Modern shortcut penalty. Players keep their own device bindings.
+
+**Utility AI**:
+The deterministic opponent controller that reads the live fight and enters normals, specials and era mechanics through the same pad inputs as a player. The 1987 era uses the original ROM CPU.
+_Avoid_: bot AI, modern AI
+
+**Combo trial**:
+One of five graded combo recipes for the fighter and era. The Coach strip tracks each connected step within the combo. A Try practices one move.
+_Avoid_: challenge mode, mission
+
+**Match replay**:
+A recording of a native Fight's setup and logical pad inputs in a `.sf1replay` file. Playback reconstructs the fight from those inputs. The replay screen can seek by snapshots and hand one fighter to the player for ten seconds from a bookmark.
+_Avoid_: video replay, demo recording
 
 ## Move list and coach
 

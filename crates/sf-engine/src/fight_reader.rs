@@ -172,9 +172,9 @@ pub struct FightRead {
     pub fighters: [FighterRead; 2],
     /// The hit each side landed this frame, by the attacker.
     pub landed: [Option<LandedHit>; 2],
-    /// Each side's attack was blocked this frame without damage, by the
-    /// attacker. The 1987 reader leaves it false (a blocked normal leaves
-    /// only the block sound; chip is a landed hit); styles set it.
+    /// Each side's attack was guarded this frame, by the attacker. The
+    /// machine supplies it to `Fight` because a RAM read alone cannot
+    /// distinguish a blocked normal from a whiff.
     pub blocked: [bool; 2],
 }
 

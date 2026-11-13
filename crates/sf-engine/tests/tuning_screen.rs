@@ -276,6 +276,7 @@ fn session_on_tune(look: &str) -> Option<GameSession> {
     tap(&mut s, with(|i| i.menu.start = true));
     tap(&mut s, with(DOWN));
     tap(&mut s, with(DOWN));
+    tap(&mut s, with(DOWN));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     tap(&mut s, with(|i| i.menu.tab_right = true));
     tap(&mut s, with(|i| i.menu.tab_right = true));

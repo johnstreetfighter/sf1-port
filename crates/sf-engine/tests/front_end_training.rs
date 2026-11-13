@@ -547,9 +547,10 @@ fn trainings_pause_box_has_eight_rows_with_moves_last_and_the_other_fights_keep_
     // The eighth row and the box's foot are on the 28-row screen.
     assert!(PauseBox::item_row(7) + 2 <= 28);
     // The settings box sits inside the pause box, FILL METERS under HOLD COMBO.
-    assert_eq!(TrainingBox::items(), [MenuItem::LivePreset, MenuItem::HoldCombo, MenuItem::FillMeters]);
+    assert_eq!(TrainingBox::items(), [MenuItem::LivePreset, MenuItem::HoldCombo, MenuItem::FillMeters,
+        MenuItem::TrainingDrill, MenuItem::ComboTrial]);
     assert_eq!(MenuItem::FillMeters.label(), "FILL METERS");
-    assert!(TrainingBox::item_row(2) < TrainingBox::bottom_row());
+    assert!(TrainingBox::item_row(4) < TrainingBox::bottom_row());
     assert!(TrainingBox::bottom_row() < PauseBox::item_row(7));
 }
 
@@ -626,7 +627,7 @@ fn the_settings_box_moves_cycles_and_saves_its_rows_and_steps_no_frames() {
         tap(&mut s, down());
     }
     let out = tap(&mut s, up());
-    assert!(text_at(&out.frame, &font_assets, col, rows[2], "FILL METERS", ink::YELLOW), "up wraps to the last row");
+    assert!(text_at(&out.frame, &font_assets, col, TrainingBox::item_row(4), "TRIAL", ink::YELLOW), "up wraps to the last row");
     let out = tap(&mut s, down());
     assert!(text_at(&out.frame, &font_assets, col, rows[0], "PRESET", ink::YELLOW), "down wraps to the first");
 
@@ -813,9 +814,11 @@ fn a_preset_change_keeps_fill_meters_in_the_machine_and_the_fight() {
     tap(&mut s, confirm());
     // FILL METERS on, then PRESET stepped twice: every preset rebuilds the
     // configuration, none drops the switch.
-    tap(&mut s, up());
-    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::FillMeters)));
     tap(&mut s, down());
+    tap(&mut s, down());
+    assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::FillMeters)));
+    tap(&mut s, up());
+    tap(&mut s, up());
     let mut preset = s.fight_machine().unwrap().match_config().preset;
     for _ in 0..2 {
         assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::LivePreset)));
@@ -826,7 +829,8 @@ fn a_preset_change_keeps_fill_meters_in_the_machine_and_the_fight() {
         assert_eq!(*s.fight_machine().unwrap().match_config(), config, "machine and fight agree");
     }
     // And turned off again under the new preset, it is off in both.
-    tap(&mut s, up());
+    tap(&mut s, down());
+    tap(&mut s, down());
     assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::FillMeters)));
     assert!(!s.fight().unwrap().setup().config.fill_meters);
     assert!(!s.fight_machine().unwrap().match_config().fill_meters);
@@ -842,7 +846,8 @@ fn reset_positions_after_turning_fill_meters_on_leaves_it_on_in_the_machine_the_
     assert!(!round_start.match_config.fill_meters, "the round began with it off");
     pause_on(&mut s, TRAINING_ROW);
     tap(&mut s, confirm());
-    tap(&mut s, up());
+    tap(&mut s, down());
+    tap(&mut s, down());
     assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::FillMeters)));
     tap(&mut s, start());
     for _ in 0..200 {

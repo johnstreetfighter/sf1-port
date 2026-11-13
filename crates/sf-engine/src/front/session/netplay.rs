@@ -405,6 +405,7 @@ impl GameSession {
     }
 
     pub(super) fn net_return_online(&mut self, notice: &str) {
+        self.finish_replay_recording(false);
         if let Some(config) = self.play.as_ref().map(|play| play.fight.setup().config) {
             self.stop_extended_theme(&config);
         }
@@ -472,11 +473,10 @@ impl GameSession {
         phase: LobbyPhase,
         picker: u8,
     ) {
+        self.finish_replay_recording(false);
         self.net_epoch_cursor.observe(generation, frame_base);
         self.net_saved_config.get_or_insert(self.config);
-        let schemes = (self.config.p1_scheme, self.config.p2_scheme);
         self.config = rules.config;
-        (self.config.p1_scheme, self.config.p2_scheme) = schemes;
         self.chosen = Some(rules.stage);
         self.picker = usize::from(picker);
         self.play = None;

@@ -116,6 +116,7 @@ fn main_menu(preset: RulesetPreset, settings: Option<Settings>) -> GameSession {
 fn choose_in_settings(s: &mut GameSession, steps: usize) {
     tap(s, stick(DOWN));
     tap(s, stick(DOWN));
+    tap(s, stick(DOWN));
     assert_eq!(tap(s, confirm()).screen, "settings");
     for _ in 0..4 {
         tap(s, with(|i| i.menu.tab_right = true));

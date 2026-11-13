@@ -88,11 +88,10 @@ fn at_label(tab: usize, label: &str) -> SettingsScreen {
 fn every_live_row_changes_and_reads_back() {
     for (t, tab) in TABS.iter().enumerate() {
         for (i, row) in rows(*tab).iter().enumerate() {
-            // REBIND rows open the walk (`pad_play.rs`); SCHEME shows
-            // CLASSIC only; TUNE CRT LOOK opens the tuning screen
+            // REBIND rows open the walk (`pad_play.rs`); TUNE CRT LOOK opens the tuning screen
             // (`tuning_screen.rs`); JUKEBOX opens the Jukebox screen
             // (`jukebox_screen.rs`).
-            if matches!(row, Row::Greyed(_) | Row::Heading(_) | Row::ResetTab | Row::Scheme(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag) {
+            if matches!(row, Row::Greyed(_) | Row::Heading(_) | Row::ResetTab | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag) {
                 continue;
             }
             let mut s = at(t, i);
@@ -397,12 +396,42 @@ fn a_toggle_edit_flips_the_preset_to_custom_and_a_preset_change_keeps_the_fighte
     let mut config = MatchConfig::default();
     config.roster.p1 = TournamentFighter::Sagat;
     config.roster.p2 = TournamentFighter::Gen;
+    config.p1_scheme = sf_engine::session_io::ControlScheme::Modern;
+    config.p2_scheme = sf_engine::session_io::ControlScheme::Pneumatic;
     let mut s = SettingsScreen::open(config, Settings::default());
     s.apply(MenuInput::Right);
     s.apply(MenuInput::Right);
     assert_eq!(s.config().preset, RulesetPreset::ClassicCompetitive);
     assert_eq!(s.config().toggles, MatchConfig::from_preset(RulesetPreset::ClassicCompetitive).toggles);
     assert_eq!((s.config().roster.p1, s.config().roster.p2), (TournamentFighter::Sagat, TournamentFighter::Gen));
+    assert_eq!(s.config().control_schemes(), config.control_schemes());
+}
+
+#[test]
+fn controls_cycle_independently_and_modern_penalty_is_live() {
+    let mut s = at_label(4, "P1 SCHEME");
+    assert_eq!(s.apply(MenuInput::Confirm), Some(Transition::ValueChanged));
+    assert_eq!(s.value(Row::Scheme(0)), "PNEUMATIC");
+    s.apply(MenuInput::Right);
+    assert_eq!(s.value(Row::Scheme(0)), "MODERN");
+    s.apply(MenuInput::Down);
+    assert_eq!(s.row(), Row::Scheme(1));
+    s.apply(MenuInput::Left);
+    assert_eq!(s.value(Row::Scheme(1)), "MODERN");
+    assert_eq!(s.value(Row::Scheme(0)), "MODERN");
+    while !matches!(s.row(), Row::ResetTab) {
+        s.apply(MenuInput::Down);
+    }
+    s.apply(MenuInput::Confirm);
+    assert_eq!(s.value(Row::Scheme(0)), "CLASSIC");
+    assert_eq!(s.value(Row::Scheme(1)), "CLASSIC");
+
+    let mut gameplay = at_label(0, "MODERN PENALTY");
+    assert!(!gameplay.config().modern_control_damage_penalty);
+    assert_eq!(gameplay.apply(MenuInput::Confirm), Some(Transition::ValueChanged));
+    assert!(gameplay.config().modern_control_damage_penalty);
+    gameplay.apply(MenuInput::Left);
+    assert!(!gameplay.config().modern_control_damage_penalty);
 }
 
 #[test]
@@ -653,6 +682,7 @@ fn the_aspect_row_changes_the_picture_at_once_and_is_saved_on_leaving() {
     tap(&mut s, with(|i| i.menu.start = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
+    tap(&mut s, with(|i| i.p1.directions[2] = true));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     for _ in 0..2 {
         tap(&mut s, with(|i| i.menu.tab_right = true));
@@ -685,6 +715,7 @@ fn leaving_settings_saves_and_difficulty_and_round_time_reach_every_fight() {
     tap(&mut s, with(|i| i.menu.start = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
+    tap(&mut s, with(|i| i.p1.directions[2] = true));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     // DIFFICULTY up to 4 and ROUND TIME up to 250, both near the end of the
     // Gameplay rows: Up wraps from PRESET to RESET TAB.
@@ -709,9 +740,9 @@ fn leaving_settings_saves_and_difficulty_and_round_time_reach_every_fight() {
     let down = with(|i| i.p1.directions[2] = true);
     let ok = with(|i| i.menu.confirm = true);
     let walks: [(&str, &[FrameInputs]); 3] = [
-        ("local", &[up, ok, ok, with(|i| i.p1.buttons[0] = true), with(|i| i.p2.buttons[0] = true)]),
-        ("arcade", &[up, up, ok, ok, ok]),
-        ("training", &[up, up, ok, down, ok, ok, ok, ok]),
+        ("local", &[up, up, ok, ok, with(|i| i.p1.buttons[0] = true), with(|i| i.p2.buttons[0] = true)]),
+        ("arcade", &[up, up, up, ok, ok, ok]),
+        ("training", &[up, up, up, ok, down, ok, ok, ok, ok]),
     ];
     for (name, steps) in walks {
         let mut t = s.clone();

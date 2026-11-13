@@ -17,6 +17,26 @@ pub enum ControlScheme {
 }
 
 impl ControlScheme {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Classic => "CLASSIC",
+            Self::Pneumatic => "PNEUMATIC",
+            Self::Modern => "MODERN",
+        }
+    }
+
+    pub const fn next(self) -> Self {
+        match self {
+            Self::Classic => Self::Pneumatic,
+            Self::Pneumatic => Self::Modern,
+            Self::Modern => Self::Classic,
+        }
+    }
+
+    pub const fn prev(self) -> Self {
+        self.next().next()
+    }
+
     pub const fn slug(self) -> &'static str {
         match self {
             ControlScheme::Classic => "classic",
@@ -34,6 +54,10 @@ impl ControlScheme {
         }
     }
 }
+
+crate::canonical::canonical_enum!(ControlScheme, "ControlScheme.v1";
+    Classic => 0, Pneumatic => 1, Modern => 2,
+);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Strength {

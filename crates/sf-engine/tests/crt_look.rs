@@ -182,6 +182,7 @@ fn session_on_crt_look() -> Option<GameSession> {
     tap(&mut s, with(|i| i.menu.start = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
+    tap(&mut s, with(|i| i.p1.directions[2] = true));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     tap(&mut s, with(|i| i.menu.tab_right = true));
     tap(&mut s, with(|i| i.menu.tab_right = true));
@@ -248,6 +249,7 @@ fn a_look_the_host_could_not_load_shows_off_this_run_and_is_never_saved_as_off()
     assert!(!out.settings_changed, "the fallback is not a change to save");
     assert_eq!(s.settings().crt_look, "pro_monitor");
     tap(&mut s, with(|i| i.menu.start = true));
+    tap(&mut s, with(|i| i.p1.directions[2] = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
     tap(&mut s, with(|i| i.p1.directions[2] = true));
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");

@@ -52,7 +52,7 @@ pub fn full_banner() -> String {
 /// Netplay compatibility includes the release, source revision, and the
 /// synchronized rules layout. Keep the packet envelope readable by older peers.
 pub const fn protocol_version_hash() -> u32 {
-    const STYLE_RULES: u32 = 9;
+    const STYLE_RULES: u32 = 10;
     (identity_hash(VERSION, GIT_SHA) ^ STYLE_RULES).wrapping_mul(0x0100_0193)
 }
 
@@ -69,6 +69,11 @@ const fn identity_hash(version: &str, sha: &str) -> u32 {
         i += 1;
     }
     hash
+}
+
+/// Replays require the same executable rules, as well as the replay layout.
+pub const fn replay_compatibility_hash() -> u32 {
+    (identity_hash(VERSION, GIT_SHA) ^ 1).wrapping_mul(0x0100_0193)
 }
 
 #[cfg(test)]

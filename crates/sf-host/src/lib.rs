@@ -13,6 +13,7 @@ pub mod bindings;
 #[cfg(windows)]
 pub mod clipboard;
 pub mod files;
+pub mod replays;
 pub mod gpu_window;
 pub mod input;
 pub mod jukebox;

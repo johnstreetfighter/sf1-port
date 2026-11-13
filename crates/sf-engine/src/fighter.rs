@@ -71,7 +71,7 @@ const SOUND_READ: u32 = 0xff865e; // sound-queue read index
 const SOUND_WRITE: u32 = 0xff8660; // sound-queue write index
 const SOUND_QUEUE: u32 = 0xff8662; // 16-word ring of sound commands
 const IN1_COPY: u32 = 0xff868e; // vblank copy of IN1 (P2 byte, P1 byte)
-const RNG_STATE: u32 = 0xff8e4a; // 8-byte random state
+pub(crate) const RNG_STATE: u32 = 0xff8e4a; // 8-byte random state
 pub const GAME_MODE: u32 = 0xffc002; // ($4002,A5): 1 = 2P versus, 2 = 1P vs CPU
 /// Training's health floor: the points a hit always leaves (ADR-0013).
 pub const TRAINING_HEALTH_FLOOR: u16 = 1;
@@ -885,6 +885,7 @@ impl Bus<'_> {
         let Some(src) = src else {
             return;
         };
+        self.control_move_started(ps, mv);
         for i in 0..0x30u32 {
             let b = self.rb(src + i);
             self.set_eb(e, i, b);
@@ -1984,7 +1985,7 @@ impl Bus<'_> {
         } else {
             self.effective_entry_damage(me, entry, is_blocked)
         };
-        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
+        self.damage_with_source(me, dmg, is_blocked, Some(era));
         self.react_projectile(me, other, entry, is_blocked, air_block);
     }
 
@@ -3056,6 +3057,8 @@ impl Bus<'_> {
         projectile: Option<crate::era_fight::EraProjectileState>,
     ) {
         let owner = self.el(me, 0x38);
+        let modern_scaled = projectile.map_or_else(|| self.modern_scaled_move(owner), |source| source.modern_scaled);
+        let projectile = projectile.filter(|source| source.hits_remaining > 0);
         let ps = self.el(me, 0x3c);
         let suppress_chip = is_chip && self.era_state(ps).is_some_and(|state| state.is_sf6() && state.gauge().is_some() && !state.sf6_burnout());
         let demon_slam = self.evil_ryu_profile(owner).is_some()
@@ -3134,6 +3137,12 @@ impl Bus<'_> {
         let armor_break = alpha_level != 0 || (sf2.is_some() && move_id == crate::era_fight::SF2_SUPER);
         let Some(adjusted) = self.sf6_damage(owner, ps, move_id, adjusted, is_chip, armor_break) else { return };
         damage = self.sf5_damage(owner, ps, move_id, if suppress_chip { 0 } else { adjusted }, is_chip);
+        if modern_scaled {
+            damage = crate::control::shortcut_damage(damage);
+            // The native fallback still drains the cabinet's integral HP
+            // instead of the overhaul's sub-HP value.
+            dmg = crate::control::shortcut_damage(u16::from(dmg)) as u8;
+        }
         if !is_chip {
             self.era_alpha_damage_effects(owner, ps, move_id, alpha_level);
         }
@@ -3326,6 +3335,9 @@ impl Bus<'_> {
         let defender = self.el(other, 0x38);
         if self.era_sf4_take_absorbed(defender) || self.sf5_take_absorbed(defender) || self.sf6_take_absorbed(defender) {
             return;
+        }
+        if blocked {
+            self.record_guard_contact(other);
         }
         if blocked && self.era_state(defender).is_some_and(|state| state.is_sf6()) && self.defender_alive(defender) {
             let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
@@ -4357,7 +4369,7 @@ impl Bus<'_> {
                 } else {
                     self.effective_entry_damage(me, entry, is_blocked)
                 };
-                self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
+                self.damage_with_source(me, dmg, is_blocked, Some(era));
                 if !is_blocked {
                     let def_ps = self.el(me, 0x3c);
                     let def_ko = !self.defender_alive(def_ps);
@@ -4412,6 +4424,7 @@ impl Bus<'_> {
                 if d0 & 0xff == 0 {
                     // Blocked for nothing, but blocked: Training's wait
                     // starts over all the same.
+                    self.record_guard_contact(other);
                     self.training_contact(other);
                     return;
                 }
@@ -4430,7 +4443,7 @@ impl Bus<'_> {
         } else {
             self.effective_entry_damage(me, entry, is_blocked)
         };
-        self.damage_with_source(me, dmg, is_blocked, (era.hits_remaining > 0).then_some(era));
+        self.damage_with_source(me, dmg, is_blocked, Some(era));
         if !is_blocked {
             let def_ps = self.el(me, 0x3c);
             let def_ko = !self.defender_alive(def_ps);
@@ -4883,6 +4896,20 @@ impl Bus<'_> {
     /// to the player's latch byte `out`. Returns the branch taken, for the
     /// cycle accounting.
     pub fn button_latch(&mut self, state: u32, out: u32, pressed: u8, table: u32) -> LatchPath {
+        let pneumatic = self.player_slot_index(out & !1).is_some_and(|side| {
+            self.toggle_state.schemes[side].mode == crate::session_io::ControlScheme::Pneumatic
+        });
+        if pneumatic {
+            // The pressure translator has already resolved the pad gesture
+            // to one cabinet-strength impulse. Do not delay it again or
+            // generate a second attack on the following release.
+            if pressed != 0 {
+                self.wb(out, self.rb(table + u32::from(pressed - 1)));
+                self.set_neg_edge_latch(out, false);
+                return LatchPath::FirstPress;
+            }
+            return LatchPath::Idle;
+        }
         if self.era_offense_flag(out & !1, self.toggles.positive_edge_attacks) {
             if self.rb(state) == 0 {
                 if pressed != 0 {
@@ -5177,7 +5204,7 @@ impl Bus<'_> {
     pub fn setup_cpu_opponent(&mut self) {
         let d0 = ((self.rb(0xffc003) as u32) << 1).wrapping_add(self.rb(0xffc004) as u32) << 2;
         let player_opponent = self.dramatic_rules().map(|_| self.roster.p2)
-            .or_else(|| self.arcade_player_opponent());
+            .or_else(|| self.arcade_player_opponent_at_round_start());
         let moves = player_opponent
             .map_or_else(|| self.rl(self.rl(0xffc01c).wrapping_add(d0)), |opp| self.player_table(opp));
         self.wl(CPU_STRUCT + 0x12, moves);
@@ -5248,11 +5275,40 @@ impl Bus<'_> {
     /// (`CPU_STRUCT` driven by `input_handler`): Ryu (standing in), or a
     /// boss whose 1987 player table is in the machine's data bank.
     pub(crate) fn arcade_player_opponent(&self) -> Option<crate::roster::TournamentFighter> {
-        if !self.roster.full_cast || self.rb(MODE_DEMO) == 0 || !matches!(self.rb(GAME_MODE), 2 | 4) {
+        let opp = self.banked_cpu_opponent()?;
+        if self.toggle_state.scripted_cpu_pad {
+            return Some(opp);
+        }
+        let native = self.era_state(CPU_STRUCT)
+            .map_or_else(|| self.arcade_cpu_family(opp), |state| state.style.family);
+        (native != crate::era::EraFamily::Sf1987).then_some(opp)
+    }
+
+    fn banked_cpu_opponent(&self) -> Option<crate::roster::TournamentFighter> {
+        if self.rb(MODE_DEMO) == 0 || !matches!(self.rb(GAME_MODE), 2 | 4) {
             return None;
         }
         let opp = self.arcade_opponent()?;
         (opp.is_shoto() || self.data_bank.and_then(|b| b.table(opp)).is_some()).then_some(opp)
+    }
+
+    fn arcade_player_opponent_at_round_start(&self) -> Option<crate::roster::TournamentFighter> {
+        let opp = self.banked_cpu_opponent()?;
+        (self.roster.full_cast && self.era_rules.enabled
+            && self.arcade_cpu_family(opp) != crate::era::EraFamily::Sf1987).then_some(opp)
+    }
+
+    fn arcade_cpu_family(&self, fighter: crate::roster::TournamentFighter) -> crate::era::EraFamily {
+        if !self.roster.full_cast || !self.era_rules.enabled {
+            return crate::era::EraFamily::Sf1987;
+        }
+        let picks = self.toggle_state.era.selections;
+        if self.roster.mode == crate::roster::PlayMode::Arcade {
+            let step = usize::from(self.rb(0xffc003)) * 2 + usize::from(self.rb(0xffc004));
+            picks[0].arcade_opponent(fighter, self.roster.what_if_styles, step).family
+        } else {
+            picks[1].family
+        }
     }
 
     /// Whether `ps` is driven by the 1987 player handler (`P1_STRUCT`,
@@ -5361,14 +5417,14 @@ impl Bus<'_> {
         match self.rb(GAME_MODE) {
             2 => {
                 let mut sides = vec![(P1_STRUCT, self.roster.p1)];
-                if let Some(opp) = self.arcade_player_opponent() {
+                if let Some(opp) = self.arcade_player_opponent_at_round_start() {
                     sides.push((CPU_STRUCT, opp));
                 }
                 sides
             }
             4 => {
                 let mut sides = vec![(P2_STRUCT, self.roster.p1)];
-                if let Some(opp) = self.arcade_player_opponent() {
+                if let Some(opp) = self.arcade_player_opponent_at_round_start() {
                     sides.push((CPU_STRUCT, opp));
                 }
                 sides
@@ -5446,11 +5502,21 @@ impl Bus<'_> {
             match self.rb(GAME_MODE) {
                 2 => {
                     self.input_handler(P1_STRUCT);
-                    self.cpu_decide();
+                    if let Some(opp) = self.arcade_player_opponent() {
+                        self.wl(CPU_STRUCT + 2, IN1_COPY);
+                        self.drive_roster_side(CPU_STRUCT, opp);
+                    } else {
+                        self.cpu_decide();
+                    }
                 }
                 4 => {
                     self.input_handler(P2_STRUCT);
-                    self.cpu_decide();
+                    if let Some(opp) = self.arcade_player_opponent() {
+                        self.wl(CPU_STRUCT + 2, IN1_COPY);
+                        self.drive_roster_side(CPU_STRUCT, opp);
+                    } else {
+                        self.cpu_decide();
+                    }
                 }
                 _ => {
                     self.input_handler(P1_STRUCT);
@@ -5593,6 +5659,16 @@ impl Bus<'_> {
         // Cancels (SP18): in a cancelable normal's window, a special's
         // command cancels the normal into the special.
         let cancel_slot = self.combo_slot(me);
+        if !scripted_turn && era_cancels && self.toggle_state.cancel.window[cancel_slot] != 0
+            && self.toggle_state.cancel.move_id[cancel_slot] == self.eb(me, 0xa)
+            && self.eb(me, 9) & 0x80 != 0
+            && (self.try_modern_assist_normal(ps, me, true) || self.try_modern_shortcut(ps, me, true))
+        {
+            let count = &mut self.toggle_state.cancel.count[cancel_slot];
+            *count = count.wrapping_add(1);
+            self.input_tail(me, ps);
+            return;
+        }
         let era_cancel = !scripted_turn
             && era_cancels
             && self.toggle_state.cancel.window[cancel_slot] != 0
@@ -5702,6 +5778,12 @@ impl Bus<'_> {
             return;
         }
         let dispatch_d0 = self.apply_recovery_buffer(ps, me, d0);
+        if !scripted_turn && (self.try_modern_assist_normal(ps, me, false)
+            || self.try_modern_shortcut(ps, me, false))
+        {
+            self.input_tail(me, ps);
+            return;
+        }
         if !scripted_turn && ((!pure_footsies && self.try_custom_combo(ps, me)) || self.try_era_special(ps, me)) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
@@ -5715,6 +5797,168 @@ impl Bus<'_> {
         self.dispatch_direction(ps, me, other, dispatch_d0, d0);
         self.clear_neg_edge_latches_for_player(ps);
         self.input_tail(me, ps);
+    }
+
+    fn control_move_started(&mut self, ps: u32, slot: u8) {
+        if let Some(index) = self.player_slot_index(ps) {
+            let state = &mut self.toggle_state.schemes[index];
+            state.scaled_move = state.executing == Some(slot) && state.shortcut_scaled;
+        }
+    }
+
+    pub(crate) fn modern_scaled_move(&self, ps: u32) -> bool {
+        self.player_slot_index(ps).is_some_and(|side| self.toggle_state.schemes[side].scaled_move)
+    }
+
+    fn try_modern_assist_normal(&mut self, ps: u32, entity: u16, canceling: bool) -> bool {
+        let Some(side) = self.player_slot_index(ps) else { return false };
+        let state = self.toggle_state.schemes[side];
+        let Some((strength, kick, crouch)) = state.assist_normal else { return false };
+        if (canceling && !state.assist_can_chain_normal()) || self.era_airborne(entity)
+            || self.toggle_state.combo.blockstun[self.combo_slot(entity)] != 0
+        {
+            return false;
+        }
+        // Use the same strength and move tables as neutral/down dispatch.
+        let table = (if crouch { 0x40884 } else { 0x405b6 }) + if kick { 8 } else { 0 };
+        let latch = ps + u32::from(kick);
+        let original = self.rb(latch);
+        self.wb(latch, [0x40, 0xe0, 0xfe][usize::from(strength - 1)]);
+        let Some(slot) = self.pick_by_strength(latch, table, entity) else {
+            self.wb(latch, original);
+            return false;
+        };
+        self.clear_tracker(self.tracker_base(ps) + 0x1c);
+        self.start_move(entity, ps, slot);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.clear_recovery_buffer(ps);
+        self.toggle_state.schemes[side].accept_assist();
+        true
+    }
+
+    fn try_modern_shortcut(&mut self, ps: u32, entity: u16, canceling: bool) -> bool {
+        use crate::control::{shortcut_buttons, Shortcut};
+        use crate::moves::{Dir, MoveKind};
+        use crate::roster::TournamentFighter::Sagat;
+
+        let Some(side) = self.player_slot_index(ps) else { return false };
+        let scheme = self.toggle_state.schemes[side];
+        let Some(shortcut) = scheme.shortcut else { return false };
+        if self.world_tour_pure_footsies() || self.era_airborne(entity)
+            || self.toggle_state.combo.blockstun[self.combo_slot(entity)] != 0
+        {
+            return false;
+        }
+        let strength = scheme.shortcut_strength;
+        let era = self.era_state(ps).copied().unwrap_or_default();
+        let Some(fighter) = era.fighter.or_else(|| self.fighter_of_entity(entity)) else { return false };
+        let specials = crate::moves::live_move_list(fighter, self.preset, self.on_bank_player_table(ps), &era);
+
+        let candidates = specials.iter().filter(|entry| {
+            let ground = !entry.input.motion.contains(&Dir::Jump) && shortcut_buttons(entry.input.button, strength) != 0;
+            ground && match shortcut {
+                Shortcut::Finisher => entry.kind == MoveKind::Super,
+                _ => entry.kind == MoveKind::Special && !matches!(entry.input.button,
+                    crate::moves::ButtonClass::PairPunch | crate::moves::ButtonClass::PairKick),
+            }
+        });
+        if shortcut == Shortcut::Finisher {
+            let mut finishers: Vec<_> = candidates.copied().collect();
+            finishers.sort_by_key(|entry| std::cmp::Reverse(entry.produces));
+            return finishers.into_iter().any(|entry| {
+                self.start_modern_shortcut(ps, entity, side, entry, strength, canceling)
+            });
+        }
+        let entry = match shortcut {
+            Shortcut::Finisher => unreachable!("finishers try their available meter levels in order"),
+            Shortcut::Projectile => candidates.filter(|entry| entry.produces == 0x1a)
+                .max_by_key(|entry| !entry.input.button.kick())
+                .or_else(|| specials.iter().find(|entry| entry.kind == MoveKind::Special
+                    && !entry.input.motion.contains(&Dir::Jump) && entry.input.motion == [Dir::Down, Dir::DownForward, Dir::Forward]
+                    && !entry.input.button.kick() && entry.input.button == crate::moves::ButtonClass::Punch)),
+            Shortcut::AntiAir => candidates.filter(|entry| entry.produces == 0x19 ||
+                entry.input.motion == [Dir::Forward, Dir::Down, Dir::DownForward])
+                .max_by_key(|entry| (!entry.input.button.kick(), entry.produces)),
+            Shortcut::Advance => candidates.filter(|entry| entry.produces == 0x1b ||
+                entry.input.motion == [Dir::Down, Dir::DownBack, Dir::Back])
+                .min_by_key(|entry| (entry.produces != 0x1b, entry.produces)),
+            Shortcut::Extra => candidates.filter(|entry| matches!(entry.produces, 0x1f | 0x20)
+                && (fighter != Sagat || entry.input.motion != [Dir::Forward, Dir::Down, Dir::DownForward]))
+                .min_by_key(|entry| entry.produces),
+        }.copied();
+        entry.is_some_and(|entry| self.start_modern_shortcut(ps, entity, side, entry, strength, canceling))
+    }
+
+    fn start_modern_shortcut(
+        &mut self, ps: u32, entity: u16, side: usize, entry: crate::moves::MoveEntry,
+        strength: u8, canceling: bool,
+    ) -> bool {
+        use crate::moves::Recognizer;
+
+        self.toggle_state.schemes[side].executing = Some(entry.produces);
+        let started = if matches!(entry.recognizer, Recognizer::Tracker(_)) && entry.produces <= 0x1b {
+            if self.move_in_table(ps, entry.produces) {
+                self.start_walk_attack(entity, ps, entry.produces);
+                self.set_eb(entity, 0x34, strength);
+                true
+            } else {
+                false
+            }
+        } else {
+            self.try_modern_era_shortcut(ps, entity, entry, strength, canceling)
+        };
+        self.toggle_state.schemes[side].executing = None;
+        if started {
+            self.toggle_state.schemes[side].shortcut = None;
+            self.toggle_state.schemes[side].accept_assist();
+            self.clear_neg_edge_latches_for_player(ps);
+            self.clear_recovery_buffer(ps);
+        }
+        started
+    }
+
+    pub(crate) fn dispatch_modern_era_shortcut(
+        &mut self, ps: u32, entity: u16, entry: crate::moves::MoveEntry,
+        strength: u8, canceling: bool,
+    ) -> bool {
+        use crate::era::EraFamily;
+        use crate::era_fight::SpecialContext;
+        use crate::moves::Recognizer;
+
+        let context = SpecialContext::Ground { canceling };
+        if entry.recognizer == Recognizer::FamilyMove {
+            if self.era_state(ps).is_some_and(|state| state.what_if_active()) {
+                return self.try_what_if_move(ps, entity, context);
+            }
+            return match self.chosen_era(ps) {
+                Some(EraFamily::Sf3) => self.try_sf3_move(ps, entity, false),
+                Some(EraFamily::Sf4) => self.era_sf4_command(ps, entity, context),
+                Some(EraFamily::Sf5) => self.sf5_modern_attack(ps, entity, canceling),
+                Some(EraFamily::Sf6) => self.sf6_modern_attack(ps, entity, canceling),
+                _ => false,
+            };
+        }
+        let latches = [self.rb(ps), self.rb(ps + 1)];
+        let marks = [self.is_neg_edge_latch(ps), self.is_neg_edge_latch(ps + 1)];
+        let kick = entry.input.button.kick();
+        self.ww(ps, 0);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.wb(ps + u32::from(kick), [0x40, 0xe0, 0xfe][usize::from(strength - 1)]);
+        let tracker = self.tracker_base(ps) + 0x1b;
+        let original = self.rb(tracker);
+        if matches!(entry.recognizer, Recognizer::Tracker(_)) {
+            self.wb(tracker, 0xff);
+        }
+        let started = self.try_era_special(ps, entity);
+        if !started {
+            self.wb(tracker, original);
+            for (i, (latch, mark)) in latches.into_iter().zip(marks).enumerate() {
+                let at = ps + i as u32;
+                self.wb(at, latch);
+                self.set_neg_edge_latch(at, mark);
+            }
+        }
+        started
     }
 
     fn try_family_input(&mut self, ps: u32, entity: u16, relative: u8) -> bool {
@@ -7804,6 +8048,7 @@ impl Bus<'_> {
     /// P1 or P2 structure; the 1987 CPU's guards are its own streams) takes
     /// the move's blockstun.
     fn combo_blocked(&mut self, me: u16, other: u16) {
+        self.record_guard_contact(other);
         self.era_normal_contact(me, true);
         self.era_sf4_blocked(self.el(me, 0x38), self.eb(me, 0xa));
         self.sf5_block(me, other);
@@ -7846,6 +8091,17 @@ impl Bus<'_> {
         {
             let slot = self.combo_slot(other);
             self.toggle_state.combo.blockstun[slot] = block;
+        }
+    }
+
+    fn record_guard_contact(&mut self, defender: u16) {
+        let ps = self.el(defender, 0x38);
+        let mode = self.rb(GAME_MODE);
+        for side in sf_video::callouts::Side::BOTH {
+            if ps == crate::fight_reader::player_struct(side, mode) {
+                self.toggle_state.era.guard_contacts[1 - side.index()] = true;
+                break;
+            }
         }
     }
 
@@ -8091,6 +8347,7 @@ impl Bus<'_> {
     /// Start the `0x30`-byte move header at `src` (in the extended data bank)
     /// on entity `e` (player structure `ps`), keeping its centre at `d3`.
     fn start_move_header(&mut self, e: u16, ps: u32, src: u32, mut d3: u16) {
+        self.control_move_started(ps, self.rb(src + 0xa));
         for i in 0..0x30u32 {
             let b = self.rb(src + i);
             self.set_eb(e, i, b);
@@ -8133,11 +8390,17 @@ impl Bus<'_> {
         if self.evil_ryu_sf4(ps) {
             return self.try_evil_sf4_throw(ps, me, other, dir);
         }
-        if !matches!(dir, 1 | 2) || self.chosen_era(ps) == Some(crate::era::EraFamily::Sf1987) {
+        let macro_throw = self.player_slot_index(ps)
+            .is_some_and(|side| self.toggle_state.schemes[side].throw_macro);
+        if (!matches!(dir, 1 | 2) && !(dir == 0 && macro_throw))
+            || self.chosen_era(ps) == Some(crate::era::EraFamily::Sf1987)
+        {
             return false;
         }
         let alpha3 = self.evil_ryu_alpha3(ps);
-        let (hp, hk) = if alpha3 {
+        let (hp, hk) = if macro_throw {
+            (true, false)
+        } else if alpha3 {
             self.alpha3_throw_buttons(ps)
         } else {
             (self.rb(ps) == 0xfe, self.rb(ps + 1) == 0xfe)
@@ -8417,7 +8680,9 @@ impl Bus<'_> {
             latch > self.rb(table) && latch < self.rb(table + 2)
         };
         let light_chord = (era_light || sf2) && light(ps, 0x405b6) && light(ps + 1, 0x405be);
-        let tech = if self.evil_ryu_sf4(ps) {
+        let tech = if self.toggle_state.schemes[s].throw_macro {
+            true
+        } else if self.evil_ryu_sf4(ps) {
             self.light_throw_chord(ps)
         } else if self.evil_ryu_alpha3(ps) {
             let (punch, kick) = self.alpha3_throw_buttons(ps);

@@ -220,6 +220,15 @@ impl MotionTracker {
             && (pattern.is_empty() || pattern == alpha_moves::SPIN
                 || pattern.last().map(|dir| dir.bits()) == Some(self.previous))
     }
+
+    fn shortcut(pattern: &[Dir]) -> Self {
+        Self {
+            position: pattern.len() as u8,
+            remaining: 1,
+            previous: pattern.last().map_or(0, |dir| dir.bits()),
+            ..Self::default()
+        }
+    }
 }
 
 /// Frame and damage adjustments over a shared set of translated fighter streams.
@@ -904,6 +913,8 @@ pub struct EraCombatState {
     pub(crate) style_callouts: [Option<CalloutKind>; 3],
     pub(crate) gauge_drive_spends: [bool; 3],
     pub(crate) gauge_v_trigger_spends: [bool; 3],
+    pub(crate) guard_contacts: [bool; 2],
+    pub(crate) player_parry_contacts: u8,
     projectiles: [EraProjectileState; PROJECTILE_SLOTS],
 }
 
@@ -916,12 +927,13 @@ pub struct EraProjectileState {
     pub family_hits: u8,
     pub unblockable: bool,
     pub sf4_scale: u8,
+    pub(crate) modern_scaled: bool,
     hit_wait: u8,
     clash_wait: u8,
 }
 
-crate::canonical::canonical_struct!(EraProjectileState, "EraProjectileState.v2", {
-    move_id, hits_remaining, crimson, alpha_super_level, family_hits, unblockable, sf4_scale, hit_wait, clash_wait,
+crate::canonical::canonical_struct!(EraProjectileState, "EraProjectileState.v3", {
+    move_id, hits_remaining, crimson, alpha_super_level, family_hits, unblockable, sf4_scale, modern_scaled, hit_wait, clash_wait,
 });
 
 impl EraProjectileState {
@@ -960,6 +972,8 @@ impl crate::canonical::Canonical for EraCombatState {
             style_callouts: _,
             gauge_drive_spends: _,
             gauge_v_trigger_spends: _,
+            guard_contacts: _,
+            player_parry_contacts: _,
             projectiles,
         } = self;
         out.tag("EraCombatState.v2");
@@ -1195,6 +1209,68 @@ impl Bus<'_> {
         })
     }
 
+    /// Stage only the selected command and its button, then let the regular
+    /// era dispatcher enforce meter, stance, and move-specific requirements.
+    /// A shortcut that cannot fire must not leave a completed manual motion.
+    pub(crate) fn try_modern_era_shortcut(
+        &mut self, ps: u32, entity: u16, entry: crate::moves::MoveEntry,
+        strength: u8, canceling: bool,
+    ) -> bool {
+        use crate::moves::Recognizer;
+
+        let Some(side) = self.era_side(ps) else { return false };
+        let original = self.toggle_state.era.fighters[side];
+        let buttons = crate::control::shortcut_buttons(entry.input.button, strength);
+        let motion = MotionTracker::shortcut(entry.input.motion);
+        let state = &mut self.toggle_state.era.fighters[side];
+        state.alpha_buttons = buttons;
+        state.alpha_previous_buttons = 0;
+
+        let staged = match entry.recognizer {
+            Recognizer::EraMotion { super_move } => {
+                if super_move { state.super_motion = motion; } else { state.extra_motion = motion; }
+                true
+            }
+            Recognizer::Tracker(crate::moves::Tracker1987::Shoryuken) if entry.produces == SF2_EXTRA_SPECIAL => true,
+            Recognizer::AlphaMove => {
+                if let Some((index, _)) = state.alpha_roster().iter().enumerate().find(|(_, command)| {
+                    command.slot == entry.produces && command.input == entry.input && command.available(state, false)
+                }) {
+                    state.alpha_motions = [MotionTracker::default(); ALPHA_MOTION_SLOTS];
+                    state.alpha_motions[index] = motion;
+                    if entry.input.button == ButtonClass::MashPunch {
+                        state.punch_taps = 4;
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            Recognizer::FamilyMove if state.what_if_active() => state.modern_what_if(entry, motion),
+            Recognizer::FamilyMove => match state.style.family {
+                EraFamily::Sf3 => state.modern_sf3(entry, motion),
+                EraFamily::Sf4 => state.modern_sf4(entry, motion),
+                EraFamily::Sf5 => state.modern_sf5(entry, motion),
+                EraFamily::Sf6 => state.modern_sf6(entry, motion),
+                _ => false,
+            },
+            _ => false,
+        };
+        if !staged {
+            *state = original;
+            return false;
+        }
+        let started = self.dispatch_modern_era_shortcut(ps, entity, entry, strength, canceling);
+        let state = &mut self.toggle_state.era.fighters[side];
+        if started {
+            state.alpha_buttons = original.alpha_buttons;
+            state.alpha_previous_buttons = original.alpha_previous_buttons;
+        } else {
+            *state = original;
+        }
+        started
+    }
+
     pub(crate) fn sf2_state(&self, ps: u32) -> Option<&EraFighterState> {
         let state = &self.toggle_state.era.fighters[self.era_side(ps)?];
         state.is_sf2().then_some(state)
@@ -1246,7 +1322,13 @@ impl Bus<'_> {
     pub(crate) fn era_spawn_projectile(&mut self, slot: u16, ps: u32, move_id: u8) {
         self.era_mark_attack_active(ps);
         self.era_clear_projectile(slot);
-        let Some(era) = self.era_state(ps).filter(|state| state.is_sf2() || state.is_alpha() || state.uses_family_bank()) else {
+        let modern_scaled = self.modern_scaled_move(ps);
+        let Some(era) = self.era_state(ps).filter(|state| modern_scaled || state.is_sf2() || state.is_alpha() || state.uses_family_bank()) else {
+            if modern_scaled {
+                if let Some(projectile) = self.era_projectile_mut(slot) {
+                    projectile.modern_scaled = true;
+                }
+            }
             return;
         };
         let alpha_super_level = era.alpha_super_level(move_id);
@@ -1276,6 +1358,7 @@ impl Bus<'_> {
                 alpha_super_level,
                 family_hits,
                 sf4_scale,
+                modern_scaled,
                 unblockable: sf3.is_some_and(|projectile| projectile.unblockable),
                 ..EraProjectileState::default()
             };

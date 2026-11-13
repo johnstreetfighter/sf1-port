@@ -374,7 +374,7 @@ fn the_faithful_cabinet_is_frame_identical() {
         s.step(idle());
     }
     tap(&mut s, with(|i| i.menu.start = true));
-    for _ in 0..3 {
+    for _ in 0..4 {
         tap(&mut s, with(|i| i.p1.directions[DOWN] = true)); // to 1987
     }
     tap(&mut s, with(|i| i.menu.confirm = true));

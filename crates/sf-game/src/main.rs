@@ -384,6 +384,7 @@ impl Game {
         }
         let saved_world_tour = files::load_world_tour(&self.app_dir, log);
         let mut session = GameSession::new(assets, config)
+            .with_replays(sf_host::replays::load(&self.app_dir, log))
             .with_satsui_art(satsui_body, satsui_fire)
             .with_settings(self.settings.clone())
             .with_world_tour_profile(saved_world_tour.clone())
@@ -459,9 +460,11 @@ impl Game {
         }
     }
 
-    /// Save the settings if the session changed them without a save.
+    /// Save an unfinished recording and any outstanding settings.
     fn finish(&mut self) {
-        if let Phase::Playing(play) = &self.phase {
+        if let Phase::Playing(play) = &mut self.phase {
+            play.session.finish_recording();
+            save_replays(&mut play.session, &self.app_dir, &mut self.log);
             if play.session.settings() != &play.saved {
                 if let Err(e) = play.session.settings().save(&files::settings_path(&self.app_dir)) {
                     self.log.line("settings", &e);
@@ -625,6 +628,7 @@ impl Driver for Game {
                     }
                     s.announce(out.sound_frame, &out.announcements);
                 }
+                save_replays(session, &self.app_dir, log);
                 if out.quit || (self.evil_ryu_playtest.is_some() && session.fight().is_none()) {
                     return false;
                 }
@@ -759,6 +763,14 @@ impl Driver for Game {
             if self.look.as_ref().is_some_and(|l| l.id == id) {
                 self.look = None;
             }
+        }
+    }
+}
+
+fn save_replays(session: &mut GameSession, app_dir: &Path, log: &mut Log) {
+    while let Some(replay) = session.take_saved_replay() {
+        if let Err(error) = sf_host::replays::save(app_dir, &replay) {
+            log.line("replays", &error.to_string());
         }
     }
 }

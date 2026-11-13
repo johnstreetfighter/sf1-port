@@ -179,6 +179,7 @@ impl GameSession {
     }
 
     pub(super) fn leave_world_tour_fight(&mut self) {
+        self.finish_replay_recording(false);
         self.play = None;
         self.sounds.extend([sound::STOP_ALL, sound::STOP_SAMPLES]);
     }

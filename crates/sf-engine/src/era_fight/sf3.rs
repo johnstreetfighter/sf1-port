@@ -372,6 +372,21 @@ impl EraFighterState {
         self.sf3_ex_enabled() && self.sf3_ex_commands().next().is_some()
     }
 
+    pub(super) fn modern_sf3(&mut self, entry: MoveEntry, motion: MotionTracker) -> bool {
+        if self.sf3_art().is_some_and(|art| art.slot == entry.produces) {
+            self.sf3.special_motions.fill(MotionTracker::default());
+            self.sf3.super_motion = motion;
+            return true;
+        }
+        if entry.produces == JOUDAN {
+            self.sf3.super_motion = MotionTracker::default();
+            self.sf3.special_motions.fill(MotionTracker::default());
+            self.sf3.special_motions[3] = motion;
+            return true;
+        }
+        false
+    }
+
     fn sf3_ex_commands(&self) -> impl Iterator<Item = (usize, Command)> {
         let ryu = self.fighter == Some(TournamentFighter::Ryu);
         EX_COMMANDS
@@ -757,6 +772,10 @@ impl Bus<'_> {
         state.sf3.red_flash = red;
         self.era_meter_gain(ps, 8);
         self.toggle_state.era.freeze = PARRY_WINDOW;
+        if side == 0 {
+            let contacts = &mut self.toggle_state.era.player_parry_contacts;
+            *contacts = contacts.saturating_add(1);
+        }
         self.queue_sound(8);
         true
     }
