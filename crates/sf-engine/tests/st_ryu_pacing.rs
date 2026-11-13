@@ -1,4 +1,4 @@
-//! World Super Turbo 940223 Ryu pacing witnesses for spec #138.
+//! World Super Turbo 940223 Turbo 2 Ryu pacing witnesses for spec #138.
 
 #[path = "support/alpha.rs"]
 mod support;
@@ -122,10 +122,7 @@ fn fireball(fight: &mut Fight, assets: &Assets) -> usize {
 
 #[test]
 fn super_turbo_ryu_matches_world_pacing_targets() {
-    for (loadout, walk, recovery) in [
-        (Loadout::Standard, 60..=60, 33),
-        (Loadout::Old, 60..=63, 32),
-    ] {
+    for (loadout, recovery) in [(Loadout::Standard, 32), (Loadout::Old, 31)] {
         let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, loadout)
         else {
             return;
@@ -144,12 +141,9 @@ fn super_turbo_ryu_matches_world_pacing_targets() {
             eprintln!(
                 "{context}: walk {distance} px/16 ticks, jab {active}/{active_ticks}/{retreat}, Hadoken {hadoken}"
             );
-            assert!(
-                walk.contains(&distance),
-                "{context}: {distance} px/16 ticks"
-            );
-            // Turbo 2: elapsed ticks from the first sampled LP to the live
-            // box and accepted retreat, plus the number of live samples.
+            assert_eq!(distance, 63, "{context}: walk px/16 ticks");
+            // Elapsed ticks from the first sampled LP to the live box and
+            // accepted retreat, plus the number of live samples.
             assert_eq!((active, active_ticks, retreat), (2, 3, 9), "{context}: jab");
             assert_eq!(hadoken, recovery, "{context}: Hadoken recovery");
             assert!(fight.machine().unrecovered().is_empty());

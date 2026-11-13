@@ -1184,9 +1184,10 @@ impl Bus<'_> {
         if !self.st_ryu_forward_walk(ps, self.eb(e, 0xa)) {
             return false;
         }
-        // World Turbo 1 advances 3 px per arcade game step, with occasional
-        // 6 px display intervals. At 60 Hz this cadence covers 60 px in 16 ticks.
-        let step = [3, 3, 3, 6][usize::from(self.eb(e, 0x30) % 4)];
+        // World Turbo 2 advances 3 px per arcade game step. Spread five
+        // double steps across 16 port ticks to match the measured 63 px pace.
+        const STEPS: [i16; 16] = [3, 3, 6, 3, 3, 6, 3, 3, 6, 3, 3, 6, 3, 3, 6, 3];
+        let step = STEPS[usize::from(self.eb(e, 0x30)) % STEPS.len()];
         let dx = if self.eb(e, 0x37) & 4 != 0 { -step } else { step };
         let dx = self.world_tour_horizontal_step(ps, 2, dx);
         // clamp_x forwards this step to the camera when the fighter reaches its screen edge.
@@ -6447,9 +6448,10 @@ impl Bus<'_> {
         if frame == 0x13a8 && move_id == 0x1a && self.eb(entity, 0x34) == 1 {
             if let Some(loadout) = self.st_ryu_loadout(owner) {
                 // This pose loads on the projectile spawn tick. With the settle
-                // pose and return to input, these holds give 33 (New) and 32 (Old)
-                // ticks of recovery at 60 Hz, within the World Turbo 1 ranges.
-                let hold = if loadout == crate::era::Loadout::Old { 24 } else { 27 };
+                // pose and return to input, these holds give 32 (New) and 31 (Old)
+                // ticks of recovery at 60 Hz, matching the most common timings
+                // measured in World Super Turbo 940223 at Turbo 2.
+                let hold = if loadout == crate::era::Loadout::Old { 23 } else { 26 };
                 self.set_eb(entity, 0xe, hold);
                 self.set_eb(entity, 0x33, hold);
                 return;
