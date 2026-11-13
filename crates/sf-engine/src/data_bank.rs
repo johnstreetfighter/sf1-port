@@ -489,15 +489,15 @@ impl DataBank {
         self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot)
     }
 
-    /// The private Alpha Tomoe Nage pair (Ryu, then Sagat).
-    pub(crate) fn evil_ryu_kick_throw(&self) -> Option<(u32, u32)> {
+    /// The Alpha Tomoe Nage headers for Evil Ryu and the Sagat victim.
+    pub fn evil_ryu_kick_throw(&self) -> Option<(u32, u32)> {
         use crate::combo::throw::{THROWN_MOVE, THROW_MOVE};
         let header = |slot| self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot);
         Some((header(THROW_MOVE)?, header(THROWN_MOVE)?))
     }
 
-    /// The private Alpha 3 air shoulder throw headers (Ryu, then Sagat).
-    pub(crate) fn evil_ryu_air_throw(&self) -> Option<(u32, u32)> {
+    /// The Alpha 3 air shoulder throw headers for Evil Ryu and the Sagat victim.
+    pub fn evil_ryu_air_throw(&self) -> Option<(u32, u32)> {
         let header = |slot| self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot);
         Some((header(EVIL_RYU_ALPHA3_AIR_THROWER_HEADER)?, header(EVIL_RYU_ALPHA3_AIR_VICTIM_HEADER)?))
     }

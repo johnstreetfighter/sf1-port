@@ -7,7 +7,8 @@ use sf_engine::{
     box_audit::{fighter_moves, walk_stream, FrameRecord, PathEnd, Pose},
     data_bank::{
         in_bank, DataBank, DATA_BANK_BASE, DATA_BANK_END, PLAYER_MOVES, ROUTINE_ALPHA_HOLD_P,
-        ROUTINE_ALPHA_REPEAT_K, ROUTINE_ALPHA_WALL_REBOUND, ROUTINE_SF6_TIGER_NEXUS,
+        ROUTINE_ALPHA_REPEAT_K, ROUTINE_ALPHA_WALL_REBOUND, ROUTINE_KAGE_SENHA,
+        ROUTINE_RYUSOKYAKU_VARIANT, ROUTINE_SF6_TIGER_NEXUS,
     },
     era::EraFamily,
     roster::TournamentFighter,
@@ -87,13 +88,27 @@ fn bank_frames(program: &[u8], header: u32) -> (Vec<FrameRecord>, Vec<(u32, Path
             .into_iter()
             .filter(|(_, routine)| in_bank(*routine))
         {
-            let target_count = match program[routine as usize] {
+            let kind = program[routine as usize];
+            let target_count = match kind {
                 ROUTINE_ALPHA_HOLD_P | ROUTINE_ALPHA_REPEAT_K | ROUTINE_ALPHA_WALL_REBOUND => 1,
                 ROUTINE_SF6_TIGER_NEXUS => 3,
+                ROUTINE_RYUSOKYAKU_VARIANT => 5,
+                ROUTINE_KAGE_SENHA => 4,
                 _ => 0,
             };
             for index in 0..target_count {
-                pending.push((None, read_long(program, routine + 4 + 4 * index)));
+                let target = read_long(program, routine + 4 + 4 * index);
+                let valid = match kind {
+                    ROUTINE_RYUSOKYAKU_VARIANT => in_bank(target)
+                        && FrameRecord::from_stream(program, target).is_some(),
+                    ROUTINE_KAGE_SENHA => in_bank(target),
+                    _ => true,
+                };
+                if valid {
+                    pending.push((None, target));
+                } else {
+                    errors.push((target, PathEnd::Broken));
+                }
             }
         }
     }
@@ -181,26 +196,27 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
         .into_iter()
         .map(|fighter| (fighter as u8, own_rom_shapes(&assets.maincpu, fighter)))
         .collect();
+    let catalogue_shapes: BTreeMap<_, BTreeSet<_>> = fighters
+        .into_iter()
+        .map(|fighter| {
+            let catalogue = art.catalogue(&fighter.name().to_ascii_lowercase()).unwrap();
+            let shapes = catalogue.poses.iter().map(|pose| {
+                let Grid { code, large, rows, cols } = pose.grid;
+                (code, large, rows, cols)
+            }).collect();
+            (fighter as u8, shapes)
+        })
+        .collect();
+    // These two headers are indexed in Ryu's bank but applied to Sagat.
+    let sagat_victim_headers = [
+        bank.evil_ryu_kick_throw().expect("Alpha Tomoe Nage headers").1,
+        bank.evil_ryu_air_throw().expect("Alpha 3 air shoulder throw headers").1,
+    ];
     let mut failures = Vec::new();
     let mut total_slots = 0;
     let mut total_frames = 0;
     let mut total_poses = 0;
     for fighter in fighters {
-        let cat = art.catalogue(&fighter.name().to_ascii_lowercase()).unwrap();
-        let own = &rom_shapes[&(fighter as u8)];
-        let catalogue_shapes: BTreeSet<_> = cat
-            .poses
-            .iter()
-            .map(|pose| {
-                let Grid {
-                    code,
-                    large,
-                    rows,
-                    cols,
-                } = pose.grid;
-                (code, large, rows, cols)
-            })
-            .collect();
         let mut headers = BTreeMap::<u32, Vec<String>>::new();
         for slot in 0..PLAYER_MOVES {
             for family in FAMILIES {
@@ -224,6 +240,13 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
         total_slots += headers.values().map(Vec::len).sum::<usize>();
         let mut unique = BTreeSet::new();
         for (header, slots) in headers {
+            let owner = if sagat_victim_headers.contains(&header) {
+                TournamentFighter::Sagat
+            } else {
+                fighter
+            };
+            let own = &rom_shapes[&(owner as u8)];
+            let catalogue = &catalogue_shapes[&(owner as u8)];
             let (frames, errors) = bank_frames(&program, header);
             for (stream, end) in errors {
                 failures.push(format!(
@@ -233,11 +256,11 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
             total_frames += frames.len();
             for frame in frames {
                 let key = shape(&frame);
-                if !unique.insert((key, frame.attr)) {
+                if !unique.insert((owner as u8, key, frame.attr)) {
                     continue;
                 }
                 let tag = format!(
-                    "{fighter:?} {slots:?} {:#x} code {:#06x} attr {:#x} {}x{}",
+                    "{fighter:?} {slots:?} {owner:?} pose {:#x} code {:#06x} attr {:#x} {}x{}",
                     frame.addr,
                     frame.code,
                     frame.attr,
@@ -255,9 +278,9 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
                 let pose = Pose::of_frame(&banked_assets.gfx3, &frame);
                 if pose.drawn_count() == 0 {
                     failures.push(format!("{tag}: fully transparent"));
-                } else if !fighter_palette(fighter, &frame) {
+                } else if !fighter_palette(owner, &frame) {
                     failures.push(format!("{tag}: palette does not belong to the fighter"));
-                } else if !own.contains(&key) && !catalogue_shapes.contains(&key) {
+                } else if !own.contains(&key) && !catalogue.contains(&key) {
                     let owners: Vec<_> = fighters
                         .into_iter()
                         .filter(|other| rom_shapes[&(*other as u8)].contains(&key))
