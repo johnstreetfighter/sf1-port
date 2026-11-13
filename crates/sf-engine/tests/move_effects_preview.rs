@@ -199,9 +199,13 @@ fn light_medium_and_heavy_sparks_replace_stock_after_contact() {
                         tile[..8].fill(0);
                     }
                     let no_victim = render_frame(assets, &scene);
-                    let pixels: Vec<_> = (120..HEIGHT - 10)
-                        .flat_map(|y| (x + 15..WIDTH - 4).map(move |x| y * WIDTH + x))
-                        .filter(|&i| raw.argb[i] != no_victim.argb[i])
+                    // Select visible defender pixels outside the contact art,
+                    // independent of which side of the strike the pose fills.
+                    let pixels: Vec<_> = (80..HEIGHT - 10)
+                        .flat_map(|row| (0..WIDTH - 4).map(move |col| (row, col)))
+                        .filter(|&(row, col)| row.abs_diff(y) > 24 || col.abs_diff(x) > 28)
+                        .map(|(row, col)| row * WIDTH + col)
+                        .filter(|&i| raw.argb[i] != no_victim.argb[i] && raw.argb[i] != raw.argb[i + 4])
                         .collect();
                     assert!(pixels.len() > 50, "sample visible victim pixels outside the spark");
                     let recoiling = pixels.iter().filter(|&&i| {

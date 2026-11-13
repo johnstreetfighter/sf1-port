@@ -15,7 +15,8 @@ use sf_engine::fighter::{
 };
 use sf_engine::front::cabinet::{flow_position, Players, STAGE_START};
 use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup};
-use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
+use sf_engine::front::pause::PauseBox;
+use sf_engine::front::{FrameInputs, GameSession, MenuItem, PlayerInputs, Transition};
 use sf_engine::roster::{PlayMode, TournamentFighter};
 use sf_engine::tasks::TIME_DIGITS;
 use sf_host::art::{find_pack, pack_folders, RECIPES, REVIEWS};
@@ -830,12 +831,23 @@ fn move_list_rows(session: &mut GameSession) -> Vec<String> {
     let mut pause = FrameInputs::default();
     pause.menu.start = true;
     assert_eq!(session.step(pause).screen, "pause");
-    let mut up = FrameInputs::default();
-    up.p1.directions[3] = true;
-    session.step(up);
+    let moves_row = PauseBox::open(false)
+        .items()
+        .iter()
+        .position(|&item| item == MenuItem::Moves)
+        .expect("the pause menu has a Moves row");
+    let mut down = FrameInputs::default();
+    down.p1.directions[2] = true;
+    for _ in 0..moves_row {
+        session.step(FrameInputs::default());
+        session.step(down);
+    }
     let mut confirm = FrameInputs::default();
     confirm.menu.confirm = true;
-    session.step(confirm);
+    assert_eq!(
+        session.step(confirm).transition,
+        Some(Transition::Choose(MenuItem::Moves))
+    );
     session.move_list().expect("Moves opens from the pause menu").text()
 }
 
