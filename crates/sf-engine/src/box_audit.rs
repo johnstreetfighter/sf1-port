@@ -56,6 +56,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::data_bank::{in_bank, ROUTINE_KAGE_SENHA, ROUTINE_RYUSOKYAKU_VARIANT};
 use crate::fighter::pose_grid_entries;
 use crate::roster::TournamentFighter;
 use sf_video::decode::decode_sprite_tile;
@@ -380,6 +381,8 @@ pub enum PathEnd {
     End,
     /// The CPU follow-up call (0x45630): the 1987 CPU decides the next move.
     FollowUp,
+    /// A banked routine holds the current pose or selects another stream.
+    Dispatch,
     /// A goto back to a frame already on the path (a cycle).
     Loop,
     /// The step cap (a safety stop; no stream reaches it).
@@ -399,9 +402,9 @@ fn spawn_templates(rom: &[u8], routine: u32) -> Vec<u32> {
     }
 }
 
-/// One walk of a stream: every frame record reachable from its start (any
-/// branch), and the primary path through them, which is the order a move
-/// plays in when nothing interrupts it.
+/// A stream's reachable frame records and its primary playback path.
+/// A banked dispatcher ends the current path. Its call is recorded so the
+/// caller can walk each dispatched stream separately.
 #[derive(Clone, Debug)]
 pub struct StreamWalk {
     /// The frames, header first when the move has one, then in the order the
@@ -417,6 +420,11 @@ pub struct StreamWalk {
     /// Routines called that the walker does not know (all but the ones the
     /// stream walk names).
     pub unknown_calls: BTreeSet<u32>,
+}
+
+fn dispatches_stream(rom: &[u8], routine: u32) -> bool {
+    in_bank(routine)
+        && matches!(rb(rom, routine), ROUTINE_RYUSOKYAKU_VARIANT | ROUTINE_KAGE_SENHA)
 }
 
 /// Walk the stream at `start`, after `header` (the move table's first
@@ -468,6 +476,9 @@ pub fn walk_stream(rom: &[u8], header: Option<FrameRecord>, start: u32) -> Strea
             0xff => {
                 let routine = rl(rom, a + 2);
                 walk.calls.push((tick, routine));
+                if dispatches_stream(rom, routine) {
+                    break PathEnd::Dispatch;
+                }
                 if !known(routine) {
                     walk.unknown_calls.insert(routine);
                 }
@@ -519,6 +530,9 @@ pub fn walk_stream(rom: &[u8], header: Option<FrameRecord>, start: u32) -> Strea
                 0xfe => a = rl(rom, a + 2),
                 0xff => {
                     let routine = rl(rom, a + 2);
+                    if dispatches_stream(rom, routine) {
+                        break;
+                    }
                     match routine {
                         0x45630 => work.push(a + 8),
                         0x45a34 => {
