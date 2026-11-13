@@ -87,7 +87,7 @@ impl AlphaMove {
         Self { revisions, ..self }
     }
 
-    const fn no_x(self) -> Self {
+    pub(super) const fn no_x(self) -> Self {
         Self {
             x_ism: false,
             ..self

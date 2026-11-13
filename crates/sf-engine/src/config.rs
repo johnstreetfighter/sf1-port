@@ -258,7 +258,7 @@ impl crate::canonical::Canonical for MatchConfig {
             preset, toggles, roster, fill_meters, p2_fair_cpu,
             p1_scheme: _, p2_scheme: _, modern_control_damage_penalty,
             sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
-            tour, dramatic, world_tour, difficulty, round_time,
+            tour, dramatic, world_tour, difficulty, round_time, evil_ryu_playtest,
         } = self;
         out.tag("MatchConfig.v3");
         preset.encode(out);
@@ -276,6 +276,20 @@ impl crate::canonical::Canonical for MatchConfig {
         world_tour.encode(out);
         difficulty.encode(out);
         round_time.encode(out);
+        match evil_ryu_playtest {
+            Some(EvilRyuPlaytest::UltraSf2) => out.tag("EvilRyuUltraSf2"),
+            Some(EvilRyuPlaytest::Alpha2) => out.tag("EvilRyuAlpha2"),
+            Some(EvilRyuPlaytest::Alpha3A) => out.tag("EvilRyuAlpha3A"),
+            Some(EvilRyuPlaytest::Alpha3V) => out.tag("EvilRyuAlpha3V"),
+            Some(EvilRyuPlaytest::Alpha3X) => out.tag("EvilRyuAlpha3X"),
+            Some(EvilRyuPlaytest::Ae2012) => out.tag("EvilRyuAe2012"),
+            Some(EvilRyuPlaytest::Ae2012Ultra2) => out.tag("EvilRyuAe2012Ultra2"),
+            Some(EvilRyuPlaytest::Usf4) => out.tag("EvilRyuUsf4"),
+            Some(EvilRyuPlaytest::Kage) => out.tag("KageSf5Ce"),
+            Some(EvilRyuPlaytest::KageII) => out.tag("KageSf5CeII"),
+            Some(EvilRyuPlaytest::Sf6) => out.tag("EvilRyuSf6"),
+            None => {}
+        }
         // Scheme selectors currently affect no translated-machine input.
         // TRD1 must normalize/synchronize their effects before making them live.
     }
@@ -287,7 +301,7 @@ impl crate::canonical::Canonical for CoreToggleState {
             neg_edge_latch, recovery_buffer, tracker_release_age, dp_connected,
             human_attack_frames, air_adj_frames_1, air_adj_rem_1,
             air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic, era,
-            missing_ryu_theme: _,
+            ashura_motion, raging_demon, satsui_awakening, missing_ryu_theme: _,
         } = self;
         out.tag("CoreToggleState.v3");
         neg_edge_latch.encode(out);
@@ -304,6 +318,16 @@ impl crate::canonical::Canonical for CoreToggleState {
         throw.encode(out);
         dramatic.encode(out);
         era.encode(out);
+        if *ashura_motion != [[0; 2]; 2] {
+            out.tag("evil-ryu-ashura-motion/v1");
+            ashura_motion.encode(out);
+        }
+        if *raging_demon != RagingDemonState::default() {
+            raging_demon.encode(out);
+        }
+        if let Some(awakening) = satsui_awakening {
+            awakening.encode(out);
+        }
         // A pending music-pack fallback log note is local diagnostic state.
     }
 }
@@ -420,10 +444,108 @@ impl Default for CoreToggles {
     }
 }
 
+/// Style used by the private Sagat fight launcher.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvilRyuPlaytest {
+    UltraSf2,
+    Alpha2,
+    Alpha3A,
+    Alpha3V,
+    Alpha3X,
+    Ae2012,
+    Ae2012Ultra2,
+    Usf4,
+    Kage,
+    KageII,
+    Sf6,
+}
+
+impl EvilRyuPlaytest {
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Kage | Self::KageII => "Kage",
+            _ => "Evil Ryu",
+        }
+    }
+
+    pub fn is_kage(self) -> bool {
+        matches!(self, Self::Kage | Self::KageII)
+    }
+
+    pub(crate) fn is_alpha3(self) -> bool {
+        matches!(self, Self::Alpha3A | Self::Alpha3V | Self::Alpha3X)
+    }
+
+    pub(crate) fn is_ae2012(self) -> bool {
+        matches!(self, Self::Ae2012 | Self::Ae2012Ultra2)
+    }
+
+    pub(crate) fn is_sf4(self) -> bool {
+        self.is_ae2012() || self == Self::Usf4
+    }
+
+    pub(crate) fn for_awakening(style: crate::era::StylePick) -> Self {
+        use crate::era::{Loadout, Revision};
+
+        match (style.revision, style.loadout) {
+            (Revision::Sfz2, _) => Self::Alpha2,
+            (Revision::Sfz3, Loadout::AIsm) => Self::Alpha3A,
+            (Revision::Sfz3, Loadout::VIsm) => Self::Alpha3V,
+            (Revision::Sfz3, Loadout::XIsm) => Self::Alpha3X,
+            (Revision::Ae2012, Loadout::Ultra1) => Self::Ae2012,
+            (Revision::Ae2012, Loadout::Ultra2) => Self::Ae2012Ultra2,
+            (Revision::Usf4, _) => Self::Usf4,
+            (Revision::Sf6, _) => Self::Sf6,
+            _ => Self::UltraSf2,
+        }
+    }
+}
+
+crate::canonical::canonical_enum!(EvilRyuPlaytest, "EvilRyuKitProfile.v1";
+    UltraSf2 => 0, Alpha2 => 1, Alpha3A => 2, Alpha3V => 3, Alpha3X => 4,
+    Ae2012 => 5, Ae2012Ultra2 => 6, Usf4 => 7, Kage => 8, KageII => 9, Sf6 => 10,
+);
+
+/// The fighter who awakens in the Arcade Thailand decider.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AwakeningSide {
+    Player,
+    PlayerTwo,
+    Cpu,
+}
+
+impl AwakeningSide {
+    pub const fn fighter_struct(self) -> u32 {
+        match self {
+            Self::Player => crate::fighter::P1_STRUCT,
+            Self::PlayerTwo => crate::fighter::P2_STRUCT,
+            Self::Cpu => crate::fighter::CPU_STRUCT,
+        }
+    }
+}
+
+crate::canonical::canonical_enum!(AwakeningSide, "AwakeningSide.v1";
+    Player => 0, PlayerTwo => 1, Cpu => 2,
+);
+
+/// Active transformation and move profile for the current Arcade match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SatsuiAwakening {
+    pub side: AwakeningSide,
+    pub profile: EvilRyuPlaytest,
+    pub(crate) surge_pending: bool,
+}
+
+crate::canonical::canonical_struct!(SatsuiAwakening, "SatsuiAwakening.v1", {
+    side, profile, surge_pending,
+});
+
 /// Session-level match configuration combining a [`RulesetPreset`] and [`CoreToggles`] (`#94`, `O3`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MatchConfig {
     pub preset: RulesetPreset,
+    /// Offline Evil Ryu fight, set by the private launcher.
+    pub evil_ryu_playtest: Option<EvilRyuPlaytest>,
     pub toggles: CoreToggles,
     /// 12-fighter roster, ban list, and country start (`#98`, `O7`).
     pub roster: crate::roster::RosterSettings,
@@ -572,6 +694,7 @@ impl MatchConfig {
     pub const fn from_preset(preset: RulesetPreset) -> Self {
         Self {
             preset,
+            evil_ryu_playtest: None,
             toggles: CoreToggles::for_preset(preset),
             roster: crate::roster::RosterSettings::for_preset(preset),
             fill_meters: false,
@@ -1514,6 +1637,20 @@ pub struct SpecialPress {
     pub done: [bool; 3],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct RagingDemonState {
+    pub(crate) progress: u8,
+    pub(crate) age: u8,
+    pub(crate) held: u8,
+    pub(crate) active: bool,
+    pub(crate) blackout_frames: Option<u8>,
+    pub(crate) victory_pose: bool,
+}
+
+crate::canonical::canonical_struct!(RagingDemonState, "evil-ryu-raging-demon/v5", {
+    progress, age, held, active, blackout_frames, victory_pose,
+});
+
 /// Per-session runtime state for Tier 1 core overhaul toggles (`#94` `O3` through `#97` `O6`),
 /// snapshotted alongside [`crate::fighter::Program`] for deterministic replay takeover.
 /// Fighter slots follow object RAM order. In Dramatic Battle that order is
@@ -1563,6 +1700,12 @@ pub struct CoreToggleState {
     pub dramatic: crate::dramatic::DramaticState,
     /// Native style picks, health, commands, and meters, by fight side.
     pub era: crate::era_fight::EraCombatState,
+    /// Stage and age of each private Ashura motion, forward then back.
+    pub(crate) ashura_motion: [[u8; 2]; 2],
+    /// Private Demon command progress and the current round's throw state.
+    pub(crate) raging_demon: RagingDemonState,
+    /// Round-three Arcade transformation, cleared when the match is left.
+    pub(crate) satsui_awakening: Option<SatsuiAwakening>,
     /// Stage tune command a stand-in fight fell back to when Ryu's theme
     /// (`RYU_THEME`, `0x41`) was not in the playable extended tunes
     /// (SP15, `#267`).

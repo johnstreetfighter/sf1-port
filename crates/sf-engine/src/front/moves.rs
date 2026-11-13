@@ -31,8 +31,8 @@ use super::draw::{fit, BLACK};
 use super::tune::{Panel, PanelSide};
 use super::menu::MenuItem;
 use super::Transition;
-use crate::config::RulesetPreset;
-use crate::moves::{input_cells, input_text, move_list, InputNotation, InputPiece, MoveEntry, MoveKind, NORMALS_LINE};
+use crate::config::{EvilRyuPlaytest, RulesetPreset};
+use crate::moves::{input_cells, input_text, move_list, ButtonClass, Dir, InputNotation, InputPiece, MoveEntry, MoveInput, MoveKind, Recognizer, NORMALS_LINE};
 use crate::roster::{MenuInput, TournamentFighter};
 
 /// The panel in cells: 40 across (the normals line is 37), as tall as the
@@ -83,6 +83,11 @@ enum Line {
     Heading(&'static str),
     /// A move: index into the entries.
     Move(usize),
+    /// A command documented in the private Arcade playtest.
+    Command(&'static str, MoveInput, Option<&'static str>),
+    /// The private super uses a sequence of individual button presses.
+    RagingDemon(&'static str),
+    CloseThrow(&'static str, &'static str),
     /// The normals line.
     Normals,
 }
@@ -91,6 +96,8 @@ enum Line {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MovesPanel {
     fighter: TournamentFighter,
+    display_name: &'static str,
+    playtest: Option<EvilRyuPlaytest>,
     entries: Vec<MoveEntry>,
     lines: Vec<Line>,
     /// The cursor's line, when there is a move to stand on.
@@ -140,6 +147,8 @@ impl MovesPanel {
         let cursor = lines.iter().position(|l| matches!(l, Line::Move(_)));
         let mut panel = MovesPanel {
             fighter,
+            display_name: fighter.name(),
+            playtest: None,
             entries,
             lines,
             cursor,
@@ -158,6 +167,181 @@ impl MovesPanel {
     /// The panel of a Training fight: confirm on a move offers Show and Try.
     pub fn with_show(mut self, training: bool) -> Self {
         self.training = training;
+        self
+    }
+
+    pub(super) fn with_evil_ryu_moves(mut self, playtest: EvilRyuPlaytest, base_kit: bool) -> Self {
+        if playtest.is_kage() || playtest == EvilRyuPlaytest::Sf6 {
+            self.display_name = playtest.display_name();
+            self.playtest = Some(playtest);
+            let demon = match playtest {
+                EvilRyuPlaytest::KageII => Some("SHUN GOKU SATSU (VT II)"),
+                EvilRyuPlaytest::Sf6 => Some("SHUN GOKU SATSU (CA)"),
+                _ => None,
+            };
+            if let Some(label) = demon {
+                if let Some(at) = self.lines.iter().rposition(|line| {
+                    matches!(*line, Line::Move(i) if self.entries[i].kind == MoveKind::Super)
+                }) {
+                    if playtest == EvilRyuPlaytest::Sf6 {
+                        self.lines.insert(at + 1, Line::Heading("CRITICAL ART (25% LIFE, 3 STOCKS)"));
+                        self.lines.insert(at + 2, Line::RagingDemon(label));
+                    } else {
+                        self.lines.insert(at + 1, Line::RagingDemon(label));
+                    }
+                }
+            }
+            return self;
+        }
+        let usf4 = playtest == EvilRyuPlaytest::Usf4;
+        let sf4 = playtest.is_ae2012() || usf4;
+        if playtest == EvilRyuPlaytest::UltraSf2 {
+            self.entries.retain(|entry| !matches!(entry.name, "SHINKU HADOKEN" | "SHAKUNETSU HADOKEN"));
+            if let Some(uppercut) = self.entries.iter_mut().find(|entry| entry.name == "SHORYUKEN") {
+                uppercut.name = "METSU SHORYUKEN";
+                uppercut.call_out = "METSU SHORYUKEN!";
+            }
+            if let Some(i) = self.entries.iter().position(|entry| entry.name == "HADOKEN") {
+                self.entries.insert(i + 1, MoveEntry {
+                    name: "SHAKUNETSU HADOKEN",
+                    call_out: "SHAKUNETSU HADOKEN!",
+                    ..self.entries[i]
+                });
+            }
+        }
+        if matches!(playtest, EvilRyuPlaytest::Alpha3A | EvilRyuPlaytest::Alpha3V) {
+            self.entries.retain(|entry| entry.name != "ALPHA COUNTER (K)");
+            if let Some(counter) = self.entries.iter_mut().find(|entry| entry.recognizer == Recognizer::AlphaCounter) {
+                counter.name = if playtest == EvilRyuPlaytest::Alpha3V {
+                    "ALPHA COUNTER SWEEP"
+                } else {
+                    "ALPHA COUNTER (BLOCK)"
+                };
+                counter.input = MoveInput { motion: &[Dir::Forward], button: ButtonClass::SameStrength };
+            }
+        }
+        if matches!(playtest, EvilRyuPlaytest::Alpha3V | EvilRyuPlaytest::Alpha3X) {
+            self.entries.retain(|entry| entry.kind != MoveKind::Super);
+        }
+        if playtest == EvilRyuPlaytest::Alpha3V {
+            if let Some(combo) = self.entries.iter_mut().find(|entry| entry.name == "CUSTOM COMBO") {
+                combo.name = "VARIABLE COMBO (50%+)";
+            }
+        }
+        if sf4 {
+            self.entries.retain(|entry| entry.kind != MoveKind::Throw);
+        }
+        if usf4 {
+            if let Some(red_focus) = self.entries.iter_mut().find(|entry| entry.name == "RED FOCUS ATTACK") {
+                red_focus.name = "RED FOCUS (2 STOCKS)";
+            }
+        }
+        let mut panel = Self::from_entries(self.fighter, self.entries);
+        panel.display_name = "Evil Ryu";
+        panel.playtest = Some(playtest);
+        let (ashura_button, ashura_label) = match playtest {
+            EvilRyuPlaytest::UltraSf2 => (ButtonClass::Kick, None),
+            EvilRyuPlaytest::Alpha2
+            | EvilRyuPlaytest::Alpha3A
+            | EvilRyuPlaytest::Alpha3V
+            | EvilRyuPlaytest::Alpha3X
+            | EvilRyuPlaytest::Ae2012
+            | EvilRyuPlaytest::Ae2012Ultra2
+            | EvilRyuPlaytest::Usf4 => (ButtonClass::TriplePunch, Some("PPP/KKK")),
+            EvilRyuPlaytest::Kage | EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6 => {
+                unreachable!("This profile uses the native move list")
+            }
+        };
+        if let Some(last_special) = panel.lines.iter().rposition(|line| {
+            matches!(*line, Line::Move(i) if panel.entries[i].kind == MoveKind::Special)
+        }) {
+            let at = last_special + 1;
+            panel.lines.splice(at..at, [
+                Line::Command("ASHURA SENKU FORWARD", MoveInput {
+                    motion: &[Dir::Forward, Dir::Down, Dir::DownForward], button: ashura_button,
+                }, ashura_label),
+                Line::Command("ASHURA SENKU BACKWARD", MoveInput {
+                    motion: &[Dir::Back, Dir::Down, Dir::DownBack], button: ashura_button,
+                }, ashura_label),
+            ]);
+            if !base_kit && matches!(playtest, EvilRyuPlaytest::UltraSf2 | EvilRyuPlaytest::Alpha3X) {
+                let at = at + 2;
+                panel.lines.splice(at..at, [
+                    Line::Heading("SUPER (FULL GAUGE)"),
+                    Line::RagingDemon("RAGING DEMON"),
+                ]);
+            }
+        }
+        if sf4 {
+            if let Some(at) = panel.lines.iter().position(|line| *line == Line::Heading(MoveKind::Super.heading())) {
+                panel.lines[at] = Line::Heading(if usf4 { "ULTRA DOUBLE (75%)" } else { "ULTRA (REVENGE)" });
+                panel.lines.splice(at..at, [
+                    Line::Heading("SUPER (FULL GAUGE)"),
+                    Line::RagingDemon("RAGING DEMON"),
+                ]);
+            }
+            if let Some(at) = panel.lines.iter().position(|line| {
+                matches!(*line, Line::Move(i) if panel.entries[i].name == "RED FOCUS (2 STOCKS)")
+            }) {
+                panel.lines.insert(at + 1, Line::Command("EX RED FOCUS (3 STOCKS)", MoveInput {
+                    motion: &[], button: ButtonClass::RedFocus,
+                }, Some("CANCEL LP+MP+MK")));
+            }
+            if let Some(at) = panel.lines.iter().position(|line| {
+                matches!(*line, Line::Move(i) if panel.entries[i].name == "FOCUS ATTACK")
+            }) {
+                panel.lines.insert(at + 1, Line::Command("FADC (2 STOCKS)", MoveInput {
+                    motion: &[], button: ButtonClass::MediumPair,
+                }, Some("MP+MK THEN DASH")));
+            }
+            let at = panel.lines.len() - 2;
+            panel.lines.splice(at..at, [
+                Line::Heading(MoveKind::Throw.heading()),
+                Line::Command("SHOULDER THROW (CLOSE)", MoveInput {
+                    motion: &[Dir::Forward], button: ButtonClass::LightPair,
+                }, None),
+                Line::Command("TOMOE NAGE (CLOSE)", MoveInput {
+                    motion: &[Dir::Back], button: ButtonClass::LightPair,
+                }, None),
+            ]);
+        }
+        if playtest == EvilRyuPlaytest::Alpha2 {
+            if let Some(last_special) = panel.lines.iter().rposition(|line| {
+                matches!(*line, Line::Command("ASHURA SENKU BACKWARD", ..))
+            }) {
+                panel.lines.insert(last_special + 1, Line::Command("HADO NO KAMAE (FAKE)", MoveInput {
+                    motion: &[Dir::Down, Dir::DownForward, Dir::Forward], button: ButtonClass::Punch,
+                }, Some("START")));
+            }
+        }
+        if playtest == EvilRyuPlaytest::Alpha2 || playtest.is_alpha3() {
+            let at = panel.lines.len() - 2;
+            if playtest.is_alpha3() {
+                panel.lines.splice(at..at, [
+                    Line::Heading(MoveKind::Throw.heading()),
+                    Line::CloseThrow("SHOULDER THROW", "PP"),
+                    Line::CloseThrow("AIR SHOULDER THROW", "PP"),
+                    Line::CloseThrow("TOMOE NAGE", "KK"),
+                ]);
+            } else {
+                panel.lines.insert(at, Line::CloseThrow("TOMOE NAGE", "MK/HK"));
+            }
+            let at = panel.lines.len() - 2;
+            let command_normals = panel.entries.iter().enumerate()
+                .filter(|(_, entry)| entry.kind == MoveKind::Normal)
+                .map(|(index, _)| Line::Move(index));
+            panel.lines.splice(at..at, std::iter::once(Line::Heading(MoveKind::Normal.heading())).chain(command_normals));
+            if let Some(last_super) = panel.lines.iter().rposition(|line| {
+                matches!(*line, Line::Move(i) if panel.entries[i].kind == MoveKind::Super)
+            }) {
+                panel.lines.insert(last_super + 1, Line::RagingDemon("RAGING DEMON (LV 3)"));
+            }
+        }
+        panel
+    }
+
+    pub(super) fn with_evil_ryu_name(mut self) -> Self {
+        self.display_name = "Evil Ryu";
         self
     }
 
@@ -198,7 +382,67 @@ impl MovesPanel {
 
     /// A move's input as this list writes it.
     fn written(&self, entry: &MoveEntry) -> Vec<InputPiece> {
-        entry.input.write(self.notation, self.facing_right)
+        let button_label = match (self.playtest, entry.name) {
+            (Some(EvilRyuPlaytest::UltraSf2), "HADOKEN") => Some("LP/MP"),
+            (Some(EvilRyuPlaytest::UltraSf2), "SHAKUNETSU HADOKEN") => Some("HP"),
+            (Some(EvilRyuPlaytest::Alpha2), "CUSTOM COMBO") => Some("PPK/KKP"),
+            (Some(EvilRyuPlaytest::Alpha3A), "ALPHA COUNTER (BLOCK)") => Some("P+K SAME LV"),
+            (Some(EvilRyuPlaytest::Alpha3V), "VARIABLE COMBO (50%+)") => Some("P+K SAME LV"),
+            (Some(EvilRyuPlaytest::Alpha3V), "ALPHA COUNTER SWEEP") => {
+                let mut input = self.write_input(entry.input, Some("P+K SAME"));
+                input.insert(0, InputPiece::Text("BLOCK ".to_owned()));
+                return input;
+            }
+            _ => None,
+        };
+        let mut input = self.write_input(entry.input, button_label);
+        if matches!(self.playtest, Some(EvilRyuPlaytest::Ae2012 | EvilRyuPlaytest::Usf4))
+            && entry.name == "METSU HADOKEN"
+        {
+            input.push(InputPiece::Text(" HOLD/RELEASE".to_owned()));
+        }
+        if self.playtest == Some(EvilRyuPlaytest::Kage) && entry.name == "SENHA KASSATSU" {
+            input.push(InputPiece::Text(" HOLD TO CHARGE".to_owned()));
+        }
+        input
+    }
+
+    fn write_input(&self, input: MoveInput, button_label: Option<&str>) -> Vec<InputPiece> {
+        let mut written = input.write(self.notation, self.facing_right);
+        if let Some(button_label) = button_label {
+            match written.last_mut() {
+                Some(InputPiece::Button(label)) => *label = button_label.to_owned(),
+                Some(InputPiece::Text(text)) => {
+                    if let Some(motion) = text.strip_suffix(input.button.label()) {
+                        *text = format!("{motion}{button_label}");
+                    }
+                }
+                None => {}
+            }
+        }
+        written
+    }
+
+    fn close_throw_input(&self, buttons: &str) -> Vec<InputPiece> {
+        let forward = Dir::Forward.written(self.notation, self.facing_right);
+        let back = Dir::Back.written(self.notation, self.facing_right);
+        vec![
+            InputPiece::Text(format!("CLOSE {forward}/{back} ")),
+            InputPiece::Button(buttons.to_owned()),
+        ]
+    }
+
+    fn raging_demon_input(&self) -> Vec<InputPiece> {
+        let forward = crate::moves::Dir::Forward.written(self.notation, self.facing_right);
+        vec![
+            InputPiece::Button("LP".to_owned()),
+            InputPiece::Text(" ".to_owned()),
+            InputPiece::Button("LP".to_owned()),
+            InputPiece::Text(format!(" {forward} ")),
+            InputPiece::Button("LK".to_owned()),
+            InputPiece::Text(" ".to_owned()),
+            InputPiece::Button("HP".to_owned()),
+        ]
     }
 
     pub fn name(&self) -> &'static str {
@@ -219,6 +463,9 @@ impl MovesPanel {
             .map(|line| match *line {
                 Line::Heading(h) => h.to_owned(),
                 Line::Move(i) => format!("{} {}", self.entries[i].name, input_text(&self.written(&self.entries[i]))),
+                Line::Command(name, input, button) => format!("{} {}", name, input_text(&self.write_input(input, button))),
+                Line::RagingDemon(name) => format!("{} {}", name, input_text(&self.raging_demon_input())),
+                Line::CloseThrow(name, buttons) => format!("{} {}", name, input_text(&self.close_throw_input(buttons))),
                 Line::Normals => NORMALS_LINE.to_owned(),
             })
             .collect()
@@ -333,7 +580,7 @@ impl MovesPanel {
         // The font draws into frames a game frame wide: draw there, then
         // take the panel's columns.
         let mut argb = vec![BLACK; WIDTH * height];
-        let header = fit(&self.fighter.name().to_ascii_uppercase(), (MOVES_COLS - 4) / 2);
+        let header = fit(&self.display_name.to_ascii_uppercase(), (MOVES_COLS - 4) / 2);
         let gap = (MOVES_COLS - 2 * header.chars().count()) / 2;
         font.gold_frame(&mut argb, 0, 1, MOVES_COLS, MOVES_ROWS - 1, gap..gap + 2 * header.chars().count());
         font.header(&mut argb, gap, 0, &header, ink::BLUE);
@@ -342,33 +589,39 @@ impl MovesPanel {
         };
         for (n, &line) in self.lines.iter().enumerate().skip(self.top).take(LIST_ROWS) {
             let row = LIST_ROW + n - self.top;
-            match line {
-                Line::Heading(h) => centred(&mut argb, row, &format!("[ {h} ]"), ink::BLUE),
-                Line::Normals => centred(&mut argb, row, NORMALS_LINE, ink::BLUE),
-                Line::Move(i) => {
-                    let entry = &self.entries[i];
-                    let color = if self.cursor == Some(n) {
-                        font.text(&mut argb, LABEL_COL - 1, row, ">", ink::YELLOW);
-                        ink::YELLOW
-                    } else {
-                        ink::BLUE
-                    };
-                    font.text(&mut argb, LABEL_COL, row, entry.name, color);
-                    let input = self.written(entry);
-                    let vcol = VALUE_END_COL - input_cells(&input);
-                    let dots_from = LABEL_COL + entry.name.chars().count() + 1;
-                    if vcol > dots_from + 1 {
-                        font.text(&mut argb, dots_from, row, &".".repeat(vcol - 1 - dots_from), ink::DIM);
-                    }
-                    let mut col = vcol;
-                    for piece in &input {
-                        match piece {
-                            InputPiece::Text(t) => font.text(&mut argb, col, row, t, color),
-                            InputPiece::Button(b) => font.button(&mut argb, col, row, b, color),
-                        }
-                        col += piece.cells();
-                    }
+            let (name, input) = match line {
+                Line::Heading(h) => {
+                    centred(&mut argb, row, &format!("[ {h} ]"), ink::BLUE);
+                    continue;
                 }
+                Line::Normals => {
+                    centred(&mut argb, row, NORMALS_LINE, ink::BLUE);
+                    continue;
+                }
+                Line::Move(i) => (self.entries[i].name, self.written(&self.entries[i])),
+                Line::Command(name, input, button) => (name, self.write_input(input, button)),
+                Line::RagingDemon(name) => (name, self.raging_demon_input()),
+                Line::CloseThrow(name, buttons) => (name, self.close_throw_input(buttons)),
+            };
+            let color = if self.cursor == Some(n) {
+                font.text(&mut argb, LABEL_COL - 1, row, ">", ink::YELLOW);
+                ink::YELLOW
+            } else {
+                ink::BLUE
+            };
+            font.text(&mut argb, LABEL_COL, row, name, color);
+            let vcol = VALUE_END_COL - input_cells(&input);
+            let dots_from = LABEL_COL + name.chars().count() + 1;
+            if vcol > dots_from + 1 {
+                font.text(&mut argb, dots_from, row, &".".repeat(vcol - 1 - dots_from), ink::DIM);
+            }
+            let mut col = vcol;
+            for piece in &input {
+                match piece {
+                    InputPiece::Text(t) => font.text(&mut argb, col, row, t, color),
+                    InputPiece::Button(b) => font.button(&mut argb, col, row, b, color),
+                }
+                col += piece.cells();
             }
         }
         if self.scrolls() {

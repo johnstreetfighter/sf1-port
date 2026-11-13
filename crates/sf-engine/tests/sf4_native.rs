@@ -268,7 +268,7 @@ fn a_special_focus_dash_cancel_can_follow_the_crumple_with_an_ultra() {
     let mut red = fight.clone();
     run_focus(&mut red, assets, true, 1, pad(0, None));
     assert_eq!(p1_slot(&red), FOCUS_CHARGE);
-    assert_eq!(red.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+    assert_eq!(red.machine().era_fighters()[0].super_meter, STOCK_AT);
 
     run_focus(&mut fight, assets, false, 22, pad(0, None));
     assert_eq!(p1_slot(&fight), FOCUS_CHARGE);
@@ -615,26 +615,39 @@ fn training_fills_and_coaches_each_canonical_ultra_loadout() {
 }
 
 #[test]
-fn ex_special_spends_one_stock_and_either_focus_cancel_spends_two() {
+fn ex_special_spends_one_stock_and_focus_cancels_spend_two_or_three() {
     let Some(select) = select(Revision::Usf4, Loadout::Ultra1, TournamentFighter::Ryu) else {
         return;
     };
     let assets = select.assets();
     let base = bout(&select);
-    for red in [false, true] {
+    for (red, focus_cost) in [(false, 2 * STOCK_AT), (true, 3 * STOCK_AT)] {
         let mut fight = base.clone();
-        set_super(&mut fight, 3 * STOCK_AT);
+        set_super(&mut fight, STOCK_AT + focus_cost);
         for direction in [DOWN, DOWN | RIGHT] {
             step(&mut fight, assets, pad(direction, None), pad(0, None));
         }
         step(&mut fight, assets, held(RIGHT, &[0, MP]), pad(0, None));
         assert_eq!(p1_slot(&fight), 0x1a);
-        assert_eq!(fight.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, focus_cost);
+        if red {
+            let mut underfunded = fight.clone();
+            set_super(&mut underfunded, 2 * STOCK_AT);
+            run_focus(&mut underfunded, assets, true, 1, pad(0, None));
+            assert_eq!(p1_slot(&underfunded), 0x1a, "two stocks cannot EX Red Focus cancel");
+            assert_eq!(underfunded.machine().era_fighters()[0].super_meter, 2 * STOCK_AT);
+        }
         run_focus(&mut fight, assets, red, 1, pad(0, None));
         assert_eq!(p1_slot(&fight), FOCUS_CHARGE, "red={red}");
         assert_eq!(fight.machine().era_fighters()[0].super_meter, 0);
+        if red {
+            let mut released = fight.clone();
+            step(&mut released, assets, held(0, &[MP, MK]), pad(0, None));
+            assert_eq!(p1_slot(&released), FOCUS, "releasing LP ends Red Focus charge");
+        }
+        let buttons: &[usize] = if red { &[0, MP, MK] } else { &[MP, MK] };
         for direction in [RIGHT, 0, RIGHT] {
-            step(&mut fight, assets, held(direction, &[MP, MK]), pad(0, None));
+            step(&mut fight, assets, held(direction, buttons), pad(0, None));
         }
         assert_eq!(p1_slot(&fight), DASH);
     }
