@@ -482,6 +482,10 @@ impl EraFighterState {
         if self.is_kage() { KAGE_EX } else { ex_specials(fighter) }
     }
 
+    pub(super) fn sf5_has_ex(&self) -> bool {
+        !self.what_if_active() && self.fighter.is_some_and(|fighter| !self.sf5_ex_specials(fighter).is_empty())
+    }
+
     fn sf5_critical(&self, fighter: TournamentFighter) -> (&'static str, ButtonClass) {
         if self.is_kage() { ("METSU SHORYUKEN", ButtonClass::Punch) } else { critical(fighter) }
     }
@@ -799,7 +803,7 @@ impl EraFighterState {
         self.sf5.gain(gain.min(u16::from(u8::MAX)) as u8);
     }
 
-    fn can_spend_v(&self, mode: GaugeMode, amount: u8) -> bool {
+    pub(super) fn can_spend_v(&self, mode: GaugeMode, amount: u8) -> bool {
         let amount = self.meter_cost(amount);
         self.sf5.capacity != 0
             && self.sf5.trigger_left == 0
@@ -929,6 +933,7 @@ impl Bus<'_> {
 
         let state = &mut self.toggle_state.era.fighters[side];
         state.sf5.clear_motions();
+        let trigger_before = state.sf5.trigger_left;
         if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
             v.clear_motions();
         }
@@ -998,6 +1003,9 @@ impl Bus<'_> {
         if let Some(word) = trigger_name {
             self.era_emit_callout(ps, CalloutKind::Move { word });
         }
+        if self.toggle_state.era.fighters[side].sf5.trigger_left < trigger_before {
+            self.toggle_state.era.gauge_v_trigger_spends[side] = true;
+        }
         self.era_share_gauge(side);
         true
     }
@@ -1043,6 +1051,7 @@ impl Bus<'_> {
         if strike {
             if trigger_counter {
                 state.sf5.trigger_left = 0;
+                self.toggle_state.era.gauge_v_trigger_spends[side] = true;
             }
             self.era_start_banked_move(ps, entity, COUNTER_STRIKE, 0, None);
         }

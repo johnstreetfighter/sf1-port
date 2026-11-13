@@ -39,6 +39,7 @@ const TIGER_KNEE: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::UpF
 const ALPHA_COUNTER_MOTION: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down];
 
 mod alpha_moves;
+mod gauge_presentation;
 pub(crate) mod sf3;
 pub(crate) mod sf4;
 mod world_tour;
@@ -460,16 +461,20 @@ impl EraFighterState {
         if let Some(gauge) = self.sf3_gauge() {
             return Some(gauge);
         }
-        let main = GaugeRow::stock(
+        let mut main = GaugeRow::stock(
             self.super_capacity / STOCK_AT,
             self.super_meter / STOCK_AT,
             Fill::of(u16::from(self.super_meter % STOCK_AT), u16::from(STOCK_AT)),
         );
         if let EvilRyuKit::EvilAlpha2 { custom_left: left @ 1.. } = self.evil_ryu_kit {
-            let timer = GaugeRow::bar(Fill::of(left, u16::from(self.super_capacity) * 2), Fill::FULL);
+            let timer = GaugeRow::bar(Fill::of(left, u16::from(self.super_capacity) * 2), Fill::FULL)
+                .with_state(GaugeState::Draining);
             return Some(EraGauge::two(timer, main));
         }
         if !self.unified_gauge {
+            if self.custom_frames != 0 {
+                main = main.with_state(GaugeState::Draining);
+            }
             if self.is_sf6() {
                 return Some(EraGauge::two(self.sf6.row(), main));
             }
@@ -897,6 +902,8 @@ pub struct EraCombatState {
     pub(crate) alpha_counter_events: [bool; 3],
     pub(crate) guard_crush_events: [bool; 3],
     pub(crate) style_callouts: [Option<CalloutKind>; 3],
+    pub(crate) gauge_drive_spends: [bool; 3],
+    pub(crate) gauge_v_trigger_spends: [bool; 3],
     projectiles: [EraProjectileState; PROJECTILE_SLOTS],
 }
 
@@ -951,6 +958,8 @@ impl crate::canonical::Canonical for EraCombatState {
             alpha_counter_events: _,
             guard_crush_events: _,
             style_callouts: _,
+            gauge_drive_spends: _,
+            gauge_v_trigger_spends: _,
             projectiles,
         } = self;
         out.tag("EraCombatState.v2");
@@ -1027,6 +1036,8 @@ impl Bus<'_> {
         self.toggle_state.era.alpha_counter_events = [false; 3];
         self.toggle_state.era.guard_crush_events = [false; 3];
         self.toggle_state.era.style_callouts = [None; 3];
+        self.toggle_state.era.gauge_drive_spends = [false; 3];
+        self.toggle_state.era.gauge_v_trigger_spends = [false; 3];
         self.toggle_state.era.projectiles = [EraProjectileState::default(); PROJECTILE_SLOTS];
         for (index, ps) in self.era_player_slots().into_iter().enumerate() {
             let Some(ps) = ps else { continue };
@@ -1160,6 +1171,8 @@ impl Bus<'_> {
             era.alpha_counter_events = [false; 3];
             era.guard_crush_events = [false; 3];
             era.style_callouts = [None; 3];
+            era.gauge_drive_spends = [false; 3];
+            era.gauge_v_trigger_spends = [false; 3];
             era.projectiles = [EraProjectileState::default(); PROJECTILE_SLOTS];
         }
     }
@@ -1361,6 +1374,7 @@ impl Bus<'_> {
                 if !state.sf5_spend_kage_demon() {
                     return false;
                 }
+                self.toggle_state.era.gauge_v_trigger_spends[index] = true;
                 self.era_share_gauge(index);
                 self.era_emit_callout(ps, CalloutKind::Super { name: "SHUN GOKU SATSU" });
             }

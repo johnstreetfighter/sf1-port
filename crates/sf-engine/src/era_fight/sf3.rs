@@ -364,6 +364,14 @@ impl EraFighterState {
             && matches!(self.style.revision, Revision::Sf3TwoI | Revision::Sf3ThreeS)
     }
 
+    pub(super) fn sf3_ex_cost(&self) -> u8 {
+        if self.sf3.unified { STOCK_AT } else { EX_COST }
+    }
+
+    pub(super) fn sf3_has_ex(&self) -> bool {
+        self.sf3_ex_enabled() && self.sf3_ex_commands().next().is_some()
+    }
+
     fn sf3_ex_commands(&self) -> impl Iterator<Item = (usize, Command)> {
         let ryu = self.fighter == Some(TournamentFighter::Ryu);
         EX_COMMANDS
@@ -593,7 +601,7 @@ impl Bus<'_> {
                 && self.era_start_banked_move(ps, entity, OVERHEAD, 0, None);
         };
         let meter = state.super_meter;
-        let ex_cost = state.meter_cost(if state.sf3.unified { STOCK_AT } else { EX_COST });
+        let ex_cost = state.meter_cost(state.sf3_ex_cost());
         let super_cost = state.meter_cost(state.sf3_super_art_cost().unwrap_or_default());
         let (slot, cost, level, call_out) = if airborne {
             if state.style.revision == Revision::Sf3Ng

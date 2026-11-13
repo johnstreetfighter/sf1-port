@@ -24,7 +24,7 @@ use sf_video::announcer::AnnouncerLine;
 use sf_video::art::{load_art_from, Art, ArtSources};
 use sf_video::background_bank::{BackgroundBank, LayerView};
 use sf_video::compositor::PaletteTint;
-use sf_video::era_hud::{pens, EraGauge, Fill, GaugeRow, GaugeState, BAR_WIDTH, CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, MAIN_ROW, SECOND_ROW};
+use sf_video::era_hud::{EraGauge, Fill, GaugeRow, GaugeState, BAR_WIDTH, CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, MAIN_ROW, SECOND_ROW};
 use sf_video::render::{render_frame, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan, HEIGHT, WIDTH};
 use sf_video::romset::Assets;
 use sf_video::vs_screens::vs_key;
@@ -636,7 +636,10 @@ fn assert_super_gauge(fight: &Fight, frame: &Frame, meter: u8) {
     };
     let whole = meter / SUPER_STOCK;
     let fraction = Fill::of(u16::from(meter % SUPER_STOCK), u16::from(SUPER_STOCK));
-    let gauge = GaugeRow::stock(cells, whole, fraction);
+    let mut gauge = GaugeRow::stock(cells, whole, fraction);
+    if state.style.loadout == Loadout::VIsm && state.custom_combo_active() {
+        gauge = gauge.with_state(GaugeState::Draining);
+    }
     let hud = fight.era_hud().p1.unwrap();
     let sf6 = state.style.family == EraFamily::Sf6;
     let super_row = if sf6 { hud.second.expect("SF6 has a separate Super Art row") } else { hud.main };
@@ -646,20 +649,38 @@ fn assert_super_gauge(fight: &Fight, frame: &Frame, meter: u8) {
     let rows = if sf6 { SECOND_ROW } else if hud.second.is_some() { CORNER_HEIGHT } else { MAIN_ROW };
     let top = HEIGHT - CORNER_BOTTOM - rows;
     let fill_start = (top + 1) * WIDTH + CORNER_EDGE + 1;
-    assert_eq!(frame.argb[top * WIDTH + CORNER_EDGE], pens::RULE, "the native gauge border is visible");
+    let (rail, track) = match (state.style.family, state.style.revision, state.style.loadout) {
+        (EraFamily::Sf2, _, _) => (0xffff_ffff, 0xff77_98db),
+        (EraFamily::SfZ, Revision::Sfz2, _) => (0xff33_4466, 0xff11_7733),
+        (EraFamily::SfZ, _, Loadout::AIsm) => (0xff00_0044, 0xff04_6201),
+        (EraFamily::SfZ, _, Loadout::VIsm) => (0xff00_0044, 0xff11_7799),
+        (EraFamily::SfZ, _, Loadout::XIsm) => (0xff00_0044, 0xff6e_1a02),
+        (EraFamily::Sf4, _, _) => (0xffd5_d5d5, 0xff33_2f30),
+        (EraFamily::Sf5, _, _) => (0xffa9_d4de, 0xff18_3441),
+        (EraFamily::Sf6, _, _) => (0xffe5_b2cc, 0xff4b_2037),
+        style => panic!("unexpected Super gauge palette for {style:?}"),
+    };
+    assert_eq!(frame.argb[top * WIDTH + CORNER_EDGE], rail, "the era's gauge border is visible");
+
+    // Spent space may still show the amber tail. Classify it with the empty
+    // track so a test counts usable fill, even on the frame a move spends it.
+    let amber = 0xffff_b960u32;
+    let trail = [0, 8, 16].into_iter().fold(0xff00_0000, |argb, shift| {
+        let base = (track >> shift) & 0xff;
+        let tip = (amber >> shift) & 0xff;
+        argb | ((base * 133 + tip * 122 + 127) / 255) << shift
+    });
     let cells = usize::from(cells);
     let cell_width = (BAR_WIDTH + 1 - cells) / cells;
     for cell in 0..cells {
         let start = fill_start + cell * (cell_width + 1);
         let pixels = &frame.argb[start..start + cell_width];
-        let lit = pixels.iter().filter(|&&pixel| if sf6 {
-            matches!(pixel, pens::RULE | pens::LAVENDER_LIGHT)
-        } else {
-            matches!(pixel, pens::GOLD | pens::GOLD_LIGHT)
-        }).count();
         let expected = if cell < usize::from(whole) { cell_width } else if cell == usize::from(whole) { fraction.px(cell_width) } else { 0 };
-        assert_eq!(lit, expected, "the visible fill in Super stock {}", cell + 1);
-        assert_eq!(frame.argb[start + cell_width], pens::RULE, "the Super stock divider");
+        for (offset, &pixel) in pixels.iter().enumerate() {
+            let filled = ![track, trail, amber].contains(&pixel);
+            assert_eq!(filled, offset < expected, "visible fill in Super stock {}, column {offset}", cell + 1);
+        }
+        assert_eq!(frame.argb[start + cell_width], rail, "the Super stock divider");
     }
 }
 
@@ -988,7 +1009,8 @@ fn check_alpha_custom_combo(fight: &Fight, assets: &Assets) {
         assert_eq!(frame.announcements.contains(&AnnouncerLine::CustomCombo), active);
         assert_eq!(super_meter(&attempt), if active { 0 } else { meter });
         if active {
-            let timer = GaugeRow::bar(Fill::of(u16::from(meter) * 2, 288), Fill::FULL);
+            let timer = GaugeRow::bar(Fill::of(u16::from(meter) * 2, 288), Fill::FULL)
+                .with_state(GaugeState::Draining);
             let stock = GaugeRow::stock(3, 0, Fill::of(0, u16::from(SUPER_STOCK)));
             assert_eq!(attempt.era_hud().p1, Some(EraGauge::two(timer, stock)));
         }
@@ -1025,7 +1047,8 @@ fn check_alpha_custom_combo(fight: &Fight, assets: &Assets) {
             assert!(attempt.machine().era_fighters()[0].custom_combo_active(),
                 "three-stock Custom Combo remains active beyond a wrapped 32-frame timer");
             let gauge = attempt.era_hud().p1.unwrap();
-            assert_eq!(gauge.main, GaugeRow::bar(Fill::of(288 - 33, 288), Fill::FULL));
+            assert_eq!(gauge.main, GaugeRow::bar(Fill::of(288 - 33, 288), Fill::FULL)
+                .with_state(GaugeState::Draining));
         }
     }
 }

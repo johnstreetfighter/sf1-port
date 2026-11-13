@@ -427,6 +427,16 @@ impl EraFighterState {
         if self.unified_gauge { 3 * STOCK_AT } else { 4 * STOCK_AT }
     }
 
+    pub(super) fn sf4_has_single_stock_move(&self) -> bool {
+        self.sf4_commands().iter().any(|command| {
+            command.usable(self) && (command.ex.is_some() || command.cost == AngryScar)
+        })
+    }
+
+    pub(super) fn sf4_focus_cancel_cost(&self) -> u8 {
+        if self.unified_gauge { STOCK_AT } else { 2 * STOCK_AT }
+    }
+
     pub(crate) fn sf4_special_active(&self, slot: u8) -> bool {
         self.is_sf4()
             && ((self.what_if_special_active(slot) && !self.what_if_airborne(slot))
@@ -477,8 +487,12 @@ impl EraFighterState {
     }
 
     pub(super) fn sf4_ultra_ready(&self) -> bool {
+        self.sf4.revenge >= self.sf4_ultra_cost()
+    }
+
+    pub(super) fn sf4_ultra_cost(&self) -> u16 {
         let discount = self.world_tour_perk(crate::world_tour::native::Perk::IsmPlus);
-        self.sf4.revenge >= if discount { REVENGE_READY * 3 / 4 } else { REVENGE_READY }
+        if discount { REVENGE_READY * 3 / 4 } else { REVENGE_READY }
     }
 
     pub(super) fn sf4_spend_ultra(&mut self, disable_comeback_scaling: bool) {
@@ -597,11 +611,7 @@ impl Bus<'_> {
             state.sf4.finish_focus();
         }
 
-        let fadc_cost = if state.unified_gauge {
-            STOCK_AT
-        } else {
-            2 * STOCK_AT
-        };
+        let fadc_cost = state.sf4_focus_cancel_cost();
         let charging = state.sf4.focus_frames != 0;
         let after_contact = move_id == FOCUS && state.sf4.focus_contact != 0;
         if let Some(direction) =

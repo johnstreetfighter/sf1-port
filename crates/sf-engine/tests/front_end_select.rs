@@ -3,9 +3,9 @@
 //! Pixel-asserting tests of the select through the headless game session,
 //! no window: the twelve VS-screen busts decoded from the ROM, drawn 1:1
 //! (and the fighters' names where a damaged tile set leaves no bust),
-//! Local's VS layout with both players' busts and two cursors, Arcade's one
-//! cursor, the greyed tiles of Arcade, the Classic Competitive ban list and
-//! Faithful 1987, the mirror rule, and Faithful 1987's Local reaching the
+//! Local's VS layout with both players' busts and two flashing cursors,
+//! Arcade's one cursor, the greyed tiles of Arcade, the Classic Competitive
+//! ban list and Faithful 1987, the mirror rule, and Faithful 1987's Local reaching the
 //! two-country screen as Ryu against Ken. Local ROMs only; each test skips
 //! without them.
 
@@ -146,12 +146,11 @@ fn px(frame: &Frame, x: usize, y: usize) -> u32 {
     frame.argb[y * WIDTH + x]
 }
 
-/// The select's colours, all from the ROM's boot text palette: the tiles'
-/// gold, P1's yellow, P2's blue, the greyed tiles' dim.
+/// The tiles' normal and greyed borders and the Faithful 1987 cursors.
 struct Colors {
     gold: u32,
-    p1: u32,
-    p2: u32,
+    faithful_p1: u32,
+    faithful_p2: u32,
     grey: u32,
 }
 
@@ -159,8 +158,8 @@ fn colors(a: &Assets) -> Colors {
     let font = RomFont::new(&a.gfx4, &a.maincpu);
     Colors {
         gold: font.pen(ink::GOLD_A, 2),
-        p1: font.pen(ink::YELLOW, 0),
-        p2: font.pen(ink::P2_BLUE, 2),
+        faithful_p1: font.pen(ink::YELLOW, 0),
+        faithful_p2: font.pen(ink::P2_BLUE, 2),
         grey: font.pen(ink::DIM, 2),
     }
 }
@@ -171,11 +170,45 @@ fn border(frame: &Frame, layout: &SelectScreen, slot: usize) -> u32 {
     px(frame, x + 15, y)
 }
 
-/// The colour two pixels inside tile `slot`'s border (P2's cursor when it
-/// shares P1's tile).
-fn inner_border(frame: &Frame, layout: &SelectScreen, slot: usize) -> u32 {
-    let (x, y, _, _) = layout.tile_rect(slot);
-    px(frame, x + 15, y + 2)
+const BRIGHT_BRACKETS: [u32; 2] = [0xff5a_81ff, 0xffff_634f];
+const DIM_BRACKETS: [u32; 2] = [0xff34_4d94, 0xff94_3b3e];
+const LABEL_INK: [u32; 2] = [0xff24_48db, 0xffd9_2d25];
+const LABEL_OUTLINE: [u32; 2] = [0xffb7_cbff, 0xffff_c4af];
+
+fn assert_label(frame: &Frame, layout: &SelectScreen, slot: usize, side: usize, shared: bool) {
+    let (x, y, w, _) = layout.tile_rect(slot);
+    let center = x + if shared { [11, 35][side] } else { w / 2 };
+    let digit = center - [5, 7][side];
+    let letter = center + 1;
+    for glyph in [digit, letter] {
+        assert_eq!(px(frame, glyph, y - 1), LABEL_INK[side]);
+        assert_eq!(px(frame, glyph, y - 2), LABEL_OUTLINE[side]);
+    }
+}
+
+fn assert_cursor(
+    out: &FrameOutput,
+    layout: &SelectScreen,
+    slot: usize,
+    side: usize,
+    shared: bool,
+    locked: bool,
+) {
+    let (x, y, w, h) = layout.tile_rect(slot);
+    let bright = locked || out.sound_frame % 30 < 15;
+    let color = if bright { BRIGHT_BRACKETS[side] } else { DIM_BRACKETS[side] };
+    for (corner, visible) in [(x + 2, !shared || side == 0), (x + w - 3, !shared || side == 1)] {
+        if visible {
+            assert_eq!(
+                px(&out.frame, corner, y + h - 3),
+                color,
+                "player {}, frame {}",
+                side + 1,
+                out.sound_frame
+            );
+        }
+    }
+    assert_label(&out.frame, layout, slot, side, shared);
 }
 
 /// Whether `text` is drawn from pixel (`x`, `y`) in the ROM's 8x8 font in
@@ -262,9 +295,9 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
     let bust = |f: TournamentFighter| busts[TournamentFighter::ALL.iter().position(|&g| g == f).unwrap()].as_ref().unwrap();
     let l = local_layout();
     let (mut s, frame) = to_select(a, MatchConfig::default(), true);
-    // P1 starts on Ryu (yellow), P2 on Ken (blue).
-    assert_eq!(border(&frame, &l, 0), c.p1);
-    assert_eq!(border(&frame, &l, 1), c.p2);
+    // P1 starts on Ryu (blue), P2 on Ken (red).
+    assert_label(&frame, &l, 0, 0, false);
+    assert_label(&frame, &l, 1, 1, false);
     // Both move on one frame: P1 right onto Ken, P2 down onto Gen; each
     // side's frame shows its own fighter.
     let out = tap(&mut s, with(|i| {
@@ -272,20 +305,42 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
         i.p2.directions[DOWN] = true;
     }));
     assert_eq!(out.transition, Some(Transition::CursorMoved));
-    assert_eq!(border(&out.frame, &l, 1), c.p1);
-    assert_eq!(border(&out.frame, &l, 7), c.p2);
+    assert_cursor(&out, &l, 1, 0, false, false);
+    assert_cursor(&out, &l, 7, 1, false, false);
     assert_eq!(border(&out.frame, &l, 0), c.gold);
     assert!(panel_shows(&out.frame, &l, 0, &bust(TournamentFighter::Ken).mirrored()));
     assert!(panel_shows(&out.frame, &l, 1, bust(TournamentFighter::Gen)));
-    // Both on Gen: one tile, P1's border outside P2's.
+    // Both on Gen: the blue left and red right keep their own labels.
     let out = tap(&mut s, p1(DOWN));
-    assert_eq!((border(&out.frame, &l, 7), inner_border(&out.frame, &l, 7)), (c.p1, c.p2));
     assert!(panel_shows(&out.frame, &l, 0, &bust(TournamentFighter::Gen).mirrored()));
+    let (x, y, w, h) = l.tile_rect(7);
+    let rails = (
+        px(&out.frame, x + w / 2 - 1, y + h - 1),
+        px(&out.frame, x + w / 2, y + h - 1),
+    );
+    assert_eq!(rails, (0xff13_1d46, 0xff45_1c21));
+    for _ in 0..30 {
+        let out = s.step(idle());
+        assert_cursor(&out, &l, 7, 0, true, false);
+        assert_cursor(&out, &l, 7, 1, true, false);
+    }
+
+    // Locking just 1P leaves its own brackets bright through 2P's dim phase.
+    let locked = select::confirm_fighter(&mut s, p1_lp(), tap);
+    assert_eq!(locked.transition, Some(Transition::Picked(TournamentFighter::Gen)));
+    for _ in 0..30 {
+        let out = s.step(idle());
+        assert_cursor(&out, &l, 7, 0, true, true);
+        assert_cursor(&out, &l, 7, 1, true, false);
+    }
+    let unlocked = tap(&mut s, p1_lk());
+    assert_eq!(unlocked.transition, Some(Transition::Unpicked));
+    assert_cursor(&unlocked, &l, 7, 0, true, false);
     tap(&mut s, p1(LEFT)); // P1 to Lee
     // P1 locks Lee: P1's stick no longer moves; back unlocks it.
     assert_eq!(select::confirm_fighter(&mut s, p1_lp(), tap).transition, Some(Transition::Picked(TournamentFighter::Lee)));
     assert_eq!(tap(&mut s, p1(RIGHT)).transition, None);
-    assert_eq!(border(&s.step(idle()).frame, &l, 6), c.p1);
+    assert_cursor(&s.step(idle()), &l, 6, 0, false, true);
     assert_eq!(tap(&mut s, p1_lk()).transition, Some(Transition::Unpicked));
     assert_eq!(tap(&mut s, p1(UP)).transition, Some(Transition::CursorMoved)); // to Ryu
     // P2 locks Gen, then P1 locks Ryu: the screen moves on at once.
@@ -298,16 +353,16 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
 #[test]
 fn arcade_has_one_cursor() {
     let Some(a) = assets() else { return };
-    let c = colors(&a);
     let l = arcade_layout();
     let (mut s, _) = to_select(a, MatchConfig::default(), false);
-    // Either stick drives the one cursor; there is no blue cursor.
+    // Either stick drives the one blue 1P cursor.
     let out = tap(&mut s, p2(RIGHT));
     assert_eq!(out.transition, Some(Transition::CursorMoved));
-    assert_eq!(border(&out.frame, &l, 1), c.p1);
+    assert_cursor(&out, &l, 1, 0, false, false);
     for slot in 0..12 {
-        assert_ne!(border(&out.frame, &l, slot), c.p2);
-        assert_ne!(inner_border(&out.frame, &l, slot), c.p2);
+        let (x, y, w, h) = l.tile_rect(slot);
+        let corner = px(&out.frame, x + w - 3, y + h - 3);
+        assert!(![BRIGHT_BRACKETS[1], DIM_BRACKETS[1]].contains(&corner), "red cursor at slot {slot}");
     }
 }
 
@@ -367,6 +422,13 @@ fn greyed_tiles_for_arcade_the_ban_list_and_faithful_1987_are_skipped() {
     // game binds them; the bosses greyed with no caption.
     let faithful = MatchConfig::from_preset(RulesetPreset::Faithful1987);
     let (mut s, frame) = to_select(load_assets(ROMS, MANIFEST).unwrap(), faithful, true);
+    assert_eq!(border(&frame, &local, 0), c.faithful_p1);
+    assert_eq!(border(&frame, &local, 1), c.faithful_p2);
+    for _ in 0..30 {
+        let out = s.step(idle());
+        assert_eq!(border(&out.frame, &local, 0), c.faithful_p1);
+        assert_eq!(border(&out.frame, &local, 1), c.faithful_p2);
+    }
     for slot in 2..12 {
         assert_eq!(border(&frame, &local, slot), c.grey);
         assert!(!caption(&frame, &local, slot));
@@ -378,7 +440,6 @@ fn greyed_tiles_for_arcade_the_ban_list_and_faithful_1987_are_skipped() {
 #[test]
 fn a_mirror_match_is_offered_only_where_the_ladder_report_found_it_clean() {
     let Some(a) = assets() else { return };
-    let c = colors(&a);
     let l = local_layout();
     let (mut s, _) = to_select(a, MatchConfig::default(), true);
     // With Joe on his 1987 player table (SP4 + SP13), his mirror ban is
@@ -392,7 +453,8 @@ fn a_mirror_match_is_offered_only_where_the_ladder_report_found_it_clean() {
     tap(&mut s, p2(RIGHT)); // Geki
     let out = tap(&mut s, p2(RIGHT)); // onto Joe
     assert_eq!(out.transition, Some(Transition::CursorMoved));
-    assert_eq!((border(&out.frame, &l, 4), inner_border(&out.frame, &l, 4)), (c.p1, c.p2));
+    assert_cursor(&out, &l, 4, 0, true, true);
+    assert_cursor(&out, &l, 4, 1, true, false);
     let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Joe, TournamentFighter::Joe)));
     // Ryu's mirror is clean too: both may lock Ryu.

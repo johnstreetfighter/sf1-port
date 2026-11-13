@@ -9,7 +9,8 @@
 //! is laid out like the 1987 VS screen: P1's bust on the left facing
 //! right, P2's on the right facing left, the names and `VS` between them,
 //! and the twelve tiles in two rows of six below. Both players pick at
-//! once: P1's cursor is yellow, P2's blue; they may rest on one tile;
+//! once and may rest on one tile. The overhaul cursors use blue 1P
+//! and red 2P brackets. Their labels stay visible while the borders flash.
 //! confirm opens a side's Style card when era selection is active, then
 //! locks the pick; the screen moves on the moment both are locked.
 //!
@@ -19,7 +20,7 @@
 //! game binds Ryu to P1 and Ken to P2).
 
 use sf_video::busts::Bust;
-use sf_video::compositor::{blit_window, darken, ink, outline, RomFont, SelectPortrait};
+use sf_video::compositor::{blit_window, darken, fallback_text, ink, outline, RomFont, SelectPortrait};
 use sf_video::render::Frame;
 
 use super::draw::framed;
@@ -29,6 +30,8 @@ use super::Transition;
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::era::{EraFamily, StylePick};
 use crate::roster::{MenuInput, TournamentFighter};
+
+mod cursor;
 
 /// Where a mode's pieces sit, in pixels inside the gold frame (which spans
 /// 40..344 by 16..216; nothing is drawn on its foot row, 200..208).
@@ -87,6 +90,7 @@ pub struct SelectScreen {
     caption: [&'static str; 12],
     cursors: [usize; 2],
     locked: [Option<TournamentFighter>; 2],
+    arcade_cursors: bool,
     /// What-If availability when era selection is active.
     styles: Option<bool>,
     dramatic_styles: bool,
@@ -97,7 +101,7 @@ pub struct SelectScreen {
 }
 
 impl SelectScreen {
-    fn open(picks: Picks, allowed: [[bool; 12]; 2], caption: [&'static str; 12]) -> Self {
+    fn open(picks: Picks, allowed: [[bool; 12]; 2], caption: [&'static str; 12], config: &MatchConfig) -> Self {
         let first = |side: usize, from: usize| {
             (0..12).map(|i| (from + i) % 12).find(|&s| allowed[side][s]).unwrap_or(0)
         };
@@ -107,6 +111,7 @@ impl SelectScreen {
             caption,
             cursors: [first(0, 0), first(1, 1)],
             locked: [None, None],
+            arcade_cursors: config.preset != RulesetPreset::Faithful1987,
             styles: None,
             dramatic_styles: false,
             preferred_eras: [EraFamily::Sf1Plus; 2],
@@ -153,7 +158,7 @@ impl SelectScreen {
 
     /// Local: P1 and P2 pick at once.
     pub fn local(config: &MatchConfig, player_tables: &[TournamentFighter]) -> Self {
-        Self::open(Picks::Two, Self::allowed(config, player_tables), [""; 12])
+        Self::open(Picks::Two, Self::allowed(config, player_tables), [""; 12], config)
             .with_style_cards(config)
     }
 
@@ -182,7 +187,7 @@ impl SelectScreen {
                 }
             }
         }
-        Self::open(Picks::Sequential { cpu }, allowed, caption)
+        Self::open(Picks::Sequential { cpu }, allowed, caption, config)
             .with_style_cards(config)
     }
 
@@ -203,7 +208,7 @@ impl SelectScreen {
                 ""
             }
         });
-        Self::open(Picks::One, allowed, caption)
+        Self::open(Picks::One, allowed, caption, config)
     }
 
     pub(super) fn dramatic(config: &MatchConfig, player_tables: &[TournamentFighter], side: usize) -> Self {
@@ -451,24 +456,45 @@ impl SelectScreen {
     /// ROM's header font inside the gold frame, the large frames, the
     /// tiles, and the names in the ROM's 8×8 font.
     pub fn render(&self, font: &RomFont<'_>, busts: &[Option<Bust>; 12]) -> Frame {
-        self.render_named(font, busts, "PLAYER SELECT")
+        self.render_at(font, busts, 0)
     }
 
-    pub(super) fn render_named(&self, font: &RomFont<'_>, busts: &[Option<Bust>; 12], title: &str) -> Frame {
+    pub(super) fn render_at(&self, font: &RomFont<'_>, busts: &[Option<Bust>; 12], frame_no: u32) -> Frame {
+        self.render_named(font, busts, "PLAYER SELECT", frame_no, None)
+    }
+
+    pub(super) fn render_named(
+        &self,
+        font: &RomFont<'_>,
+        busts: &[Option<Bust>; 12],
+        title: &str,
+        frame_no: u32,
+        single_cursor: Option<(usize, bool)>,
+    ) -> Frame {
         let mut frame = framed(font, title, "");
         let argb = &mut frame.argb;
         let gold = font.pen(ink::GOLD_A, 2);
-        let cursor_color = [font.pen(ink::YELLOW, 0), font.pen(ink::P2_BLUE, 2)];
+        let cursor_color = if self.arcade_cursors {
+            cursor::COLORS
+        } else {
+            [font.pen(ink::YELLOW, 0), font.pen(ink::P2_BLUE, 2)]
+        };
         let side_ink = [ink::YELLOW, ink::P2_BLUE];
         let sides = if self.two_sides() { 2 } else { 1 };
+        // Solo pickers store their cursor in slot zero even when 2P is choosing.
+        let (single_player, single_locked) = single_cursor
+            .filter(|_| self.arcade_cursors)
+            .unwrap_or((0, false));
+        let player = |side| if self.two_sides() { side } else { single_player };
+        let locked = |side: usize| self.locked[side].is_some() || (side == 0 && single_locked);
 
         // The large frames: each side's fighter at the bust's own size,
         // centred (Local: P1 mirrored to face P2, as on the VS screen). A
         // locked side's frame is drawn in its colour, twice as thick.
         for side in 0..sides {
             let (px, py, pw, ph) = self.panel_rect(side);
-            let locked = self.locked[side].is_some();
-            let color = if locked { cursor_color[side] } else { gold };
+            let locked = locked(side);
+            let color = if locked { cursor_color[player(side)] } else { gold };
             for i in 0..if locked { 2 } else { 1 } {
                 outline(argb, px + i, py + i, pw - 2 * i, ph - 2 * i, color);
             }
@@ -508,7 +534,13 @@ impl SelectScreen {
             for side in 0..2 {
                 let name = self.fighter(side).name().to_ascii_uppercase();
                 let y = [36, 92][side];
-                font.text_px(argb, centre(labels[side].len()), y, labels[side], side_ink[side]);
+                let label = labels[side];
+                if self.arcade_cursors && matches!(label, "P1" | "P2") {
+                    fallback_text(argb, (mid_l + mid_r) / 2 - 3, y + 1,
+                        ["1P", "2P"][side], cursor::LABEL_LIGHT[side], 1);
+                } else {
+                    font.text_px(argb, centre(label.len()), y, label, side_ink[side]);
+                }
                 let color = if self.locked[side].is_some() { side_ink[side] } else { ink::BLUE };
                 font.text_px(argb, centre(name.len()), y + 12, &name, color);
                 if let Some(card) = &self.cards[side] {
@@ -558,16 +590,18 @@ impl SelectScreen {
             }
         }
 
-        // The cursors: P1's on its tile; P2's on its own, or inside P1's
-        // when they share one. A locked cursor is twice as thick. Training
-        // shows the opponent's cursor once P1's fighter is locked.
-        for side in 0..sides {
-            if side == 1 && self.active_side() == 0 && self.picks != Picks::Two {
+        // Training shows the opponent's cursor once P1's fighter is locked.
+        let visible = if self.picks == Picks::Two { sides } else { self.active_side() + 1 };
+        let shared = visible == 2 && self.cursors[0] == self.cursors[1];
+        let bright = (frame_no / 15) % 2 == 0;
+        for side in 0..visible {
+            let (x, y, w, h) = self.tile_rect(self.cursors[side]);
+            if self.arcade_cursors {
+                cursor::draw(argb, (x, y, w, h), player(side), shared, bright || locked(side));
                 continue;
             }
-            let (x, y, w, h) = self.tile_rect(self.cursors[side]);
-            let inset = if side == 1 && self.cursors[1] == self.cursors[0] { 2 } else { 0 };
-            let width = if self.locked[side].is_some() { 2 } else { 1 };
+            let inset = if side == 1 && shared { 2 } else { 0 };
+            let width = if locked(side) { 2 } else { 1 };
             for i in inset..inset + width {
                 outline(argb, x + i, y + i, w - 2 * i, h - 2 * i, cursor_color[side]);
             }

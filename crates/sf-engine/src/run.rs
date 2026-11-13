@@ -1556,6 +1556,8 @@ impl PowerOnMachine {
 
     /// A Training drill can supply P2's pad for this frame.
     pub(crate) fn step_with_training_pad(&mut self, scripted_p2: bool) {
+        self.program.toggle_state.era.gauge_drive_spends = [false; 3];
+        self.program.toggle_state.era.gauge_v_trigger_spends = [false; 3];
         if let Some(rules) = self.program.match_config.dramatic {
             self.fair_cpu = None;
             self.dramatic_cpu_press(rules);
@@ -1983,6 +1985,14 @@ impl PowerOnMachine {
 
     pub(crate) fn take_era_style_callouts(&mut self) -> [Option<sf_video::callouts::CalloutKind>; 2] {
         std::array::from_fn(|i| std::mem::take(&mut self.program.toggle_state.era.style_callouts[i]))
+    }
+
+    pub(crate) fn take_gauge_drive_spends(&mut self) -> [bool; 3] {
+        std::mem::take(&mut self.program.toggle_state.era.gauge_drive_spends)
+    }
+
+    pub(crate) fn take_gauge_v_trigger_spends(&mut self) -> [bool; 3] {
+        std::mem::take(&mut self.program.toggle_state.era.gauge_v_trigger_spends)
     }
 
     pub(crate) fn take_guard_crush_events(&mut self) -> [bool; 2] {

@@ -301,11 +301,12 @@ impl DramaticPicks {
         &self,
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
+        frame_no: u32,
         notice: Option<&str>,
     ) -> Frame {
         let mut frame = self
             .select()
-            .render_named(font, busts, PICK_TITLES[self.role]);
+            .render_named(font, busts, PICK_TITLES[self.role], frame_no, Some((self.picker(), false)));
         if let Some(notice) = notice {
             font.text_centred(&mut frame.argb, 26, notice, ink::YELLOW);
         }
@@ -436,9 +437,10 @@ impl DramaticGuest {
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
         stages: &[StageListing],
+        frame_no: u32,
         notice: Option<&str>,
     ) -> Frame {
-        let mut frame = self.select.render_named(font, busts, PICK_TITLES[1]);
+        let mut frame = self.select.render_named(font, busts, PICK_TITLES[1], frame_no, Some((1, self.locked)));
         if let Some(rules) = self.rules {
             let listed_stage = self.stage.and_then(|StagePick::Bank(index)| {
                 stages.iter().find(|stage| stage.index == index)

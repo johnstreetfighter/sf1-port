@@ -2371,14 +2371,14 @@ impl GameSession {
                 }
                 let frame = match screen {
                     Screen::Menu(m) => m.render(&font, self.title_logo.as_ref(), self.notice.as_deref()),
-                    Screen::Select(s) => s.render(&font, &self.busts),
+                    Screen::Select(s) => s.render_at(&font, &self.busts, self.frames),
                     Screen::Stage(s) => s.render(&font),
                     Screen::WorldTour(screen) => screen.render(&font, &self.busts, &self.world_tour_profile, self.frames, self.notice.as_deref()),
                     Screen::DramaticSetup(s) => s.render(&font, self.notice.as_deref()),
-                    Screen::DramaticPick(s) => s.render(&font, &self.busts, self.notice.as_deref()),
+                    Screen::DramaticPick(s) => s.render(&font, &self.busts, self.frames, self.notice.as_deref()),
                     Screen::DramaticGuest(s) => {
                         let stages = self.backgrounds.as_ref().map_or(&[][..], |bank| bank.listed_stages());
-                        s.render(&font, &self.busts, stages, self.notice.as_deref())
+                        s.render(&font, &self.busts, stages, self.frames, self.notice.as_deref())
                     }
                     Screen::Settings(s) => s.render(&font),
                     Screen::Dip(d) => d.render(&font),

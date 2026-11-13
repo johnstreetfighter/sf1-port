@@ -169,7 +169,7 @@ impl WorldTourScreen {
         notice: Option<&str>,
     ) -> Frame {
         if let Overlay::Select(select) = &self.overlay {
-            return select.render_named(font, busts, "TOUR FIGHTER");
+            return select.render_named(font, busts, "TOUR FIGHTER", frame_no, None);
         }
         let mut frame = (*self.backdrop).clone();
         draw_routes(&mut frame, profile, frame_no);

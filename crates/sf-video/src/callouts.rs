@@ -435,7 +435,7 @@ impl CalloutBoard {
 /// The fixed screen regions of the era HUD. None intersects another.
 pub mod regions {
     use super::{Side, WORD_SLOTS};
-    use crate::era_hud::{CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, CORNER_WIDTH};
+    use crate::era_hud::{CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, SIGNATURE_CORNER_WIDTH};
     use crate::render::{HEIGHT, WIDTH};
 
     /// A screen box: `w` × `h` pixels from (`x`, `y`).
@@ -525,7 +525,7 @@ pub mod regions {
     /// [`gauge_corner`] with the corner `lift` rows higher (see
     /// [`crate::era_hud::draw_lifted`]).
     pub fn gauge_corner_lifted(side: Side, lift: usize) -> Rect {
-        from_edge(side, HEIGHT - CORNER_BOTTOM - lift - CORNER_HEIGHT, CORNER_WIDTH, CORNER_HEIGHT)
+        from_edge(side, HEIGHT - CORNER_BOTTOM - lift - CORNER_HEIGHT, SIGNATURE_CORNER_WIDTH, CORNER_HEIGHT)
     }
 
     /// `side`'s call-out column, at mid-height in its own half.

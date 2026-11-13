@@ -16,7 +16,7 @@ use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
 use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
-use sf_video::era_hud::{EraGauge, GaugeArt};
+use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeRow, GaugeState};
 use sf_video::render::{
     capture_sprite_pose_with_art, render_frame, render_frame_edited, render_frame_staged_with_art,
     render_frame_staged_with_tints, Frame, SpriteArt, SpriteArtOverride, SpriteTint, TextEdits, TextSpan,
@@ -44,6 +44,10 @@ use crate::roster::{PlayMode, TournamentFighter};
 use crate::overlay::{gauge_lift, render_diagnostic_overlay_parts};
 use crate::run::{PowerOnMachine, PowerOnSnapshot};
 use crate::tasks::Io;
+
+mod gauge_effects;
+
+use gauge_effects::{Corner as GaugeCorner, GaugeEffects, Spends};
 
 /// The game flow's round start (`0x3ea3e`): Training's restart point.
 const ROUND_START: u32 = 0x3ea3e;
@@ -349,6 +353,7 @@ pub struct Fight {
     overlay: OverlayMode,
     /// The active gauge art from Settings or the pause box.
     gauge_art: GaugeArt,
+    gauge_effects: GaugeEffects,
     /// The machine at the start of the current round (`0x3ea3e`).
     round_start: Option<PowerOnSnapshot>,
     last_flow: u32,
@@ -413,6 +418,7 @@ pub struct FightSnapshot {
     pub round_start: Option<PowerOnSnapshot>,
     pub last_flow: u32,
     pub callouts: CalloutBoard,
+    pub(crate) gauge_effects: GaugeEffects,
     pub pending_callouts: Vec<CalloutEvent>,
     pub pending_combos: Vec<AnnouncerLine>,
     pub reader: FightReader,
@@ -516,7 +522,7 @@ impl Fight {
         let Self {
             machine, setup, country, black, over, continuing, round_start,
             last_flow, show, read, fed_reads,
-            sounds: _, overlay: _, gauge_art: _, callouts: _, pending_callouts: _,
+            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
         } = self;
@@ -559,7 +565,7 @@ impl Fight {
         // Exhaustive destructuring makes new wrapper fields require an audit.
         let Self {
             machine, setup, country, black, sounds, over, continuing,
-            overlay: _, gauge_art: _, selected_styles: _, round_start, last_flow, callouts,
+            overlay: _, gauge_art: _, gauge_effects, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
         } = self;
@@ -575,6 +581,7 @@ impl Fight {
             round_start: round_start.clone(),
             last_flow: *last_flow,
             callouts: callouts.clone(),
+            gauge_effects: *gauge_effects,
             pending_callouts: pending_callouts.clone(),
             pending_combos: pending_combos.clone(),
             reader: reader.clone(),
@@ -598,7 +605,7 @@ impl Fight {
     pub fn restore_netplay_snapshot(&mut self, snap: &FightSnapshot) {
         let FightSnapshot {
             frame: _, machine, setup, country, black, sounds, over, continuing,
-            round_start, last_flow, callouts, pending_callouts, pending_combos,
+            round_start, last_flow, callouts, gauge_effects, pending_callouts, pending_combos,
             reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails,
             show, coach, practice_meters,
         } = snap;
@@ -612,6 +619,7 @@ impl Fight {
         self.round_start.clone_from(round_start);
         self.last_flow = *last_flow;
         self.callouts.clone_from(callouts);
+        self.gauge_effects = *gauge_effects;
         self.pending_callouts.clone_from(pending_callouts);
         self.pending_combos.clone_from(pending_combos);
         self.reader.clone_from(reader);
@@ -702,6 +710,7 @@ impl Fight {
             continuing: None,
             overlay: OverlayMode::Off,
             gauge_art: GaugeArt::default(),
+            gauge_effects: GaugeEffects::default(),
             round_start: None,
             last_flow,
             callouts: CalloutBoard::new(),
@@ -904,6 +913,7 @@ impl Fight {
         self.moments.new_round();
         // The abandoned attempt's words go with it.
         self.callouts = CalloutBoard::new();
+        self.gauge_effects = GaugeEffects::default();
         self.pending_callouts.clear();
         self.show = None;
         self.coach = None;
@@ -945,6 +955,7 @@ impl Fight {
         }
         self.setup.config = config;
         self.machine.set_match_config(config);
+        self.gauge_effects = GaugeEffects::default();
     }
 
     pub(super) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
@@ -962,17 +973,38 @@ impl Fight {
         self.era_hud = hud;
     }
 
+    fn shared_ally_gauge(&self) -> bool {
+        self.setup.config.dramatic.is_some_and(|rules| {
+            rules.lifebar == crate::dramatic::LifebarMode::Shared
+        })
+    }
+
     /// Era gauges driven by the current native fighter state.
     pub fn era_hud(&self) -> EraHud {
         if self.era_hud != EraHud::NONE {
             return self.era_hud;
         }
         let [p1, p2] = self.machine.era_fighters();
-        let shared = self.setup.config.dramatic.is_some_and(|rules| {
-            rules.lifebar == crate::dramatic::LifebarMode::Shared
-        });
+        let left = if self.shared_ally_gauge() {
+            let mut team = p1.team_gauge();
+            let ally2 = &self.machine.dramatic_era_fighters()[2];
+            // Both views hold the shared reserve, but a running Custom
+            // Combo's countdown belongs to the ally who activated it.
+            if ally2.team_gauge().is_some_and(|gauge| matches!(gauge.main,
+                GaugeRow::Stock { state: GaugeState::Draining, .. }))
+            {
+                if let Some(gauge) = &mut team {
+                    if matches!(gauge.main, GaugeRow::Stock { .. }) {
+                        gauge.main = gauge.main.with_state(GaugeState::Draining);
+                    }
+                }
+            }
+            team
+        } else {
+            p1.gauge()
+        };
         EraHud {
-            p1: if shared { p1.team_gauge() } else { p1.gauge() },
+            p1: left,
             p2: p2.gauge(),
         }
     }
@@ -988,7 +1020,41 @@ impl Fight {
             return None;
         }
         self.machine.dramatic_era_fighters()[2].gauge()
-            .map(|gauge| self.callouts.ally2_gauge(gauge))
+    }
+
+    fn gauge_corners(&self, hud: EraHud, ally2: Option<EraGauge>) -> [Option<GaugeCorner>; 3] {
+        use crate::world_tour::native::{MissionKind, RuleModifier};
+
+        let shared = self.shared_ally_gauge();
+        let moves_disabled = self.setup.config.world_tour.is_some_and(|rules| {
+            rules.mission == MissionKind::RuleModifierTrial(RuleModifier::PureFootsies)
+        });
+        let fighters = self.era_combatants();
+        let corner = |side: usize, gauge: Option<EraGauge>, show_timer: bool| {
+            let gauge = gauge?;
+            let mut presentation = fighters.get(side)?.gauge_presentation(show_timer)?;
+            if moves_disabled {
+                presentation.main.ready = Fill::EMPTY;
+                if let Some(second) = &mut presentation.second {
+                    second.ready = Fill::EMPTY;
+                }
+            }
+            Some(GaugeCorner { gauge, presentation })
+        };
+        // Test and development fixtures supply untyped gauge rows.
+        let native_hud = self.era_hud == EraHud::NONE;
+        let mut p1 = if native_hud { corner(0, hud.p1, !shared) } else { None };
+        let p2 = if native_hud { corner(1, hud.p2, true) } else { None };
+        if let Some(team) = p1.as_mut().filter(|_| shared && !moves_disabled) {
+            if let Some(partner) = fighters[2].gauge_presentation(false) {
+                team.share_readiness(partner);
+            }
+        }
+        [p1, p2, corner(2, ally2, true)]
+    }
+
+    fn current_gauge_corners(&self) -> [Option<GaugeCorner>; 3] {
+        self.gauge_corners(self.era_hud(), self.ally2_gauge())
     }
 
     fn era_combatants(&self) -> &[crate::era_fight::EraFighterState] {
@@ -1061,6 +1127,7 @@ impl Fight {
     fn end_meter_practice(&mut self) {
         if let (Some(saved), Some(state)) = (self.practice_meters.take(), self.machine.training_era_fighter_mut()) {
             saved.restore(state);
+            self.gauge_effects.clear_side(0);
         }
     }
 
@@ -1520,13 +1587,19 @@ impl Fight {
                     hardware = render_diagnostic_overlay_parts(&hardware, &telemetry(), true, false);
                 }
                 let font = RomFont::new(&assets.gfx4, &assets.maincpu);
+                let [p1, p2, ally2] = self.gauge_corners(era_hud, ally2_gauge);
                 let hud = present(
                     PresentMode::Overhaul,
                     &hardware,
                     &OverhaulScene {
                         callouts,
                         hud: era_hud,
-                        ally2_gauge,
+                        gauge_presentation: [
+                            p1.map(|corner| self.gauge_effects.present(0, corner)),
+                            p2.map(|corner| self.gauge_effects.present(1, corner)),
+                        ],
+                        ally2_gauge: ally2_gauge.map(|gauge| self.callouts.ally2_gauge(gauge)),
+                        ally2_gauge_presentation: ally2.map(|corner| self.gauge_effects.present(2, corner)),
                         gauge_art: self.gauge_art,
                         hud_lift: gauge_lift(meter),
                         stage: Some(&stage),
@@ -1629,6 +1702,7 @@ impl Fight {
             }
             let scripted_p2 = self.practice_opponent();
             let p2 = scripted_p2.unwrap_or(p2);
+            let before_gauges = if in_fight { self.current_gauge_corners() } else { [None; 3] };
             let m = &mut self.machine;
             let [r, l, d, u] = p1.directions;
             m.set_p1_direction(r, l, d, u);
@@ -1638,6 +1712,10 @@ impl Fight {
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
             m.step_with_training_pad(scripted_p2.is_some());
+            let spends = Spends {
+                drive: m.take_gauge_drive_spends(),
+                v_trigger: m.take_gauge_v_trigger_spends(),
+            };
             for (side, kind) in Side::BOTH.into_iter().zip(m.take_era_style_callouts()) {
                 if let Some(kind) = kind {
                     self.pending_callouts.push(CalloutEvent::new(side, kind));
@@ -1690,6 +1768,8 @@ impl Fight {
                 self.over = true;
                 event = Some(FightEvent::ReturnedToAttract);
             }
+            let after_gauges = if flow == FIGHT_LOOP { self.current_gauge_corners() } else { [None; 3] };
+            self.gauge_effects.step(before_gauges, after_gauges, spends);
             // The fight reader reads the stepped frame; the counts it feeds
             // show in every overhaul fight, with their damage in Training.
             // In Training it reads the gate's hit record too, so hits the
