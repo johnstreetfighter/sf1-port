@@ -188,7 +188,11 @@ fn local_ledger_json_confirms_zero_untranslated_and_complete_note_dispositions()
     );
 
     let note_sites = ledger["note_sites"].as_array().expect("note_sites array");
-    assert_eq!(note_sites.len(), 27, "25 original note sites plus 2 extension-only raw-score guards");
+    assert_eq!(
+        note_sites.len(),
+        29,
+        "25 original note sites, 2 raw-score guards, and 2 separate score stream guards"
+    );
     for site in note_sites {
         let file = site["file"].as_str().unwrap_or("?");
         let line = site["line"].as_u64().unwrap_or(0);
