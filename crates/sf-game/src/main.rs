@@ -560,7 +560,7 @@ impl Driver for Game {
                 // The extended themes and the music pack are looked for only
                 // once the preset is an overhaul one, so Faithful 1987 reads
                 // nothing from the music pack; a preset changed in Settings
-                // is picked up before any fight can start.
+                // is picked up before the next frame can use a score.
                 if play.themes.is_none() && session.match_config().preset != RulesetPreset::Faithful1987 {
                     let folders: Vec<&Path> = play.rom_folders.iter().map(PathBuf::as_path).collect();
                     let themes = themes::load(session.match_config().preset, &play.audiocpu, &folders, log);
@@ -605,8 +605,8 @@ impl Driver for Game {
                     log.line(cat, body);
                 }
                 if let Some(s) = &play.sound {
-                    // The table is the music CPU's for an overhaul fight only,
-                    // handed over before the frame that may name a theme.
+                    // Give the music CPU the table before the frame that
+                    // may name a theme from it.
                     if out.tune_table != play.tune_table {
                         play.tune_table = out.tune_table;
                         let table = play.themes.iter().flatten().find(|_| out.tune_table);

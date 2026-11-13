@@ -75,6 +75,10 @@ impl WorldTourScreen {
         }
     }
 
+    pub(super) fn selecting_fighter(&self) -> bool {
+        matches!(self.overlay, Overlay::Select(_))
+    }
+
     pub(super) fn open_select(
         &mut self,
         config: &MatchConfig,

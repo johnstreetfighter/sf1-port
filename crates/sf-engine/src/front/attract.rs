@@ -8,6 +8,13 @@ use sf_video::render::{render_frame, Frame};
 use sf_video::romset::Assets;
 
 use crate::machine::MachineState;
+use crate::run::PowerOnMachine;
+
+/// The attract's completed title logo, from its appearance over the wall
+/// through both parts of the following wait before the rankings.
+pub(super) fn showing_title(machine: &PowerOnMachine) -> bool {
+    matches!(super::cabinet::flow_position(machine), 0x3cda8 | 0x3b588 | 0x3cdb8)
+}
 
 /// The ROM's `INSERT COIN` text block, which slot 3 blinks 20 frames on and
 /// 20 off in attract mode (`0x3f3a4..0x3f40e`).

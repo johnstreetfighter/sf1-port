@@ -42,14 +42,13 @@ the committed score is `art/themes/test-theme.score`.
   1987 tune. Scores opting into the explicit `voice` form below add native
   stream controls for fine pitch, time and tone; they share these same
   priority and lifetime paths.
-- **Who gets it** (ticket #199, `ST7`). Not the launcher at start-up: the
-  music CPU is one object for the whole session while the preset can change
-  between fights, so the table is handed to it fight by fight. The session
-  says `FrameOutput::tune_table` while a fight under an overhaul preset runs
-  (its boxes included), never in the attract, the faithful cabinet or a
-  Faithful 1987 fight. The launcher then gives the CPU the table
-  (`Audio::set_tune_table`, `GameSound::set_tune_table`) before the first
-  frame of the fight and takes it away after. The change is pushed in order
+- **Who gets it** (ticket #199, `ST7`). The music CPU runs for the entire
+  session, and the preset can change between fights. The session
+  says `FrameOutput::tune_table` while an overhaul fight runs (its boxes
+  included) or the local title theme is active. The faithful cabinet and
+  Faithful 1987 use the original sound ROM. The launcher gives the CPU the
+  table (`Audio::set_tune_table`, `GameSound::set_tune_table`) before the
+  first frame that can send an extended command. The change is pushed in order
   with the frames, so the CPU has it for the command of the next frame
   whatever it is doing; it takes it where it reads a command (0x019d),
   between handlers (`MusicCpu::sync_extension`). A take-away waits while a
@@ -72,6 +71,13 @@ is the test theme's). A score that does not convert, or whose command is
 taken, is left out and logged with its file name (`music pack: file: why`);
 the rest load. The pack is looked for and read only once the configured
 preset is an overhaul one, so Faithful 1987 reads nothing from it.
+
+**Menu music.** In the overhaul front end, the title screen and Main Menu
+share the score on command `0x7e`. The SFII World Warrior title arrangement
+uses that command in the local music pack. If the score is unavailable, the
+title keeps its original sound and the menu keeps its sound effects.
+Character Select plays the original SF1 country-select tune (`0x34`) from
+the sound ROM and works with or without a music pack.
 
 **A theme that is missing.** A stage whose record names an extended command
 the table does not answer (no pack, a pack without the score, a score that

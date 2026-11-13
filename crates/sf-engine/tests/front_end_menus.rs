@@ -231,6 +231,51 @@ fn start_opens_the_main_menu_in_every_attract_phase_and_esc_resumes_the_attract(
 }
 
 #[test]
+fn title_theme_plays_for_the_logo_and_hands_back_to_the_attract() {
+    let Some(a) = assets() else { return };
+    let mut s = session(a);
+    s.set_title_theme_available(true);
+    for f in 1..=1287 {
+        let out = s.step(idle());
+        assert!(!out.tune_table, "extended table before the title on frame {f}");
+    }
+
+    let title = s.step(idle());
+    assert_eq!((title.sound_latch, title.tune_table), (sound::TITLE_THEME, true));
+    let menu = s.step(start());
+    assert_eq!(menu.screen, "main menu");
+    assert_eq!((menu.sound_latch, menu.tune_table), (sound::IDLE, true));
+    let title = s.step(back());
+    assert_eq!(title.screen, "attract");
+    assert_eq!((title.sound_latch, title.tune_table), (sound::IDLE, true));
+
+    for _ in 1290..=1647 {
+        let out = s.step(idle());
+        assert_eq!((out.sound_latch, out.tune_table), (sound::IDLE, true));
+    }
+    let stop = s.step(idle());
+    assert_eq!((stop.sound_latch, stop.tune_table), (sound::STOP_MUSIC, false));
+    let ranking = s.step(idle());
+    assert_eq!((ranking.sound_latch, ranking.tune_table), (0x39, false));
+}
+
+#[test]
+fn country_select_music_works_without_the_local_title_score() {
+    let Some(a) = assets() else { return };
+    let mut s = session(a);
+    s.step(idle());
+    tap(&mut s, start());
+    tap(&mut s, confirm());
+    let select = s.step(confirm());
+    assert_eq!((select.screen, select.sound_latch), ("select", sound::CONFIRM));
+    let music = s.step(idle());
+    assert_eq!((music.sound_latch, music.tune_table), (sound::COUNTRY_SELECT, false));
+    let back = s.step(back());
+    assert_eq!((back.screen, back.sound_latch), ("single player", sound::STOP_MUSIC));
+    assert_eq!(s.step(idle()).sound_latch, sound::IDLE);
+}
+
+#[test]
 fn start_waits_for_the_ram_clear_and_every_start_source_opens_the_menu() {
     let Some(_) = assets() else { return };
     let mut s = session(load_assets(ROMS, MANIFEST).unwrap());

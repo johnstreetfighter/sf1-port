@@ -1,6 +1,6 @@
 //! The extended tune table at launch (ADR-0009, tickets #195 and #199): the
 //! committed themes and the music pack's, converted against the player's
-//! sound ROM, as the table the music CPU runs with in overhaul fights.
+//! sound ROM, as the table the music CPU runs with for overhaul music.
 //! - Faithful 1987 gets no table and its music pack is never opened: under
 //!   that preset [`load`] returns nothing without looking for the pack.
 //! - The pack is looked for beside the ROM set, then beside each other
@@ -14,9 +14,8 @@
 //!
 //! The music CPU is one object for the whole session while the preset can
 //! change between fights, so the table is not part of its program from
-//! launch: the launcher hands it over only for a fight under an overhaul
-//! preset (`FrameOutput::tune_table`, `Audio::set_tune_table`) and takes it
-//! away after the fight.
+//! launch. The launcher hands it over when an overhaul fight or the title
+//! theme needs it (`FrameOutput::tune_table`, `Audio::set_tune_table`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -24,13 +23,13 @@ use std::sync::Arc;
 use sf_audio::music_pack::{find_pack, pack_folders, MusicPack};
 use sf_audio::tunes::{self, ExtendedTunes};
 use sf_engine::config::RulesetPreset;
-use sf_engine::front::GameSession;
+use sf_engine::front::{sound, GameSession};
 use sf_video::background_bank::FALLBACK_THEME;
 pub use sf_video::background_bank::RYU_THEME;
 
 use crate::log::Log;
 
-/// The themes the music CPU can play in an overhaul fight.
+/// The themes the music CPU can play under an overhaul preset.
 #[derive(Clone, Debug)]
 pub struct Themes {
     /// The table's bytes, as `Audio::set_tune_table` takes them.
@@ -98,10 +97,14 @@ fn themes(table: ExtendedTunes, log: &mut Log) -> Themes {
 }
 
 /// Tell `session` which extended themes the music CPU can play (none, when
-/// there are no themes), and log each stage that falls back to a 1987
-/// theme for want of its own.
+/// there are no themes). Log when the title or a stage's score is missing.
 pub fn apply(themes: Option<&Themes>, session: &mut GameSession, log: &mut Log) {
     let commands = themes.map(|t| t.commands.as_slice()).unwrap_or_default();
+    let has_title = commands.contains(&sound::TITLE_THEME);
+    session.set_title_theme_available(has_title);
+    if !has_title {
+        log.line("themes", &format!("no title theme ({:#04x}) in the music pack", sound::TITLE_THEME));
+    }
     let cause = match themes {
         Some(_) => "which the extended tune table (the committed themes and the music pack) does not hold",
         None => "and there is no extended tune table",
