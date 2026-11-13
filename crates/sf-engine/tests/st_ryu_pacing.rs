@@ -1,4 +1,4 @@
-//! World Super Turbo 940223, Turbo 1, Ryu pacing witnesses for spec #138.
+//! World Super Turbo 940223 Ryu pacing witnesses for spec #138.
 
 #[path = "support/alpha.rs"]
 mod support;
@@ -50,7 +50,7 @@ fn walk_distance(fight: &mut Fight, assets: &Assets) -> i32 {
     positions[20] - positions[4]
 }
 
-fn jab(fight: &mut Fight, assets: &Assets) -> (usize, usize) {
+fn jab(fight: &mut Fight, assets: &Assets) -> (usize, usize, usize) {
     let mut active = None;
     let mut active_ticks = 0;
     for tick in 0..24 {
@@ -68,8 +68,11 @@ fn jab(fight: &mut Fight, assets: &Assets) -> (usize, usize) {
             active_ticks += 1;
         }
         if ryu.move_id == WALK_BACK {
-            assert_eq!(active_ticks, 4);
-            return (active.expect("whiffed standing LP became active"), tick);
+            return (
+                active.expect("whiffed standing LP became active"),
+                active_ticks,
+                tick,
+            );
         }
     }
     panic!("held retreat never took over from standing LP");
@@ -118,7 +121,7 @@ fn fireball(fight: &mut Fight, assets: &Assets) -> usize {
 }
 
 #[test]
-fn super_turbo_ryu_matches_world_turbo_one_pacing() {
+fn super_turbo_ryu_matches_world_pacing_targets() {
     for (loadout, walk, recovery) in [
         (Loadout::Standard, 60..=60, 33),
         (Loadout::Old, 60..=63, 32),
@@ -135,17 +138,19 @@ fn super_turbo_ryu_matches_world_turbo_one_pacing() {
             back_up(&mut fight, assets);
 
             let distance = walk_distance(&mut fight.clone(), assets);
-            let (active, neutral) = jab(&mut fight.clone(), assets);
+            let (active, active_ticks, retreat) = jab(&mut fight.clone(), assets);
             let hadoken = fireball(&mut fight, assets);
             let context = format!("{loadout:?} Ryu vs {opponent:?} Ken");
             eprintln!(
-                "{context}: walk {distance} px/16 ticks, jab {active}/{neutral}, Hadoken {hadoken}"
+                "{context}: walk {distance} px/16 ticks, jab {active}/{active_ticks}/{retreat}, Hadoken {hadoken}"
             );
             assert!(
                 walk.contains(&distance),
                 "{context}: {distance} px/16 ticks"
             );
-            assert_eq!((active, neutral), (4, 11), "{context}: jab");
+            // Turbo 2: elapsed ticks from the first sampled LP to the live
+            // box and accepted retreat, plus the number of live samples.
+            assert_eq!((active, active_ticks, retreat), (2, 3, 9), "{context}: jab");
             assert_eq!(hadoken, recovery, "{context}: Hadoken recovery");
             assert!(fight.machine().unrecovered().is_empty());
         }

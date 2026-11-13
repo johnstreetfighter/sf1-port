@@ -1630,12 +1630,12 @@ fn write_st_ryu_far_jab(rom: &[u8], region: &mut Region, rom_table: u32) {
     let mut header = std::array::from_fn(|offset| rom_b(rom, source + offset as u32));
     let mut active = rom_record(rom, 0x09ca);
     let mut recovery = rom_record(rom, 0x09ea);
-    // World 940223 at Turbo 1. The translated durations count from zero.
-    // The port's final neutral transition also takes a tick, giving 4 ticks
-    // to the first live box and 11 to the first accepted walk input.
-    header[0xe] = 3;
-    active[1] = 3;
-    recovery[1] = 1;
+    // World 940223 at Turbo 2. The translated durations count from zero.
+    // From the first LP sample, the box goes live at tick 2 for three ticks,
+    // and the first accepted walk input is at tick 9.
+    header[0xe] = 1;
+    active[1] = 2;
+    recovery[1] = 2;
     let stream = region.put(&active);
     region.put(&recovery);
     region.end();
