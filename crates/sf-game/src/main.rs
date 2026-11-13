@@ -375,6 +375,7 @@ impl Game {
         // The announcer's voice pack, looked for as the art pack is.
         let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
 
+        let (satsui_body, satsui_fire) = evil_ryu_art::satsui_art(&assets);
         let mut config = self.config.take().unwrap_or_default();
         if let Some(playtest) = self.evil_ryu_playtest {
             config = MatchConfig::definitive();
@@ -383,6 +384,7 @@ impl Game {
         }
         let saved_world_tour = files::load_world_tour(&self.app_dir, log);
         let mut session = GameSession::new(assets, config)
+            .with_satsui_art(satsui_body, satsui_fire)
             .with_settings(self.settings.clone())
             .with_world_tour_profile(saved_world_tour.clone())
             .with_looks(self.catalogue.names())

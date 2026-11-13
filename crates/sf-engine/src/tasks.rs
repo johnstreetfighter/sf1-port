@@ -30,6 +30,7 @@
 //! the task body. An occupied slot whose position is not translated is
 //! refused rather than guessed.
 
+use crate::config::{AwakeningSide, EvilRyuPlaytest, SatsuiAwakening};
 use crate::fighter::{Bus, CPU_STRUCT, DRAMATIC_ALLY2, P1_STRUCT, P2_STRUCT};
 use crate::data_bank::arcade_text;
 use crate::roster::{PlayMode, StagePick, TournamentFighter};
@@ -4408,6 +4409,7 @@ fn flow(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yie
             // 0x3ec58: clear the object slots, then the round
             // initialisation (0x3e77c): the stage position, and the round
             // announcement (event 5).
+            start_satsui_awakening(bus);
             clear_objects(bus);
             stage_reset(bus);
             request_event(bus, 5);
@@ -5206,6 +5208,7 @@ fn place_players(bus: &mut Bus) {
 /// with its `speed_sleep`) into `0x3e704`; outside demo play, request the stage
 /// intro (event 4) and wait at 0x422e0.
 fn next_opponent(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
+    bus.toggle_state.satsui_awakening = None;
     clear_fighters(bus);
     if bus.rb(MODE_DEMO) == 0 {
         request_stage_palette(bus);
@@ -6119,6 +6122,7 @@ fn game_over_screen(bus: &mut Bus, at: &mut Flow) -> Yield {
 /// `0x3ccae` (`Flow::AttractJoin`: spawn slot 3 at `0x3f374` and enter
 /// `0x3ccc2` `attract_loop_head`, F66).
 fn game_over_reset(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
+    bus.toggle_state.satsui_awakening = None;
     bus.wb(MODE_DEMO, 0);
     for addr in [0xffc00a, 0xffc002, 0xffc008, 0xffc009, 0xffc004, 0xffc003] {
         bus.wb(addr, 0);
@@ -6139,6 +6143,7 @@ fn game_over_reset(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &mut F
 /// to `0x0600`, requests palette `0x1a268` at offset `0x200`, and sleeps 1
 /// frame (`0x3f046`).
 fn continue_start(bus: &mut Bus, at: &mut Flow) -> Yield {
+    bus.toggle_state.satsui_awakening = None;
     if (bus.rb(0xffc000) as i8) <= (bus.rb(0xffc003) as i8) {
         return game_over_screen(bus, at);
     }
@@ -6398,6 +6403,45 @@ fn after_round(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
     speed_sleep(bus, io)
 }
 
+fn start_satsui_awakening(bus: &mut Bus) {
+    use TournamentFighter::{Ryu, Sagat};
+
+    let player = match bus.rb(GAME_MODE) {
+        2 => AwakeningSide::Player,
+        4 => AwakeningSide::PlayerTwo,
+        _ => return,
+    };
+    if bus.roster.mode != PlayMode::Arcade
+        || !bus.roster.full_cast
+        || !bus.era_rules.enabled
+        || bus.data_bank.is_none()
+        || bus.rb(MODE_DEMO) == 0
+        || bus.evil_ryu_playtest.is_some()
+        || bus.dramatic_rules().is_some()
+        || bus.world_tour_rules().is_some()
+        || bus.toggle_state.satsui_awakening.is_some()
+        || bus.rb(0xffc003) != 4
+        || bus.rb(0xffc004) != 1
+        || bus.rb(0xffc00a) != 2
+        || bus.rb(player.fighter_struct() + 8) != 1
+        || bus.rb(CPU_STRUCT + 8) != 1
+    {
+        return;
+    }
+
+    let side = match (bus.roster.p1, bus.arcade_opponent()) {
+        (Ryu, Some(Sagat)) => player,
+        (Sagat, Some(Ryu)) => AwakeningSide::Cpu,
+        _ => return,
+    };
+    let Some(fighter) = bus.era_state(side.fighter_struct()) else { return };
+    bus.toggle_state.satsui_awakening = Some(SatsuiAwakening {
+        side,
+        profile: EvilRyuPlaytest::for_awakening(fighter.style),
+        surge_pending: true,
+    });
+}
+
 /// 0x3ee04: three rounds played: the fighter with more wins takes the
 /// match (0x3ec6e / 0x3ec70: 0xffc009 = 1 P1, 2 P2, 4 CPU); equal wins
 /// leave no winner (0xffc009 = 0), which the one-player modes treat as the
@@ -6650,7 +6694,7 @@ fn round_hud(bus: &mut Bus) -> bool {
     if dramatic {
         bus.toggle_state.dramatic.reset_round();
     }
-    if bus.evil_ryu_playtest.is_some() {
+    if bus.evil_ryu_playtest.is_some() || bus.toggle_state.satsui_awakening.is_some() {
         bus.toggle_state.ashura_motion = [[0; 2]; 2];
         bus.toggle_state.raging_demon = Default::default();
     }

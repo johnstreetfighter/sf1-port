@@ -9,7 +9,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_video::busts::{decode_select_busts, Bust};
 use sf_video::compositor::RomFont;
-use sf_video::render::{render_frame, Frame};
+use sf_video::render::{render_frame, Frame, SpriteArt};
 use sf_video::romset::Assets;
 use sf_video::background_bank::{shown_stages, BackgroundBank, MissingTheme, RELEASED_WAVES};
 use sf_video::stage_preview::StagePreviews;
@@ -20,7 +20,7 @@ use super::attract::{FreePlay, TitleLogo};
 use super::cabinet::Players;
 use super::dramatic_select::{boot_flag, DramaticGuest, DramaticPicks, DramaticSetupScreen};
 use super::faithful::{Cabinet, CabinetEvent, DipScreen};
-use super::fight::{first_opponent_flag, Fight, FightDips, FightEvent, FightKind, FightSetup};
+use super::fight::{first_opponent_flag, Fight, FightDips, FightEvent, FightKind, FightSetup, SatsuiArt};
 use super::menu::{MenuItem, MenuScreen};
 use super::online::{OnlineAction, OnlineScreen};
 use super::moves::MovesPanel;
@@ -256,6 +256,8 @@ pub struct GameSession {
     /// cabinet and Faithful 1987 fights always draw with `assets`, the
     /// ROM's own.
     bank_assets: Option<Arc<Assets>>,
+    /// Alternate sprite art for the active Arcade awakening.
+    satsui_art: Option<Arc<SatsuiArt>>,
     /// The extended background bank, given to the machine of every fight
     /// under an overhaul preset (never the attract's, the cabinet's or a
     /// Faithful 1987 fight's).
@@ -362,6 +364,7 @@ impl GameSession {
         GameSession {
             assets: Arc::new(assets),
             bank_assets: None,
+            satsui_art: None,
             backgrounds: None,
             data_bank: None,
             previews: OnceLock::new(),
@@ -411,6 +414,12 @@ impl GameSession {
             net_spectators: spectator::State::default(),
             log: Vec::new(),
         }
+    }
+
+    /// Install alternate art for the awakened fighter and its red fireball.
+    pub fn with_satsui_art(mut self, body: SpriteArt, fire: SpriteArt) -> Self {
+        self.satsui_art = Some(Arc::new(SatsuiArt { body, fire }));
+        self
     }
 
     /// The host loaded the look `look`, whose parameters are `params` (in
@@ -979,6 +988,7 @@ impl GameSession {
         });
         match Fight::start_banked(&self.assets.maincpu, setup, flag, backgrounds, data) {
             Ok(mut fight) => {
+                fight.set_satsui_art(self.satsui_art.clone());
                 fight.set_selected_styles(styles);
                 if setup.config.dramatic.is_some() && self.net_setup.is_some() {
                     if let Some(connection) = &self.net_connection {
@@ -2358,14 +2368,27 @@ fn fight_assets<'a>(rom: &'a Arc<Assets>, bank: &'a Option<Arc<Assets>>, preset:
 fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel {
     let setup = fight.setup();
     let machine = fight.machine();
-    let player = if side == 0 { P1_STRUCT } else { P2_STRUCT };
+    let game_mode = machine.work_ram()[(crate::fighter::GAME_MODE - crate::fighter::WORK_BASE) as usize];
+    let player = if side == 0 && game_mode != 4 { P1_STRUCT } else { P2_STRUCT };
     let facing_right = facing_right(machine.work_ram(), &machine.state.objectram, player);
     let fighter = fight.player_fighter(side);
     let player_table = machine.data_bank().is_some_and(|b| b.table(fighter).is_some());
-    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, fight.pad_era_state(side));
+    let state = fight.pad_era_state(side);
+    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, state);
     let panel = MovesPanel::from_entries(fighter, entries);
-    let panel = if let (0, Some(playtest)) = (side, setup.config.evil_ryu_playtest) {
-        panel.with_evil_ryu_playtest_moves(playtest)
+    let panel = if let Some(form) = machine.satsui_awakening().filter(|form| form.side.fighter_struct() == player) {
+        use crate::era::{EraFamily, Loadout, Revision};
+
+        let base_kit = state.style.revision != Revision::St || state.style.loadout != Loadout::Standard;
+        if form.profile == crate::config::EvilRyuPlaytest::UltraSf2
+            && !matches!(state.style.family, EraFamily::Sf1Plus | EraFamily::Sf2)
+        {
+            panel.with_evil_ryu_name()
+        } else {
+            panel.with_evil_ryu_moves(form.profile, form.profile == crate::config::EvilRyuPlaytest::UltraSf2 && base_kit)
+        }
+    } else if let (0, Some(playtest)) = (side, setup.config.evil_ryu_playtest) {
+        panel.with_evil_ryu_moves(playtest, false)
     } else {
         panel
     };

@@ -1,10 +1,10 @@
-//! ROM-derived appearance for the private Evil Ryu fight.
+//! ROM-derived appearances for Evil Ryu and the private Kage fights.
 
 use sf_engine::config::EvilRyuPlaytest;
 use sf_video::background_bank::{BackgroundBank, LayerView, MapLayer, MAP_ROWS};
 use sf_video::busts::BLOCK_TILES;
 use sf_video::decode::decode_sprite_tile;
-use sf_video::render::VISAREA_X;
+use sf_video::render::{SpriteArt, VISAREA_X};
 use sf_video::romset::Assets;
 use sf_video::sprite_bank::{encode_sprite_tile, sprite_slot};
 use sf_video::vs_screens::SCREEN_COLUMNS;
@@ -91,6 +91,28 @@ const EYE_PIXELS: &[(u16, &[(usize, usize)])] = &[
     (0x0662, &[(0, 14)]),
 ];
 
+/// Prepare sparse art for the Arcade awakening without changing the ROM.
+pub(crate) fn satsui_art(assets: &Assets) -> (SpriteArt, SpriteArt) {
+    let mut body = [0; 16];
+    body[..PENS.len()].copy_from_slice(&PENS);
+    let mut fire = std::array::from_fn(|pen| {
+        let at = HADOKEN_PALETTE + pen * 2;
+        u16::from_be_bytes([assets.maincpu[at], assets.maincpu[at + 1]])
+    });
+    fire[1..1 + SHAKUNETSU_PENS.len()].copy_from_slice(&SHAKUNETSU_PENS);
+    let eyes = EYE_PIXELS.iter().map(|&(code, pixels)| eye_tile(assets, code, pixels));
+    (SpriteArt::new(body, eyes), SpriteArt::new(fire, []))
+}
+
+fn eye_tile(assets: &Assets, code: u16, pixels: &[(usize, usize)]) -> (usize, [[u8; 16]; 16]) {
+    let slot = sprite_slot(code);
+    let mut pens = decode_sprite_tile(&assets.gfx3, slot);
+    for &(x, y) in pixels {
+        pens[y][x] = EYE_PEN;
+    }
+    (slot, pens)
+}
+
 /// Change only the spike's loaded assets. Ryu is the only fighter in the
 /// demo who uses this body palette and these tiles.
 pub(crate) fn apply(assets: &mut Assets, profile: EvilRyuPlaytest) {
@@ -110,12 +132,7 @@ pub(crate) fn apply(assets: &mut Assets, profile: EvilRyuPlaytest) {
 
     let plane_size = assets.gfx3.len() / 2;
     for &(code, pixels) in EYE_PIXELS {
-        let slot = sprite_slot(code);
-        let mut pens = decode_sprite_tile(&assets.gfx3, slot);
-        for &(x, y) in pixels {
-            pens[y][x] = EYE_PEN;
-        }
-
+        let (slot, pens) = eye_tile(assets, code, pixels);
         let [first, second] = encode_sprite_tile(&pens);
         let at = slot * first.len();
         assets.gfx3[at..at + first.len()].copy_from_slice(&first);
