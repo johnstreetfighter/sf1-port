@@ -20,7 +20,11 @@ It needs Python 3.11, ffmpeg on the PATH and the release `sf-audio` binary (`SF_
 The optional Japanese voice uses the same commands with `--voice japanese`. Its
 35 lines cover the 13 classic tournament announcements and the 22 overhaul
 call-outs. `tools/voice/japanese.json` defines the original Voice Design persona,
-pronunciation overrides, and direction for each line.
+pronunciation overrides, direction for each line, and processing for previews
+and takes. The Japanese profile plays at 1.3x tempo before trimming.
+The pipeline applies Hall reverb at 4 kHz and normalizes the result to -2 dBFS
+before ADPCM encoding. Editing the processing re-encodes archived takes
+locally and keeps the existing take picks.
 
 ```bash
 python tools/voice/pipeline.py --voice japanese status

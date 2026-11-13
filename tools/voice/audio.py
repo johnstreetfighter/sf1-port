@@ -82,20 +82,38 @@ def ffmpeg():
 
 
 def prepare(raw, out_4k, spec=PROCESS):
-    """raw (any rate, mono 16-bit) -> out_4k: trimmed, at spec's rate, peak-normalised."""
+    """Prepare a take for 4 kHz ADPCM, with optional tempo and reverb."""
     rate, samples = read_wav(raw)
-    trimmed = trim(samples, rate, spec["trim_below_peak_db"], spec["pad_ms"])
+    original_seconds = len(samples) / rate
     out_4k = pathlib.Path(out_4k)
     out_4k.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        src = pathlib.Path(tmp) / "trimmed.wav"
-        dst = pathlib.Path(tmp) / "down.wav"
+        scratch = pathlib.Path(tmp)
+        tempo = spec.get("tempo", 1)
+        if tempo != 1:
+            paced = scratch / "paced.wav"
+            subprocess.run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(raw),
+                            "-af", f"atempo={tempo}", "-c:a", "pcm_s16le", str(paced)], check=True)
+            rate, samples = read_wav(paced)
+        src = scratch / "trimmed.wav"
+        dst = scratch / "down.wav"
+        trimmed = trim(samples, rate, spec["trim_below_peak_db"], spec["pad_ms"])
         write_wav(src, rate, trimmed)
         subprocess.run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(src),
                         "-ac", "1", "-ar", str(spec["rate"]), "-c:a", "pcm_s16le", str(dst)], check=True)
         r, down = read_wav(dst)
+        if reverb := spec.get("reverb"):
+            delays = "|".join(map(str, reverb["delays_ms"]))
+            decays = "|".join(map(str, reverb["decays"]))
+            gain_in = reverb.get("input_gain", 1)
+            gain_out = reverb.get("output_gain", 1)
+            wet = scratch / "reverb.wav"
+            write_wav(dst, r, normalise(down, spec["peak_db"]))
+            subprocess.run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(dst),
+                            "-af", f"aecho={gain_in}:{gain_out}:{delays}:{decays}", "-c:a", "pcm_s16le", str(wet)], check=True)
+            r, down = read_wav(wet)
     write_wav(out_4k, r, normalise(down, spec["peak_db"]))
-    return {"seconds_raw": round(len(samples) / rate, 3), "seconds": round(len(down) / r, 3)}
+    return {"seconds_raw": round(original_seconds, 3), "seconds": round(len(down) / r, 3)}
 
 
 class Codec:

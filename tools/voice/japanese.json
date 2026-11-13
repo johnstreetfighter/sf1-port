@@ -2,6 +2,33 @@
   "id": "japanese",
   "name": "Japanese announcer",
   "about": "An original Japanese-accented English voice for all 35 tournament announcements and fight call-outs.",
+  "processing": {
+    "reverb": {
+      "input_gain": 0.65,
+      "output_gain": 0.8,
+      "delays_ms": [
+        29,
+        43,
+        61,
+        83,
+        111,
+        139,
+        179,
+        227
+      ],
+      "decays": [
+        0.25,
+        0.2,
+        0.17,
+        0.135,
+        0.1,
+        0.075,
+        0.06,
+        0.045
+      ]
+    },
+    "tempo": 1.3
+  },
   "voice": {
     "source": "ai",
     "vendor": "elevenlabs",
@@ -12,11 +39,11 @@
     },
     "seed": 34800,
     "design": {
-      "description": "An original late-1980s Japanese arcade martial-arts announcer. An adult native speaker from Japan with a very strong Japanese accent when pronouncing English loanwords, using clear katakana syllables. Insert audible short vowels after final stops: Fight is FAI-toh with a separate audible toh, Round is RA-un-doh, and Time Up is TA-i-mu AP-pu. Keep the Japanese rhythm and tapped R. A firm, low-mid masculine voice, strong dry projection, short tournament calls and quick silence between phrases.",
+      "description": "An original late-1980s Japanese arcade martial-arts ring announcer. Adult native speaker from Japan. His bright, ringing upper-mid tenor jumps up on the first syllable like an excited arcade start signal. Every call is an exuberant, projected shout to the arena: a quick punch of energy, then a clean cut. Keep the strong katakana pronunciation and tapped R. Fight is FAI-toh, with a short audible toh. Round is RA-un-doh. Time Up is TA-i-mu AP-pu. Leave a beat between calls and give each its own attack.",
       "preview_text": "Fait-oh! Raundo Wan! Fait-oh! Ja-pan! Kauntaa! Paafekuto! Taaimu Appu! Raundo Tsuu! Suupaa! Ten Hitto Konbo! Geemu Oobaa!",
       "model": "eleven_ttv_v3",
       "guidance_scale": 8,
-      "loudness": 0.5,
+      "loudness": 0.7,
       "seed": 34800
     }
   },

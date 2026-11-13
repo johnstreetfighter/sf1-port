@@ -421,7 +421,13 @@ class JapaneseVoiceTest(Fixture):
         vendor = FakeVendor()
 
         pipeline.design(paths, vendor=vendor, codec=self.codec, max_credits=1000, log=quiet)
+        persona_doc = json.loads(original_persona)
+        persona_doc["voice"]["design"]["description"] = "A different design description."
+        pipeline.write_json(persona, persona_doc)
         pipeline.save_voice(paths, 2, vendor=vendor, log=quiet)
+        self.assertEqual(vendor.saved[0]["voice_description"], vendor.designs[0]["voice_description"])
+        self.assertEqual(pipeline.read_json(persona), persona_doc)
+        persona.write_bytes(original_persona)
         pipeline.run(paths, vendor=vendor, codec=self.codec, max_credits=10000, log=quiet)
 
         self.assertEqual(persona.read_bytes(), original_persona)
@@ -432,6 +438,7 @@ class JapaneseVoiceTest(Fixture):
         page = (archive / "sheet.html").read_text(encoding="utf-8")
         self.assertIn("<audio id='fight' preload='auto' src='rom/fight.heard.wav'>", page)
         self.assertLess(page.index("The ROM's FIGHT! alone"), page.index("<h2>The voice</h2>"))
+        self.assertRegex(page, r"design/round1_preview2\.reverb(?:\.tempo)?\.heard\.wav")
         self.assertIn("--voice japanese build-pack", page)
         self.assertIn("picks_japanese.json", page)
         self.assertEqual(len(list((archive / "takes" / "fight").glob("*.vox"))), 3)
@@ -444,6 +451,18 @@ class JapaneseVoiceTest(Fixture):
         self.assertTrue((pack / "manifest.json").exists())
         self.assertEqual(ringside_pack.read_text(encoding="utf-8"), "Ringside pack")
         self.assertFalse(self.paths.picks.exists())
+
+        # A different effect invalidates processed takes, never the vendor requests.
+        persona_doc["processing"]["reverb"]["decays"][0] = 0.2
+        pipeline.write_json(persona, persona_doc)
+        self.assertEqual(pipeline.status(paths)["actions"], {"process": 105})
+        with self.assertRaises(ValueError):
+            pipeline.check_picks(paths, pipeline.load_picks(paths))
+        fresh_vendor = FakeVendor()
+        result = pipeline.run(paths, vendor=fresh_vendor, codec=self.codec, log=quiet)
+        self.assertEqual(fresh_vendor.calls, [])
+        self.assertEqual(len(result["encoded"]), 105)
+        self.assertEqual(len(pipeline.check_picks(paths, pipeline.load_picks(paths))["lines"]), 35)
 
 
 class KeyTest(Fixture):
@@ -583,6 +602,38 @@ class EndToEndTest(Fixture):
         self.assertEqual(vox, d["vox"].read_bytes(), "the pack holds the take the maintainer heard")
         self.assertEqual(manifest["lines"]["super"]["crc32"], f"{zlib.crc32(vox):08x}")
         self.assertTrue((self.paths.archive / "pack-plan.json").exists())
+
+    def test_hall_reverb_survives_downsampling_without_changing_the_peak(self):
+        root = self.paths.repo
+        raw = root / "voice.wav"
+        dry = root / "dry.wav"
+        wet = root / "wet.wav"
+        audio.write_wav(raw, 24_000, tone_pcm("Fight!"))
+        audio.prepare(raw, dry)
+        speaker = pipeline.read_json(REPO / "tools" / "voice" / "japanese.json")
+        spec = pipeline.processing_spec(speaker) | {"tempo": 1}
+        audio.prepare(raw, wet, spec)
+        rate, dry_samples = audio.read_wav(dry)
+        wet_rate, wet_samples = audio.read_wav(wet)
+        self.assertEqual((rate, wet_rate), (4000, 4000))
+        self.assertEqual(len(wet_samples) - len(dry_samples), 908)  # 227 ms at 4 kHz
+        self.assertNotEqual(wet_samples[:len(dry_samples)], dry_samples)
+        self.assertGreater(max(abs(s) for s in wet_samples[len(dry_samples):]), 0)
+        self.assertAlmostEqual(max(abs(s) for s in wet_samples) / 32767, 10 ** (-2 / 20), places=2)
+
+    def test_optional_tempo_shortens_a_take_before_adding_the_hall_tail(self):
+        root = self.paths.repo
+        raw = root / "voice.wav"
+        steady = root / "steady.wav"
+        paced = root / "paced.wav"
+        audio.write_wav(raw, 24_000, tone_pcm("Fight! Fight! Fight! Fight!"))
+        spec = pipeline.processing_spec(pipeline.read_json(REPO / "tools" / "voice" / "japanese.json"))
+        dry = audio.prepare(raw, steady, spec | {"tempo": 1, "reverb": None})
+        fast = audio.prepare(raw, paced, spec | {"tempo": 1.3, "reverb": None})
+        hall = audio.prepare(raw, paced, spec | {"tempo": 1.3})
+        self.assertEqual(hall["seconds_raw"], dry["seconds_raw"])
+        self.assertLess(fast["seconds"], dry["seconds"] * 0.9)
+        self.assertAlmostEqual(hall["seconds"] - fast["seconds"], 0.227, places=3)
 
     def test_japanese_pack_round_trips_all_35_stems_through_the_real_codec(self):
         root = self.paths.repo

@@ -27,9 +27,9 @@ A run:
    prompt, every setting, the seed and the key. Takes are never deleted.
 3. Processes each take (free, from its archived original): trims the
    silence, downsamples to 4 kHz mono 16-bit, normalises the peak
-   (audio.PROCESS), encodes it to 4-bit MSM5205 ADPCM with the repo's own
-   encoder and decodes it back for listening. Changing audio.PROCESS
-   re-processes every take; nothing is paid again.
+   (audio.PROCESS and the voice's processing options), encodes it to 4-bit
+   MSM5205 ADPCM with the repo's encoder and decodes it back for listening.
+   Changing processing re-encodes archived takes without another vendor call.
 4. Writes the listening sheet: every take after the ROM's own FIGHT!.
 
 The API key is read only by el.py, from the ELEVENLABS_API_KEY user
@@ -113,10 +113,10 @@ class Paths:
         return self.takes / stem / f"{key[:16]}.wav"
 
 
-def derived(raw):
+def derived(raw, suffix=""):
     """A take's (or preview's) processed files, beside its archived original."""
     raw = pathlib.Path(raw)
-    base = raw.with_suffix("")
+    base = raw.with_name(raw.stem + suffix)
     return {"wav4k": base.with_name(base.name + ".4k.wav"), "vox": base.with_name(base.name + ".vox"),
             "heard": base.with_name(base.name + ".heard.wav"), "proc": base.with_name(base.name + ".proc.json")}
 
@@ -206,8 +206,12 @@ def take_key(line, voice, take):
                    "output_format": FORMAT})
 
 
-def proc_key(key):
-    return digest({"take": key, "process": audio.PROCESS})
+def processing_spec(speaker):
+    return audio.PROCESS | speaker.get("processing", {})
+
+
+def proc_key(key, spec):
+    return digest({"take": key, "process": spec})
 
 
 # --- Planning ----------------------------------------------------------------------------
@@ -234,6 +238,7 @@ class Plan:
     voice: dict
     items: list
     takes: int
+    processing: dict
     rounds: list = field(default_factory=list)
 
     def by(self, *actions):
@@ -266,12 +271,12 @@ def _changed(paths, line, voice, take):
     return "changed: " + ", ".join(what or ["request"])
 
 
-def processed(raw):
-    """Whether a take's processed files are current."""
-    d = derived(raw)
+def processed(raw, key, spec, suffix=""):
+    """Whether the archived audio has been encoded with this processing."""
+    d = derived(raw, suffix)
     if not all(d[k].exists() for k in ("wav4k", "vox", "heard", "proc")):
         return False
-    return read_json(d["proc"]).get("proc_key") == proc_key(read_json(pathlib.Path(raw).with_suffix(".json"))["take_key"])
+    return read_json(d["proc"]).get("proc_key") == proc_key(key, spec)
 
 
 def design_rounds(paths):
@@ -282,7 +287,9 @@ def design_rounds(paths):
 
 def plan(paths):
     lines, takes = load_lines(paths)
-    voice = load_speaker(paths)["voice"]
+    speaker = load_speaker(paths)
+    voice = speaker["voice"]
+    spec = processing_spec(speaker)
     items = []
     for line in lines:
         for t in range(1, takes + 1):
@@ -293,11 +300,11 @@ def plan(paths):
             raw = paths.take_file(line.stem, key)
             if not raw.exists():
                 items.append(Item(line, t, "generate", _changed(paths, line, voice, t), key))
-            elif not processed(raw):
+            elif not processed(raw, key, spec):
                 items.append(Item(line, t, "process", "not yet encoded at its current processing", key))
             else:
                 items.append(Item(line, t, "keep", "", key))
-    return Plan(voice, items, takes, design_rounds(paths))
+    return Plan(voice, items, takes, spec, design_rounds(paths))
 
 
 def estimate(paths):
@@ -359,13 +366,32 @@ def _need_budget(max_credits, planned, what):
 
 # --- Processing (free) -----------------------------------------------------------------------
 
-def process(paths, raw, codec, key):
-    d = derived(raw)
-    info = audio.prepare(raw, d["wav4k"])
+def process(raw, codec, key, spec, suffix=""):
+    d = derived(raw, suffix)
+    info = audio.prepare(raw, d["wav4k"], spec)
     enc = codec.encode(d["wav4k"], d["vox"], d["heard"])
-    write_json(d["proc"], {"take_key": key, "proc_key": proc_key(key), "process": audio.PROCESS,
+    write_json(d["proc"], {"take_key": key, "proc_key": proc_key(key, spec), "process": spec,
                            "nibbles": enc["nibbles"], "crc32": enc["crc32"], "seconds": enc["seconds"],
                            "seconds_raw": info["seconds_raw"], "made": now()})
+
+
+def preview_processing(raw, round_, spec):
+    # Keep the dry preview available when adding or removing reverb.
+    suffix = ".reverb" if spec.get("reverb") else ""
+    if spec.get("tempo", 1) != 1:
+        suffix += ".tempo"
+    return digest({"design": round_, "file": raw.name}), suffix
+
+
+def prepare_preview(raw, round_, codec, spec):
+    key, suffix = preview_processing(raw, round_, spec)
+    heard = derived(raw, suffix)["heard"]
+    if processed(raw, key, spec, suffix):
+        return heard
+    if raw.is_file() and codec.ready() and audio.shutil.which("ffmpeg"):
+        process(raw, codec, key, spec, suffix)
+        return heard
+    return None
 
 
 def ensure_fight(paths, codec, log=print):
@@ -421,7 +447,7 @@ def run(paths, vendor=None, codec=None, max_credits=None, stop_at=STOP_AT, log=p
                 log(f"  generated {item.line.stem} take {item.take} ({item.why})")
     done = []
     for item in chosen + p.by("process"):
-        process(paths, paths.take_file(item.line.stem, item.key), codec, item.key)
+        process(paths.take_file(item.line.stem, item.key), codec, item.key, p.processing)
         done.append(f"{item.line.stem}/{item.take}")
         log(f"  encoded {item.line.stem} take {item.take}")
     if deferred:
@@ -459,9 +485,11 @@ def design(paths, vendor=None, codec=None, max_credits=None, stop_at=STOP_AT, lo
         write_json(paths.design / f"round{n}.json", {"request": body, "output_format": FORMAT, "text": text,
                                                      "previews": out, "made": now()})
     codec = codec or _codec(paths)
+    spec = processing_spec(record)
     for prev in out:
         raw = paths.design / prev["file"]
-        process(paths, raw, codec, digest({"design": n, "file": prev["file"]}))
+        key, suffix = preview_processing(raw, n, spec)
+        process(raw, codec, key, spec, suffix)
     log(f"design round {n}: {len(out)} previews in {paths.design}")
     write_sheet(paths, codec, log)
     return n
@@ -480,7 +508,8 @@ def save_voice(paths, preview, round_=None, vendor=None, log=print):
     record = load_speaker(paths)
     v = record["voice"]
     name = "the Japanese announcer" if paths.voice == "japanese" else "the announcer"
-    body = {"voice_name": f"sf1-port - {name}", "voice_description": v["design"]["description"],
+    description = chosen["request"]["voice_description"]
+    body = {"voice_name": f"sf1-port - {name}", "voice_description": description,
             "generated_voice_id": prev["generated_voice_id"]}
     vendor = vendor or ElevenLabs(paths, log)
     v["voice_id"] = vendor.save_voice(body)
@@ -509,8 +538,13 @@ def write_sheet(paths, codec=None, log=print):
     for r in p.rounds:
         previews = []
         for i, prev in enumerate(r["previews"], 1):
-            heard = derived(paths.design / prev["file"])["heard"]
-            previews.append({"n": i, "heard": _rel(paths, heard) if heard.exists() else None,
+            raw = paths.design / prev["file"]
+            # Ringside keeps serving its archived previews without re-encoding.
+            if paths.voice == "japanese":
+                heard = prepare_preview(raw, r["round"], codec, p.processing)
+            else:
+                heard = derived(raw)["heard"]
+            previews.append({"n": i, "heard": _rel(paths, heard) if heard and heard.exists() else None,
                              "save": paths.command(f"design --save {i} --round {r['round']}")})
         rounds.append({"round": r["round"], "previews": previews})
     lines = {}
@@ -540,12 +574,13 @@ def check_picks(paths, picks):
     if not isinstance(picks, dict) or not isinstance(picks.get("lines"), dict):
         raise ValueError('picks must be {"format": 1, "lines": {...}}')
     lines = {x.stem for x in load_lines(paths)[0]}
+    spec = processing_spec(load_speaker(paths))
     for stem, pick in picks["lines"].items():
         if stem not in lines:
             raise ValueError(f"{stem} is not one of the lines")
         key = pick.get("take_key", "")
         raw = paths.take_file(stem, key) if len(key) >= 16 else None
-        if raw is None or not raw.exists() or not processed(raw):
+        if raw is None or not raw.exists() or not processed(raw, key, spec):
             raise ValueError(f"{stem}: no encoded take {key[:16]}")
     return {"format": 1, "lines": {s: {"take": p["take"], "take_key": p["take_key"]}
                                    for s, p in sorted(picks["lines"].items())}}
