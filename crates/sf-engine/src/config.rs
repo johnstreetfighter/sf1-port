@@ -301,7 +301,7 @@ impl crate::canonical::Canonical for CoreToggleState {
             neg_edge_latch, recovery_buffer, tracker_release_age, dp_connected,
             human_attack_frames, air_adj_frames_1, air_adj_rem_1,
             air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic, era,
-            ashura_motion, raging_demon, missing_ryu_theme: _,
+            ashura_motion, raging_demon, satsui_awakening, missing_ryu_theme: _,
         } = self;
         out.tag("CoreToggleState.v3");
         neg_edge_latch.encode(out);
@@ -324,6 +324,9 @@ impl crate::canonical::Canonical for CoreToggleState {
         }
         if *raging_demon != RagingDemonState::default() {
             raging_demon.encode(out);
+        }
+        if let Some(awakening) = satsui_awakening {
+            awakening.encode(out);
         }
         // A pending music-pack fallback log note is local diagnostic state.
     }
@@ -480,7 +483,62 @@ impl EvilRyuPlaytest {
     pub(crate) fn is_sf4(self) -> bool {
         self.is_ae2012() || self == Self::Usf4
     }
+
+    pub(crate) fn for_awakening(style: crate::era::StylePick) -> Self {
+        use crate::era::{Loadout, Revision};
+
+        match (style.revision, style.loadout) {
+            (Revision::Sfz2, _) => Self::Alpha2,
+            (Revision::Sfz3, Loadout::AIsm) => Self::Alpha3A,
+            (Revision::Sfz3, Loadout::VIsm) => Self::Alpha3V,
+            (Revision::Sfz3, Loadout::XIsm) => Self::Alpha3X,
+            (Revision::Ae2012, Loadout::Ultra1) => Self::Ae2012,
+            (Revision::Ae2012, Loadout::Ultra2) => Self::Ae2012Ultra2,
+            (Revision::Usf4, _) => Self::Usf4,
+            (Revision::Sf6, _) => Self::Sf6,
+            _ => Self::UltraSf2,
+        }
+    }
 }
+
+crate::canonical::canonical_enum!(EvilRyuPlaytest, "EvilRyuKitProfile.v1";
+    UltraSf2 => 0, Alpha2 => 1, Alpha3A => 2, Alpha3V => 3, Alpha3X => 4,
+    Ae2012 => 5, Ae2012Ultra2 => 6, Usf4 => 7, Kage => 8, KageII => 9, Sf6 => 10,
+);
+
+/// The fighter who awakens in the Arcade Thailand decider.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AwakeningSide {
+    Player,
+    PlayerTwo,
+    Cpu,
+}
+
+impl AwakeningSide {
+    pub const fn fighter_struct(self) -> u32 {
+        match self {
+            Self::Player => crate::fighter::P1_STRUCT,
+            Self::PlayerTwo => crate::fighter::P2_STRUCT,
+            Self::Cpu => crate::fighter::CPU_STRUCT,
+        }
+    }
+}
+
+crate::canonical::canonical_enum!(AwakeningSide, "AwakeningSide.v1";
+    Player => 0, PlayerTwo => 1, Cpu => 2,
+);
+
+/// Active transformation and move profile for the current Arcade match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SatsuiAwakening {
+    pub side: AwakeningSide,
+    pub profile: EvilRyuPlaytest,
+    pub(crate) surge_pending: bool,
+}
+
+crate::canonical::canonical_struct!(SatsuiAwakening, "SatsuiAwakening.v1", {
+    side, profile, surge_pending,
+});
 
 /// Session-level match configuration combining a [`RulesetPreset`] and [`CoreToggles`] (`#94`, `O3`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1646,6 +1704,8 @@ pub struct CoreToggleState {
     pub(crate) ashura_motion: [[u8; 2]; 2],
     /// Private Demon command progress and the current round's throw state.
     pub(crate) raging_demon: RagingDemonState,
+    /// Round-three Arcade transformation, cleared when the match is left.
+    pub(crate) satsui_awakening: Option<SatsuiAwakening>,
     /// Stage tune command a stand-in fight fell back to when Ryu's theme
     /// (`RYU_THEME`, `0x41`) was not in the playable extended tunes
     /// (SP15, `#267`).

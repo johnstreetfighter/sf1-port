@@ -2,7 +2,11 @@
 //! transcribed from sf.cpp @ mame0289 (video_start, draw_sprites,
 //! screen_update, get_*_tile_info).
 
-use sf_video::render::{render_frame, HEIGHT, WIDTH};
+use sf_video::compositor::PaletteTint;
+use sf_video::render::{
+    render_frame, render_frame_staged_with_art, SpriteArt, SpriteArtOverride, SpriteTint,
+    TextEdits, HEIGHT, WIDTH,
+};
 use sf_video::romset::Assets;
 use sf_video::scene::SceneState;
 
@@ -46,6 +50,34 @@ fn disabled_layers_fall_back_to_palette_entry_zero() {
     let frame = render_frame(&assets, &scene);
     assert_eq!(frame.argb[0], 0xffff0000);
     assert_eq!(frame.argb[WIDTH * HEIGHT - 1], 0xffff0000);
+}
+
+#[test]
+fn alternate_sprite_art_applies_only_to_its_entry_and_keeps_the_tint() {
+    let assets = empty_assets();
+    let mut scene = empty_scene();
+    scene.active = 0x80;
+    scene.objectram[4..8].copy_from_slice(&[0, 16, 0, 64]);
+    scene.objectram[0x44..0x48].copy_from_slice(&[0, 16, 0, 80]);
+    set_palette_entry(&mut scene, 512, 0x0f0);
+
+    let mut palette = [0; 16];
+    palette[1] = 0xf80;
+    let mut replacement = [[0; 16]; 16];
+    replacement[0][0] = 1;
+    replacement[0][1] = 15;
+    let art = SpriteArt::new(palette, [(0, replacement)]);
+    let art = [SpriteArtOverride { entries: 0..0x40, art: &art }];
+    let tint = PaletteTint { color: 0xff0000ff, strength: 64 };
+    let tints = [SpriteTint { entries: 0..0x40, tint }];
+    let (frame, stage) = render_frame_staged_with_art(&assets, &scene, &TextEdits::default(), &tints, &art);
+
+    assert_eq!(frame.argb[0], tint.apply(0xffff8800));
+    assert_eq!(frame.argb[1], 0xff000000);
+    assert_eq!(frame.argb[16], 0xff00ff00);
+    assert!(!stage[0]);
+    assert!(stage[1]);
+    assert!(!stage[16]);
 }
 
 /// Screen pixel (0,0) is bitmap (64,16) = text tile (8,2) = videoram word

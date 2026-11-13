@@ -3,24 +3,25 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use sf_engine::combo::throw::{DAMAGE as THROW_DAMAGE, GET_UP_MOVE, RANGE as THROW_RANGE, THROWN_MOVE, THROW_MOVE};
-use sf_engine::config::{EvilRyuPlaytest, MatchConfig, RulesetPreset};
-use sf_engine::data_bank::{ALPHA_COUNTER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT, GROUND, SF2_SUPER_SLOT, SF2_SPECIAL_SLOT};
+use sf_engine::config::{AwakeningSide, EvilRyuPlaytest, MatchConfig, RulesetPreset};
+use sf_engine::data_bank::{ALPHA_COUNTER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT, DataBank, GROUND, SF2_SUPER_SLOT, SF2_SPECIAL_SLOT};
 use sf_engine::era::{EraFamily, Loadout, Revision};
 use sf_engine::moves::{ButtonClass, Dir, MoveInput, Strength, REGISTRY};
 use sf_engine::fighter::{
     CPU_STRUCT, EVIL_RYU_ASHURA_BACK, EVIL_RYU_ASHURA_FORWARD, EVIL_RYU_RAGING_DEMON, P1_STRUCT,
 };
-use sf_engine::front::cabinet::flow_position;
-use sf_engine::front::fight::Fight;
+use sf_engine::front::cabinet::{flow_position, Players, STAGE_START};
+use sf_engine::front::fight::{Fight, FightDips, FightKind, FightSetup};
 use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
-use sf_engine::roster::TournamentFighter;
+use sf_engine::roster::{PlayMode, TournamentFighter};
 use sf_engine::tasks::TIME_DIGITS;
 use sf_host::art::{find_pack, pack_folders, RECIPES, REVIEWS};
 use sf_host::roms::{self, Candidate};
 use sf_video::announcer::AnnouncerLine;
-use sf_video::art::{load_art_from, ArtSources};
+use sf_video::art::{load_art_from, Art, ArtSources};
 use sf_video::background_bank::{BackgroundBank, LayerView};
 use sf_video::compositor::PaletteTint;
 use sf_video::era_hud::{pens, EraGauge, Fill, GaugeRow, GaugeState, BAR_WIDTH, CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, MAIN_ROW, SECOND_ROW};
@@ -73,8 +74,11 @@ fn assert_evil_ryu_label(session: &GameSession, frame: &Frame) {
     } else {
         b"EVIL RYU"
     };
-    let scene = machine.state.scene();
-    let row = 5;
+    assert_fighter_label(session.fight().unwrap(), session.assets(), frame, 5, word);
+}
+
+fn assert_fighter_label(fight: &Fight, assets: &Assets, frame: &Frame, row: usize, word: &[u8]) {
+    let scene = fight.machine().state.scene();
     let first = if word.len() > 7 { 21 } else { 22 };
     let source = 2 * (row * 64 + 22);
     let colour =
@@ -100,7 +104,7 @@ fn assert_evil_ryu_label(session: &GameSession, frame: &Frame) {
             })
             .collect(),
     };
-    let expected = render_frame_edited(session.assets(), &scene, &edits);
+    let expected = render_frame_edited(assets, &scene, &edits);
     for row in y..y + 8 {
         let start = row * WIDTH + x;
         let label = start..start + word.len() * 8;
@@ -555,11 +559,11 @@ fn fight_with_meter(fight: &Fight, meter: u8) -> Fight {
     fight
 }
 
-fn boot_spike(profile: EvilRyuPlaytest) -> (GameSession, Frame) {
+fn spike_assets() -> (Assets, Art) {
     let rom_dir = std::env::var_os("SF_EVIL_RYU_ROMS").map(PathBuf::from).unwrap_or_else(|| {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tools/reference/local/roms/sf")
     });
-    let mut assets = roms::find(&[Candidate {
+    let assets = roms::find(&[Candidate {
         label: rom_dir.display().to_string(),
         path: Some(rom_dir.clone()),
     }]).expect("the private playtest requires the local SF1 ROM set").assets;
@@ -570,16 +574,23 @@ fn boot_spike(profile: EvilRyuPlaytest) -> (GameSession, Frame) {
         reviews: Some(&REVIEWS),
         pack: Ok(&pack),
     }).expect("the shipped poses and throw streams load");
+    (assets, art)
+}
+
+fn boot_spike(profile: EvilRyuPlaytest) -> (GameSession, Frame) {
+    let (mut assets, art) = spike_assets();
     let mut bank = BackgroundBank::new();
     bank.add_vs_screens(&assets).unwrap();
     let stock_view = bank.view(&vs_key("Ryu", "Sagat")).unwrap();
     evil_ryu_vs::install(&assets, &mut bank, profile).unwrap();
     let spike_view = bank.view(&vs_key(profile.display_name(), "Sagat")).unwrap();
     let spike_palette = bank.palette(spike_view.palette).unwrap().to_vec();
+    let (satsui_body, satsui_fire) = evil_ryu_art::satsui_art(&assets);
     evil_ryu_art::apply(&mut assets, profile);
     let mut config = MatchConfig::definitive();
     config.evil_ryu_playtest = Some(profile);
     let mut session = GameSession::new(assets, config)
+        .with_satsui_art(satsui_body, satsui_fire)
         .with_sprite_bank(&art.bank)
         .with_player_tables(&art.catalogues)
         .with_background_bank(bank);
@@ -3387,5 +3398,167 @@ fn sf6_evil_ryu_uses_drive_and_critical_art_against_sagat() {
         "SHINKU HADOKEN", "SHIN HASHOGEKI", "METSU SHORYUKEN", "SHUN GOKU SATSU",
         "ASHURA SENKU FORWARD", "ASHURA SENKU BACKWARD", "RYUSOKYAKU", "OD RYUSOKYAKU"] {
         assert!(rows.iter().any(|row| row.starts_with(name)), "SF6 Evil Ryu's Moves includes {name}");
+    }
+}
+
+const ARCADE_STAGE: usize = (0xffc003 - WORK_RAM) as usize;
+const ARCADE_MATCH: usize = (0xffc004 - WORK_RAM) as usize;
+const ARCADE_ROUND: usize = (0xffc00a - WORK_RAM) as usize;
+
+fn awakening_arcade(
+    assets: &Assets,
+    data: &Arc<DataBank>,
+    backgrounds: &Arc<BackgroundBank>,
+    fighter: TournamentFighter,
+    preset: RulesetPreset,
+    match_in_thailand: u8,
+) -> Fight {
+    let mut config = MatchConfig::from_preset(preset);
+    config.roster.mode = PlayMode::Arcade;
+    config.roster.p1 = fighter;
+    config.p2_fair_cpu = fighter == TournamentFighter::Sagat;
+    let mut fight = Fight::start_banked(
+        &assets.maincpu,
+        FightSetup {
+            kind: FightKind::Arcade,
+            players: Players::One,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        },
+        Some(0),
+        Some(backgrounds.clone()),
+        Some(data.clone()),
+    ).expect("normal Arcade country select reaches a stage");
+    assert_eq!(flow_position(fight.machine()), STAGE_START);
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    // Skip the first eight ladder matches, then let native intro and result
+    // tasks run every round of the selected Thailand matchup.
+    snapshot.machine.work[ARCADE_STAGE] = 4;
+    snapshot.machine.work[ARCADE_MATCH] = match_in_thailand;
+    fight.restore_netplay_snapshot(&snapshot);
+    advance_to_arcade_round(&mut fight, assets, 0);
+    fight
+}
+
+fn advance_to_arcade_round(fight: &mut Fight, assets: &Assets, round: u8) -> Frame {
+    let idle = PlayerInputs::default();
+    for _ in 0..1800 {
+        let frame = fight.step(assets, idle, idle, false).frame;
+        let machine = fight.machine();
+        if flow_position(machine) == FIGHT_LOOP && machine.work_ram()[ARCADE_ROUND] == round {
+            assert!(machine.unrecovered().is_empty());
+            return frame;
+        }
+    }
+    panic!("Arcade did not reach round {}: {:?}", round + 1, fight.machine().task_positions());
+}
+
+fn finish_arcade_round_on_time(fight: &mut Fight, player_wins: bool) {
+    let loser = if player_wins { CPU_STRUCT } else { P1_STRUCT };
+    let side = usize::from(player_wins);
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    let time = (TIME_DIGITS - WORK_RAM) as usize;
+    let life = (loser + 6 - WORK_RAM) as usize;
+    snapshot.machine.work[time..time + 3].fill(0);
+    snapshot.machine.work[life..life + 2].copy_from_slice(&[1, 0]);
+    snapshot.machine.toggle_state.era.fighters[side].sub_hp = 20;
+    fight.restore_netplay_snapshot(&snapshot);
+}
+
+fn arcade_round_wins(fight: &Fight) -> [u8; 2] {
+    [P1_STRUCT, CPU_STRUCT].map(|ps| fight.machine().work_ram()[(ps + 8 - WORK_RAM) as usize])
+}
+
+fn awakened_ashura_starts(fight: &Fight, assets: &Assets) -> bool {
+    let idle = PlayerInputs::default();
+    let mut attempt = fight.clone();
+    let input = MoveInput {
+        motion: &[Dir::Forward, Dir::Down, Dir::DownForward],
+        button: ButtonClass::Kick,
+    };
+    let facing_right = fighter_object(&attempt, P1_STRUCT)[0x37] & 4 == 0;
+    input.frames(facing_right, Strength::Light).into_iter().any(|pad| {
+        attempt.step(assets, pad, idle, false);
+        attempt.fight_read().fighters[0].move_id == EVIL_RYU_ASHURA_FORWARD
+    })
+}
+
+#[test]
+fn arcade_thailand_decider_awakens_only_the_ryu_side() {
+    use TournamentFighter::{Adon, Ken, Ryu, Sagat};
+
+    let (rom, art) = spike_assets();
+    let data = Arc::new(DataBank::build(&rom.maincpu, &art.catalogues));
+    let mut backgrounds = BackgroundBank::new();
+    backgrounds.add_vs_screens(&rom).unwrap();
+    backgrounds.add_ending_screens(&rom).unwrap();
+    let backgrounds = Arc::new(backgrounds);
+    let assets = rom.with_background_bank(&backgrounds).with_sprite_bank(&art.bank);
+    let idle = PlayerInputs::default();
+    for (fighter, opponent, match_in_thailand, preset, expected) in [
+        (Ryu, Sagat, 1, RulesetPreset::DefinitiveOverhaul, Some(AwakeningSide::Player)),
+        (Sagat, Ryu, 1, RulesetPreset::DefinitiveOverhaul, Some(AwakeningSide::Cpu)),
+        (Ken, Sagat, 1, RulesetPreset::DefinitiveOverhaul, None),
+        (Ryu, Adon, 0, RulesetPreset::DefinitiveOverhaul, None),
+        (Ryu, Sagat, 1, RulesetPreset::Faithful1987, None),
+    ] {
+        let mut fight = awakening_arcade(&assets, &data, &backgrounds, fighter, preset, match_in_thailand);
+        assert_eq!(fight.machine().arcade_opponent(), Some(opponent));
+        assert_eq!(fight.player_fighter(0), fighter);
+        assert!(fight.machine().satsui_awakening().is_none());
+        assert_eq!(arcade_round_wins(&fight), [0, 0]);
+        if expected == Some(AwakeningSide::Player) {
+            assert_fighter_label(&fight, &assets, &fight.render(&assets), 5, b"RYU");
+            assert!(!awakened_ashura_starts(&fight, &assets));
+        }
+        finish_arcade_round_on_time(&mut fight, true);
+        let frame = advance_to_arcade_round(&mut fight, &assets, 1);
+        assert!(fight.machine().satsui_awakening().is_none());
+        assert_eq!(arcade_round_wins(&fight), [1, 0]);
+        if expected == Some(AwakeningSide::Player) {
+            assert_fighter_label(&fight, &assets, &frame, 5, b"RYU");
+            assert!(!awakened_ashura_starts(&fight, &assets));
+            let mut straight_win = fight.clone();
+            finish_arcade_round_on_time(&mut straight_win, true);
+            for _ in 0..600 {
+                straight_win.step(&assets, idle, idle, false);
+                assert!(straight_win.machine().satsui_awakening().is_none());
+            }
+            assert_ne!(straight_win.machine().work_ram()[ARCADE_ROUND], 2, "a 2–0 win never starts the decider");
+        }
+        finish_arcade_round_on_time(&mut fight, false);
+        let before = fight.save_netplay_snapshot(0);
+        let frame = advance_to_arcade_round(&mut fight, &assets, 2);
+        assert_eq!(arcade_round_wins(&fight), [1, 1]);
+        assert_eq!(fight.player_fighter(0), fighter, "the original roster pick stays selected");
+        assert_eq!(fight.machine().satsui_awakening().map(|awakening| awakening.side), expected,
+            "{fighter:?} versus {opponent:?} with {preset:?}");
+
+        if let Some(side) = expected {
+            let awakening = fight.machine().satsui_awakening().unwrap();
+            assert_eq!(awakening.profile, EvilRyuPlaytest::UltraSf2);
+            let (index, row) = if side == AwakeningSide::Player { (0, 5) } else { (1, 7) };
+            let [p1, p2] = fight.machine().era_fighters();
+            assert_eq!([p1, p2][index].style.revision, Revision::Sf1Plus);
+            assert_eq!([p1, p2][index].max_sub_hp, EVIL_RYU_MAX_HP);
+            assert_eq!([p1, p2][index].sub_hp, EVIL_RYU_MAX_HP);
+            assert_fighter_label(&fight, &assets, &frame, row, b"EVIL RYU");
+            assert_eq!(awakened_ashura_starts(&fight, &assets), side == AwakeningSide::Player);
+            let checksum = fight.state_checksum();
+            fight.restore_netplay_snapshot(&before);
+            advance_to_arcade_round(&mut fight, &assets, 2);
+            assert_eq!(fight.state_checksum(), checksum, "rollback repeats the same awakening");
+            if side == AwakeningSide::Cpu {
+                let mut jab = idle;
+                jab.buttons[0] = true;
+                fight.step(&assets, jab, idle, false);
+                assert!(fight.fight_read().fighters[0].attacking(), "Sagat still answers the human pad");
+                assert!((0..300).any(|_| {
+                    fight.step(&assets, idle, idle, false);
+                    fight.fight_read().fighters[1].attacking()
+                }), "the awakened CPU opponent still attacks without a human pad");
+            }
+        }
     }
 }

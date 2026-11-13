@@ -170,7 +170,7 @@ impl MovesPanel {
         self
     }
 
-    pub(super) fn with_evil_ryu_playtest_moves(mut self, playtest: EvilRyuPlaytest) -> Self {
+    pub(super) fn with_evil_ryu_moves(mut self, playtest: EvilRyuPlaytest, base_kit: bool) -> Self {
         if playtest.is_kage() || playtest == EvilRyuPlaytest::Sf6 {
             self.display_name = playtest.display_name();
             self.playtest = Some(playtest);
@@ -264,7 +264,7 @@ impl MovesPanel {
                     motion: &[Dir::Back, Dir::Down, Dir::DownBack], button: ashura_button,
                 }, ashura_label),
             ]);
-            if matches!(playtest, EvilRyuPlaytest::UltraSf2 | EvilRyuPlaytest::Alpha3X) {
+            if !base_kit && matches!(playtest, EvilRyuPlaytest::UltraSf2 | EvilRyuPlaytest::Alpha3X) {
                 let at = at + 2;
                 panel.lines.splice(at..at, [
                     Line::Heading("SUPER (FULL GAUGE)"),
@@ -338,6 +338,11 @@ impl MovesPanel {
             }
         }
         panel
+    }
+
+    pub(super) fn with_evil_ryu_name(mut self) -> Self {
+        self.display_name = "Evil Ryu";
+        self
     }
 
     /// The choice up on the cursor's move, if there is one.

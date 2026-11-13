@@ -851,7 +851,7 @@ impl Bus<'_> {
     pub fn start_move_at(&mut self, e: u16, ps: u32, mv: u8, mut d3: u16) {
         self.world_tour_guard_reaction(ps, false);
         self.world_tour_shuriken_recovery(ps, false);
-        if self.evil_ryu_playtest.is_some() && ps == P1_STRUCT {
+        if self.evil_ryu_profile(ps).is_some() {
             self.toggle_state.raging_demon.victory_pose = false;
         }
         self.era_clear_alpha_move(ps, mv);
@@ -1052,8 +1052,7 @@ impl Bus<'_> {
             self.apply_shoto_frame_symmetry(e, a1);
             self.apply_balanced_frame(e, a1);
         }
-        if a1 == 0x01340 && self.evil_ryu_playtest == Some(EvilRyuPlaytest::UltraSf2)
-            && self.el(e, 0x38) == P1_STRUCT
+        if a1 == 0x01340 && self.evil_ryu_profile(self.el(e, 0x38)) == Some(EvilRyuPlaytest::UltraSf2)
         {
             // The final grounded Shoryuken pose is stationary and has no repeats.
             // Keep Evil Ryu committed to that recovery pose for four more frames.
@@ -1063,8 +1062,7 @@ impl Bus<'_> {
         }
         let move_id = self.eb(e, 0xa);
         let alpha3_counter = move_id == crate::data_bank::ALPHA_COUNTER_SLOT
-            && self.evil_ryu_alpha3()
-            && self.el(e, 0x38) == P1_STRUCT;
+            && self.evil_ryu_alpha3(self.el(e, 0x38));
         if self.toggles.balanced_roster && (matches!(move_id, 0x19 | 0x1b) || alpha3_counter) {
             let slot = self.player_slot_index(self.el(e, 0x38)).unwrap_or(1);
             if self.toggle_state.dp_connected[slot] {
@@ -1109,18 +1107,19 @@ impl Bus<'_> {
                 self.toggle_state.human_attack_frames[slot] = 0;
             }
         }
-        if self.evil_ryu_playtest.is_some() && self.el(me, 0x38) == P1_STRUCT {
-            let has_demon = self.evil_ryu_has_demon();
+        let ps = self.el(me, 0x38);
+        if self.evil_ryu_profile(ps).is_some() {
+            let has_demon = self.evil_ryu_has_demon(ps);
             if has_demon && self.toggle_state.raging_demon.victory_pose {
                 self.run_demon_victory(me, other);
                 return;
             }
             let mv = self.eb(me, 0xa);
-            if self.legacy_evil_ryu_playtest() && self.is_ashura_move(mv) {
+            if self.legacy_evil_ryu(ps) && self.is_ashura_move(ps, mv) {
                 self.run_ashura(me, other);
                 return;
             }
-            if has_demon && mv == self.demon_rush_move() {
+            if has_demon && mv == self.demon_rush_move(ps) {
                 self.run_raging_demon(me, other);
                 return;
             }
@@ -1157,16 +1156,16 @@ impl Bus<'_> {
         self.animate(me, other);
     }
 
-    fn is_ashura_move(&self, mv: u8) -> bool {
-        mv == EVIL_RYU_ASHURA_FORWARD || mv == self.ashura_back_move()
+    fn is_ashura_move(&self, ps: u32, mv: u8) -> bool {
+        mv == EVIL_RYU_ASHURA_FORWARD || mv == self.ashura_back_move(ps)
     }
 
-    fn ashura_back_move(&self) -> u8 {
-        if self.evil_ryu_sf4() { EVIL_RYU_SF4_ASHURA_BACK } else { EVIL_RYU_ASHURA_BACK }
+    fn ashura_back_move(&self, ps: u32) -> u8 {
+        if self.evil_ryu_sf4(ps) { EVIL_RYU_SF4_ASHURA_BACK } else { EVIL_RYU_ASHURA_BACK }
     }
 
     fn hold_evil_ryu_stance(&mut self, me: u16, mv: u8) {
-        self.start_move(me, P1_STRUCT, 1);
+        self.start_move(me, self.el(me, 0x38), 1);
         if self.eb(me, 0x37) & 4 != 0 {
             self.face_left(me);
         }
@@ -1183,9 +1182,10 @@ impl Bus<'_> {
     }
 
     fn run_ashura(&mut self, me: u16, other: u16) {
+        let ps = self.el(me, 0x38);
         let remaining = self.eb(me, 0x33);
         let mv = self.eb(me, 0xa);
-        let variable_range = self.evil_ryu_alpha3() || self.evil_ryu_sf4();
+        let variable_range = self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps);
         let long_glide = variable_range && self.eb(me, 0x34) != 0;
         let travel_frames = if long_glide { 10 } else { 6 };
         let glide_start = 14 + travel_frames;
@@ -1237,6 +1237,7 @@ impl Bus<'_> {
     }
 
     fn run_raging_demon(&mut self, me: u16, other: u16) {
+        let ps = self.el(me, 0x38);
         let remaining = self.eb(me, 0x33);
         if remaining == 0 {
             self.set_eb(me, 9, 0x12);
@@ -1245,7 +1246,7 @@ impl Bus<'_> {
         }
         if remaining > DEMON_WHIFF_FRAMES {
             // The glide and modern Sagat's standing pushboxes separate to 52px.
-            let range = if matches!(self.demon_rush_move(), KAGE_RAGING_DEMON | SF6_RAGING_DEMON) {
+            let range = if matches!(self.demon_rush_move(ps), KAGE_RAGING_DEMON | SF6_RAGING_DEMON) {
                 MODERN_DEMON_GRAB_RANGE
             } else {
                 crate::combo::throw::RANGE
@@ -1260,10 +1261,10 @@ impl Bus<'_> {
             let travelled = DEMON_RUSH_FRAMES + DEMON_WHIFF_FRAMES - remaining;
             if travelled >= 2 && gap >= 0 && self.can_throw_at_range(me, other, range) {
                 if let Some((thrower, victim)) = self.throw_entries(me, other) {
-                    self.start_throw(P1_STRUCT, me, other, thrower.throw_header, victim.thrown_header, false);
+                    self.start_throw(ps, me, other, thrower.throw_header, victim.thrown_header, false);
                     let victim_slot = self.combo_slot(other);
                     self.toggle_state.throw.crosses[victim_slot] = false;
-                    if self.demon_rush_move() == SF6_RAGING_DEMON {
+                    if self.demon_rush_move(ps) == SF6_RAGING_DEMON {
                         self.toggle_state.throw.tech_window[victim_slot] = 0;
                     }
                     self.set_eb(me, 0x30, 0);
@@ -1272,14 +1273,14 @@ impl Bus<'_> {
                 }
             }
         } else if remaining == DEMON_WHIFF_FRAMES {
-            self.hold_evil_ryu_stance(me, self.demon_rush_move());
+            self.hold_evil_ryu_stance(me, self.demon_rush_move(ps));
         }
         self.set_eb(me, 0x33, remaining - 1);
     }
 
     fn reveal_raging_demon(&mut self, thrower: u16, victim: u16) {
         // The native victory header supplies the ground origin for the tall pose.
-        self.start_move(thrower, P1_STRUCT, 0x0c);
+        self.start_move(thrower, self.el(thrower, 0x38), 0x0c);
         self.load_frame(thrower, RYU_VICTORY_POSE);
         self.set_eb(thrower, 8, 2);
         self.set_eb(thrower, 9, 0x82);
@@ -1803,7 +1804,7 @@ impl Bus<'_> {
                 }
             }
             crate::data_bank::ROUTINE_THROW_SLAM => {
-                if self.el(other, 0x38) == P1_STRUCT
+                if self.evil_ryu_profile(self.el(other, 0x38)).is_some()
                     && matches!(self.toggle_state.raging_demon.blackout_frames, Some(1..))
                 {
                     return Some(Resume::Hold);
@@ -2291,12 +2292,11 @@ impl Bus<'_> {
             // of that path before the victim can cross the shoulder.
             return;
         }
-        if (self.evil_ryu_alpha3() || self.evil_ryu_sf4())
-            && [me, other].into_iter().any(|entity| {
-                self.el(entity, 0x38) == P1_STRUCT
-                    && self.is_ashura_move(self.eb(entity, 0xa)) && self.eb(entity, 0xf) & 0x08 != 0
-            })
-        {
+        if [me, other].into_iter().any(|entity| {
+            let ps = self.el(entity, 0x38);
+            (self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps))
+                && self.is_ashura_move(ps, self.eb(entity, 0xa)) && self.eb(entity, 0xf) & 0x08 != 0
+        }) {
             return;
         }
         if [me, other].into_iter().any(|entity| {
@@ -2947,7 +2947,7 @@ impl Bus<'_> {
         let ps = self.el(me, 0x38);
         self.show_score(ps);
         let defender = self.el(other, 0x38);
-        let metsu = self.evil_ryu_playtest == Some(EvilRyuPlaytest::UltraSf2) && ps == P1_STRUCT
+        let metsu = self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::UltraSf2)
             && entry == 0x45f52 && self.el(me, 0x28) == 0x45efa;
         let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
         let dmg = if metsu {
@@ -3058,7 +3058,7 @@ impl Bus<'_> {
         let owner = self.el(me, 0x38);
         let ps = self.el(me, 0x3c);
         let suppress_chip = is_chip && self.era_state(ps).is_some_and(|state| state.is_sf6() && state.gauge().is_some() && !state.sf6_burnout());
-        let demon_slam = self.evil_ryu_playtest.is_some() && owner == P1_STRUCT
+        let demon_slam = self.evil_ryu_profile(owner).is_some()
             && self.toggle_state.raging_demon.active && projectile.is_none()
             && self.eb(me, 0xa) == crate::combo::throw::THROW_MOVE;
         let alpha = self.era_state(owner);
@@ -3576,11 +3576,9 @@ impl Bus<'_> {
     const SHAKUNETSU_PALETTE: u8 = 14;
 
     fn has_evil_ryu_fire_palette(&self, effect: u16) -> bool {
-        (matches!(self.evil_ryu_playtest, Some(EvilRyuPlaytest::UltraSf2 | EvilRyuPlaytest::Kage
-            | EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6))
-            || self.evil_ryu_alpha3() || self.evil_ryu_sf4())
-            && self.eb(effect, 3) & 0x0f == Self::SHAKUNETSU_PALETTE
-            && self.el(effect, 0x20) == P1_STRUCT
+        let owner = self.el(effect, 0x20);
+        self.eb(effect, 3) & 0x0f == Self::SHAKUNETSU_PALETTE
+            && self.evil_ryu_profile(owner).is_some_and(|profile| profile != EvilRyuPlaytest::Alpha2)
     }
 
     fn shakunetsu_attr(attr: u8) -> u8 {
@@ -3621,10 +3619,10 @@ impl Bus<'_> {
             self.set_eb(s, i, b);
         }
         let owner = self.el(me, 0x38);
-        if self.evil_ryu_playtest.is_some() {
+        if self.evil_ryu_playtest.is_some() || self.toggle_state.satsui_awakening.is_some() {
             self.set_eb(s, DEMON_SPARK_MARKER as u32, u8::from(demon_spark));
-            if template == 0x186dc && owner == P1_STRUCT {
-                let red = match self.evil_ryu_playtest {
+            if template == 0x186dc {
+                let red = match self.evil_ryu_profile(owner) {
                     Some(EvilRyuPlaytest::UltraSf2) => self.eb(me, 0x34) == 3,
                     Some(profile) if profile.is_kage() => self.eb(me, 0xa) == KAGE_SHAKUNETSU,
                     Some(EvilRyuPlaytest::Sf6) => self.era_state(owner)
@@ -3688,7 +3686,7 @@ impl Bus<'_> {
             let b = self.rb(template + i);
             self.set_eb(s, i, b);
         }
-        if self.evil_ryu_playtest.is_some() {
+        if self.evil_ryu_playtest.is_some() || self.toggle_state.satsui_awakening.is_some() {
             self.set_eb(s, DEMON_SPARK_MARKER as u32, 0);
         }
         self.set_ew(s, 4, self.ew(s, 4).wrapping_sub(bias));
@@ -4742,8 +4740,8 @@ impl Bus<'_> {
         };
         if do_p1 {
             let (heavy1, heavy2) = (!in0_hi & 2 != 0, !in0_lo & 4 != 0);
-            if self.evil_ryu_has_demon() && self.playtest_ryu_player(P1_STRUCT) {
-                self.track_raging_demon(!p1, heavy1, heavy2);
+            if self.evil_ryu_has_demon(P1_STRUCT) && self.is_active_ryu(P1_STRUCT) {
+                self.track_raging_demon(P1_STRUCT, !p1, heavy1, heavy2);
             }
             self.era_read_buttons(P1_STRUCT, alpha_buttons(p1, heavy1, heavy2));
             let path = self.button_latch(0xff8690, P1_STRUCT, group(p1, 0x30, 4, heavy1), 0x3b450);
@@ -4754,6 +4752,9 @@ impl Bus<'_> {
         }
         if do_p2 {
             let (heavy1, heavy2) = (!in0_hi & 4 != 0, !in0_hi & 1 != 0);
+            if self.evil_ryu_has_demon(P2_STRUCT) && self.is_active_ryu(P2_STRUCT) {
+                self.track_raging_demon(P2_STRUCT, !p2, heavy1, heavy2);
+            }
             self.era_read_buttons(P2_STRUCT, alpha_buttons(p2, heavy1, heavy2));
             let path = self.button_latch(0xff86a0, P2_STRUCT, group(p2, 0x30, 4, heavy1), 0x3b450);
             cycles += 18 + head(heavy1, 20) + latch_cycles(path, 14);
@@ -4765,6 +4766,9 @@ impl Bus<'_> {
             && self.arcade_player_opponent().is_some()
         {
             let (heavy1, heavy2) = (!in0_hi & 4 != 0, !in0_hi & 1 != 0);
+            if self.evil_ryu_has_demon(CPU_STRUCT) && self.is_active_ryu(CPU_STRUCT) {
+                self.track_raging_demon(CPU_STRUCT, !p2, heavy1, heavy2);
+            }
             self.era_read_buttons(CPU_STRUCT, alpha_buttons(p2, heavy1, heavy2));
             self.button_latch(0xff86a0, CPU_STRUCT, group(p2, 0x30, 4, heavy1), 0x3b450);
             self.button_latch(0xff86a8, CPU_STRUCT + 1, group(p2, 0xc0, 6, heavy2), 0x3b506);
@@ -4786,8 +4790,9 @@ impl Bus<'_> {
 
     const DEMON_SEQUENCE: [u8; 5] = [0x10, 0x10, 0x01, 0x40, 0x08];
 
-    fn track_raging_demon(&mut self, input: u8, heavy_punch: bool, heavy_kick: bool) {
-        let me = self.rw(P1_STRUCT + 0x10);
+    fn track_raging_demon(&mut self, ps: u32, input: u8, heavy_punch: bool, heavy_kick: bool) {
+        let me = self.rw(ps + 0x10);
+        let profile = self.evil_ryu_profile(ps);
         let forward = self.relative_directions(me, input & 0x0f) == 1;
         // Keep raw press edges so the second LP may arrive during the first jab.
         let held = input & 0xf0 | u8::from(heavy_punch) << 3 | u8::from(heavy_kick) << 1 | u8::from(forward);
@@ -4805,7 +4810,7 @@ impl Bus<'_> {
             return;
         }
         // Kage also accepts forward and LK as a single chord.
-        if matches!(self.evil_ryu_playtest, Some(EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6))
+        if matches!(profile, Some(EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6))
             && demon.progress == 2 && pressed == 0x41
         {
             demon.progress += 2;
@@ -4985,7 +4990,8 @@ impl Bus<'_> {
             let remaining = remaining.saturating_sub(1);
             self.toggle_state.raging_demon.blackout_frames = Some(remaining);
             if remaining != 0 && remaining % DEMON_SPARK_INTERVAL == 0 {
-                let (_, victim) = self.player_entities(P1_STRUCT);
+                let owner = self.toggle_state.satsui_awakening.map_or(P1_STRUCT, |form| form.side.fighter_struct());
+                let (_, victim) = self.player_entities(owner);
                 self.spawn_demon_spark(victim);
             }
         }
@@ -5539,12 +5545,12 @@ impl Bus<'_> {
             self.input_tail(me, ps);
             return;
         }
-        let private = self.evil_ryu_player(ps);
-        let has_demon = self.evil_ryu_has_demon();
+        let legacy_evil_ryu = self.legacy_evil_ryu(ps) && self.is_active_ryu(ps);
+        let has_demon = self.evil_ryu_has_demon(ps);
         let mv = self.eb(me, 0xa);
-        if ps == P1_STRUCT
-            && ((self.legacy_evil_ryu_playtest() && self.is_ashura_move(mv))
-                || (has_demon && (mv == self.demon_rush_move()
+        if self.evil_ryu_profile(ps).is_some()
+            && ((self.legacy_evil_ryu(ps) && self.is_ashura_move(ps, mv))
+                || (has_demon && (mv == self.demon_rush_move(ps)
                 || self.toggle_state.raging_demon.blackout_frames.is_some()
                 || self.toggle_state.raging_demon.victory_pose)))
         {
@@ -5556,14 +5562,14 @@ impl Bus<'_> {
             return;
         }
         let grounded = !self.era_airborne(me) && (self.eb(me, 9) & 3 != 1 || matches!(mv, 2 | 3));
-        let ashura_ready = private && grounded && self.eb(me, 8) == 2
+        let ashura_ready = legacy_evil_ryu && grounded && self.eb(me, 8) == 2
             && !self.is_in_recovery_or_stun(me) && self.toggle_state.combo.blockstun[self.combo_slot(me)] == 0;
         if ashura_ready {
             self.track_ashura(me, d0);
-        } else if self.evil_ryu_playtest.is_some() && ps == P1_STRUCT {
+        } else if self.evil_ryu_profile(ps).is_some() {
             self.toggle_state.ashura_motion = [[0; 2]; 2];
         }
-        if has_demon && self.playtest_ryu_player(ps) && self.try_raging_demon(me, other, grounded) {
+        if has_demon && self.is_active_ryu(ps) && self.try_raging_demon(ps, me, other, grounded) {
             self.input_tail(me, ps);
             return;
         }
@@ -5691,7 +5697,7 @@ impl Bus<'_> {
         if self.era_offense_flag(ps, self.toggles.positive_edge_attacks) {
             self.filter_neg_edge_latches(ps, me, d0);
         }
-        if ashura_ready && self.try_ashura(me, d0) {
+        if ashura_ready && self.try_ashura(ps, me, d0) {
             self.input_tail(me, ps);
             return;
         }
@@ -5776,7 +5782,7 @@ impl Bus<'_> {
         let era = self.sf2_state(ps)?;
         let fighter = era.fighter?;
         // This profile uses the approved heavy red fireball and Demon command.
-        if self.evil_ryu_playtest.is_some() && ps == P1_STRUCT {
+        if self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::UltraSf2) {
             return None;
         }
         let super_button = kick == (fighter == Sagat);
@@ -5889,7 +5895,7 @@ impl Bus<'_> {
 
     fn try_custom_combo(&mut self, ps: u32, entity: u16) -> bool {
         let (held, pressed) = self.era_buttons(ps);
-        let activates = if self.evil_ryu_playtest == Some(EvilRyuPlaytest::Alpha2) && ps == P1_STRUCT {
+        let activates = if self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha2) {
             held.count_ones() == 3 && held & 0b000111 != 0 && held & 0b111000 != 0 && pressed != 0
         } else {
             [0x09, 0x12, 0x24].into_iter().any(|pair| held & pair == pair && pressed & pair != 0)
@@ -5927,7 +5933,7 @@ impl Bus<'_> {
                 return false;
             }
             if entry.slot == crate::data_bank::EVIL_RYU_ALPHA2_SENPUKYAKU
-                || (self.evil_ryu_alpha3() && ps == P1_STRUCT)
+                || (self.evil_ryu_alpha3(ps))
             {
                 let (_, other) = self.player_entities(ps);
                 if self.try_throw(ps, entity, other, forward) {
@@ -5999,8 +6005,8 @@ impl Bus<'_> {
     fn alpha_counter_header(&self, ps: u32) -> Option<u32> {
         let fighter = self.alpha_state(ps)?.fighter?;
         let bank = self.data_bank?;
-        if self.evil_ryu_alpha3() && ps == P1_STRUCT {
-            bank.evil_ryu_alpha3_counter(self.evil_ryu_playtest == Some(EvilRyuPlaytest::Alpha3V))
+        if self.evil_ryu_alpha3(ps) {
+            bank.evil_ryu_alpha3_counter(self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha3V))
         } else {
             bank.move_header(fighter, crate::data_bank::ALPHA_COUNTER_SLOT)
         }
@@ -6012,7 +6018,7 @@ impl Bus<'_> {
             self.era_reset_alpha_counter(ps);
             return false;
         }
-        let alpha3 = self.evil_ryu_alpha3() && ps == P1_STRUCT;
+        let alpha3 = self.evil_ryu_alpha3(ps);
         let command = if alpha3 {
             relative == crate::moves::Dir::Forward.bits()
         } else {
@@ -6045,8 +6051,8 @@ impl Bus<'_> {
         self.era_sf4_started(ps, move_id);
         self.sf6_started(ps, move_id);
         self.sf5_on_move_started(ps, move_id);
-        if (self.evil_ryu_playtest == Some(EvilRyuPlaytest::Alpha2) || self.evil_ryu_alpha3())
-            && ps == P1_STRUCT && self.alpha_state(ps).is_some()
+        if (self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha2) || self.evil_ryu_alpha3(ps))
+            && self.alpha_state(ps).is_some()
         {
             // Build stock on specials in the private Alpha fights, including whiffs.
             let gain = match move_id {
@@ -6133,39 +6139,52 @@ impl Bus<'_> {
         }
     }
 
-    fn evil_ryu_player(&self, ps: u32) -> bool {
-        self.legacy_evil_ryu_playtest() && self.playtest_ryu_player(ps)
+    pub(crate) fn evil_ryu_profile(&self, ps: u32) -> Option<EvilRyuPlaytest> {
+        if let Some(awakening) = self.toggle_state.satsui_awakening {
+            use crate::era::EraFamily::{Sf1Plus, Sf2};
+
+            if awakening.side.fighter_struct() == ps
+                && (awakening.profile != EvilRyuPlaytest::UltraSf2
+                    || matches!(self.chosen_era(ps), Some(Sf1Plus | Sf2)))
+            {
+                return Some(awakening.profile);
+            }
+        }
+        self.evil_ryu_playtest.filter(|_| ps == P1_STRUCT)
     }
 
-    fn playtest_ryu_player(&self, ps: u32) -> bool {
-        ps == P1_STRUCT
-            && self.rb(SCENE_MODE) == 0x80
+    fn is_active_ryu(&self, ps: u32) -> bool {
+        self.rb(SCENE_MODE) == 0x80
             && self.rb(MODE_DEMO) != 0
             && self.rl(ps + 0x12) == crate::roster::TournamentFighter::Ryu.move_table()
     }
 
-    fn legacy_evil_ryu_playtest(&self) -> bool {
-        self.evil_ryu_playtest.is_some_and(|playtest| !playtest.is_kage() && playtest != EvilRyuPlaytest::Sf6)
+    fn legacy_evil_ryu(&self, ps: u32) -> bool {
+        self.evil_ryu_profile(ps).is_some_and(|profile| !profile.is_kage() && profile != EvilRyuPlaytest::Sf6)
     }
 
-    fn evil_ryu_alpha3(&self) -> bool {
-        self.evil_ryu_playtest.is_some_and(EvilRyuPlaytest::is_alpha3)
+    fn evil_ryu_alpha3(&self, ps: u32) -> bool {
+        self.evil_ryu_profile(ps).is_some_and(EvilRyuPlaytest::is_alpha3)
     }
 
-    fn evil_ryu_sf4(&self) -> bool {
-        self.evil_ryu_playtest.is_some_and(EvilRyuPlaytest::is_sf4)
+    fn evil_ryu_sf4(&self, ps: u32) -> bool {
+        self.evil_ryu_profile(ps).is_some_and(EvilRyuPlaytest::is_sf4)
     }
 
-    fn evil_ryu_has_demon(&self) -> bool {
-        matches!(
-            self.evil_ryu_playtest,
-            Some(EvilRyuPlaytest::UltraSf2 | EvilRyuPlaytest::Alpha2 | EvilRyuPlaytest::Alpha3A
-                | EvilRyuPlaytest::Alpha3X | EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6),
-        ) || self.evil_ryu_sf4()
+    fn evil_ryu_has_demon(&self, ps: u32) -> bool {
+        match self.evil_ryu_profile(ps) {
+            Some(EvilRyuPlaytest::UltraSf2) => self.sf2_state(ps).is_some_and(|state| {
+                state.style.revision == crate::era::Revision::St && state.style.loadout == crate::era::Loadout::Standard
+            }),
+            Some(EvilRyuPlaytest::Alpha2 | EvilRyuPlaytest::Alpha3A | EvilRyuPlaytest::Alpha3X
+                | EvilRyuPlaytest::KageII | EvilRyuPlaytest::Sf6) => true,
+            Some(profile) => profile.is_sf4(),
+            None => false,
+        }
     }
 
-    fn demon_rush_move(&self) -> u8 {
-        match self.evil_ryu_playtest {
+    fn demon_rush_move(&self, ps: u32) -> u8 {
+        match self.evil_ryu_profile(ps) {
             Some(EvilRyuPlaytest::KageII) => KAGE_RAGING_DEMON,
             Some(EvilRyuPlaytest::Sf6) => SF6_RAGING_DEMON,
             _ => EVIL_RYU_RAGING_DEMON,
@@ -6178,14 +6197,15 @@ impl Bus<'_> {
         use crate::data_bank::EVIL_RYU_ALPHA2_FAKE_HADOKEN;
         use crate::roster::TournamentFighter::Ryu;
 
-        if self.evil_ryu_playtest != Some(EvilRyuPlaytest::Alpha2)
-            || !self.evil_ryu_player(P1_STRUCT)
+        let ps = if self.rb(GAME_MODE) == 4 { P2_STRUCT } else { P1_STRUCT };
+        if self.evil_ryu_profile(ps) != Some(EvilRyuPlaytest::Alpha2)
+            || !self.is_active_ryu(ps)
             || self.toggle_state.era.freeze != 0
-            || self.era_dizzy(P1_STRUCT)
+            || self.era_dizzy(ps)
         {
             return false;
         }
-        let (me, _) = self.player_entities(P1_STRUCT);
+        let (me, _) = self.player_entities(ps);
         if self.eb(me, 8) != 2 || self.era_airborne(me) || self.is_in_recovery_or_stun(me)
             || self.toggle_state.combo.blockstun[self.combo_slot(me)] != 0
             || self.toggle_state.raging_demon.victory_pose
@@ -6193,7 +6213,7 @@ impl Bus<'_> {
         {
             return false;
         }
-        let tracker = self.tracker_base(P1_STRUCT) + 0x1c;
+        let tracker = self.tracker_base(ps) + 0x1c;
         let limit = if self.toggles.lenient_command_trackers {
             self.toggles.command_tracker_window
         } else {
@@ -6204,12 +6224,12 @@ impl Bus<'_> {
         {
             return false;
         }
-        self.clear_all_trackers(P1_STRUCT);
-        self.clear_recovery_buffer(P1_STRUCT);
-        self.clear_neg_edge_latches_for_player(P1_STRUCT);
-        self.ww(P1_STRUCT, 0);
-        self.era_begin_alpha2_feint();
-        self.start_move(me, P1_STRUCT, EVIL_RYU_ALPHA2_FAKE_HADOKEN);
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.ww(ps, 0);
+        self.era_begin_alpha2_feint(ps);
+        self.start_move(me, ps, EVIL_RYU_ALPHA2_FAKE_HADOKEN);
         true
     }
 
@@ -6234,34 +6254,34 @@ impl Bus<'_> {
         }
     }
 
-    fn ready_ashura(&self, me: u16, direction: u8) -> Option<u8> {
+    fn ready_ashura(&self, ps: u32, me: u16, direction: u8) -> Option<u8> {
         let direction = self.relative_directions(me, direction);
-        [EVIL_RYU_ASHURA_FORWARD, self.ashura_back_move()].into_iter()
+        [EVIL_RYU_ASHURA_FORWARD, self.ashura_back_move(ps)].into_iter()
             .zip(Self::ASHURA_MOTIONS).zip(self.toggle_state.ashura_motion)
             .find_map(|((mv, pattern), [stage, _])| (stage == 3 && direction == pattern[2]).then_some(mv))
     }
 
-    fn try_ashura(&mut self, me: u16, direction: u8) -> bool {
-        let Some(mv) = self.ready_ashura(me, direction) else { return false };
-        let variable_range = self.evil_ryu_alpha3() || self.evil_ryu_sf4();
+    fn try_ashura(&mut self, ps: u32, me: u16, direction: u8) -> bool {
+        let Some(mv) = self.ready_ashura(ps, me, direction) else { return false };
+        let variable_range = self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps);
         let mut long_glide = false;
-        let fires = if self.evil_ryu_playtest == Some(EvilRyuPlaytest::Alpha2) || variable_range {
-            let (held, pressed) = self.era_buttons(P1_STRUCT);
+        let fires = if self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha2) || variable_range {
+            let (held, pressed) = self.era_buttons(ps);
             let punch = held & 0b000111 == 0b000111 && pressed & 0b000111 != 0;
             let kick = held & 0b111000 == 0b111000 && pressed & 0b111000 != 0;
             long_glide = punch && variable_range;
             punch || kick
         } else {
-            self.latch_fires(P1_STRUCT + 1, true) && !self.latch_fires(P1_STRUCT, false)
+            self.latch_fires(ps + 1, true) && !self.latch_fires(ps, false)
         };
         if !fires {
             return false;
         }
-        self.clear_all_trackers(P1_STRUCT);
+        self.clear_all_trackers(ps);
         self.toggle_state.ashura_motion = [[0; 2]; 2];
-        self.clear_recovery_buffer(P1_STRUCT);
-        self.clear_neg_edge_latches_for_player(P1_STRUCT);
-        self.ww(P1_STRUCT, 0);
+        self.clear_recovery_buffer(ps);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.ww(ps, 0);
         self.hold_evil_ryu_stance(me, mv);
         // Ryu's planted Hadoken gather winds up the raised-knee glide.
         self.load_frame(me, 0x01362);
@@ -6272,7 +6292,7 @@ impl Bus<'_> {
         true
     }
 
-    fn try_raging_demon(&mut self, me: u16, other: u16, grounded: bool) -> bool {
+    fn try_raging_demon(&mut self, ps: u32, me: u16, other: u16, grounded: bool) -> bool {
         let demon = &mut self.toggle_state.raging_demon;
         if usize::from(demon.progress) != Self::DEMON_SEQUENCE.len() {
             return false;
@@ -6285,16 +6305,16 @@ impl Bus<'_> {
             || (self.is_in_recovery_or_stun(me) && !light_attack)
             || self.toggle_state.combo.blockstun[self.combo_slot(me)] != 0
             || !self.toggles.throws || self.throw_entries(me, other).is_none()
-            || !self.try_spend_demon_super()
+            || !self.try_spend_demon_super(ps)
         {
             return false;
         }
         self.toggle_state.ashura_motion = [[0; 2]; 2];
-        self.clear_all_trackers(P1_STRUCT);
-        self.clear_recovery_buffer(P1_STRUCT);
-        self.clear_neg_edge_latches_for_player(P1_STRUCT);
-        self.ww(P1_STRUCT, 0);
-        self.hold_evil_ryu_stance(me, self.demon_rush_move());
+        self.clear_all_trackers(ps);
+        self.clear_recovery_buffer(ps);
+        self.clear_neg_edge_latches_for_player(ps);
+        self.ww(ps, 0);
+        self.hold_evil_ryu_stance(me, self.demon_rush_move(ps));
         self.load_evil_ryu_glide_pose(me);
         self.set_eb(me, 0xf, 0);
         self.set_eb(me, 0x33, DEMON_RUSH_FRAMES + DEMON_WHIFF_FRAMES);
@@ -6923,8 +6943,8 @@ impl Bus<'_> {
 
     fn kick_special_ready_for_dir(&self, ps: u32, me: u16, d0: u8) -> bool {
         self.special_ready_for_dir(ps, me, d0, true)
-            || (self.evil_ryu_playtest == Some(EvilRyuPlaytest::UltraSf2)
-                && self.evil_ryu_player(ps) && self.ready_ashura(me, d0).is_some())
+            || (self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::UltraSf2)
+                && self.is_active_ryu(ps) && self.ready_ashura(ps, me, d0).is_some())
     }
 
     /// A special fires from the button (punch, or `kick`) held at `d0`:
@@ -8110,20 +8130,20 @@ impl Bus<'_> {
     /// direction and button, and `other` is throwable and within
     /// [`crate::combo::throw::RANGE`].
     pub(crate) fn try_throw(&mut self, ps: u32, me: u16, other: u16, dir: u8) -> bool {
-        if self.evil_ryu_sf4() && ps == P1_STRUCT {
-            return self.try_evil_sf4_throw(me, other, dir);
+        if self.evil_ryu_sf4(ps) {
+            return self.try_evil_sf4_throw(ps, me, other, dir);
         }
         if !matches!(dir, 1 | 2) || self.chosen_era(ps) == Some(crate::era::EraFamily::Sf1987) {
             return false;
         }
-        let alpha3 = self.evil_ryu_alpha3() && ps == P1_STRUCT;
+        let alpha3 = self.evil_ryu_alpha3(ps);
         let (hp, hk) = if alpha3 {
             self.alpha3_throw_buttons(ps)
         } else {
             (self.rb(ps) == 0xfe, self.rb(ps + 1) == 0xfe)
         };
         let kick_throw = !hp && (alpha3 && hk
-            || (self.evil_ryu_playtest == Some(EvilRyuPlaytest::Alpha2) && ps == P1_STRUCT
+            || (self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha2)
                 && self.era_buttons(ps).1 & 0b110000 != 0));
         if !hp && !hk && !kick_throw {
             return false;
@@ -8159,8 +8179,8 @@ impl Bus<'_> {
         held == light_pair && pressed & light_pair != 0
     }
 
-    fn try_evil_sf4_throw(&mut self, me: u16, other: u16, dir: u8) -> bool {
-        if !matches!(dir, 0..=2) || !self.light_throw_chord(P1_STRUCT) || !self.can_throw(me, other) {
+    fn try_evil_sf4_throw(&mut self, ps: u32, me: u16, other: u16, dir: u8) -> bool {
+        if !matches!(dir, 0..=2) || !self.light_throw_chord(ps) || !self.can_throw(me, other) {
             return false;
         }
         let back = self.relative_directions(me, dir) == 2;
@@ -8170,7 +8190,7 @@ impl Bus<'_> {
             self.throw_entries(me, other).map(|(attacker, defender)| (attacker.throw_header, defender.thrown_header))
         };
         let Some((throw_header, thrown_header)) = pair else { return false; };
-        self.start_throw(P1_STRUCT, me, other, throw_header, thrown_header, back);
+        self.start_throw(ps, me, other, throw_header, thrown_header, back);
         true
     }
 
@@ -8191,7 +8211,7 @@ impl Bus<'_> {
         use crate::combo::throw::RANGE;
 
         let horizontal = dir & 3;
-        if !self.evil_ryu_alpha3() || ps != P1_STRUCT
+        if !self.evil_ryu_alpha3(ps)
             || !matches!(horizontal, 1 | 2) || self.alpha3_throw_buttons(ps) != (true, false)
         {
             return false;
@@ -8246,9 +8266,10 @@ impl Bus<'_> {
                 return false;
             }
         }
-        let private_walk = (self.evil_ryu_alpha3() || self.evil_ryu_sf4())
-            && self.el(me, 0x38) == P1_STRUCT && matches!(self.eb(me, 0xa), 2 | 3);
-        if (self.eb(me, 9) & 3 != 2 && !private_walk)
+        let ps = self.el(me, 0x38);
+        let can_throw_from_walk = (self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps))
+            && matches!(self.eb(me, 0xa), 2 | 3);
+        if (self.eb(me, 9) & 3 != 2 && !can_throw_from_walk)
             || self.eb(other, 9) & 3 == 1 || !self.throw_target_is_vulnerable(other)
         {
             return false;
@@ -8396,9 +8417,9 @@ impl Bus<'_> {
             latch > self.rb(table) && latch < self.rb(table + 2)
         };
         let light_chord = (era_light || sf2) && light(ps, 0x405b6) && light(ps + 1, 0x405be);
-        let tech = if self.evil_ryu_sf4() && ps == P1_STRUCT {
+        let tech = if self.evil_ryu_sf4(ps) {
             self.light_throw_chord(ps)
-        } else if self.evil_ryu_alpha3() && ps == P1_STRUCT {
+        } else if self.evil_ryu_alpha3(ps) {
             let (punch, kick) = self.alpha3_throw_buttons(ps);
             matches!(d0, 1 | 2) && (punch || kick)
         } else {
@@ -8427,7 +8448,7 @@ impl Bus<'_> {
         self.ww(ps, 0);
         self.clear_recovery_buffer(ps);
         let other_ps = self.el(other, 0x38);
-        if self.evil_ryu_playtest.is_some() && other_ps == P1_STRUCT {
+        if self.evil_ryu_profile(other_ps).is_some() {
             self.toggle_state.raging_demon.active = false;
             self.clear_raging_demon_blackout();
         }
@@ -8507,9 +8528,9 @@ impl Bus<'_> {
         let command_damage = self.era_side(thrower_ps).map_or(0, |side| {
             std::mem::take(&mut self.toggle_state.era.fighters[side].command_throw_damage)
         });
-        let demon = self.evil_ryu_playtest.is_some() && thrower_ps == P1_STRUCT && self.toggle_state.raging_demon.active;
+        let demon = self.evil_ryu_profile(thrower_ps).is_some() && self.toggle_state.raging_demon.active;
         let damage = if demon {
-            if self.evil_ryu_sf4() { 18 } else { DEMON_DAMAGE }
+            if self.evil_ryu_sf4(thrower_ps) { 18 } else { DEMON_DAMAGE }
         } else if command_damage == 0 {
             crate::combo::throw::DAMAGE
         } else {

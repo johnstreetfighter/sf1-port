@@ -137,6 +137,11 @@ impl VSystem {
         self.meter = source.meter;
     }
 
+    pub(super) fn apply_satsui_surge(&mut self, previous: Self) {
+        self.meter = previous.meter;
+        self.gain(self.capacity / 2);
+    }
+
     pub(crate) fn configure(
         &mut self,
         style: StylePick,

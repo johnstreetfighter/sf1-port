@@ -7,7 +7,7 @@ use crate::config::{EvilRyuPlaytest, MatchConfig};
 use crate::data_bank::{ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT};
 use crate::era::{EraFamily, GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
 use crate::fight_reader::player_struct;
-use crate::fighter::{Bus, CPU_STRUCT, GAME_MODE, P1_STRUCT};
+use crate::fighter::{Bus, CPU_STRUCT, GAME_MODE};
 use crate::alpha::Stance;
 use crate::moves::{ButtonClass, CHARGE_FRAMES, Dir, MoveKind};
 use crate::roster::{PlayMode, TournamentFighter};
@@ -436,7 +436,7 @@ pub struct EraFighterState {
     evil_ryu_kit: EvilRyuKit,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v9", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v10", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
@@ -799,6 +799,24 @@ impl EraFighterState {
             .min(self.super_capacity);
     }
 
+    fn apply_satsui_surge(&mut self, previous: Self) {
+        if self.super_capacity == 0 {
+            return;
+        }
+        if self.unified_gauge {
+            self.set_super_meter(Some(self.super_meter.saturating_add(STOCK_AT)));
+        } else if self.is_sf4() {
+            let half_ultra = sf4::REVENGE_MAX / 2;
+            self.sf4.revenge = (previous.sf4.revenge + half_ultra).min(sf4::REVENGE_MAX);
+        } else if self.style.family == EraFamily::Sf5 {
+            self.sf5.apply_satsui_surge(previous.sf5);
+        } else if !self.is_sf6() {
+            let stock = self.sf3_stock_cost().unwrap_or(STOCK_AT);
+            self.set_super_meter(Some(self.super_meter.saturating_add(stock)));
+        }
+        // SF6's native round setup already fills all six Drive stocks.
+    }
+
     pub(crate) fn super_ready(&self) -> bool {
         self.super_stock_full() && self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
     }
@@ -999,6 +1017,7 @@ impl Bus<'_> {
         let dramatic = self.dramatic_rules();
         let tour = self.world_tour_rules();
         let state = self.toggle_state.era;
+        let awakening = self.toggle_state.satsui_awakening;
         let step = arcade.then(|| u16::from(self.rb(0xffc003)) * 2 + u16::from(self.rb(0xffc004)));
         let new_match = step != state.arcade_step;
         self.toggle_state.era.arcade_step = step;
@@ -1032,10 +1051,12 @@ impl Bus<'_> {
             } else {
                 state.selections[index]
             };
-            let evil_ryu = dramatic.is_none() && self.evil_ryu_playtest.is_some()
-                && ps == P1_STRUCT && fighter == Some(Ryu);
-            let kage = evil_ryu && style.revision == Revision::Sf5Ce && matches!(
-                (self.evil_ryu_playtest, style.loadout),
+            let awakened = awakening.filter(|form| form.side.fighter_struct() == ps);
+            let profile = awakened.map(|form| form.profile)
+                .or_else(|| self.evil_ryu_playtest.filter(|_| ps == crate::fighter::P1_STRUCT))
+                .filter(|_| dramatic.is_none() && fighter == Some(Ryu));
+            let kage = style.revision == Revision::Sf5Ce && matches!(
+                (profile, style.loadout),
                 (Some(EvilRyuPlaytest::Kage), Loadout::Skill1Trigger1)
                     | (Some(EvilRyuPlaytest::KageII), Loadout::Skill2Trigger2)
             );
@@ -1047,7 +1068,7 @@ impl Bus<'_> {
                 match (style.family, fighter) {
                     // Champion Edition Kage has 925 of the standard 1000 vitality.
                     _ if kage => FULL_SUB_HP * 37 / 40,
-                    _ if evil_ryu => 864,
+                    _ if profile.is_some() => 864,
                     (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
                         Some(Gen) => 864,
                         Some(Adon | Geki) => 912,
@@ -1066,22 +1087,18 @@ impl Bus<'_> {
                 }),
                 sub_hp: hp,
                 max_sub_hp: hp,
-                evil_ryu_kit: if evil_ryu {
-                    match (self.evil_ryu_playtest, style.revision, style.loadout) {
-                        _ if kage => EvilRyuKit::Kage { v: sf5::KageVState::default() },
-                        (Some(EvilRyuPlaytest::Sf6), Revision::Sf6, Loadout::Standard) => EvilRyuKit::EvilSf6,
-                        (Some(EvilRyuPlaytest::Alpha2), Revision::Sfz2, _) => EvilRyuKit::EvilAlpha2 { custom_left: 0 },
-                        (Some(EvilRyuPlaytest::Alpha3A), Revision::Sfz3, Loadout::AIsm) => EvilRyuKit::EvilAlpha3A,
-                        (Some(EvilRyuPlaytest::Alpha3V), Revision::Sfz3, Loadout::VIsm) => EvilRyuKit::EvilAlpha3V,
-                        (Some(EvilRyuPlaytest::Alpha3X), Revision::Sfz3, Loadout::XIsm) => EvilRyuKit::EvilAlpha3X,
-                        (Some(EvilRyuPlaytest::Ae2012 | EvilRyuPlaytest::Ae2012Ultra2), Revision::Ae2012, Loadout::Ultra1 | Loadout::Ultra2)
-                        | (Some(EvilRyuPlaytest::Usf4), Revision::Usf4, Loadout::UltraDouble) => {
-                            EvilRyuKit::EvilSf4 { metsu_charge: None }
-                        }
-                        _ => EvilRyuKit::Standard,
+                evil_ryu_kit: match (profile, style.revision, style.loadout) {
+                    _ if kage => EvilRyuKit::Kage { v: sf5::KageVState::default() },
+                    (Some(EvilRyuPlaytest::Sf6), Revision::Sf6, Loadout::Standard) => EvilRyuKit::EvilSf6,
+                    (Some(EvilRyuPlaytest::Alpha2), Revision::Sfz2, _) => EvilRyuKit::EvilAlpha2 { custom_left: 0 },
+                    (Some(EvilRyuPlaytest::Alpha3A), Revision::Sfz3, Loadout::AIsm) => EvilRyuKit::EvilAlpha3A,
+                    (Some(EvilRyuPlaytest::Alpha3V), Revision::Sfz3, Loadout::VIsm) => EvilRyuKit::EvilAlpha3V,
+                    (Some(EvilRyuPlaytest::Alpha3X), Revision::Sfz3, Loadout::XIsm) => EvilRyuKit::EvilAlpha3X,
+                    (Some(EvilRyuPlaytest::Ae2012 | EvilRyuPlaytest::Ae2012Ultra2), Revision::Ae2012, Loadout::Ultra1 | Loadout::Ultra2)
+                    | (Some(EvilRyuPlaytest::Usf4), Revision::Usf4, Loadout::Ultra1 | Loadout::Ultra2 | Loadout::UltraDouble) => {
+                        EvilRyuKit::EvilSf4 { metsu_charge: None }
                     }
-                } else {
-                    EvilRyuKit::Standard
+                    _ => EvilRyuKit::Standard,
                 },
                 ..EraFighterState::default()
             };
@@ -1101,6 +1118,13 @@ impl Bus<'_> {
                 0
             };
             next.world_tour_start_meter();
+            if let Some(form) = awakened.filter(|form| form.surge_pending && profile.is_some()) {
+                next.apply_satsui_surge(previous);
+                self.toggle_state.satsui_awakening = Some(crate::config::SatsuiAwakening {
+                    surge_pending: false,
+                    ..form
+                });
+            }
             self.toggle_state.era.fighters[index] = next;
         }
         self.era_share_gauge(0);
@@ -1327,17 +1351,18 @@ impl Bus<'_> {
         self.era_share_gauge(index);
     }
 
-    pub(crate) fn try_spend_demon_super(&mut self) -> bool {
-        let Some(index) = self.era_side(P1_STRUCT) else { return false };
+    pub(crate) fn try_spend_demon_super(&mut self, ps: u32) -> bool {
+        let Some(index) = self.era_side(ps) else { return false };
+        let profile = self.evil_ryu_profile(ps);
         let state = &mut self.toggle_state.era.fighters[index];
-        match (self.evil_ryu_playtest, state.evil_ryu_kit) {
+        match (profile, state.evil_ryu_kit) {
             (Some(EvilRyuPlaytest::UltraSf2), _) if state.super_stock_full() => state.spend_super_stock(),
             (Some(EvilRyuPlaytest::KageII), EvilRyuKit::Kage { .. }) => {
                 if !state.sf5_spend_kage_demon() {
                     return false;
                 }
                 self.era_share_gauge(index);
-                self.era_emit_callout(P1_STRUCT, CalloutKind::Super { name: "SHUN GOKU SATSU" });
+                self.era_emit_callout(ps, CalloutKind::Super { name: "SHUN GOKU SATSU" });
             }
             (Some(EvilRyuPlaytest::Sf6), EvilRyuKit::EvilSf6) => {
                 if !state.sf6_spend_evil_ryu_demon(self.era_rules.disable_comeback_scaling) {
@@ -1345,7 +1370,7 @@ impl Bus<'_> {
                 }
                 self.era_share_gauge(index);
                 self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
-                self.era_emit_callout(P1_STRUCT, CalloutKind::Super { name: "SHUN GOKU SATSU" });
+                self.era_emit_callout(ps, CalloutKind::Super { name: "SHUN GOKU SATSU" });
             }
             (Some(playtest), EvilRyuKit::EvilSf4 { .. }) if playtest.is_sf4() => {
                 let cost = state.sf4_super_cost();
@@ -1417,14 +1442,14 @@ impl Bus<'_> {
         })
     }
 
-    pub(crate) fn era_begin_alpha2_feint(&mut self) {
+    pub(crate) fn era_begin_alpha2_feint(&mut self, ps: u32) {
         let feint = AlphaMove::special(
             crate::data_bank::EVIL_RYU_ALPHA2_FAKE_HADOKEN,
             "HADO NO KAMAE",
             &[Dir::Down, Dir::DownForward, Dir::Forward],
             ButtonClass::DirectionOnly,
         );
-        self.era_begin_alpha_move(P1_STRUCT, feint, 0);
+        self.era_begin_alpha_move(ps, feint, 0);
     }
 
     pub(crate) fn era_begin_alpha_move(&mut self, ps: u32, entry: AlphaMove, level: u8) {
