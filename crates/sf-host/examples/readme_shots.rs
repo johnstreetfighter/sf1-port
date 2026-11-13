@@ -42,8 +42,9 @@ fn main() {
     let menu = tap(&mut s, with(|i| i.menu.start = true));
     assert_eq!(menu.screen, "main menu");
     write_png(&out.join("main-menu.png"), &settle(&mut s, menu).frame);
-    tap(&mut s, stick(DOWN));
-    tap(&mut s, stick(DOWN));
+    for _ in 0..3 {
+        tap(&mut s, stick(DOWN));
+    }
     let settings = tap(&mut s, confirm());
     assert_eq!(settings.screen, "settings");
     write_png(&out.join("settings.png"), &settle(&mut s, settings).frame);

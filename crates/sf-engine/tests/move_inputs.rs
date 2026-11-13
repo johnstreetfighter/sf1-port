@@ -18,7 +18,7 @@ use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::moves::{MovesPanel, MOVES_COLS};
 use sf_engine::front::pause::PauseBox;
 use sf_engine::front::settings::Settings;
-use sf_engine::front::{FrameInputs, FrameOutput, GameSession, MenuItem, Panel};
+use sf_engine::front::{FrameInputs, FrameOutput, GameSession, MenuItem, MenuScreen, Panel};
 use sf_engine::moves::{facing_right, InputNotation};
 use sf_engine::roster::TournamentFighter;
 use sf_video::compositor::{ink, small_glyph, RomFont};
@@ -135,9 +135,14 @@ fn choose_in_settings(s: &mut GameSession, steps: usize) {
 /// fight loop; `to_multi` moves the cursor from where it stands to Multi
 /// Player.
 fn local_fight(s: &mut GameSession, to_multi: usize) {
-    tap(s, stick(to_multi));
-    tap(s, confirm()); // Multi Player
-    tap(s, confirm()); // Local
+    for _ in 0..MenuScreen::main().items().len() {
+        if s.menu_item() == Some(MenuItem::MultiPlayer) {
+            break;
+        }
+        tap(s, stick(to_multi));
+    }
+    assert_eq!(tap(s, confirm()).screen, "multi player");
+    assert_eq!(tap(s, confirm()).screen, "select");
     select::confirm_fighter(s, confirm(), tap); // P1: Ryu
     select::confirm_fighter(s, with(|i| i.p2.buttons[0] = true), tap);
     while s.screen() != "country select" {

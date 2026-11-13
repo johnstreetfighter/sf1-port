@@ -20,7 +20,7 @@ use std::path::Path;
 use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::settings::Settings;
-use sf_engine::front::{FrameInputs, GameSession};
+use sf_engine::front::{FrameInputs, GameSession, MenuItem};
 use sf_engine::jukebox::{ends_music, Jukebox, Resolved, TrackCue, TrackSource, WIN_JINGLE};
 use sf_video::background_bank::BackgroundBank;
 use sf_video::romset::{load_assets, Assets};
@@ -227,7 +227,10 @@ impl Rec {
     /// The Main Menu, its cursor on SETTINGS, to Local's stage screen with
     /// Ryu and Ken locked.
     fn from_settings_to_stage_screen(&mut self) {
-        self.tap(with(|i| i.p1.directions[3] = true));
+        for _ in 0..2 {
+            self.tap(with(|i| i.p1.directions[3] = true));
+        }
+        assert_eq!(self.s.menu_item(), Some(MenuItem::MultiPlayer));
         self.tap(confirm());
         assert_eq!(self.tap(confirm()), "select");
         self.confirm_fighter(confirm());

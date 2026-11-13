@@ -460,7 +460,8 @@ fn settings_shows_the_four_switches_beside_the_others_and_not_the_folded_two() {
     for l in ["BALANCED ROSTER", "TRUE COMBOS", "CANCELS", "THROWS"] {
         assert!(at("HIGH LOW BLOCK") < at(l) && at(l) < at("DIFFICULTY"), "{l}");
     }
-    assert_eq!(labels.len(), 1 + 20 + 2 + 1, "PRESET, twenty switches, DIFFICULTY, ROUND TIME, RESET TAB");
+    assert!(at("MODERN PENALTY") < at("DIFFICULTY"));
+    assert_eq!(labels.len(), 1 + 21 + 2 + 1, "PRESET, 21 switches, DIFFICULTY, ROUND TIME, RESET TAB");
 }
 
 #[test]
