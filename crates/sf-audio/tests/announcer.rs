@@ -158,6 +158,43 @@ fn a_line_that_waited_more_than_half_a_second_is_dropped() {
 }
 
 #[test]
+fn a_scheduled_stop_and_voice_change_keep_the_preceding_audio() {
+    let ringside = Arc::new(VoiceStore::from_clips([
+        (AnnouncerLine::Fight, clip(3000, 300.0)),
+        (AnnouncerLine::Counter, clip(300, 650.0)),
+    ]).unwrap());
+    let japanese = Arc::new(VoiceStore::from_clips([
+        (AnnouncerLine::Fight, clip(100, 500.0)),
+    ]).unwrap());
+    let mut a = Announcer::new(ringside.clone());
+    a.call_at_frame(0, &[AnnouncerLine::Fight, AnnouncerLine::Counter]);
+    a.stop_at_frame(5);
+    a.set_store_at_frame(5, japanese.clone());
+    a.call_at_frame(5, &[AnnouncerLine::Fight]);
+    let out = render(&mut a, 600);
+
+    let switched = frame_tick(5);
+    assert_plays(&out, &ringside, AnnouncerLine::Fight, 0, switched as usize);
+    assert_plays(&out, &japanese, AnnouncerLine::Fight, switched, 100);
+    assert!(out[switched as usize + 100..].iter().all(|&(v, line)| v == 0.0 && line.is_none()));
+}
+
+#[test]
+fn stop_silences_the_chip_and_cancels_waiting_and_future_calls() {
+    let voice = store(&[(AnnouncerLine::Perfect, 800), (AnnouncerLine::Counter, 200)]);
+    let mut a = Announcer::new(voice);
+    a.call_at_frame(0, &[AnnouncerLine::Perfect, AnnouncerLine::Counter]);
+    a.call_at_frame(3, &[AnnouncerLine::Perfect]);
+    a.output_at(0.004);
+    assert_eq!(a.playing(), Some(AnnouncerLine::Perfect));
+
+    a.stop();
+    assert_eq!(a.playing(), None);
+    assert_eq!(a.level(), 0.0);
+    assert_eq!(a.output_at(0.1), 0.0);
+}
+
+#[test]
 fn a_line_the_pack_lacks_is_not_called() {
     let voice = store(&[(AnnouncerLine::Combo { hits: 5 }, 300)]);
     let mut a = Announcer::new(voice.clone());

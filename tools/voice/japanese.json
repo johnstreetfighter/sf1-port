@@ -1,0 +1,165 @@
+{
+  "id": "japanese",
+  "name": "Japanese announcer",
+  "about": "An original Japanese-accented English voice for all 35 tournament announcements and fight call-outs.",
+  "voice": {
+    "source": "ai",
+    "vendor": "elevenlabs",
+    "voice_id": null,
+    "model": "eleven_v3",
+    "settings": {
+      "stability": 0.5
+    },
+    "seed": 34800,
+    "design": {
+      "description": "An original late-1980s Japanese arcade martial-arts announcer. An adult native speaker from Japan with a very strong Japanese accent when pronouncing English loanwords, using clear katakana syllables. Insert audible short vowels after final stops: Fight is FAI-toh with a separate audible toh, Round is RA-un-doh, and Time Up is TA-i-mu AP-pu. Keep the Japanese rhythm and tapped R. A firm, low-mid masculine voice, strong dry projection, short tournament calls and quick silence between phrases.",
+      "preview_text": "Fait-oh! Raundo Wan! Fait-oh! Ja-pan! Kauntaa! Paafekuto! Taaimu Appu! Raundo Tsuu! Suupaa! Ten Hitto Konbo! Geemu Oobaa!",
+      "model": "eleven_ttv_v3",
+      "guidance_scale": 8,
+      "loudness": 0.5,
+      "seed": 34800
+    }
+  },
+  "lines": {
+    "japan": {
+      "say": "Japan!",
+      "direction": "proud country introduction"
+    },
+    "usa": {
+      "say": "Yuu Esu Ee!",
+      "direction": "three distinct, bright beats"
+    },
+    "england": {
+      "say": "Ingurando!",
+      "direction": "proud country introduction"
+    },
+    "china": {
+      "say": "Chaina!",
+      "direction": "crisp country introduction"
+    },
+    "thailand": {
+      "say": "Tairando!",
+      "direction": "crisp country introduction"
+    },
+    "fight": {
+      "say": "Fait-oh!",
+      "direction": "sharp FAI followed by a short audible toh"
+    },
+    "game_over": {
+      "say": "Geemu Oobaa!",
+      "direction": "firm and final"
+    },
+    "time_up": {
+      "say": "Taaimu Appu!",
+      "direction": "urgent stop cue"
+    },
+    "round_1": {
+      "say": "Raundo Wan!",
+      "direction": "commanding first round"
+    },
+    "round_2": {
+      "say": "Raundo Tsuu!",
+      "direction": "clear, forceful count"
+    },
+    "round_3": {
+      "say": "Raundo Surii!",
+      "direction": "crisp, rising count"
+    },
+    "round_4": {
+      "say": "Raundo Foo!",
+      "direction": "firm, decisive count"
+    },
+    "round_5": {
+      "say": "Raundo Faibu!",
+      "direction": "emphatic final count"
+    },
+    "super": {
+      "say": "Suupaa!",
+      "direction": "explosive and brief"
+    },
+    "perfect": {
+      "say": "Paafekuto!",
+      "direction": "bright and triumphant"
+    },
+    "perfect_parry": {
+      "say": "Paafekuto Parii!",
+      "direction": "sharp, clipped excitement"
+    },
+    "counter": {
+      "say": "Kauntaa!",
+      "direction": "short and sharp"
+    },
+    "punish_counter": {
+      "say": "Panishu Kauntaa!",
+      "direction": "hard emphasis on the first word"
+    },
+    "crush_counter": {
+      "say": "Kurasshu Kauntaa!",
+      "direction": "hard emphasis on crush"
+    },
+    "alpha_counter": {
+      "say": "Arufa Kauntaa!",
+      "direction": "clear, strong first syllable"
+    },
+    "reversal": {
+      "say": "Ribaasaru!",
+      "direction": "abrupt, sharp stress"
+    },
+    "first_attack": {
+      "say": "Faasuto Atakku!",
+      "direction": "bright opening call"
+    },
+    "burnout": {
+      "say": "Baan Auto!",
+      "direction": "low, urgent warning"
+    },
+    "custom_combo": {
+      "say": "Kasutamu Konbo!",
+      "direction": "sharp and excited"
+    },
+    "combo_5": {
+      "say": "Faibu Hitto Konbo!",
+      "direction": "energetic"
+    },
+    "combo_6": {
+      "say": "Sikkusu Hitto Konbo!",
+      "direction": "crisp and quick"
+    },
+    "combo_7": {
+      "say": "Sebun Hitto Konbo!",
+      "direction": "sharp and clear"
+    },
+    "combo_8": {
+      "say": "Eito Hitto Konbo!",
+      "direction": "bright"
+    },
+    "combo_9": {
+      "say": "Nain Hitto Konbo!",
+      "direction": "rising excitement"
+    },
+    "combo_10": {
+      "say": "Ten Hitto Konbo!",
+      "direction": "punchy"
+    },
+    "combo_11": {
+      "say": "Irebun Hitto Konbo!",
+      "direction": "sharp and quick"
+    },
+    "combo_12": {
+      "say": "Tuerubu Hitto Konbo!",
+      "direction": "forceful"
+    },
+    "combo_13": {
+      "say": "Saatiin Hitto Konbo!",
+      "direction": "clear and excited"
+    },
+    "combo_14": {
+      "say": "Footiin Hitto Konbo!",
+      "direction": "rising and strong"
+    },
+    "combo_15": {
+      "say": "Fifutiin Hitto Konbo!",
+      "direction": "emphatic final count"
+    }
+  }
+}

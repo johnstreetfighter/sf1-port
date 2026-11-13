@@ -15,15 +15,55 @@ python -m unittest discover -s tools/voice/tests               # the pipeline's 
 
 It needs Python 3.11, ffmpeg on the PATH and the release `sf-audio` binary (`SF_AUDIO_BIN` overrides its path). `ELEVENLABS_API_KEY` is read from the Windows user environment by `tools/voice/el.py` alone (falling back to the process environment). It is never printed, logged or written to a file.
 
+## Japanese voice
+
+The optional Japanese voice uses the same commands with `--voice japanese`. Its
+35 lines cover the 13 classic tournament announcements and the 22 overhaul
+call-outs. `tools/voice/japanese.json` defines the original Voice Design persona,
+pronunciation overrides, and direction for each line.
+
+```bash
+python tools/voice/pipeline.py --voice japanese status
+python tools/voice/pipeline.py --voice japanese design --max-credits 137
+python tools/voice/pipeline.py --voice japanese listen
+python tools/voice/pipeline.py --voice japanese design --save 2
+python tools/voice/pipeline.py --voice japanese run --max-credits 5520
+python tools/voice/pipeline.py --voice japanese listen
+python tools/voice/pipeline.py --voice japanese build-pack
+```
+
+Use the current credit estimate from `status` to set the budgets for `design`
+and `run`. Listen to the design previews through the ROM's FIGHT! benchmark
+before saving a preview number. After synthesis, pick a take for each line
+and select **Save picks** before building the pack.
+
+The sheet, previews, takes, saved voice ID, and credit ledger live under
+`tools/reference/local/voice/japanese/`. The sheet saves take choices to
+`tools/voice/picks_japanese.json`. The generated manifest and 4 kHz ADPCM
+`.vox` files go to `tools/reference/local/roms/sf1-port-voice/japanese/`,
+beside the local ROM set. The game loads them when that ROM directory is
+used. The bundled Windows ZIP contains the approved Ringside pack.
+
 ## What is where
 
-The line list, speaker settings, picks and credit ledger live in `tools/voice/`. The playable voice pack and the archived generated takes and previews live in `assets/sf1-port-voice/`.
+Ringside is the default and also accepts `--voice ringside`. Its speaker settings,
+picks and credit ledger live in `tools/voice/`. In the bundled checkout its
+pack is `assets/sf1-port-voice/`, with takes and previews in `archive/`.
+Without that bundled pack, Ringside uses the local paths
+`tools/reference/local/roms/sf1-port-voice/` and `tools/reference/local/voice/`.
 
-`build-pack` writes the runtime manifest and the chosen VOX files in that pack. The locally generated ROM comparison clip and listening sheet stay in the pack's ignored archive paths. The Windows ZIP contains the manifest and approved VOX files.
+`build-pack` writes the runtime manifest and the chosen VOX files. The
+generated ROM comparison clip and listening sheet stay in the ignored archive
+paths. The Windows ZIP contains the bundled pack's manifest and approved VOX
+files.
 
 ## The lines
 
-`tools/voice/lines.json` lists one line per voice-pack stem (`sf_video::announcer::AnnouncerLine::file_stem`): Super!, Perfect!, Perfect parry!, Counter!, Punish counter!, Crush counter!, Alpha counter!, Reversal!, First attack!, Burnout!, Custom combo!, and "<N> hit combo!" spelled out ("Five hit combo!") for N = 5 to 15. The pipeline refuses a list that isn't exactly the word lines plus `combo_5` up to the cap.
+`tools/voice/lines.json` lists one line per voice-pack stem
+(`sf_video::announcer::AnnouncerLine::file_stem`). It includes the 13 classic
+announcements, eleven overhaul calls, and the combo counts `combo_5` through
+`combo_15`. Ringside synthesis uses the 22 overhaul calls. Japanese synthesis
+uses all 35 lines with the direction and spoken text in `japanese.json`.
 
 **The combo cap is 15.** A finished combo of more than 15 hits has no line, so he says nothing rather than a wrong number (`announcer.md`: a count above the pack's highest `combo_N` is not called). Raising it is one entry per count in `lines.json` and one run.
 
@@ -50,7 +90,7 @@ A paid command needs `--max-credits N`. Before spending, it reads the vendor's c
 
 ## Picking and the pack
 
-`listen` serves the archive on 127.0.0.1 only. The sheet's radio buttons choose each line's take, and **Save picks** writes `tools/voice/picks.json`, checked first: every stem must be a line, and every take an archived, encoded take. Opened as a file instead, the sheet downloads `picks.json` for moving into place. `pick <stem> <take>` records a pick by hand. A pick names its take by key, so it always means the take the maintainer heard.
+`listen` serves the archive on 127.0.0.1 only. The sheet's radio buttons choose each line's take, and **Save picks** writes the selected voice's picks file in `tools/voice/`, checked first: every stem must be a line, and every take an archived, encoded take. Opened as a file instead, the sheet downloads that picks file for moving into place. `pick <stem> <take>` records a pick by hand. A pick names its take by key, so it always means the take the maintainer heard.
 
 `build-pack` writes the picked takes' `.vox` files as `sf1-port-voice` with `sf-audio voice-pack`, which calls `VoiceStore::write` and then opens the result with `VoiceStore::open`, as the game does, checking every line nibble for nibble. A line with no pick, or whose pick is no longer one of its current takes (its prompt changed), is left out and reported. The game doesn't call a line the pack lacks.
 

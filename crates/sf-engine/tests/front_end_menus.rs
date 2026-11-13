@@ -242,9 +242,11 @@ fn title_theme_plays_for_the_logo_and_hands_back_to_the_attract() {
 
     let title = s.step(idle());
     assert_eq!((title.sound_latch, title.tune_table), (sound::TITLE_THEME, true));
+    assert!(!title.overhaul_fight, "the title tune table does not enable ROM announcer replacement");
     let menu = s.step(start());
     assert_eq!(menu.screen, "main menu");
     assert_eq!((menu.sound_latch, menu.tune_table), (sound::IDLE, true));
+    assert!(!menu.overhaul_fight, "the menu tune table does not enable ROM announcer replacement");
     let title = s.step(back());
     assert_eq!(title.screen, "attract");
     assert_eq!((title.sound_latch, title.tune_table), (sound::IDLE, true));
@@ -647,7 +649,7 @@ fn no_framed_screen_shows_the_preset_line() {
     for _ in 0..3 {
         tap(&mut s, tab.clone());
     }
-    for _ in 0..4 {
+    for _ in 0..5 {
         tap(&mut s, p_dir(1, DOWN));
     }
     clear(&tap(&mut s, confirm()), "jukebox", true);

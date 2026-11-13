@@ -87,6 +87,7 @@ fn an_overhaul_fight_asks_for_every_call_out_and_finished_combos_from_five() {
     s.finish_combo(4);
     s.finish_combo(7);
     let out = s.step(idle());
+    assert!(out.overhaul_fight);
     let mut expected: Vec<AnnouncerLine> = events.iter().filter_map(|e| AnnouncerLine::for_callout(e.kind)).collect();
     expected.push(AnnouncerLine::Combo { hits: 7 });
     assert_eq!(out.announcements, expected, "each word's line, then the count; four hits are not called");
@@ -105,6 +106,8 @@ fn the_faithful_1987_preset_asks_the_announcer_for_nothing() {
     s.push_callouts(&everything());
     s.finish_combo(9);
     for t in 0..10 {
-        assert!(s.step(idle()).announcements.is_empty(), "frame {t}");
+        let out = s.step(idle());
+        assert!(!out.overhaul_fight, "frame {t}: preserve the ROM announcer");
+        assert!(out.announcements.is_empty(), "frame {t}");
     }
 }

@@ -168,7 +168,11 @@ fn the_rom_fight_sample_is_its_1968_bytes() {
     }
     let audio2 = sf_video::romset::load_region(ROMS, MANIFEST, "audio2").unwrap();
     // 0x94 "FIGHT!" (channel 0, 1,968 bytes); 0x8c (channel 1, 2,128 bytes).
-    assert_eq!(rom_sample(audio2.clone(), 0x94).unwrap().len(), 2 * 1968);
+    let fight = rom_sample(audio2.clone(), 0x94).unwrap();
+    assert_eq!(fight.len(), 2 * 1968);
+    let mut ringside = VoiceStore::default();
+    ringside.add_rom_fight(&audio2).unwrap();
+    assert_eq!(ringside.line(AnnouncerLine::Fight), Some(fight.as_slice()));
     assert_eq!(rom_sample(audio2.clone(), 0x8c).unwrap().len(), 2 * 2128);
     assert!(rom_sample(audio2, 0x80).is_err());
 

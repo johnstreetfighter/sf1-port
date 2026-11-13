@@ -15,9 +15,10 @@ use sf_engine::front::settings::{
     frame_delay_cap, refresh_notice, rows, Aspect, Device, DisplayInfo, Row, Settings, SettingsScreen, Tab, DEFAULT_LOOK,
     FRAME_DELAY_CAP_LOOK_MS, FRAME_DELAY_CAP_MS, LOOK_OFF, MAX_SCALE,
 };
-use sf_engine::front::{FrameInputs, FrameOutput, GameSession, Transition};
+use sf_engine::front::{sound, FrameInputs, FrameOutput, GameSession, Transition};
 use sf_engine::moves::InputNotation;
 use sf_engine::roster::{MenuInput, TournamentFighter};
+use sf_video::announcer::{AnnouncerLine, AnnouncerVoice};
 use sf_video::compositor::{fallback_text, ink, RomFont};
 use sf_video::era_hud::GaugeArt;
 use sf_video::render::{HEIGHT, WIDTH};
@@ -369,8 +370,9 @@ fn the_gameplay_rows_wording_and_values() {
         "the Video tab: DISPLAY, MONITOR and MOTION groups, every default"
     );
     let sound: Vec<_> = rows(Tab::Sound).iter().map(|r| s.label(*r)).collect();
-    assert_eq!(sound, ["MASTER", "ANNOUNCER", "FM", "SAMPLES", "JUKEBOX", "RESET TAB"]);
+    assert_eq!(sound, ["MASTER", "ANNOUNCER", "ANNOUNCER VOICE", "FM", "SAMPLES", "JUKEBOX", "RESET TAB"]);
     assert_eq!(s.value(Row::Announcer), "10", "the announcer defaults to 10");
+    assert_eq!(s.value(Row::AnnouncerVoice), "RINGSIDE");
     let roster: Vec<_> = rows(Tab::Roster).iter().map(|r| s.label(*r)).collect();
     assert_eq!(
         roster,
@@ -452,7 +454,11 @@ fn reset_tab_restores_that_tabs_defaults_only() {
         s.apply(MenuInput::Left);
     }
     assert_eq!(s.settings().announcer, 0, "ANNOUNCER goes down to 0, off");
-    // RESET TAB on Sound restores the volumes only.
+    s.apply(MenuInput::Down);
+    assert_eq!(s.row(), Row::AnnouncerVoice);
+    assert_eq!(s.apply(MenuInput::Right), Some(Transition::ValueChanged));
+    assert_eq!(s.value(Row::AnnouncerVoice), "JAPANESE");
+    // RESET TAB on Sound restores the volumes and voice.
     let (config, scale) = (*s.config(), s.settings().scale);
     assert_eq!((s.settings().master, scale), (9, 2));
     while s.row() != Row::ResetTab {
@@ -461,6 +467,7 @@ fn reset_tab_restores_that_tabs_defaults_only() {
     assert_eq!(s.apply(MenuInput::Confirm), Some(Transition::ValueChanged));
     assert_eq!(s.settings().master, 10);
     assert_eq!(s.settings().announcer, 10);
+    assert_eq!(s.value(Row::AnnouncerVoice), "RINGSIDE");
     assert_eq!(s.settings().scale, scale);
     assert_eq!(*s.config(), config);
     // RESET TAB on Gameplay restores the preset and its toggles.
@@ -497,6 +504,20 @@ fn scratch(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("sf1-port-fe8-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
+}
+
+#[test]
+fn announcer_voice_round_trips_and_defaults_for_older_settings() {
+    for (voice, slug) in [(AnnouncerVoice::Ringside, "ringside"), (AnnouncerVoice::Japanese, "japanese")] {
+        let settings = Settings { announcer_voice: voice, ..Settings::default() };
+        let saved = settings.to_toml();
+        assert!(saved.contains(&format!("\nannouncer_voice = \"{slug}\"\n")));
+        assert_eq!(Settings::from_toml(&saved), Ok(settings));
+    }
+    let old = Settings::from_toml("announcer = 4\n").unwrap();
+    assert_eq!(old.announcer_voice, AnnouncerVoice::Ringside);
+    assert_eq!(old.announcer, 4);
+    assert!(Settings::from_toml("announcer_voice = \"unknown\"\n").is_err());
 }
 
 #[test]
@@ -703,6 +724,61 @@ fn the_aspect_row_changes_the_picture_at_once_and_is_saved_on_leaving() {
     let out = tap(&mut s, with(|i| i.menu.back = true));
     assert!(out.settings_changed, "leaving Settings saves");
     assert_eq!((s.settings().aspect, s.live_aspect()), (Aspect::Integer4x3, Aspect::Integer4x3));
+}
+
+#[test]
+fn changing_the_voice_auditions_fight_at_the_live_announcer_volume() {
+    let Some(a) = assets() else { return };
+    let mut s = GameSession::new(a, MatchConfig::default());
+    s.set_title_theme_available(true);
+    for _ in 0..200 {
+        let out = s.step(idle());
+        assert!(!out.overhaul_fight, "the attract never replaces ROM calls");
+    }
+    tap(&mut s, with(|i| i.menu.start = true));
+    let down = with(|i| i.p1.directions[2] = true);
+    for _ in 0..3 {
+        let out = tap(&mut s, down);
+        assert!(!out.overhaul_fight, "title music in menus never enables announcer replacement");
+    }
+    let confirm = with(|i| i.menu.confirm = true);
+    assert_eq!(tap(&mut s, confirm).screen, "settings");
+    for _ in 0..3 {
+        tap(&mut s, with(|i| i.menu.tab_right = true));
+    }
+    let left = with(|i| i.p1.directions[1] = true);
+    let right = with(|i| i.p1.directions[0] = true);
+    tap(&mut s, down); // ANNOUNCER
+    assert!(tap(&mut s, left).announcements.is_empty());
+    tap(&mut s, down); // ANNOUNCER VOICE
+    for (direction, voice) in [(right, AnnouncerVoice::Japanese), (left, AnnouncerVoice::Ringside)] {
+        let out = s.step(direction);
+        assert_eq!(out.transition, Some(Transition::ValueChanged));
+        assert_eq!(out.sound_latch, sound::CURSOR);
+        assert_eq!(out.announcements, [AnnouncerLine::Fight]);
+        assert!(!out.overhaul_fight);
+        assert_eq!(s.live_sound().announcer_voice, voice);
+        assert_eq!(s.live_sound().announcer, 9);
+        assert_eq!(s.settings().announcer_voice, AnnouncerVoice::Ringside);
+        assert_eq!(s.settings().announcer, 10);
+        assert!(s.step(idle()).announcements.is_empty());
+    }
+    tap(&mut s, right);
+    for _ in 0..4 {
+        tap(&mut s, down);
+    }
+    let reset = tap(&mut s, confirm);
+    assert_eq!(reset.transition, Some(Transition::ValueChanged));
+    assert!(reset.announcements.is_empty());
+    assert_eq!(s.live_sound().announcer_voice, AnnouncerVoice::Ringside);
+    assert_eq!(s.live_sound().announcer, 10);
+    for _ in 0..4 {
+        tap(&mut s, with(|i| i.p1.directions[3] = true));
+    }
+    tap(&mut s, right);
+    assert!(tap(&mut s, with(|i| i.menu.back = true)).settings_changed);
+    assert_eq!(s.settings().announcer_voice, AnnouncerVoice::Japanese);
+    assert_eq!(s.live_sound().announcer_voice, AnnouncerVoice::Japanese);
 }
 
 #[test]

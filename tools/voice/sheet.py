@@ -3,9 +3,9 @@
 Every button plays the ROM's own "FIGHT!" first, as the cabinet's chip plays
 it, and then the take or preview, encoded to 4 kHz MSM5205 ADPCM and decoded
 by the same chip model: the maintainer judges each one on what the player will hear,
-right after the 1987 voice. Picks are made on the page. Served by
-`pipeline.py listen`, its Save button writes tools/voice/picks.json; opened as
-a file, it offers picks.json as a download instead.
+right after the 1987 voice. Served by pipeline.py listen, its Save button
+writes the selected voice's picks file. Opened as a file, it offers a
+download instead.
 """
 
 import html
@@ -37,7 +37,7 @@ function play(src) {
   fight.play();
 }
 function alone(src) { if (current) current.pause(); fight.pause(); current = new Audio(src); current.play(); }
-const picks = PICKS;
+const {picks, picksFile} = SHEET_DATA;
 function render() {
   document.getElementById('picks').value = JSON.stringify(picks, null, 2) + "\\n";
   document.querySelectorAll('input[type=radio]').forEach(r => {
@@ -51,12 +51,12 @@ async function save() {
   const out = document.getElementById('saved');
   if (location.protocol.startsWith('http')) {
     const r = await fetch('/picks', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(picks)});
-    out.textContent = r.ok ? 'Saved to tools/voice/picks.json.' : 'Not saved: ' + await r.text();
+    out.textContent = r.ok ? 'Saved to tools/voice/' + picksFile + '.' : 'Not saved: ' + await r.text();
   } else {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(picks, null, 2) + "\\n"], {type: 'application/json'}));
-    a.download = 'picks.json'; a.click();
-    out.textContent = 'Downloaded: move it to tools/voice/picks.json (or run pipeline.py listen and save from there).';
+    a.download = picksFile; a.click();
+    out.textContent = 'Downloaded. Move it to tools/voice/' + picksFile + '.';
   }
 }
 render();
@@ -68,7 +68,7 @@ def _e(s):
 
 
 def build(data):
-    """data: {"fight": rel path or None, "voice": {...}, "rounds": [...], "lines": [...], "picks": {...}}.
+    """Render the voice, takes, picks and commands with paths relative to the sheet.
     rounds: [{"round": n, "previews": [{"n": i, "heard": rel or None, "save": "command"}]}].
     lines: [{"stem", "text", "prompt", "takes": [{"take", "key", "heard": rel or None, "seconds"}]}]."""
     out = ["<!doctype html><html lang='en'><head><meta charset='utf-8'>",
@@ -97,7 +97,7 @@ def build(data):
                 out.append(f"<button onclick=\"play('{_e(p['heard'])}')\">FIGHT! then preview {p['n']}</button> ")
         out.append("</p><p class='muted'>To keep one: " + "; ".join(f"<code>{_e(p['save'])}</code>" for p in rnd["previews"]) + "</p>")
     if not data["rounds"]:
-        out.append("<p class='muted'>No design round yet: <code>python tools/voice/pipeline.py design --max-credits N</code>.</p>")
+        out.append(f"<p class='muted'>No design round yet. <code>{_e(data['design_command'])}</code></p>")
 
     out.append("<h2>The lines</h2><table><tr><th>Line</th><th>Takes (FIGHT! first)</th><th>Pick</th></tr>")
     for line in data["lines"]:
@@ -114,6 +114,7 @@ def build(data):
     out.append("</table>")
     out.append("<h2>Picks</h2><p><button onclick='save()'>Save picks</button> <span id='saved' class='muted'></span></p>"
                "<textarea id='picks' readonly></textarea>"
-               "<p class='muted'>Then <code>python tools/voice/pipeline.py build-pack</code> writes sf1-port-voice.</p>")
-    out.append(f"<script>{SCRIPT.replace('PICKS', json.dumps(data['picks']))}</script></body></html>")
+               f"<p class='muted'>Build the voice pack with <code>{_e(data['pack_command'])}</code>.</p>")
+    script_data = json.dumps({"picks": data["picks"], "picksFile": data["picks_file"]}).replace("<", "\\u003c")
+    out.append(f"<script>{SCRIPT.replace('SHEET_DATA', script_data)}</script></body></html>")
     return "\n".join(out) + "\n"

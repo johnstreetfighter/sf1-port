@@ -9,12 +9,11 @@
     python tools/voice/pipeline.py pick <stem> <take>             # or record one pick by hand
     python tools/voice/pipeline.py build-pack                     # write sf1-port-voice from the picks
 
-In the repository (tools/voice/): the line list (lines.json), the speaker with
-the voice's description and settings (announcer.json), the maintainer's picks
-(picks.json) and the credit ledger (ledger.json). The playable audio and
-authoring takes live in assets/sf1-port-voice. The pack's archive/ folder
-contains takes, previews and locally generated reference audio
-(docs/reference/announcer.md).
+Use --voice japanese before or after the command to work with the local
+Japanese voice. The default --voice ringside keeps the existing 22-line voice
+and picks. Japanese uses japanese.json and picks_japanese.json, archives takes
+under tools/reference/local/voice/japanese, and builds the local
+sf1-port-voice/japanese pack beside the ROM set. See docs/reference/voice-pipeline.md.
 
 A run:
 
@@ -67,26 +66,48 @@ STARTER_USD, STARTER_CREDITS = 6.0, 40000
 WORDS = ["super", "perfect", "perfect_parry", "counter", "punish_counter", "crush_counter", "alpha_counter",
          "reversal", "first_attack", "burnout", "custom_combo"]  # sf_video::announcer::AnnouncerLine::WORDS
 COMBO_MIN = 5  # sf_video::announcer::COMBO_MIN_HITS
+CLASSIC = ["japan", "usa", "england", "china", "thailand", "fight", "game_over", "time_up",
+           "round_1", "round_2", "round_3", "round_4", "round_5"]
 
 
 class Paths:
-    def __init__(self, repo=REPO, roms=None, binary=None):
+    def __init__(self, repo=REPO, roms=None, binary=None, voice="ringside"):
         self.repo = pathlib.Path(repo)
+        self.voice = voice
         self.tool = self.repo / "tools" / "voice"
         self.lines = self.tool / "lines.json"
-        self.speaker = self.tool / "announcer.json"
-        self.picks = self.tool / "picks.json"
-        self.ledger = self.tool / "ledger.json"
-        self.roms = pathlib.Path(roms) if roms else self.repo / "tools" / "reference" / "local" / "roms"
+        local = self.repo / "tools" / "reference" / "local"
+        self.roms = pathlib.Path(roms) if roms else local / "roms"
         self.rom_set = self.roms / "sf"
         self.rom_manifest = self.repo / "tools" / "reference" / "rom-manifest.json"
-        self.pack = self.repo / "assets" / "sf1-port-voice"
-        self.archive = self.pack / "archive"
+        local_pack = self.roms / "sf1-port-voice"
+        if voice == "japanese":
+            self.speaker = self.tool / "japanese.json"
+            self.picks = self.tool / "picks_japanese.json"
+            self.pack = local_pack / "japanese"
+            self.archive = local / "voice" / "japanese"
+            self.ledger = self.archive / "ledger.json"
+            self.voice_selection = self.archive / "voice.json"
+        else:
+            self.speaker = self.tool / "announcer.json"
+            self.picks = self.tool / "picks.json"
+            self.ledger = self.tool / "ledger.json"
+            self.voice_selection = None
+            bundled = self.repo / "assets" / "sf1-port-voice"
+            # The imported pack still uses its archived takes and release inputs.
+            if (bundled / "manifest.json").is_file():
+                self.pack, self.archive = bundled, bundled / "archive"
+            else:
+                self.pack, self.archive = local_pack, local / "voice"
         self.design = self.archive / "design"
         self.takes = self.archive / "takes"
         self.fight = self.archive / "rom" / "fight.heard.wav"
         self.sheet = self.archive / "sheet.html"
         self.binary = pathlib.Path(binary) if binary else audio.binary_path(self.repo)
+
+    def command(self, arguments):
+        option = " --voice japanese" if self.voice == "japanese" else ""
+        return f"python tools/voice/pipeline.py{option} {arguments}"
 
     def take_file(self, stem, key):
         return self.takes / stem / f"{key[:16]}.wav"
@@ -130,25 +151,44 @@ class Line:
 
 
 def load_lines(paths):
-    """(lines, takes per line). Refused unless every stem is one of his lines,
-    each once, with the combo counts running from five to the cap."""
+    """Load and validate the catalog, then return the selected voice's lines and take count."""
     doc = read_json(paths.lines)
-    lines = [Line(x["stem"], x["text"], x.get("prompt", x["text"])) for x in doc["lines"]]
-    stems = [x.stem for x in lines]
+    stems = [x["stem"] for x in doc["lines"]]
     if len(set(stems)) != len(stems):
         raise SystemExit(f"{paths.lines}: a stem is listed twice")
-    cap = doc["combo_cap"]
-    want = WORDS + [f"combo_{n}" for n in range(COMBO_MIN, cap + 1)]
+    overhaul = WORDS + [f"combo_{n}" for n in range(COMBO_MIN, doc["combo_cap"] + 1)]
+    want = CLASSIC + overhaul
     if sorted(stems) != sorted(want):
         raise SystemExit(f"{paths.lines}: the lines must be exactly {want}")
-    for x in lines:
-        if not x.text.strip() or not x.prompt.strip():
-            raise SystemExit(f"{paths.lines}: {x.stem} has no text")
+    japanese = paths.voice == "japanese"
+    directions = read_json(paths.speaker)["lines"] if japanese else {}
+    if japanese and set(directions) != set(want):
+        raise SystemExit(f"{paths.speaker}: specify direction for every line in {paths.lines}")
+    lines = []
+    for entry in doc["lines"]:
+        stem, text = entry["stem"], entry["text"]
+        if not japanese and stem in CLASSIC:
+            continue
+        prompt = entry.get("prompt", text)
+        if japanese:
+            cue = directions[stem]["direction"].strip()
+            say = directions[stem]["say"].strip()
+            if not cue or not say:
+                raise SystemExit(f"{paths.speaker}: {stem} needs direction and spoken text")
+            prompt = f"[Japanese accent, {cue}] {say}"
+        if not text.strip() or not prompt.strip():
+            raise SystemExit(f"{paths.lines}: {stem} has no text")
+        lines.append(Line(stem, text, prompt))
     return lines, doc["takes"]
 
 
 def load_speaker(paths):
-    return read_json(paths.speaker)
+    record = read_json(paths.speaker)
+    if paths.voice_selection and paths.voice_selection.is_file():
+        selection = read_json(paths.voice_selection)
+        record["voice"]["voice_id"] = selection["voice_id"]
+        record["voice"]["design"]["picked"] = selection["picked"]
+    return record
 
 
 def load_picks(paths):
@@ -439,12 +479,17 @@ def save_voice(paths, preview, round_=None, vendor=None, log=print):
     prev = chosen["previews"][preview - 1]
     record = load_speaker(paths)
     v = record["voice"]
-    body = {"voice_name": "sf1-port - the announcer", "voice_description": v["design"]["description"],
+    name = "the Japanese announcer" if paths.voice == "japanese" else "the announcer"
+    body = {"voice_name": f"sf1-port - {name}", "voice_description": v["design"]["description"],
             "generated_voice_id": prev["generated_voice_id"]}
     vendor = vendor or ElevenLabs(paths, log)
     v["voice_id"] = vendor.save_voice(body)
-    v["design"]["picked"] = f"round {chosen['round']}, preview {preview} (archive/design/{prev['file']})"
-    write_json(paths.speaker, record)
+    design_dir = "design" if paths.voice_selection else "archive/design"
+    v["design"]["picked"] = f"round {chosen['round']}, preview {preview} ({design_dir}/{prev['file']})"
+    if paths.voice_selection:
+        write_json(paths.voice_selection, {"voice_id": v["voice_id"], "picked": v["design"]["picked"]})
+    else:
+        write_json(paths.speaker, record)
     log(f"the announcer's voice is now {v['voice_id']} ({v['design']['picked']})")
     return v["voice_id"]
 
@@ -466,7 +511,7 @@ def write_sheet(paths, codec=None, log=print):
         for i, prev in enumerate(r["previews"], 1):
             heard = derived(paths.design / prev["file"])["heard"]
             previews.append({"n": i, "heard": _rel(paths, heard) if heard.exists() else None,
-                             "save": f"python tools/voice/pipeline.py design --save {i} --round {r['round']}"})
+                             "save": paths.command(f"design --save {i} --round {r['round']}")})
         rounds.append({"round": r["round"], "previews": previews})
     lines = {}
     for item in p.items:
@@ -481,7 +526,9 @@ def write_sheet(paths, codec=None, log=print):
     page = sheet.build({"fight": _rel(paths, paths.fight) if has_fight else None,
                         "voice": {"voice_id": voice.get("voice_id"), "picked": voice["design"].get("picked"),
                                   "description": voice["design"]["description"]},
-                        "rounds": rounds, "lines": list(lines.values()), "picks": load_picks(paths)})
+                        "rounds": rounds, "lines": list(lines.values()), "picks": load_picks(paths),
+                        "picks_file": paths.picks.name, "design_command": paths.command("design --max-credits N"),
+                        "pack_command": paths.command("build-pack")})
     paths.sheet.parent.mkdir(parents=True, exist_ok=True)
     paths.sheet.write_text(page, encoding="utf-8")
     return paths.sheet
@@ -614,13 +661,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("command", choices=["status", "design", "run", "sheet", "listen", "pick", "build-pack"])
     ap.add_argument("args", nargs="*", help="pick: <stem> <take>")
+    ap.add_argument("--voice", choices=("ringside", "japanese"), default="ringside")
     ap.add_argument("--max-credits", type=int)
     ap.add_argument("--stop-at", type=int, default=STOP_AT)
     ap.add_argument("--save", type=int, help="design: keep this preview as the voice")
     ap.add_argument("--round", type=int, help="design --save: of this round (default the latest)")
     ap.add_argument("--port", type=int, default=8765)
-    a = ap.parse_args(argv)
-    paths = Paths()
+    a = ap.parse_intermixed_args(argv)
+    paths = Paths(voice=a.voice)
     if a.command == "status":
         s = status(paths)
         print(json.dumps(s, indent=2))

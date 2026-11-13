@@ -343,6 +343,10 @@ impl GameSound {
         self.announcer.as_ref()
     }
 
+    pub fn announcer_mut(&mut self) -> Option<&mut Announcer> {
+        self.announcer.as_mut()
+    }
+
     /// Ask the announcer for `lines` at frame `frame`'s start (the frame
     /// whose latch is pushed with it); nothing without his chip.
     pub fn announce(&mut self, frame: u32, lines: &[AnnouncerLine]) {

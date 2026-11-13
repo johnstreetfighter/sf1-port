@@ -372,8 +372,7 @@ impl Game {
                 log.line("playtest", &format!("could not load the {} VS screen: {error}", playtest.display_name()));
             }
         }
-        // The announcer's voice pack, looked for as the art pack is.
-        let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
+        let voices = sf_host::voice::VoicePacks::load(&rom_folders, &asset_roots, &audio2, log);
 
         let (satsui_body, satsui_fire) = evil_ryu_art::satsui_art(&assets);
         let mut config = self.config.take().unwrap_or_default();
@@ -435,7 +434,7 @@ impl Game {
         match &sound {
             Some(s) => {
                 s.set_gains(gains(&self.settings));
-                s.set_voice(voice);
+                s.set_voice_packs(voices);
             }
             None => log.line("settings", "audio: no usable output device; running silent"),
         }
@@ -620,13 +619,12 @@ impl Driver for Game {
                     // and passed on when the file could not be played.
                     let action = out.track.as_ref().map_or(Action::None, |cue| play.jukebox.cue(cue, log));
                     let latch = play.jukebox.latch(&action, out.sound_latch);
-                    s.push_frame(out.sound_frame, latch, out.latch_cycles);
+                    s.push_game_frame(&out, latch, session.live_sound());
                     match action {
                         Action::Start(track) => s.start_track(out.sound_frame, track),
                         Action::Stop => s.stop_track(out.sound_frame),
                         Action::None => {}
                     }
-                    s.announce(out.sound_frame, &out.announcements);
                 }
                 save_replays(session, &self.app_dir, log);
                 if out.quit || (self.evil_ryu_playtest.is_some() && session.fight().is_none()) {
@@ -664,9 +662,6 @@ impl Driver for Game {
                     }
                     log.line("settings", &format!("saved: {}", files::describe(settings, config)));
                     play.saved = settings.clone();
-                    if let Some(s) = &play.sound {
-                        s.set_gains(gains(settings));
-                    }
                 }
                 // SAVE AS on the tuning screen: write the look, list it and
                 // make it the player's look.

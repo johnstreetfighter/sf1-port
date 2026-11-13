@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/sf-compare", "crates/sf-video", "crates/sf-dev", "crates/sf-host", "crates/sf-game", "crates/sf-engine", "crates/sf-openmpt", "crates/sf-audio", "crates/sf-art", "tools/mugen-extract"]
 
 [workspace.package]
-version = "1.5.0"
+version = "1.5.1"
 edition = "2021"
 
 [workspace.dependencies]

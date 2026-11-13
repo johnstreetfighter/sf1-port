@@ -409,6 +409,7 @@ impl GameSession {
             sound_latch: if exit { sound::STOP_ALL } else { latch },
             latch_cycles,
             announcements,
+            overhaul_fight: !exit && preset != RulesetPreset::Faithful1987,
             tune_table: preset != RulesetPreset::Faithful1987,
             track: self.track_cue(if exit { sound::STOP_ALL } else { latch }),
             screen: self.screen(),

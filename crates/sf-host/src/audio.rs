@@ -23,20 +23,20 @@
 //! as far as the pushed frames' writes reach, so sound never runs ahead of
 //! the game (if the game stalls, the output holds).
 //!
-//! With a voice pack ([`Audio::set_voice`]) the overhaul announcer's own
-//! chip (ADR 0011) is mixed beside the board's two, and the game loop asks
-//! for his lines with each frame's latch ([`Audio::announce`]).
+//! The announcer's own chip (ADR 0011) is mixed beside the board's two.
+//! [`Audio::push_game_frame`] routes classic calls and the game's own
+//! announcements for the selected voice.
 
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use sf_audio::announcer::{Announcer, VoiceStore};
 use sf_audio::mix::GameSound;
 use sf_audio::{LatchTimeline, FRAME_HZ, IRQ_LATENCY_MID};
-use sf_video::announcer::AnnouncerLine;
+use sf_engine::front::{settings::LiveSound, FrameOutput};
 
 use crate::jukebox::{soft_limit, TrackMixer, TRACK_GAIN};
 use crate::track::Track;
+use crate::voice::{AnnouncerFrame, VoicePacks, VoicePlayback};
 
 /// Where the launcher's sound starts: the sound ROMs, the fixture frame,
 /// and the reference's latch writes through it.
@@ -138,8 +138,8 @@ impl LiveCapture {
 
 struct Shared {
     sound: GameSound,
-    /// The voice pack the announcer's chip plays from, if one loaded.
-    voice: Option<Arc<VoiceStore>>,
+    /// Voice packs and the current announcer routing for the game.
+    voice: Option<VoicePlayback>,
     /// The extended tune table the music CPU runs with now (an overhaul
     /// fight's), if any.
     tunes: Option<Arc<Vec<u8>>>,
@@ -222,12 +222,30 @@ impl Audio {
             .push_frame(frame, latch, latch_cycles, IRQ_LATENCY_MID);
     }
 
-    /// Give the announcer's chip the voice pack `voice` (`None`: no
-    /// announcer). It lasts across [`Audio::reset`].
-    pub fn set_voice(&self, voice: Option<Arc<VoiceStore>>) {
+    /// Install both voice packs. They last across [`Audio::reset`].
+    pub fn set_voice_packs(&self, packs: VoicePacks) {
         let mut s = self.shared.lock().unwrap();
-        s.sound.set_announcer(voice.clone().map(Announcer::new));
-        s.voice = voice;
+        s.voice = Some(VoicePlayback::new(packs, &mut s.sound));
+    }
+
+    /// Push the front end's frame, with the latch already processed by
+    /// the Jukebox and the live sound settings for the frame's audition.
+    pub fn push_game_frame(&self, out: &FrameOutput, latch: u8, live: LiveSound) {
+        let mut s = self.shared.lock().unwrap();
+        let Shared { sound, voice, gains, .. } = &mut *s;
+        *gains = Gains::from_volumes(live.master, live.fm, live.samples, live.announcer);
+        if let Some(voice) = voice {
+            voice.push_frame(sound, AnnouncerFrame {
+                frame: out.sound_frame,
+                latch,
+                latch_cycles: out.latch_cycles,
+                overhaul_fight: out.overhaul_fight,
+                voice: live.announcer_voice,
+                lines: &out.announcements,
+            });
+        } else {
+            sound.push_frame(out.sound_frame, latch, out.latch_cycles, IRQ_LATENCY_MID);
+        }
     }
 
     /// Give the music CPU the extended tune table `table` (`None`: the ROM
@@ -253,21 +271,15 @@ impl Audio {
         self.shared.lock().unwrap().track.stop(f64::from(frame) / f64::from(FRAME_HZ));
     }
 
-    /// Ask the announcer for `lines` at `frame` (the frame whose latch was
-    /// just pushed); nothing without a voice pack.
-    pub fn announce(&self, frame: u32, lines: &[AnnouncerLine]) {
-        if !lines.is_empty() {
-            self.shared.lock().unwrap().sound.announce(frame, lines);
-        }
-    }
-
     /// Restart from power-on and the pre-roll (the launcher reloaded its
     /// fixture); the new sound is built before the old one is replaced.
     pub fn reset(&self, start: &SoundStart) {
         let mut sound = start.build();
         let old = {
             let mut s = self.shared.lock().unwrap();
-            sound.set_announcer(s.voice.clone().map(Announcer::new));
+            if let Some(voice) = &mut s.voice {
+                voice.reset(&mut sound);
+            }
             sound.set_tune_table(s.tunes.clone());
             s.t = start.frame as f64 / FRAME_HZ as f64;
             s.started = s.t;

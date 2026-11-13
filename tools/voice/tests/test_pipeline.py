@@ -198,7 +198,7 @@ class StatusTest(Fixture):
         e = pipeline.estimate(pipeline.Paths(REPO))
         lines = json.loads((REPO / "tools" / "voice" / "lines.json").read_text(encoding="utf-8"))["lines"]
         preview = json.loads((REPO / "tools" / "voice" / "announcer.json").read_text(encoding="utf-8"))["voice"]["design"]["preview_text"]
-        chars = 3 * sum(len(x["prompt"]) for x in lines)
+        chars = 3 * sum(len(x["prompt"]) for x in lines if x["stem"] not in pipeline.CLASSIC)
         self.assertEqual(e["lines"], 22)
         self.assertEqual(e["takes"], 66)
         self.assertEqual(e["design_round_credits"], len(preview))
@@ -392,6 +392,60 @@ class SheetAndPackTest(Fixture):
         self.assertEqual(pathlib.Path(plan["super"]["vox"]).parent.name, "super")
 
 
+
+class JapaneseVoiceTest(Fixture):
+    combo_cap = 15
+
+    def test_status_accepts_japanese_and_keeps_ringside_as_default(self):
+        for args, count in ((["status"], 22), (["status", "--voice", "japanese"], 35)):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                pipeline.main(args)
+            status, _ = json.JSONDecoder().raw_decode(out.getvalue())
+            self.assertEqual(status["lines"], count)
+
+    def test_japanese_design_takes_and_pack_use_their_own_paths(self):
+        root = self.paths.repo
+        paths = pipeline.Paths(root, voice="japanese")
+        local = root / "tools" / "reference" / "local"
+        archive = local / "voice" / "japanese"
+        pack = local / "roms" / "sf1-port-voice" / "japanese"
+        picks = root / "tools" / "voice" / "picks_japanese.json"
+        persona = root / "tools" / "voice" / "japanese.json"
+        shutil.copyfile(REPO / "tools" / "voice" / persona.name, persona)
+        original_persona = persona.read_bytes()
+        ringside_pack = self.paths.pack / "manifest.json"
+        ringside_pack.parent.mkdir(parents=True)
+        ringside_pack.write_text("Ringside pack", encoding="utf-8")
+        paths.rom_set.mkdir(parents=True)
+        vendor = FakeVendor()
+
+        pipeline.design(paths, vendor=vendor, codec=self.codec, max_credits=1000, log=quiet)
+        pipeline.save_voice(paths, 2, vendor=vendor, log=quiet)
+        pipeline.run(paths, vendor=vendor, codec=self.codec, max_credits=10000, log=quiet)
+
+        self.assertEqual(persona.read_bytes(), original_persona)
+        prompts = [body["text"] for _, body in vendor.calls]
+        self.assertEqual(len(prompts), 105)
+        for phrase in ("Fait-oh!", "Raundo Wan!", "Taaimu Appu!", "Paafekuto!", "Suupaa!", "Kauntaa!"):
+            self.assertEqual(sum(p.split("] ", 1)[1] == phrase for p in prompts), 3, phrase)
+        page = (archive / "sheet.html").read_text(encoding="utf-8")
+        self.assertIn("<audio id='fight' preload='auto' src='rom/fight.heard.wav'>", page)
+        self.assertLess(page.index("The ROM's FIGHT! alone"), page.index("<h2>The voice</h2>"))
+        self.assertIn("--voice japanese build-pack", page)
+        self.assertIn("picks_japanese.json", page)
+        self.assertEqual(len(list((archive / "takes" / "fight").glob("*.vox"))), 3)
+
+        for line in pipeline.load_lines(paths)[0]:
+            pipeline.pick(paths, line.stem, 2, log=quiet)
+        result = pipeline.build_pack(paths, codec=self.codec, log=quiet)
+        self.assertEqual(len(result["written"]), 35)
+        self.assertEqual(set(result["written"]), set(json.loads(picks.read_text(encoding="utf-8"))["lines"]))
+        self.assertTrue((pack / "manifest.json").exists())
+        self.assertEqual(ringside_pack.read_text(encoding="utf-8"), "Ringside pack")
+        self.assertFalse(self.paths.picks.exists())
+
+
 class KeyTest(Fixture):
     """The real el.py against a mocked network, with a made-up key."""
 
@@ -465,8 +519,11 @@ class ContentTest(unittest.TestCase):
         self.assertEqual(len(lines), 22)
         # The stems are the Rust ones (sf_video::announcer::AnnouncerLine::file_stem).
         src = (REPO / "crates" / "sf-video" / "src" / "announcer.rs").read_text(encoding="utf-8")
-        rust = re.findall(r'AnnouncerLine::\w+ => "(\w+)"', src)
-        self.assertEqual(rust, pipeline.WORDS)
+        rust_words = re.findall(r'AnnouncerLine::\w+ => "(\w+)"', src)
+        rust_classic = re.findall(r'\(Self::\w+, "(\w+)"\)', src)
+        self.assertEqual(rust_words, pipeline.WORDS)
+        self.assertEqual(rust_classic, pipeline.CLASSIC)
+        self.assertEqual(len(doc["lines"]), 35)
         self.assertIn(f"COMBO_MIN_HITS: u16 = {pipeline.COMBO_MIN};", src)
         words = ["Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen"]
         combos = {x.stem: x.text for x in lines if x.stem.startswith("combo_")}
@@ -526,6 +583,30 @@ class EndToEndTest(Fixture):
         self.assertEqual(vox, d["vox"].read_bytes(), "the pack holds the take the maintainer heard")
         self.assertEqual(manifest["lines"]["super"]["crc32"], f"{zlib.crc32(vox):08x}")
         self.assertTrue((self.paths.archive / "pack-plan.json").exists())
+
+    def test_japanese_pack_round_trips_all_35_stems_through_the_real_codec(self):
+        root = self.paths.repo
+        for name in ("lines.json", "japanese.json"):
+            shutil.copyfile(REPO / "tools" / "voice" / name, self.paths.tool / name)
+        paths = pipeline.Paths(root, binary=self.paths.binary, voice="japanese")
+        vendor = FakeVendor()
+        # The existing end-to-end test exercises the real ffmpeg preparation.
+        # Here the 35-line manifest and every VOX file use the real Rust codec.
+        with mock.patch.object(pipeline.audio, "prepare", fast_prepare):
+            pipeline.design(paths, vendor=vendor, max_credits=1000, log=quiet)
+            pipeline.save_voice(paths, 2, vendor=vendor, log=quiet)
+            pipeline.run(paths, vendor=vendor, max_credits=10000, log=quiet)
+        for line in pipeline.load_lines(paths)[0]:
+            pipeline.pick(paths, line.stem, 1, log=quiet)
+        summary = pipeline.build_pack(paths, log=quiet)
+        manifest = json.loads((paths.pack / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["sample_rate"], 4000)
+        self.assertEqual(len(manifest["lines"]), 35)
+        self.assertEqual(sorted(manifest["lines"]), summary["written"])
+        self.assertEqual(sorted(path.stem for path in paths.pack.glob("*.vox")), summary["written"])
+        self.assertIn("fight", manifest["lines"])
+        self.assertIn("round_5", manifest["lines"])
+        self.assertIn("combo_15", manifest["lines"])
 
 
 if __name__ == "__main__":

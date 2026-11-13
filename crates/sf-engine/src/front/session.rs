@@ -7,6 +7,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, OnceLock};
 
+use sf_video::announcer::AnnouncerLine;
 use sf_video::busts::{decode_select_busts, Bust};
 use sf_video::compositor::RomFont;
 use sf_video::render::{render_frame, Frame, SpriteArt};
@@ -31,7 +32,9 @@ use super::select::SelectScreen;
 use super::jukebox::{entries as jukebox_entries, listed_tracks, JukeboxScreen};
 use crate::jukebox::TrackFormats;
 use super::stage_select::{random_pick, StageScreen};
-use super::settings::{default_looks, frame_delay_cap, look_in_use, Aspect, DisplayInfo, LookName, Settings, SettingsScreen};
+use super::settings::{
+    default_looks, frame_delay_cap, look_in_use, Aspect, DisplayInfo, LiveSound, LookName, Row, Settings, SettingsScreen,
+};
 use super::tune::{DemoScene, LookParam, LookTuning, Panel, SaveLook, TuneScreen, TypedKey};
 use super::world_tour::WorldTourScreen;
 use super::{sound, Transition};
@@ -105,9 +108,12 @@ pub struct FrameOutput {
     /// The latch write's cycles into the frame (the machine's vblank
     /// handler's on attract frames, 0 on the front end's own).
     pub latch_cycles: u32,
-    /// The announcer's lines asked for on this frame (an overhaul fight's;
-    /// ADR 0011): the host asks his chip for them at `sound_frame`.
-    pub announcements: Vec<sf_video::announcer::AnnouncerLine>,
+    /// Overhaul call-outs or a Settings audition for the third MSM5205
+    /// (ADR 0011). The host requests them at `sound_frame`.
+    pub announcements: Vec<AnnouncerLine>,
+    /// An overhaul fight (including its boxes and replay playback) is
+    /// active, so the host can route its ROM announcer latches separately.
+    pub overhaul_fight: bool,
     /// The title arrangement or an overhaul fight (its boxes included) is
     /// using the extended tune table. The host hands over the table before
     /// pushing this frame's latch. Never used by Faithful 1987.
@@ -609,6 +615,19 @@ impl GameSession {
     /// The settings (video, sound, ROM folder, the cabinet's DIP words).
     pub fn settings(&self) -> &Settings {
         &self.settings
+    }
+
+    /// The sound settings in force this frame, including unsaved changes.
+    pub fn live_sound(&self) -> LiveSound {
+        self.stack
+            .iter()
+            .rev()
+            .find_map(|screen| match screen {
+                Screen::Settings(screen) => Some(screen.settings()),
+                _ => None,
+            })
+            .unwrap_or(&self.settings)
+            .sound()
     }
 
     /// The picture's aspect as the player has it now: the open Settings
@@ -1852,7 +1871,14 @@ impl GameSession {
 
     /// The menus' and the select's inputs. The Local select takes each
     /// side's own inputs; everything else takes the merged cursor's.
-    fn screen_input(&mut self, prev: &FrameInputs, now: &FrameInputs, typed: Vec<TypedKey>, quit: &mut bool) -> Option<Transition> {
+    fn screen_input(
+        &mut self,
+        prev: &FrameInputs,
+        now: &FrameInputs,
+        typed: Vec<TypedKey>,
+        quit: &mut bool,
+        audition: &mut Option<AnnouncerLine>,
+    ) -> Option<Transition> {
         if let Some(Screen::Replays(screen)) = self.stack.last_mut() {
             let action = menu_events(prev, now).into_iter().find_map(|input| screen.apply(input, self.replays.len()))?;
             match action {
@@ -2145,8 +2171,11 @@ impl GameSession {
                     if let Some(Screen::Tune(t)) = self.stack.last() {
                         self.tuning = Some(t.tuning());
                     }
-                    // `RESET TAB` on the Controls tab: the default bindings.
                     if let Some(Screen::Settings(s)) = self.stack.last_mut() {
+                        if s.row() == Row::AnnouncerVoice && matches!(event, Event::Menu(MenuInput::Left | MenuInput::Right)) {
+                            *audition = Some(AnnouncerLine::Fight);
+                        }
+                        // `RESET TAB` on the Controls tab: the default bindings.
                         if s.take_reset_bindings() {
                             if let Some((current, defaults)) = self.binds.as_mut() {
                                 *current = *defaults;
@@ -2217,6 +2246,7 @@ impl GameSession {
         let events = menu_events(&prev, &input);
         let typed = std::mem::take(&mut self.typed);
         let mut quit = false;
+        let mut audition = None;
         if self.playback.is_some() {
             return self.step_replay(&prev, &input, &events);
         }
@@ -2245,6 +2275,7 @@ impl GameSession {
                     sound_latch: m.state.sound_latch,
                     latch_cycles: m.state.latch_cycles,
                     announcements: Vec::new(),
+                    overhaul_fight: false,
                     tune_table: false,
                     track: None,
                     screen: self.screen(),
@@ -2279,7 +2310,7 @@ impl GameSession {
                 Transition::OpenMainMenu
             })
         } else {
-            self.screen_input(&prev, &input, typed, &mut quit)
+            self.screen_input(&prev, &input, typed, &mut quit, &mut audition)
         };
 
         self.online_actions();
@@ -2405,7 +2436,7 @@ impl GameSession {
                 None => (boxed(play.last.clone()), box_sound.unwrap_or(sound::IDLE), 0, Vec::new()),
             }
         });
-        let (mut frame, sound_latch, latch_cycles, announcements) = match presented {
+        let (mut frame, sound_latch, latch_cycles, mut announcements) = match presented {
             Some(p) => p,
             None if self.stack.is_empty() => {
                 self.sounds.clear();
@@ -2474,6 +2505,7 @@ impl GameSession {
                 (frame, Self::front_music_latch(&mut self.front_music, music, latch), 0, Vec::new())
             }
         };
+        announcements.extend(audition);
         self.net_hud(&mut frame);
         let panel = match (&self.play, self.stack.last()) {
             (Some(play), _) => play.moves.as_ref().map(|m| m.panel(&font)),
@@ -2481,14 +2513,15 @@ impl GameSession {
             _ => None,
         };
         let track = self.track_cue(sound_latch);
+        let overhaul_fight = self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987);
         FrameOutput {
             frame,
             sound_frame: self.frames,
             sound_latch,
             latch_cycles,
             announcements,
-            tune_table: self.front_music == Some(FrontMusic::Title)
-                || self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987),
+            overhaul_fight,
+            tune_table: self.front_music == Some(FrontMusic::Title) || overhaul_fight,
             track,
             screen: self.screen(),
             transition,

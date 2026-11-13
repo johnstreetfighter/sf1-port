@@ -82,7 +82,7 @@ struct LineEntry {
 }
 
 /// The announcer's lines, each validated 4 kHz 4-bit ADPCM: the voice pack
-/// as loaded, used only by overhaul fights.
+/// as loaded for overhaul fights and the Settings audition.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VoiceStore {
     /// Where it was loaded from, if from disk.
@@ -156,6 +156,13 @@ impl VoiceStore {
         std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))
     }
 
+    /// Provide the Ringside Settings audition from the loaded 1987 ROM.
+    pub fn add_rom_fight(&mut self, audio2: &[u8]) -> Result<(), String> {
+        let nibbles = crate::voice_pipeline::rom_sample(audio2.to_vec(), 0x94)?;
+        self.lines.insert(AnnouncerLine::Fight, nibbles);
+        Ok(())
+    }
+
     /// A line's nibbles, if the pack has it.
     pub fn line(&self, line: AnnouncerLine) -> Option<&[u8]> {
         self.lines.get(&line).map(Vec::as_slice)
@@ -199,14 +206,21 @@ struct Playing {
     pos: usize,
 }
 
+#[derive(Clone, Debug)]
+enum Command {
+    Call(AnnouncerLine),
+    Stop,
+    SetStore(Arc<VoiceStore>),
+}
+
 /// The announcer's chip and his queue, rendered one 4 kHz tick at a time
 /// on the machine's clock.
 #[derive(Clone, Debug)]
 pub struct Announcer {
     store: Arc<VoiceStore>,
     chip: Msm5205,
-    /// Lines asked for and not yet reached: (tick, line), in order.
-    arriving: VecDeque<(u64, AnnouncerLine)>,
+    /// Commands waiting for their tick, in order.
+    arriving: VecDeque<(u64, Command)>,
     /// Lines waiting for the chip: (tick asked for, line), oldest first.
     waiting: Vec<(u64, AnnouncerLine)>,
     playing: Option<Playing>,
@@ -242,15 +256,39 @@ impl Announcer {
     /// Ask for `line` at machine time `t` (seconds, non-decreasing): it
     /// reaches the chip on the first tick at or after `t`.
     pub fn call(&mut self, t: f64, line: AnnouncerLine) {
-        if self.store.line(line).is_none() {
-            return;
-        }
+        self.schedule(t, Command::Call(line));
+    }
+
+    /// Stop playback now and discard every pending command.
+    pub fn stop(&mut self) {
+        self.arriving.clear();
+        self.clear_playback();
+    }
+
+    /// Stop at the frame boundary, keeping commands submitted after the stop.
+    pub fn stop_at_frame(&mut self, frame: u32) {
+        self.schedule(f64::from(frame) / f64::from(FRAME_HZ), Command::Stop);
+    }
+
+    /// Switch voices at the frame boundary, before any calls submitted after this.
+    pub fn set_store_at_frame(&mut self, frame: u32, store: Arc<VoiceStore>) {
+        self.schedule(f64::from(frame) / f64::from(FRAME_HZ), Command::SetStore(store));
+    }
+
+    fn schedule(&mut self, t: f64, command: Command) {
         let tick = (((t * ANNOUNCER_HZ as f64) - 1e-6).ceil().max(0.0) as u64).max(self.tick);
         debug_assert!(
-            self.arriving.back().is_none_or(|&(k, _)| k <= tick),
-            "announcer lines asked for out of order"
+            self.arriving.back().is_none_or(|(k, _)| *k <= tick),
+            "announcer commands submitted out of order"
         );
-        self.arriving.push_back((tick, line));
+        self.arriving.push_back((tick, command));
+    }
+
+    fn clear_playback(&mut self) {
+        self.waiting.clear();
+        self.playing = None;
+        self.chip.write(0x80);
+        self.level = self.chip.output();
     }
 
     /// The line on the chip now, if any.
@@ -297,15 +335,22 @@ impl Announcer {
                 self.chip.write(0x80);
             }
         }
-        while let Some(&(at, line)) = self.arriving.front() {
-            if at > k {
-                break;
-            }
-            self.arriving.pop_front();
-            match self.playing {
-                None => self.start(line),
-                Some(p) if line.priority() > p.line.priority() => self.start(line),
-                Some(_) => self.waiting.push((at, line)),
+        while self.arriving.front().is_some_and(|(at, _)| *at <= k) {
+            let (at, command) = self.arriving.pop_front().expect("a ready announcer command");
+            match command {
+                Command::Stop => self.clear_playback(),
+                Command::SetStore(store) => {
+                    if !Arc::ptr_eq(&self.store, &store) {
+                        self.clear_playback();
+                        self.store = store;
+                    }
+                }
+                Command::Call(line) if self.store.line(line).is_some() => match self.playing {
+                    None => self.start(line),
+                    Some(p) if line.priority() > p.line.priority() => self.start(line),
+                    Some(_) => self.waiting.push((at, line)),
+                },
+                Command::Call(_) => {}
             }
         }
         self.waiting.retain(|&(at, _)| k - at <= WAIT_TICKS);
