@@ -90,6 +90,12 @@ pub enum Transition {
 pub mod sound {
     pub const CURSOR: u8 = 0x09;
     pub const CONFIRM: u8 = 0x0f;
+    /// The original tune used by the two- and four-country screens.
+    pub const COUNTRY_SELECT: u8 = 0x34;
+    /// The title arrangement supplied by the local music pack.
+    pub const TITLE_THEME: u8 = 0x7e;
+    /// Stop the current and saved music while letting effects finish.
+    pub const STOP_MUSIC: u8 = 0x3f;
     /// Music CPU special command 0: stop everything, the music and both
     /// effect slots (`0x02b5`, music-stops.md).
     pub const STOP_ALL: u8 = 0x00;

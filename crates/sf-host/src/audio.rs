@@ -92,6 +92,11 @@ impl LiveCapture {
         }
     }
 
+    /// Set the extended tune table before pushing the frame that can use it.
+    pub fn set_tune_table(&self, table: Option<Arc<Vec<u8>>>) {
+        self.sound.set_tune_table(table);
+    }
+
     /// Push one stepped frame's latch at [`IRQ_LATENCY_MID`] and drain the
     /// live output that becomes ready.
     pub fn push_frame(&mut self, frame: u32, latch: u8, latch_cycles: u32) {
@@ -226,9 +231,9 @@ impl Audio {
     }
 
     /// Give the music CPU the extended tune table `table` (`None`: the ROM
-    /// alone), from the next frame pushed. The launcher gives it only while
-    /// a fight under an overhaul preset runs (`FrameOutput::tune_table`); the
-    /// CPU keeps it until the tune playing from it is over. It lasts across
+    /// alone), from the next frame pushed. The launcher follows
+    /// `FrameOutput::tune_table`; the CPU keeps the table until the tune
+    /// playing from it is over. It lasts across
     /// [`Audio::reset`].
     pub fn set_tune_table(&self, table: Option<Arc<Vec<u8>>>) {
         let mut s = self.shared.lock().unwrap();

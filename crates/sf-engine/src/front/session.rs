@@ -16,7 +16,7 @@ use sf_video::stage_preview::StagePreviews;
 use sf_video::sprite_bank::SpriteBank;
 
 use super::after_match::AfterMatchBox;
-use super::attract::{FreePlay, TitleLogo};
+use super::attract::{showing_title, FreePlay, TitleLogo};
 use super::cabinet::Players;
 use super::dramatic_select::{boot_flag, DramaticGuest, DramaticPicks, DramaticSetupScreen};
 use super::faithful::{Cabinet, CabinetEvent, DipScreen};
@@ -105,10 +105,9 @@ pub struct FrameOutput {
     /// The announcer's lines asked for on this frame (an overhaul fight's;
     /// ADR 0011): the host asks his chip for them at `sound_frame`.
     pub announcements: Vec<sf_video::announcer::AnnouncerLine>,
-    /// A fight under an overhaul preset is running (its boxes included): the
-    /// host runs the music CPU with the extended tune table while this holds
-    /// and takes it away after (ticket #199). Never in the attract, the
-    /// faithful cabinet or a Faithful 1987 fight.
+    /// The title arrangement or an overhaul fight (its boxes included) is
+    /// using the extended tune table. The host hands over the table before
+    /// pushing this frame's latch. Never used by Faithful 1987.
     pub tune_table: bool,
     /// What the host does with the Jukebox's track on this frame (ticket
     /// #200): start it where the fight latches its stage theme, stop it
@@ -171,6 +170,12 @@ enum Screen {
     Tune(Box<TuneScreen>),
     Jukebox(Box<JukeboxScreen>),
     Online(Box<OnlineScreen>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FrontMusic {
+    Title,
+    CountrySelect,
 }
 
 impl Screen {
@@ -308,6 +313,9 @@ pub struct GameSession {
     frames: u32,
     /// Sound commands waiting for the latch, one per front-end frame.
     sounds: VecDeque<u8>,
+    title_theme_available: bool,
+    /// The last front-end tune started on the latch.
+    front_music: Option<FrontMusic>,
     /// The bindings by name, and their defaults, when the host gave them
     /// (the rebind walk needs them).
     binds: Option<(Binds, Binds)>,
@@ -392,6 +400,8 @@ impl GameSession {
             prev: FrameInputs::default(),
             frames: 0,
             sounds: VecDeque::new(),
+            title_theme_available: false,
+            front_music: None,
             notice: None,
             looks: default_looks(),
             tracks: Vec::new(),
@@ -684,6 +694,12 @@ impl GameSession {
         let bank = Arc::make_mut(bank);
         bank.set_playable_themes(commands);
         bank.missing_themes()
+    }
+
+    /// Tell the session whether the installed music pack supplies the title
+    /// arrangement. The original country-select tune is always in the ROM.
+    pub fn set_title_theme_available(&mut self, available: bool) {
+        self.title_theme_available = available;
     }
 
     /// The extended background bank, when one was given.
@@ -2090,10 +2106,50 @@ impl GameSession {
         transition
     }
 
+    fn title_music(&self) -> Option<FrontMusic> {
+        (self.title_theme_available && self.config.preset != RulesetPreset::Faithful1987)
+            .then_some(FrontMusic::Title)
+    }
+
+    fn menu_music(&self, screen: &Screen) -> Option<FrontMusic> {
+        if self.config.preset == RulesetPreset::Faithful1987 {
+            return None;
+        }
+        match screen {
+            Screen::Menu(_) => self.title_music(),
+            Screen::Select(_) | Screen::DramaticPick(_) | Screen::DramaticGuest(_) => {
+                Some(FrontMusic::CountrySelect)
+            }
+            Screen::WorldTour(tour) if tour.selecting_fighter() => Some(FrontMusic::CountrySelect),
+            _ => None,
+        }
+    }
+
+    /// Use a free latch for music changes. Clear the driver's saved tune
+    /// before starting the next cue so it cannot return behind a jingle.
+    fn front_music_latch(active: &mut Option<FrontMusic>, requested: Option<FrontMusic>, latch: u8) -> u8 {
+        if matches!(latch, sound::STOP_ALL | sound::STOP_MUSIC) {
+            *active = None;
+        }
+        if *active == requested || latch != sound::IDLE {
+            return latch;
+        }
+        if active.take().is_some() {
+            return sound::STOP_MUSIC;
+        }
+        *active = requested;
+        match requested {
+            Some(FrontMusic::Title) => sound::TITLE_THEME,
+            Some(FrontMusic::CountrySelect) => sound::COUNTRY_SELECT,
+            None => sound::IDLE,
+        }
+    }
+
     /// Advance one presented frame with `input` held.
     pub fn step(&mut self, input: FrameInputs) -> FrameOutput {
         let prev = std::mem::replace(&mut self.prev, input);
         self.frames += 1;
+        let was_playing = self.play.is_some();
         let connection_was_open = self.net_setup.is_some();
         self.receive_net_events();
         self.net_rollback_events();
@@ -2154,7 +2210,9 @@ impl GameSession {
             (self.attract.state.frame >= 1 && attract_start(&prev, &input)).then(|| {
                 let main = self.menu(MenuScreen::main());
                 self.stack.push(main);
-                self.sounds.extend([sound::STOP_ALL, sound::STOP_SAMPLES]);
+                if self.front_music != Some(FrontMusic::Title) {
+                    self.sounds.extend([sound::STOP_ALL, sound::STOP_SAMPLES]);
+                }
                 Transition::OpenMainMenu
             })
         } else {
@@ -2238,6 +2296,10 @@ impl GameSession {
             self.picker = 0;
             self.chosen = None;
         }
+        // The fight's hidden drive and the cabinet boot issue their own stops.
+        if self.play.is_some() || self.cabinet.is_some() {
+            self.front_music = None;
+        }
 
         // While a box holds the fight, the latch carries the boxes' own
         // sounds.
@@ -2275,7 +2337,12 @@ impl GameSession {
             None if self.stack.is_empty() => {
                 self.sounds.clear();
                 // Held for the returning stop commands, else stepped.
-                let held = self.attract_hold.pop_front();
+                let held = self.attract_hold.pop_front().or_else(|| {
+                    // Stop the menu music before unpausing a different
+                    // attract phase, where the machine can send its own tune.
+                    (self.front_music.is_some() && !showing_title(&self.attract))
+                        .then_some(sound::STOP_MUSIC)
+                });
                 if held.is_none() {
                     self.attract.step();
                 }
@@ -2284,12 +2351,25 @@ impl GameSession {
                     None => render_frame(&self.assets, &self.attract.state.scene()),
                 };
                 match held {
-                    Some(cmd) => (frame, cmd, 0, Vec::new()),
-                    None => (frame, self.attract.state.sound_latch, self.attract.state.latch_cycles, Vec::new()),
+                    Some(cmd) => (frame, Self::front_music_latch(&mut self.front_music, None, cmd), 0, Vec::new()),
+                    None => {
+                        let requested = if showing_title(&self.attract) { self.title_music() } else { None };
+                        let native = self.attract.state.sound_latch;
+                        let latch = Self::front_music_latch(&mut self.front_music, requested, native);
+                        let cycles = if latch == native { self.attract.state.latch_cycles } else { 0 };
+                        (frame, latch, cycles, Vec::new())
+                    }
                 }
             }
             None => {
-                let frame = match self.stack.last().expect("a screen") {
+                let screen = self.stack.last().expect("a screen");
+                let music = self.menu_music(screen);
+                if was_playing && music.is_some() && !self.sounds.contains(&sound::STOP_ALL) {
+                    // A higher-priority fight jingle could still own the
+                    // music slot. Stop it before asking for a front-end cue.
+                    self.sounds.push_back(sound::STOP_MUSIC);
+                }
+                let frame = match screen {
                     Screen::Menu(m) => m.render(&font, self.title_logo.as_ref(), self.notice.as_deref()),
                     Screen::Select(s) => s.render(&font, &self.busts),
                     Screen::Stage(s) => s.render(&font),
@@ -2316,7 +2396,8 @@ impl GameSession {
                         }
                     }
                 };
-                (frame, self.sounds.pop_front().unwrap_or(sound::IDLE), 0, Vec::new())
+                let latch = self.sounds.pop_front().unwrap_or(sound::IDLE);
+                (frame, Self::front_music_latch(&mut self.front_music, music, latch), 0, Vec::new())
             }
         };
         self.net_hud(&mut frame);
@@ -2332,7 +2413,8 @@ impl GameSession {
             sound_latch,
             latch_cycles,
             announcements,
-            tune_table: self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987),
+            tune_table: self.front_music == Some(FrontMusic::Title)
+                || self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987),
             track,
             screen: self.screen(),
             transition,
