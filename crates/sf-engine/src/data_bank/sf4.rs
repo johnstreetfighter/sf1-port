@@ -1,7 +1,7 @@
 //! Native Focus, dash, and fighter move headers for Street Fighter IV.
 use super::*;
 use crate::era::EraFamily::Sf4;
-use crate::era_fight::sf4::{BACKDASH, DASH, FOCUS, FOCUS_CHARGE};
+use crate::era_fight::sf4::{BACKDASH, DASH, FOCUS, FOCUS_CHARGE, RYUSOKYAKU};
 use TournamentFighter::{Adon, Gen, Ken, Ryu, Sagat};
 
 pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
@@ -10,7 +10,12 @@ pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter)
             0x0af0,
             0x0b30,
             0x0b50,
-            &[(0x29, 0x29), (0x2a, 0x29), (0x2b, 0x2a)],
+            &[
+                (SF2_SPECIAL_SLOT, SF2_SPECIAL_SLOT),
+                (0x29, 0x29),
+                (0x2a, 0x29),
+                (0x2b, 0x2a),
+            ],
         ),
         Ken => (
             0x2bce,
@@ -66,8 +71,10 @@ pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter)
     write_focus(rom, region, windup, strike, retract);
     write_dash(rom, region, fighter, DASH, 4);
     write_dash(rom, region, fighter, BACKDASH, -4);
-    if fighter == Adon {
-        write_jaguar_avalanche(rom, region);
+    match fighter {
+        Ryu => write_evil_ryu_moves(rom, region),
+        Adon => write_jaguar_avalanche(rom, region),
+        _ => {}
     }
 }
 
@@ -87,6 +94,82 @@ fn hit_entry(rom: &[u8], region: &mut Region, source: u32, damage: u8) -> u32 {
     let mut entry = std::array::from_fn::<_, 8, _>(|i| rom_b(rom, source + i as u32));
     entry[1] = damage;
     region.put(&entry)
+}
+
+fn write_evil_ryu_moves(rom: &[u8], region: &mut Region) {
+    // SFIII's builder has already installed the normal ROM air hurricane
+    // in the SFII family for the shoto profiles that share it.
+    let air_tatsu = crate::era_fight::sf3::AIR_TATSU;
+    let pointer = era_header_offset(EraFamily::Sf2, air_tatsu).unwrap() as usize;
+    let address = u32::from_be_bytes(region.bytes[pointer..pointer + 4].try_into().unwrap());
+    if address != 0 {
+        bind_era_header(region, Sf4, air_tatsu, address);
+    }
+
+    const KNEE_LIFT: u32 = 0x00e82;
+    const LEG_RAISE: u32 = 0x00ea2;
+    const LEG_DROP: u32 = 0x01a12;
+    const LAND: u32 = 0x00d5e;
+    const LIFT_FRAMES: u8 = 8;
+    const STANCE_FRAMES: u8 = 5;
+    // Startup (including the first active frame), active and recovery.
+    // Ultra shortened only HK startup, from 26 to 25 frames.
+    const TIMINGS: [(u8, u8, u8); 5] = [
+        (17, 2, 22),
+        (20, 2, 20),
+        (26, 2, 18),
+        (21, 2, 22),
+        (25, 2, 18),
+    ];
+    let [lift, raise, drop, land] =
+        [KNEE_LIFT, LEG_RAISE, LEG_DROP, LAND].map(|at| rom_pose(rom, at));
+    let lift_boxes = rom_boxes(rom, KNEE_LIFT);
+    let raise_boxes = rom_boxes(rom, LEG_RAISE);
+    let mut drop_boxes = rom_boxes(rom, LEG_DROP);
+    let land_boxes = rom_boxes(rom, LAND);
+    let (stance, stance_boxes) = header_pose(rom, Ryu.move_table() + MOVE_HEADER_SIZE);
+    // The diagonal jump kick supplies the descending leg. Put its feet at
+    // the standing line and cover only the downward extension with the hit.
+    drop_boxes[12..16].copy_from_slice(&[0xee, 10, 27, 18]);
+    let hit = hit_entry(rom, region, 0x45c88, 6);
+    let variants = TIMINGS.map(|(startup, active, recovery)| {
+        let stream = region.here();
+        let mut s = Stream::new(region, lift, lift.top_on_ground());
+        s.hold(
+            raise,
+            raise.top_on_ground(),
+            startup - LIFT_FRAMES - 1,
+            raise_boxes,
+            0,
+            0,
+        );
+        s.call(routine::SOUND, 0xa2);
+        s.hold(drop, drop.top_on_ground(), active, drop_boxes, 0x80, hit);
+        s.hold(
+            land,
+            land.top_on_ground(),
+            recovery - STANCE_FRAMES,
+            land_boxes,
+            0,
+            0,
+        );
+        s.hold(
+            stance,
+            stance.top_on_ground(),
+            STANCE_FRAMES,
+            stance_boxes,
+            0,
+            0,
+        );
+        s.end();
+        stream
+    });
+    let select = region.put(&[ROUTINE_RYUSOKYAKU_VARIANT, 0, 0, 0]);
+    for stream in variants {
+        region.put_l(stream);
+    }
+    let stream = region.call(select, 0);
+    install(region, RYUSOKYAKU, still(lift, LIFT_FRAMES, lift_boxes), stream);
 }
 
 fn write_focus(rom: &[u8], region: &mut Region, ready: u32, attack: u32, recover: u32) {

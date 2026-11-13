@@ -10,6 +10,10 @@ pub(crate) const IMPACT: u8 = 0x2f;
 pub(crate) const REVERSAL: u8 = 0x2e;
 pub(crate) const PARRY: u8 = 0x2d;
 pub(crate) const RUSH: u8 = 0x2c;
+pub(crate) const ASHURA_FORWARD: u8 = 0x1c;
+pub(crate) const ASHURA_BACK: u8 = 0x1e;
+pub(crate) const RYUSOKYAKU: u8 = 0x21;
+pub(crate) const OD_RYUSOKYAKU: u8 = 0x23;
 const SA1: u8 = 0x29;
 const SA2: u8 = 0x2a;
 const SA3: u8 = 0x2b;
@@ -26,6 +30,8 @@ pub(crate) const JINRAI_MID: u8 = 0x1e;
 const JINRAI_OVERHEAD: u8 = 0x1d;
 const TOBIGERI: u8 = 0x19;
 const INSTALL_INPUT: &[Dir] = &[Down, Neutral, Down];
+const HALF_CIRCLE_BACK: &[Dir] = &[Forward, DownForward, Down, DownBack, Back];
+const HALF_CIRCLE_FORWARD: &[Dir] = &[Back, DownBack, Down, DownForward, Forward];
 const FULL_DRIVE: u16 = 6 * STOCK_AT as u16;
 const QCF: &[Dir] = &[Down, DownForward, Forward];
 const QCB: &[Dir] = &[Down, DownBack, Back];
@@ -166,14 +172,14 @@ fn extra(fighter: TournamentFighter) -> (&'static str, ButtonClass, usize) {
     }
 }
 
-fn motion(index: usize) -> &'static [Dir] {
+fn motion(index: usize, evil_ryu: bool) -> &'static [Dir] {
     [
         DOUBLE_QUARTER_CIRCLE,
         DOUBLE_QUARTER_CIRCLE_BACK,
         QCF,
         QCB,
         DP,
-        INSTALL_INPUT,
+        if evil_ryu { HALF_CIRCLE_BACK } else { INSTALL_INPUT },
     ][index]
 }
 
@@ -182,6 +188,59 @@ impl EraFighterState {
         self.style.family == EraFamily::Sf6
             && self.max_sub_hp != 0
             && (available(self.fighter) || self.what_if_active())
+    }
+
+    fn sf6_arts(&self, fighter: TournamentFighter) -> [(&'static str, ButtonClass, usize); 3] {
+        let mut arts = arts(fighter);
+        if self.is_evil_ryu_sf6() {
+            arts[2].0 = "METSU SHORYUKEN";
+        }
+        arts
+    }
+
+    fn sf6_extra(&self, fighter: TournamentFighter) -> (&'static str, ButtonClass, usize) {
+        if self.is_evil_ryu_sf6() {
+            // Shakunetsu uses the tracker reserved for Denjin in Ryu's kit.
+            ("SHAKUNETSU HADOKEN", Punch, 5)
+        } else {
+            extra(fighter)
+        }
+    }
+
+    fn sf6_critical_ready(&self, disable_comeback_scaling: bool) -> bool {
+        !disable_comeback_scaling && self.sub_hp <= self.max_sub_hp / 4
+    }
+
+    pub(super) fn sf6_spend_evil_ryu_demon(&mut self, disable_comeback_scaling: bool) -> bool {
+        if !self.is_evil_ryu_sf6()
+            || !self.is_sf6()
+            || self.sub_hp == 0
+            || !self.sf6_critical_ready(disable_comeback_scaling)
+            || self.super_meter < 3 * STOCK_AT
+        {
+            return false;
+        }
+        self.super_meter -= 3 * STOCK_AT;
+        self.sf6.motions = [MotionTracker::default(); 6];
+        self.extra_motion = MotionTracker::default();
+        true
+    }
+
+    pub(crate) fn sf6_evil_ryu_ashura(&self, slot: u8) -> bool {
+        self.is_evil_ryu_sf6() && matches!(slot, ASHURA_FORWARD | ASHURA_BACK)
+            && self.alpha_move_active(slot)
+    }
+
+    pub(crate) fn sf6_evil_ryu_od_axe_kick(&self, slot: u8) -> bool {
+        self.is_evil_ryu_sf6() && slot == OD_RYUSOKYAKU && self.alpha_move_active(slot)
+    }
+
+    pub(crate) fn sf6_evil_ryu_shakunetsu(&self, slot: u8) -> bool {
+        self.is_evil_ryu_sf6() && matches!(slot, EXTRA | OD_EXTRA) && self.alpha_move_active(slot)
+    }
+
+    pub(crate) fn sf6_evil_ryu_projectile_hits(&self, slot: u8) -> Option<u8> {
+        (slot == OD_EXTRA && self.sf6_evil_ryu_shakunetsu(slot)).then_some(2)
     }
 
     pub(crate) fn sf6_burnout(&self) -> bool {
@@ -237,14 +296,17 @@ impl EraFighterState {
     }
 
     pub(super) fn sf6_progress(&self, slot: u8) -> (u8, u8) {
+        if self.is_evil_ryu_sf6() && matches!(slot, RYUSOKYAKU | OD_RYUSOKYAKU) {
+            return (self.extra_motion.position, self.extra_motion.remaining);
+        }
         let index = match slot {
-            SA1 | SA2 | SA3 => arts(self.fighter.unwrap_or(Ryu))[(slot - SA1) as usize].2,
+            SA1 | SA2 | SA3 => self.sf6_arts(self.fighter.unwrap_or(Ryu))[(slot - SA1) as usize].2,
             OD_PROJECTILE => 2,
             OD_KICK => 3,
             OD_UPPERCUT => 4,
             INSTALL => 5,
             JINRAI | TOBIGERI => 2,
-            EXTRA | OD_EXTRA => extra(self.fighter.unwrap_or(Ryu)).2,
+            EXTRA | OD_EXTRA => self.sf6_extra(self.fighter.unwrap_or(Ryu)).2,
             _ => return (0, 0),
         };
         let tracker = self.sf6.motions[index];
@@ -256,6 +318,7 @@ impl EraFighterState {
             return Vec::new();
         }
         let fighter = self.fighter.unwrap_or(Ryu);
+        let evil_ryu = self.is_evil_ryu_sf6();
         let mut moves = Vec::new();
         let mut add = |name, kind, slot, motion, button| {
             moves.push(MoveEntry {
@@ -276,11 +339,16 @@ impl EraFighterState {
             });
         };
         if fighter != Retsu {
-            let (name, button, index) = extra(fighter);
-            add(name, MoveKind::Special, EXTRA, motion(index), button);
+            let (name, button, index) = self.sf6_extra(fighter);
+            add(name, MoveKind::Special, EXTRA, motion(index, evil_ryu), button);
+        }
+        if evil_ryu {
+            add("ASHURA SENKU FORWARD", MoveKind::Special, ASHURA_FORWARD, &[Forward], TripleKick);
+            add("ASHURA SENKU BACKWARD", MoveKind::Special, ASHURA_BACK, &[Back], TripleKick);
+            add("RYUSOKYAKU", MoveKind::Special, RYUSOKYAKU, HALF_CIRCLE_FORWARD, Kick);
         }
         match fighter {
-            Ryu => add(
+            Ryu if !evil_ryu => add(
                 "DENJIN CHARGE",
                 MoveKind::Special,
                 INSTALL,
@@ -300,8 +368,8 @@ impl EraFighterState {
         if self.super_capacity == 0 {
             return moves;
         }
-        for (i, (name, button, index)) in arts(fighter).into_iter().enumerate() {
-            add(name, MoveKind::Super, SA1 + i as u8, motion(index), button);
+        for (i, (name, button, index)) in self.sf6_arts(fighter).into_iter().enumerate() {
+            add(name, MoveKind::Super, SA1 + i as u8, motion(index, evil_ryu), button);
         }
         for (name, slot, index, button) in [
             (
@@ -343,22 +411,25 @@ impl EraFighterState {
                 },
             ),
         ] {
-            add(name, MoveKind::Special, slot, motion(index), button);
+            add(name, MoveKind::Special, slot, motion(index, evil_ryu), button);
         }
         if fighter != Retsu {
-            let (_, button, index) = extra(fighter);
-            let name = if fighter == Ken {
-                "OD DRAGONLASH KICK"
-            } else {
-                "OD HASHOGEKI"
+            let (_, button, index) = self.sf6_extra(fighter);
+            let name = match (fighter, evil_ryu) {
+                (_, true) => "OD SHAKUNETSU HADOKEN",
+                (Ken, false) => "OD DRAGONLASH KICK",
+                _ => "OD HASHOGEKI",
             };
             add(
                 name,
                 MoveKind::Special,
                 OD_EXTRA,
-                motion(index),
+                motion(index, evil_ryu),
                 if button.kick() { PairKick } else { PairPunch },
             );
+        }
+        if evil_ryu {
+            add("OD RYUSOKYAKU", MoveKind::Special, OD_RYUSOKYAKU, HALF_CIRCLE_FORWARD, PairKick);
         }
         add("DRIVE IMPACT", MoveKind::System, IMPACT, &[], HeavyPair);
         add("DRIVE PARRY", MoveKind::System, PARRY, &[], MediumPair);
@@ -438,8 +509,13 @@ impl Bus<'_> {
         let (held, fresh) = self.era_buttons(ps);
         let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
+        let evil_ryu = state.is_evil_ryu_sf6();
         for (i, tracker) in state.sf6.motions.iter_mut().enumerate() {
-            tracker.step(relative, motion(i));
+            tracker.step(relative, motion(i, evil_ryu));
+        }
+        if evil_ryu {
+            // This fighter's SF2 special tracker has no other use in SF6.
+            state.extra_motion.step(relative, HALF_CIRCLE_FORWARD);
         }
         let forward_edge = relative == 1 && state.sf6.previous_direction != 1;
         let dash = forward_edge && state.sf6.forward_window != 0;
@@ -471,6 +547,27 @@ impl Bus<'_> {
         if !parry_chord {
             state.sf6.parry_age = 0;
         }
+        if evil_ryu
+            && free
+            && held & PUNCH_MASK == 0
+            && TripleKick.held(held)
+            && !TripleKick.held(held & !fresh)
+        {
+            let slot = match relative {
+                d if d == Forward.bits() => Some(ASHURA_FORWARD),
+                d if d == Back.bits() => Some(ASHURA_BACK),
+                _ => None,
+            };
+            if let Some(slot) = slot {
+                if self.era_start_banked_move(ps, entity, slot, 0, None) {
+                    let state = &mut self.toggle_state.era.fighters[side];
+                    state.sf6.motions = [MotionTracker::default(); 6];
+                    state.extra_motion = MotionTracker::default();
+                    return true;
+                }
+            }
+        }
+        let state = &self.toggle_state.era.fighters[side];
         if state.super_capacity == 0 {
             return self.sf6_attacks(ps, entity, free, cancel, held, fresh);
         }
@@ -564,17 +661,17 @@ impl Bus<'_> {
         let Some(fighter) = state.fighter else {
             return false;
         };
+        let evil_ryu = state.is_evil_ryu_sf6();
         let mut command = None;
-        for (i, (name, button, index)) in arts(fighter).into_iter().enumerate().rev() {
+        for (i, (name, button, index)) in state.sf6_arts(fighter).into_iter().enumerate().rev() {
             let level = i as u8 + 1;
             let cost = state.meter_cost(level * STOCK_AT);
             if state.super_meter >= cost
                 && button.held(fresh)
-                && state.sf6.motions[index].ready(motion(index))
+                && state.sf6.motions[index].ready(motion(index, evil_ryu))
             {
                 let critical = level == 3
-                    && !self.era_rules.disable_comeback_scaling
-                    && state.sub_hp <= state.max_sub_hp / 4;
+                    && state.sf6_critical_ready(self.era_rules.disable_comeback_scaling);
                 command = Some((
                     SA1 + i as u8,
                     level,
@@ -586,8 +683,12 @@ impl Bus<'_> {
             }
         }
         let cost = 2 * STOCK_AT;
+        let axe_ready = evil_ryu && Kick.held(fresh) && state.extra_motion.ready(HALF_CIRCLE_FORWARD);
         if command.is_none() && self.sf6_can_spend(ps, cost) {
-            let (_, extra_button, index) = extra(fighter);
+            if axe_ready && PairKick.held(held) {
+                command = Some((OD_RYUSOKYAKU, 0, 0, cost, None));
+            }
+            let (_, extra_button, index) = state.sf6_extra(fighter);
             let uppercut = if fighter == Retsu {
                 (OD_UPPERCUT, 2, PairKick)
             } else {
@@ -613,25 +714,30 @@ impl Bus<'_> {
                 ),
             ] {
                 let mask = if button.kick() { KICK_MASK } else { PUNCH_MASK };
-                if (slot != OD_EXTRA || fighter != Retsu)
+                if command.is_none()
+                    && (slot != OD_EXTRA || fighter != Retsu)
                     && button.held(held)
                     && fresh & mask != 0
-                    && state.sf6.motions[index].ready(motion(index))
+                    && state.sf6.motions[index].ready(motion(index, evil_ryu))
                 {
                     command = Some((slot, 0, 0, cost, None));
                     break;
                 }
             }
         }
+        if command.is_none() && axe_ready {
+            command = Some((RYUSOKYAKU, 0, 0, 0, None));
+        }
         if command.is_none() && fighter != Retsu {
-            let (_, button, index) = extra(fighter);
-            if button.held(fresh) && state.sf6.motions[index].ready(motion(index)) {
+            let (_, button, index) = state.sf6_extra(fighter);
+            if button.held(fresh) && state.sf6.motions[index].ready(motion(index, evil_ryu)) {
                 command = Some((EXTRA, 0, 0, 0, None));
             }
         }
         if command.is_none()
             && Punch.held(fresh)
             && fighter != Ken
+            && !evil_ryu
             && state.sf6.motions[5].ready(INSTALL_INPUT)
         {
             command = Some((INSTALL, 0, 0, 0, None));
@@ -658,6 +764,10 @@ impl Bus<'_> {
         if !self.era_start_banked_move(ps, entity, slot, level, callout) {
             return false;
         }
+        if slot == RYUSOKYAKU && evil_ryu {
+            let strength = ((fresh & KICK_MASK) >> 3).ilog2() as u8 + 1;
+            self.set_eb(entity, 0x34, strength);
+        }
         if drive_cost != 0 {
             self.sf6_spend(ps, drive_cost);
         }
@@ -665,11 +775,14 @@ impl Bus<'_> {
         let state = &mut self.toggle_state.era.fighters[side];
         state.super_meter -= stock_cost;
         state.sf6.motions = [MotionTracker::default(); 6];
+        if evil_ryu {
+            state.extra_motion = MotionTracker::default();
+        }
         state.sf6.od_flash = if drive_cost != 0 { 10 } else { 0 };
         if slot == INSTALL || (fighter == Retsu && slot == OD_KICK) {
             state.sf6.installed = true;
         }
-        if slot == JINRAI {
+        if slot == JINRAI && fighter == Ken {
             state.sf6.jinrai_left = 35;
         }
         self.era_share_gauge(side);
@@ -721,10 +834,13 @@ impl Bus<'_> {
                     state.alpha_super_level(slot),
                     state.sf6.perfect_scale != 0,
                     state.sf6.charged_move == slot,
+                    state.is_evil_ryu_sf6()
+                        && slot == crate::combo::throw::THROW_MOVE
+                        && self.toggle_state.raging_demon.active,
                 )
             });
         let punish = !chip && self.sf6_is_punish(owner, target);
-        if let Some((level, perfect, charged)) = attack {
+        if let Some((level, perfect, charged, demon_slam)) = attack {
             if charged && !chip {
                 damage += damage / 3;
             }
@@ -732,14 +848,13 @@ impl Bus<'_> {
                 damage /= 2;
             }
             if level == 3
-                && !self.era_rules.disable_comeback_scaling
                 && self
                     .era_state(owner)
-                    .is_some_and(|state| state.sub_hp <= state.max_sub_hp / 4)
+                    .is_some_and(|state| state.sf6_critical_ready(self.era_rules.disable_comeback_scaling))
             {
                 damage += damage / 5;
             }
-            if level == 0 && !chip {
+            if level == 0 && !chip && !demon_slam {
                 self.era_meter_gain(owner, 4);
             }
         }

@@ -4977,6 +4977,11 @@ fn country_select_exit(scheduler: &mut Scheduler, bus: &mut Bus, io: &Io, at: &m
         let ptr = bus.rl(handler + 8 * n + 2);
         bus.wl(0xffc01c + 4 * n, ptr);
     }
+    if bus.evil_ryu_playtest.is_some() {
+        // The private launcher picks Japan, so Sagat is the second fight in country five.
+        bus.wb(0xffc003, 4);
+        bus.wb(0xffc004, 1);
+    }
     scheduler.spawn(bus, 2, 0x3f7b0);
     *at = Flow::StageStart;
     speed_sleep(bus, io)
@@ -6279,11 +6284,13 @@ fn time_over_hold(
     at: &mut Flow,
     left: u16,
 ) -> Yield {
-    let left = left - 1;
-    if left == 0 {
+    let left = left.saturating_sub(1);
+    let demon = &bus.toggle_state.raging_demon;
+    let demon_settling = demon.active || demon.victory_pose;
+    if left == 0 && !demon_settling {
         return time_over_judge(scheduler, bus, io, at);
     }
-    if fighters_busy(bus) {
+    if demon_settling || fighters_busy(bus) {
         outcome_frame(bus);
     }
     *at = Flow::TimeOverHold { left };
@@ -6457,7 +6464,13 @@ fn picked_vs(bus: &Bus) -> Option<LayerView> {
         }
         _ => return None,
     };
-    bus.backgrounds?.view(&vs_key(bus.roster.p1.name(), opponent.name()))
+    let bank = bus.backgrounds?;
+    if let Some(playtest) = bus.evil_ryu_playtest {
+        if let Some(view) = bank.view(&vs_key(playtest.display_name(), opponent.name())) {
+            return Some(view);
+        }
+    }
+    bank.view(&vs_key(bus.roster.p1.name(), opponent.name()))
 }
 
 /// Whether the country intro (events 2 and 3) is skipped: in every fight
@@ -6636,6 +6649,10 @@ fn round_hud(bus: &mut Bus) -> bool {
     let dramatic = bus.dramatic_rules().is_some();
     if dramatic {
         bus.toggle_state.dramatic.reset_round();
+    }
+    if bus.evil_ryu_playtest.is_some() {
+        bus.toggle_state.ashura_motion = [[0; 2]; 2];
+        bus.toggle_state.raging_demon = Default::default();
     }
     bus.bind_roster_tables();
     bus.era_begin_round();
