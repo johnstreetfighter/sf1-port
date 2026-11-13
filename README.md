@@ -112,6 +112,8 @@ The Windows ZIP includes the approved SF1+ art in `assets/sf1-port-art`. A `sf1-
 
 The Windows ZIP includes the overhaul announcer in `assets/sf1-port-voice`. A `sf1-port-voice` folder beside the ROM set takes precedence as a local override. The announcer plays on a third emulated MSM5205, and `ANNOUNCER` on the Sound tab sets his volume. See the [announcer reference](docs/reference/announcer.md) for the pack format and fallback behavior.
 
+The source checkout includes 30 native character arrangements in `assets/sf1-port-music`. Overhaul presets use them when available. Valid scores beside the ROM set take precedence for the matching theme. See the [music pack](assets/sf1-port-music/README.md).
+
 ### Tracker modules and the C++ build
 
 The Jukebox plays tracker modules (MOD, XM, S3M, IT, MPTM, 669, MTM and the rest of libopenmpt's list) as well as OGG, WAV and FLAC. Modules go through [libopenmpt](https://lib.openmpt.org/libopenmpt/) 0.8.10, a C++ library. Its official source release is committed, as an unmodified subset, in `crates/sf-openmpt/vendor/libopenmpt` (about 6.5 MB of source, no binaries), and `crates/sf-openmpt/build.rs` compiles it into a static library with the `cc` crate. So on Windows a fresh clone builds with the same command as before and needs no download, no DLL, no vcpkg and no `PATH` setup:

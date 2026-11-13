@@ -83,20 +83,23 @@ rotation are independent of music files and Jukebox overrides.
 
 ## The music pack
 
-Arrangements of Capcom melodies are scores in the converter's format in a
-local folder, `sf1-port-music`, beside the ROM set (looked for beside each
-ROM folder, as the art pack is), never in the public repository.
-`sf_audio::music_pack` reads its `.score` files; `tunes::add_pack` converts
-each against the player's sound ROM into the same table as the committed
-themes. Each score names its own command (`0x41..=0x7f` in practice; `0x40`
-is the test theme's). A score that does not convert, or whose command is
-taken, is left out and logged with its file name (`music pack: file: why`);
-the rest load. The pack is looked for and read only once the configured
-preset is an overhaul one, so Faithful 1987 reads nothing from it.
+The repository tracks the thirty approved playable character scores in
+`assets/sf1-port-music`. The launcher looks under `assets` beside the
+executable and in the current directory. Valid scores in a `sf1-port-music`
+folder beside the ROM set override the repository scores by theme identity.
+An invalid override is logged and the valid repository score remains
+available.
+
+The host reads the `.score` files and compiles them against the player's
+sound ROM. A score with a mismatched identity and command, a conflicting
+command, or a compile error is reported by filename. Faithful 1987 opens
+neither pack. The Windows release ZIP continues to ship the art and voice
+packs. Source event data, captures, and listening audio remain local.
 
 **Menu music.** In the overhaul front end, the title screen and Main Menu
 share the score on command `0x7e`. The SFII World Warrior title arrangement
-uses that command in the local music pack. If the score is unavailable, the
+uses that command in the ROM-adjacent music folder. It is separate from the
+thirty tracked character scores. If the title score is unavailable, the
 title keeps its original sound and the menu keeps its sound effects.
 Character Select plays the original SF1 country-select tune (`0x34`) from
 the sound ROM and works with or without a music pack.
@@ -240,8 +243,8 @@ table. Separately compiled character scores use their own address space.
 updates, gates, native saves, effect hand-back and timing under eight-voice
 load. The real-front-end fixture in `crates/sf-game/tests/stage_themes.rs`
 covers pack loading, live audio, invalid-score fallback and leaving a fight.
-All committed phrases are original test content; Capcom arrangements stay
-in the player's local pack.
+The automated playback fixtures use original phrases. The approved playable
+arrangements are tracked in the repository music pack.
 
 ## Separate character score storage
 
@@ -325,5 +328,3 @@ the player's sound ROM, so it needs no art pack and no music pack.
 - ADPCM in a theme (design section 6, item 5).
 - Triplets, opcodes 1, 4, 5, 8 and `0xb` (parameters the 1987 tunes use
   rarely or never) and double speed: the converter does not write them.
-- Starting a theme from a stage record in a fight (`ST7`, #199) and the music
-  pack for Capcom arrangements.

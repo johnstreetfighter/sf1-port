@@ -343,6 +343,54 @@ fn a_headless_fight_on_the_test_stage_latches_the_test_theme_and_the_driver_play
 }
 
 #[test]
+fn the_repository_pack_supplies_all_character_scores_with_valid_local_overrides() {
+    let Some(r) = roms() else { return };
+    let scratch = Scratch::new("repository-pack", None);
+    let rom_folder = scratch.rom_folder();
+    let asset_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+    let load = |preset, log: &mut Log| {
+        themes::load_with_fallbacks(preset, &r.audiocpu, &[rom_folder.as_path()], std::slice::from_ref(&asset_root), log)
+    };
+    let preset = RulesetPreset::DefinitiveOverhaul;
+    let mut log = Log::create(&scratch.log_path());
+    let defaults = load(preset, &mut log).unwrap();
+    let mut delivery = themes::ThemeDelivery::default();
+    let mut compiled_bytes = 0;
+    let ids: Vec<_> = ThemeId::ALL.into_iter()
+        .filter(|id| id.is_extended() && *id != ThemeId::Test)
+        .collect();
+    assert_eq!(ids.len(), 30);
+    let resolve = |library: &themes::Themes, id: ThemeId, delivery: &mut themes::ThemeDelivery, log: &mut Log| {
+        let frame = delivery.resolve(Some(library), ThemeCue { id, fallback: FALLBACK_THEME }, log);
+        assert_eq!(frame.latch, id.command());
+        frame.score.unwrap_or_else(|| panic!("missing repository score for {}", id.slug()))
+    };
+    for &id in &ids {
+        compiled_bytes += resolve(&defaults, id, &mut delivery, &mut log).bytes();
+    }
+    assert!(compiled_bytes > 65_536);
+
+    let local = scratch.dir.join("roms").join(sf_audio::music_pack::MUSIC_FOLDER);
+    std::fs::create_dir(&local).unwrap();
+    std::fs::write(local.join("custom.score"), PACK_SCORE).unwrap();
+    std::fs::write(local.join("invalid.score"), "theme ken\ncommand 0x53\n").unwrap();
+    let overrides = load(preset, &mut log).unwrap();
+    let custom = sf_audio::score::compile(PACK_SCORE, &r.audiocpu).unwrap();
+    assert_eq!(resolve(&overrides, ThemeId::Ryu, &mut delivery, &mut log).bytes(), custom.score.bytes());
+    assert_ne!(resolve(&defaults, ThemeId::Ryu, &mut delivery, &mut log).bytes(), custom.score.bytes());
+    for id in ids.into_iter().filter(|id| *id != ThemeId::Ryu) {
+        assert_eq!(
+            resolve(&overrides, id, &mut delivery, &mut log).bytes(),
+            resolve(&defaults, id, &mut delivery, &mut log).bytes(),
+            "unexpected change to {}",
+            id.slug()
+        );
+    }
+    assert!(scratch.log_text().contains("invalid.score"));
+    assert!(load(RulesetPreset::Faithful1987, &mut log).is_none());
+}
+
+#[test]
 fn a_stage_in_the_music_pack_plays_its_arrangement() {
     let Some(r) = roms() else { return };
     let scratch = Scratch::new("pack", Some(PACK_SCORE));

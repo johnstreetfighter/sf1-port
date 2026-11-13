@@ -3,11 +3,11 @@
 //! cues to their scores before pushing the timed latch to the music CPU.
 //! The legacy table continues to serve the title tune and raw callers.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use sf_audio::music_pack::{find_pack, pack_folders, MusicPack};
+use sf_audio::music_pack::{find_pack, pack_folders, MusicPack, MUSIC_FOLDER};
 use sf_audio::score::{self, CompiledScore, NativeScore};
 use sf_audio::tunes::{self, ExtendedTunes};
 use sf_engine::config::RulesetPreset;
@@ -42,7 +42,25 @@ impl Themes {
 /// The themes for a session whose preset is `preset`, with the music pack
 /// beside the ROM folders `rom_folders`; none under Faithful 1987.
 pub fn load(preset: RulesetPreset, audiocpu: &[u8], rom_folders: &[&Path], log: &mut Log) -> Option<Themes> {
-    load_from(preset, audiocpu, || find_pack(&pack_folders(rom_folders)), log)
+    load_with_fallbacks(preset, audiocpu, rom_folders, &[], log)
+}
+
+/// Read the ROM-adjacent pack first. Fill in missing character scores from
+/// the first repository asset root that has a music pack.
+pub fn load_with_fallbacks(
+    preset: RulesetPreset,
+    audiocpu: &[u8],
+    rom_folders: &[&Path],
+    asset_roots: &[PathBuf],
+    log: &mut Log,
+) -> Option<Themes> {
+    load_packs(preset, audiocpu, || {
+        let mut packs = vec![find_pack(&pack_folders(rom_folders))];
+        if let Some(folder) = asset_roots.iter().map(|root| root.join(MUSIC_FOLDER)).find(|folder| folder.is_dir()) {
+            packs.push(MusicPack::open(&folder));
+        }
+        packs
+    }, log)
 }
 
 /// [`load`] with the pack to open given (for tests). `pack` is called only
@@ -52,6 +70,15 @@ pub fn load_from(
     preset: RulesetPreset,
     audiocpu: &[u8],
     pack: impl FnOnce() -> Result<MusicPack, String>,
+    log: &mut Log,
+) -> Option<Themes> {
+    load_packs(preset, audiocpu, || [pack()], log)
+}
+
+fn load_packs<Packs: IntoIterator<Item = Result<MusicPack, String>>>(
+    preset: RulesetPreset,
+    audiocpu: &[u8],
+    packs: impl FnOnce() -> Packs,
     log: &mut Log,
 ) -> Option<Themes> {
     if preset == RulesetPreset::Faithful1987 {
@@ -74,12 +101,14 @@ pub fn load_from(
             Err(error) => log.line("themes", &format!("committed score: {error}")),
         }
     }
-    match pack() {
-        Ok(pack) => {
-            log.line("themes", &format!("the music pack at {}: {} score(s)", pack.folder.display(), pack.len()));
-            add_pack(&mut table, &mut scores, audiocpu, pack, log);
+    for pack in packs() {
+        match pack {
+            Ok(pack) => {
+                log.line("themes", &format!("the music pack at {}: {} score(s)", pack.folder.display(), pack.len()));
+                add_pack(&mut table, &mut scores, audiocpu, pack, log);
+            }
+            Err(why) => log.line("themes", &format!("no music pack: {why}")),
         }
-        Err(why) => log.line("themes", &format!("no music pack: {why}")),
     }
 
     let mut commands = table.commands();
@@ -145,7 +174,8 @@ fn add_pack(
             continue;
         }
         if let Some(id) = id {
-            library.insert(id, score.score);
+            let Entry::Vacant(slot) = library.entry(id) else { continue };
+            slot.insert(score.score);
         }
         let result = score::convert(&source.text, rom).map_err(|e| e.to_string())
             .and_then(|score| score.add_to(table).map_err(|e| e.to_string()));

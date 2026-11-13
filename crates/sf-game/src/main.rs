@@ -307,9 +307,10 @@ struct Play {
     /// overhaul one: `None` until then, `Some(None)` when there are none.
     themes: Option<Option<Themes>>,
     /// Where the themes come from: the music CPU's ROM and the folders the
-    /// ROMs were looked for in (the music pack is beside one of them).
+    /// ROMs and repository assets were looked for in.
     audiocpu: Vec<u8>,
     rom_folders: Vec<PathBuf>,
+    asset_roots: Vec<PathBuf>,
     /// The music CPU runs with the tune table now.
     tune_table: bool,
     theme_delivery: ThemeDelivery,
@@ -441,7 +442,7 @@ impl Game {
         }
         let saved = self.settings.clone();
         let (audiocpu, rom_folders) = themes_from;
-        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, theme_delivery: ThemeDelivery::default(), jukebox };
+        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, asset_roots, tune_table: false, theme_delivery: ThemeDelivery::default(), jukebox };
         self.phase = Phase::Playing(Box::new(play));
     }
 
@@ -566,7 +567,9 @@ impl Driver for Game {
                 // is picked up before the next frame can use a score.
                 if play.themes.is_none() && session.match_config().preset != RulesetPreset::Faithful1987 {
                     let folders: Vec<&Path> = play.rom_folders.iter().map(PathBuf::as_path).collect();
-                    let themes = themes::load(session.match_config().preset, &play.audiocpu, &folders, log);
+                    let themes = themes::load_with_fallbacks(
+                        session.match_config().preset, &play.audiocpu, &folders, &play.asset_roots, log,
+                    );
                     themes::apply(themes.as_ref(), session, log);
                     play.themes = Some(themes);
                 }
