@@ -231,7 +231,12 @@ impl Audio {
 
     /// Push the front end's frame, with the latch already processed by
     /// the Jukebox and the live sound settings for the frame's audition.
-    pub fn push_game_frame(
+    pub fn push_game_frame(&self, out: &FrameOutput, latch: u8, live: LiveSound) {
+        self.push_game_frame_with_score(out, latch, None, live);
+    }
+
+    /// Push a frame carrying the exact native score resolved for its cue.
+    pub fn push_game_frame_with_score(
         &self,
         out: &FrameOutput,
         latch: u8,

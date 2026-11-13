@@ -401,7 +401,10 @@ fn silently_advancing_notated_score_keeps_its_own_patch_pan_and_gate() {
     let notes = attacks(&run, 0);
     assert_eq!(notes[0], original[0]);
     assert_eq!(notes[1].1[0], 72);
-    assert!(notes.len() > 2 && original.len() > 2, "separate {notes:?} baseline {original:?}");
+    assert!(
+        notes.len() > 2 && original.len() > 2,
+        "separate {notes:?} baseline {original:?}"
+    );
     assert_eq!(
         notes[2].1, original[2].1,
         "the expired saved D4 gate stays off: {notes:?} vs {original:?}"
@@ -414,4 +417,45 @@ fn silently_advancing_notated_score_keeps_its_own_patch_pan_and_gate() {
         }),
         "a saved pan change must not alter the currently audible voice"
     );
+}
+
+#[test]
+fn an_overdue_music_stop_also_honors_an_earlier_stop_of_both_effects() {
+    let Some((_, rom)) = regions() else { return };
+    let busy = score(
+        &rom,
+        0x41,
+        &"voice 24 0 0 native ".repeat(11_000),
+        "raw 62 0 380 160",
+    );
+    let calls = |first_stop| {
+        capture(
+            &rom,
+            7,
+            &[
+                (28, 0x09, None),
+                (30, 0x41, Some(busy.clone())),
+                (40, first_stop, None),
+                (42, 0x3f, None),
+            ],
+        )
+    };
+    let music_only = calls(0x3f);
+    let stop_all = calls(0x00);
+    // The two effect stops each restore the cached LFO register sequence.
+    // Distinguish them from any patch's single incidental waveform write.
+    let effect_stops = |run: &MusicRun| {
+        run.writes
+            .windows(4)
+            .filter(|window| {
+                let time = window[0].sample as f64 / f64::from(OPM_RATE);
+                time > 0.75
+                    && window
+                        .iter()
+                        .map(|write| write.reg)
+                        .eq([0x1b, 0x18, 0x19, 0x19])
+            })
+            .count()
+    };
+    assert!(effect_stops(&stop_all) > effect_stops(&music_only));
 }

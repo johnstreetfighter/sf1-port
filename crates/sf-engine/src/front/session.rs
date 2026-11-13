@@ -46,7 +46,7 @@ use crate::jukebox::{Cues, Resolved, TrackCue};
 use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
 use crate::roster::{MenuInput, PlayMode, StagePick, TournamentFighter};
-use crate::theme::ThemeCue;
+use crate::theme::{ThemeCue, ThemeId};
 use crate::run::PowerOnMachine;
 use crate::replay::{MatchReplay, ReplayCommand, ReplayMode, ReplayPlayback};
 use crate::netplay::{Link, NetTransportCommand, NetTransportEvent, RoomAnnouncement, RoomKind, SyncedMatchRules};
@@ -109,6 +109,9 @@ pub struct FrameOutput {
     pub sound_latch: u8,
     /// Semantic stage music on the frame that carries its native latch.
     pub theme: Option<ThemeCue>,
+    /// Original native fight frame for this theme. It stays attached to the
+    /// latch cycles if rollback or spectator playback delivers the cue later.
+    pub theme_frame: Option<u32>,
     /// The latch write's cycles into the frame (the machine's vblank
     /// handler's on attract frames, 0 on the front end's own).
     pub latch_cycles: u32,
@@ -1039,6 +1042,18 @@ impl GameSession {
     }
 
     fn launch_fight(&mut self, setup: FightSetup, flag: Option<u8>, styles: [Option<StylePick>; 2]) {
+        let roster = setup.config.roster;
+        let participants = [roster.p1, roster.p2].map(ThemeId::from);
+        self.launch_fight_with_themes(setup, flag, styles, participants);
+    }
+
+    fn launch_fight_with_themes(
+        &mut self,
+        setup: FightSetup,
+        flag: Option<u8>,
+        styles: [Option<StylePick>; 2],
+        participants: [ThemeId; 2],
+    ) {
         let overhaul = setup.config.preset != RulesetPreset::Faithful1987;
         let backgrounds = self.backgrounds.clone().filter(|_| overhaul);
         let data = overhaul.then(|| {
@@ -1055,7 +1070,7 @@ impl GameSession {
                         None => Some(&mut self.theme_rotation),
                     };
                     let theme = rotation.and_then(|rotation| {
-                        rotation.for_match(fight.setup(), self.backgrounds.as_deref())
+                        rotation.for_participants(fight.setup(), self.backgrounds.as_deref(), participants)
                     });
                     fight.select_theme(theme);
                 }
@@ -1481,13 +1496,10 @@ impl GameSession {
     ///
     /// The stage is the picked one (Local and Training) or, in Arcade, the
     /// one the ladder is at: the start country and the stage and fight
-    /// counters in work RAM name the opponent (`rom_stages::ladder_opponent`;
-    /// read only, as ADR-0004 asks), known well before his theme. The theme
-    /// must be that stage's (or Ryu's theme when Ryu is the CPU opponent in
-    /// Arcade, SP15 `#267`). The fighters are Player 1's and Player 2's,
-    /// with the stage picker's first (ST2's rule: Player 1 on the first
-    /// match, the loser after; Arcade has Player 1's, and Ryu when Ryu is
-    /// the CPU opponent).
+    /// counters in work RAM name the stage owner.
+    /// Jukebox fighter overrides retain their established precedence:
+    /// the stage picker and the other player in Local, and the player's
+    /// fighter followed by Ryu when he is the stand-in CPU in Arcade.
     fn fight_track(&self, latch: Option<u8>, theme: Option<ThemeCue>) -> Option<Resolved> {
         if self.settings.jukebox.is_empty() {
             return None;
@@ -2294,6 +2306,7 @@ impl GameSession {
                     sound_frame: self.frames,
                     sound_latch: m.state.sound_latch,
                     theme: None,
+                    theme_frame: None,
                     latch_cycles: m.state.latch_cycles,
                     announcements: Vec::new(),
                     overhaul_fight: false,
@@ -2436,7 +2449,8 @@ impl GameSession {
             Some(look) => super::pause::short_look_name(&look.name),
             None => super::pause::short_look_name(self.look()),
         };
-        let theme = self.play.as_ref().and(fight_frame.as_ref()).and_then(|frame| frame.theme);
+        let (theme, theme_frame) = self.play.as_ref().and(fight_frame.as_ref())
+            .map_or((None, None), |frame| (frame.theme, frame.theme_frame));
         let presented = self.play.as_ref().map(|play| {
             let boxed = |frame: Frame| match (&play.after, &play.pause) {
                 (Some(after), _) => after.render(&font, &frame),
@@ -2545,6 +2559,7 @@ impl GameSession {
             sound_latch,
             latch_cycles,
             theme,
+            theme_frame,
             announcements,
             overhaul_fight,
             tune_table: self.front_music == Some(FrontMusic::Title) || overhaul_fight,

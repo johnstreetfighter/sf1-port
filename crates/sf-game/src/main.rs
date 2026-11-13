@@ -630,7 +630,7 @@ impl Driver for Game {
                     };
                     let routed = play.jukebox.latch(&action, latch);
                     let score = if routed == latch { score } else { None };
-                    s.push_game_frame(&out, routed, score, session.live_sound());
+                    s.push_game_frame_with_score(&out, routed, score, session.live_sound());
                     match action {
                         Action::Start(track) => s.start_track(out.sound_frame, track),
                         Action::Stop => s.stop_track(out.sound_frame),

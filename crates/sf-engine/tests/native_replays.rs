@@ -159,7 +159,7 @@ fn a_completed_native_match_replays_its_original_checksums_and_restores_takeover
         }
         let out = session.step(controls);
         if let Some(theme) = out.theme {
-            themes.push((frame, out.latch_cycles, theme));
+            themes.push((frame, out.theme_frame.unwrap(), out.latch_cycles, theme));
         }
         let fight = session.fight().expect("native match remains available");
         if trace.len() == 120 {
@@ -184,9 +184,9 @@ fn a_completed_native_match_replays_its_original_checksums_and_restores_takeover
     );
     let expected = Some(MatchTheme { id: ThemeId::Gouken, phase: 0 });
     assert_eq!(saved.theme, expected);
-    assert_eq!(themes.first().map(|(_, _, theme)| *theme),
+    assert_eq!(themes.first().map(|(_, _, _, theme)| *theme),
         Some(ThemeCue { id: ThemeId::Gouken, fallback: 0x29 }));
-    assert!(themes.iter().all(|(_, _, theme)| theme.id == ThemeId::Gouken));
+    assert!(themes.iter().all(|(_, _, _, theme)| theme.id == ThemeId::Gouken));
     assert_eq!(saved.frames.len() + 1, trace.len());
     let from_disk = MatchReplay::from_bytes(&saved.to_bytes()).expect("saved replay round trips");
     assert_eq!(from_disk, saved);
@@ -210,9 +210,9 @@ fn a_completed_native_match_replays_its_original_checksums_and_restores_takeover
     // Check the first 300 linear frames against the original session.
     for (at, &checksum) in trace.iter().enumerate().take(301).skip(1) {
         let out = session.step(FrameInputs::default());
-        let theme = themes.iter().find(|(frame, _, _)| *frame == at - 1);
-        assert_eq!(out.theme.map(|cue| (out.latch_cycles, cue)),
-            theme.map(|&(_, cycles, cue)| (cycles, cue)), "recorded theme at {at}");
+        let theme = themes.iter().find(|(frame, _, _, _)| *frame == at - 1);
+        assert_eq!(out.theme.map(|cue| (out.theme_frame.unwrap(), out.latch_cycles, cue)),
+            theme.map(|&(_, frame, cycles, cue)| (frame, cycles, cue)), "recorded theme at {at}");
         let replay = session.replay_playback().unwrap();
         assert_eq!(replay.frame_index(), at as u32);
         assert_eq!(
@@ -315,12 +315,14 @@ fn correcting_the_inputs_on_a_theme_frame_does_not_play_the_theme_twice() {
         assert!(rollback.last_rollback_frames() > 0);
         assert_eq!(predicted.state_checksum(), direct.state_checksum());
         if let Some(theme) = actual.theme {
-            direct_themes.push((frame, actual.latch_cycles, theme));
+            let original_frame = direct.machine().state.frame;
+            assert_eq!(actual.theme_frame, Some(original_frame));
+            direct_themes.push((frame, original_frame, actual.latch_cycles, theme));
         }
         if let Some(theme) = guessed.theme {
-            predicted_themes.push((frame, guessed.latch_cycles, theme));
+            predicted_themes.push((frame, guessed.theme_frame.unwrap(), guessed.latch_cycles, theme));
         }
-        if direct_themes.first().is_some_and(|&(first, _, _)| frame >= first + 10) {
+        if direct_themes.first().is_some_and(|&(first, _, _, _)| frame >= first + 10) {
             break;
         }
     }

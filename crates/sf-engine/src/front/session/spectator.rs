@@ -2,7 +2,7 @@
 
 use super::*;
 use std::collections::{BTreeMap, VecDeque};
-use crate::front::fight::{FightFrame, MatchTheme};
+use crate::front::fight::{FightFrame, FightLatch, MatchTheme};
 use crate::netplay::decode_inputs;
 use crate::netplay::protocol::{LobbyPhase, NetPacket};
 
@@ -17,7 +17,7 @@ pub(super) struct State {
     theme: Option<MatchTheme>,
     played: u32,
     ack_by_peer: BTreeMap<u8, u32>,
-    latches: VecDeque<(u8, u32, Option<ThemeCue>)>,
+    latches: VecDeque<FightLatch>,
 }
 
 impl State {
@@ -71,8 +71,10 @@ impl State {
             let (p1, p2) = self.confirmed[self.played as usize];
             let mut frame = fight.step(assets, decode_inputs(p1), decode_inputs(p2), false);
             self.played += 1;
-            if frame.sound_latch != sound::IDLE && self.latches.len() < 256 {
-                self.latches.push_back((frame.sound_latch, frame.latch_cycles, frame.theme));
+            let audible = frame.sound_latch != sound::IDLE;
+            let latch = frame.take_latch();
+            if audible && self.latches.len() < 256 {
+                self.latches.push_back(latch);
             }
             announcements.append(&mut frame.announcements);
             if event.is_none() { event = frame.event.take(); }
@@ -82,12 +84,13 @@ impl State {
             frame: if fight.driving() {
                 Frame { argb: vec![0xff00_0000; sf_video::render::WIDTH * sf_video::render::HEIGHT] }
             } else { fight.render(assets) },
-            sound_latch: sound::IDLE, latch_cycles: 0, theme: None, theme_event: None,
+            sound_latch: sound::IDLE, latch_cycles: 0, theme: None,
+            theme_frame: None, theme_event: None,
             announcements: Vec::new(), event: None,
         });
-        (frame.sound_latch, frame.latch_cycles, frame.theme) =
-            self.latches.pop_front().unwrap_or((sound::IDLE, 0, None));
-        frame.theme_event = None;
+        if let Some(latch) = self.latches.pop_front() {
+            frame.put_latch(latch);
+        }
         frame.announcements = announcements;
         frame.event = event;
         frame
@@ -218,4 +221,45 @@ impl GameSession {
 
 fn phase_index(phase: LobbyPhase) -> usize {
     match phase { LobbyPhase::Fighters => 0, LobbyPhase::Stage => 1 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::front::fight::{FightDips, FightSetup};
+    use crate::theme::ThemeId;
+    use sf_video::romset::load_assets;
+
+    #[test]
+    fn late_spectator_delivers_the_original_latch_time_after_catching_up() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config: MatchConfig::definitive(),
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, None).unwrap();
+        let selection = MatchTheme { id: ThemeId::Gouken, phase: 1 };
+        fight.select_theme(Some(selection));
+        let mut observer = fight.clone();
+        let input = PlayerInputs::default();
+        let expected = (0..1000).find_map(|_| {
+            let out = fight.step(&assets, input, input, false);
+            out.theme.map(|cue| (out.theme_frame, out.latch_cycles, cue))
+        }).expect("the direct fight emitted its theme");
+        let mut spectator = State { confirmed: vec![(0, 0); 1200], theme: Some(selection), ..State::default() };
+        let actual = (0..160).find_map(|_| {
+            let out = spectator.step(&mut observer, &assets);
+            out.theme.map(|cue| (out.theme_frame, out.latch_cycles, cue))
+        }).expect("spectator catch-up delivered the original theme");
+        assert_eq!(actual, expected);
+        assert!(observer.machine().state.frame > actual.0.unwrap());
+    }
 }

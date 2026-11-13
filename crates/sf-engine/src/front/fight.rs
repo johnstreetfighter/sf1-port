@@ -349,11 +349,41 @@ pub struct FightFrame {
     pub sound_latch: u8,
     pub latch_cycles: u32,
     pub theme: Option<crate::theme::ThemeCue>,
+    /// Native fight frame on which the theme was latched.
+    pub theme_frame: Option<u32>,
     pub(crate) theme_event: Option<u32>,
     /// The announcer's lines asked for on this frame, in order (ADR 0011):
     /// none under the Faithful 1987 preset.
     pub announcements: Vec<AnnouncerLine>,
     pub event: Option<FightEvent>,
+}
+
+/// A latch awaiting presentation after rollback or spectator catch-up.
+#[derive(Clone, Copy)]
+pub(crate) struct FightLatch {
+    command: u8,
+    cycles: u32,
+    theme: Option<crate::theme::ThemeCue>,
+    theme_frame: Option<u32>,
+}
+
+impl FightFrame {
+    pub(crate) fn take_latch(&mut self) -> FightLatch {
+        self.theme_event = None;
+        FightLatch {
+            command: std::mem::replace(&mut self.sound_latch, sound::IDLE),
+            cycles: std::mem::take(&mut self.latch_cycles),
+            theme: self.theme.take(),
+            theme_frame: self.theme_frame.take(),
+        }
+    }
+
+    pub(crate) fn put_latch(&mut self, latch: FightLatch) {
+        self.sound_latch = latch.command;
+        self.latch_cycles = latch.cycles;
+        self.theme = latch.theme;
+        self.theme_frame = latch.theme_frame;
+    }
 }
 
 /// A running fight.
@@ -1878,6 +1908,7 @@ impl Fight {
                 sound_latch: self.sounds.pop_front().unwrap_or(sound::IDLE),
                 latch_cycles: 0,
                 theme: None,
+                theme_frame: None,
                 theme_event: None,
                 announcements: Vec::new(),
                 event: None,
@@ -2116,12 +2147,14 @@ impl Fight {
             .then_some(self.machine.toggle_state().latched_theme).flatten();
         let sound_latch = queued.or_else(|| music.map(|music| music.legacy))
             .unwrap_or(self.machine.state.sound_latch);
+        let theme = music.and_then(|music| music.cue);
         self.update_era_trails(assets);
         FightFrame {
             frame: self.render(assets),
             sound_latch,
             latch_cycles: self.machine.state.latch_cycles,
-            theme: music.and_then(|music| music.cue),
+            theme,
+            theme_frame: theme.map(|_| self.machine.state.frame),
             theme_event: music.map(|music| music.event),
             announcements,
             event,

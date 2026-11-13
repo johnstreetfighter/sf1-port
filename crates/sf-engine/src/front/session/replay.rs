@@ -358,9 +358,9 @@ impl GameSession {
         }
         let font = RomFont::new(&self.assets.gfx4, &self.assets.maincpu);
         let fight = watching.playback.fight();
-        let (mut frame, latch, latch_cycles, announcements, theme) = match ff {
-            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements, ff.theme),
-            None => (fight.render(assets), sound_latch, 0, Vec::new(), None),
+        let (mut frame, latch, latch_cycles, announcements, theme, theme_frame) = match ff {
+            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements, ff.theme, ff.theme_frame),
+            None => (fight.render(assets), sound_latch, 0, Vec::new(), None, None),
         };
         if let ReplayMode::Takeover {
             player,
@@ -412,6 +412,7 @@ impl GameSession {
             sound_latch: if exit { sound::STOP_ALL } else { latch },
             latch_cycles,
             theme: theme.filter(|_| !exit),
+            theme_frame: theme_frame.filter(|_| !exit),
             announcements,
             overhaul_fight: !exit && preset != RulesetPreset::Faithful1987,
             tune_table: preset != RulesetPreset::Faithful1987,

@@ -18,13 +18,17 @@ struct PairPhase {
 }
 
 impl ThemeRotation {
-    pub(super) fn for_match(&mut self, setup: &FightSetup, bank: Option<&BackgroundBank>) -> Option<MatchTheme> {
+    pub(super) fn for_participants(
+        &mut self,
+        setup: &FightSetup,
+        bank: Option<&BackgroundBank>,
+        participants: [ThemeId; 2],
+    ) -> Option<MatchTheme> {
         let config = setup.config;
-        let [p1, p2] = [config.roster.p1, config.roster.p2]
-            .map(|fighter| ThemeId::from_fighter_slug(&fighter.name().to_ascii_lowercase()));
+        let [_, opponent] = participants;
         match setup.kind {
-            FightKind::Dramatic { .. } | FightKind::WorldTour => return p2.map(MatchTheme::single),
-            FightKind::Arcade if config.evil_ryu_playtest.is_some() => return p2.map(MatchTheme::single),
+            FightKind::Dramatic { .. } | FightKind::WorldTour => return Some(MatchTheme::single(opponent)),
+            FightKind::Arcade if config.evil_ryu_playtest.is_some() => return Some(MatchTheme::single(opponent)),
             FightKind::Arcade => return None, // The native Arcade ladder chooses its opponent per match.
             _ => {}
         }
@@ -36,11 +40,11 @@ impl ThemeRotation {
             let command = u8::try_from(bank.stage_record(index)?.theme).ok()?;
             return ThemeId::from_command(command).map(MatchTheme::single);
         }
-        self.choose(stage, members, [p1, p2])
+        self.choose(stage, members, participants)
     }
 
-    fn choose(&mut self, stage: &str, members: &'static [ThemeId], sides: [Option<ThemeId>; 2]) -> Option<MatchTheme> {
-        let [p1, p2] = sides.map(|fighter| fighter.filter(|id| members.contains(id)));
+    fn choose(&mut self, stage: &str, members: &'static [ThemeId], sides: [ThemeId; 2]) -> Option<MatchTheme> {
+        let [p1, p2] = sides.map(|fighter| members.contains(&fighter).then_some(fighter));
         match (p1, p2) {
             (Some(p1), Some(p2)) if p1 != p2 => {
                 let mut pair = [p1, p2];
@@ -70,6 +74,54 @@ mod tests {
     use crate::theme::ThemeId::{Akuma, Goutetsu, Gouken, Ken, Ryu};
 
     #[test]
+    fn a_live_session_uses_associated_fighters_without_unlocking_them() {
+        use super::super::{FrameInputs, GameSession};
+        use crate::config::MatchConfig;
+        use crate::front::cabinet::Players;
+        use crate::front::fight::FightDips;
+        use crate::roster::PlayMode;
+        use sf_video::romset::load_assets;
+        use sf_video::stage::pack_records;
+
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let stage = include_str!("../../../../../art/stages/test-stage.json")
+            .replace(r#""name": "test-stage""#, r#""name": "gouken""#);
+        let bank = pack_records(&assets, &[&stage]).unwrap();
+        let stage = bank.stage_index("gouken").unwrap();
+        let mut config = MatchConfig::definitive();
+        config.roster.mode = PlayMode::Versus;
+        config.roster.stage = Some(StagePick::Bank(stage));
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut session = GameSession::new(assets, config).with_background_bank(bank);
+        // Keep using the actual released fighters on the gameplay side. The
+        // fixture replaces their theme identities at the match launch seam.
+        for (sides, id, phase) in [
+            ([Gouken, Ryu], Gouken, 0),
+            ([Akuma, Gouken], Gouken, 0),
+            ([Gouken, Akuma], Akuma, 1),
+            ([Akuma, Akuma], Akuma, 0),
+            ([Gouken, Akuma], Gouken, 0),
+        ] {
+            session.launch_fight_with_themes(setup, Some(0), [None; 2], sides);
+            let cue = (0..1000).find_map(|_| session.step(FrameInputs::default()).theme)
+                .expect("the launched fight reaches its native theme latch");
+            assert_eq!(cue.id, id);
+            assert_eq!(session.fight().unwrap().selected_theme(), Some(MatchTheme { id, phase }));
+        }
+    }
+
+    #[test]
     fn shared_stages_track_cycles_and_unordered_pairs_independently() {
         let mut rotation = ThemeRotation::default();
         let dojo = &[Gouken, Akuma, Goutetsu];
@@ -77,17 +129,17 @@ mod tests {
             let choice = rotation.choose(stage, members, sides).unwrap();
             (choice.id, choice.phase)
         };
-        assert_eq!(pick("gouken", dojo, [Some(Ryu), Some(Ken)]), (Gouken, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Gouken), Some(Gouken)]), (Gouken, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Gouken), Some(Ryu)]), (Gouken, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Gouken), Some(Akuma)]), (Akuma, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Akuma), Some(Gouken)]), (Gouken, 1));
-        assert_eq!(pick("gouken", dojo, [Some(Gouken), Some(Goutetsu)]), (Goutetsu, 0));
-        assert_eq!(pick("other-dojo", dojo, [Some(Akuma), Some(Gouken)]), (Gouken, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Akuma), Some(Gouken)]), (Akuma, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Ryu), Some(Ken)]), (Akuma, 1));
-        assert_eq!(pick("gouken", &[Gouken, Goutetsu], [Some(Ryu), Some(Ken)]), (Gouken, 0));
-        assert_eq!(pick("gouken", dojo, [Some(Ryu), Some(Ken)]), (Goutetsu, 2));
-        assert_eq!(pick("gouken", dojo, [Some(Ryu), Some(Ken)]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Ryu, Ken]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Gouken, Gouken]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Gouken, Ryu]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Gouken, Akuma]), (Akuma, 0));
+        assert_eq!(pick("gouken", dojo, [Akuma, Gouken]), (Gouken, 1));
+        assert_eq!(pick("gouken", dojo, [Gouken, Goutetsu]), (Goutetsu, 0));
+        assert_eq!(pick("other-dojo", dojo, [Akuma, Gouken]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Akuma, Gouken]), (Akuma, 0));
+        assert_eq!(pick("gouken", dojo, [Ryu, Ken]), (Akuma, 1));
+        assert_eq!(pick("gouken", &[Gouken, Goutetsu], [Ryu, Ken]), (Gouken, 0));
+        assert_eq!(pick("gouken", dojo, [Ryu, Ken]), (Goutetsu, 2));
+        assert_eq!(pick("gouken", dojo, [Ryu, Ken]), (Gouken, 0));
     }
 }

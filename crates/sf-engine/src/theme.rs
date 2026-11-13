@@ -76,6 +76,26 @@ theme_registry! {
     Poison, "poison", 0x5e;
 }
 
+impl From<crate::roster::TournamentFighter> for ThemeId {
+    fn from(fighter: crate::roster::TournamentFighter) -> Self {
+        use crate::roster::TournamentFighter::*;
+        match fighter {
+            Ryu => Self::Ryu,
+            Ken => Self::Ken,
+            Retsu => Self::Retsu,
+            Geki => Self::Geki,
+            Joe => Self::Joe,
+            Mike => Self::Mike,
+            Lee => Self::Lee,
+            Gen => Self::Gen,
+            Birdie => Self::Birdie,
+            Eagle => Self::Eagle,
+            Adon => Self::Adon,
+            Sagat => Self::Sagat,
+        }
+    }
+}
+
 impl ThemeId {
     /// Names used by fighter data, including the older Charlie and Bison slugs.
     pub fn from_fighter_slug(slug: &str) -> Option<Self> {

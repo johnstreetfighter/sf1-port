@@ -6640,11 +6640,18 @@ fn stage_music(bus: &mut Bus) {
     };
     let stage_cmd = authored.unwrap_or(rom_cmd);
     let fallback = if stage_cmd < EXTENDED_THEME_FIRST { stage_cmd } else { FALLBACK_THEME };
-    let fighter = |fighter: TournamentFighter| ThemeId::from_fighter_slug(&fighter.name().to_ascii_lowercase());
     let id = bus.toggle_state.selected_theme.map(|theme| theme.id)
-        .or_else(|| bus.dramatic_rules().is_some().then(|| fighter(bus.roster.p2)).flatten())
-        .or_else(|| bus.world_tour_rules().is_some().then(|| fighter(bus.roster.p2)).flatten())
-        .or_else(|| (bus.roster.mode == PlayMode::Arcade).then(|| bus.arcade_opponent().and_then(fighter)).flatten())
+        .or_else(|| {
+            (bus.dramatic_rules().is_some() || bus.world_tour_rules().is_some())
+                .then(|| ThemeId::from(bus.roster.p2))
+        })
+        .or_else(|| {
+            if bus.roster.mode == PlayMode::Arcade {
+                bus.arcade_opponent().map(ThemeId::from)
+            } else {
+                None
+            }
+        })
         .or_else(|| u8::try_from(stage_cmd).ok().and_then(ThemeId::from_command));
     let command = id.map_or(stage_cmd, |theme| u16::from(theme.command()));
     let legacy = u8::try_from(command).ok()

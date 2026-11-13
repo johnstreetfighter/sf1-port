@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::{decode_inputs, encode_inputs};
-use crate::front::fight::{Fight, FightEvent, FightFrame, FightSnapshot};
+use crate::front::fight::{Fight, FightEvent, FightFrame, FightLatch, FightSnapshot};
 use crate::front::session::PlayerInputs;
 use sf_video::announcer::AnnouncerLine;
 use sf_video::romset::Assets;
@@ -59,7 +59,7 @@ pub struct RollbackEngine {
     confirmed_fight_events: Vec<(u32, FightEvent)>,
     pending_checksums: BTreeMap<u32, u64>,
     reported_desyncs: BTreeSet<u32>,
-    pending_latches: VecDeque<(u8, u32, Option<crate::theme::ThemeCue>)>,
+    pending_latches: VecDeque<FightLatch>,
     // A corrected input can move the same round's theme to another frame.
     heard_themes: BTreeSet<(u32, crate::theme::ThemeId)>,
     pending_announcements: Vec<AnnouncerLine>,
@@ -222,10 +222,8 @@ impl RollbackEngine {
         let mut output = self.simulate(self.next, fight, assets);
         self.next = self.next.checked_add(1)?;
         self.advance_confirmed();
-        if let Some((latch, cycles, theme)) = self.pending_latches.pop_front() {
-            output.sound_latch = latch;
-            output.theme = theme;
-            output.latch_cycles = cycles;
+        if let Some(latch) = self.pending_latches.pop_front() {
+            output.put_latch(latch);
         }
         output.announcements.append(&mut self.pending_announcements);
         output.event = self.pending_fight_events.pop_front();
@@ -363,10 +361,10 @@ impl RollbackEngine {
             }
             None => false,
         };
+        let latch = output.take_latch();
         if new_latch {
             if self.pending_latches.len() < MAX_PENDING_AUDIO {
-                self.pending_latches
-                    .push_back((output.sound_latch, output.latch_cycles, output.theme));
+                self.pending_latches.push_back(latch);
             } else if !self.disconnected {
                 self.disconnected = true;
                 self.push_event(RollbackEvent::PeerDisconnected);
@@ -388,10 +386,6 @@ impl RollbackEngine {
             }
         }
         output.announcements.clear();
-        output.sound_latch = IDLE;
-        output.theme = None;
-        output.theme_event = None;
-        output.latch_cycles = 0;
         self.slots[index] = Some(slot);
         output
     }
@@ -447,5 +441,57 @@ impl RollbackEngine {
             self.events.pop_front();
         }
         self.events.push_back(event);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::MatchConfig;
+    use crate::front::cabinet::Players;
+    use crate::front::fight::{FightDips, FightKind, FightSetup, MatchTheme};
+    use crate::theme::ThemeId;
+    use sf_video::romset::load_assets;
+
+    #[test]
+    fn a_theme_discovered_during_resimulation_keeps_its_original_latch_time() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config: MatchConfig::definitive(),
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, None).unwrap();
+        fight.select_theme(Some(MatchTheme::single(ThemeId::Gouken)));
+        let neutral = PlayerInputs::default();
+        let (before, expected) = (0..1000).find_map(|_| {
+            let before = fight.save_netplay_snapshot(0);
+            let out = fight.step(&assets, neutral, neutral, false);
+            out.theme.map(|cue| (before, (out.theme_frame, out.latch_cycles, cue)))
+        }).expect("the direct fight emitted its theme");
+
+        // Simulate a prediction that lacked the native queue entry. A remote
+        // correction then starts from the snapshot containing the real latch.
+        let mut missed = before.clone();
+        missed.machine.toggle_state.queued_themes.fill(None);
+        missed.machine.work[0x0662..0x0682].fill(0xff);
+        fight.restore_netplay_snapshot(&missed);
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        let prediction = rollback.step(&mut fight, &assets, neutral).unwrap();
+        assert!(prediction.theme.is_none());
+        rollback.slots[0].as_mut().unwrap().before = before;
+        let corrected = PlayerInputs { directions: [true, false, false, false], ..neutral };
+        rollback.apply_remote_inputs(&mut fight, &assets, 0, &[encode_inputs(corrected)]);
+        assert_eq!(rollback.last_rollback_frames(), 1);
+        let delivered = rollback.step(&mut fight, &assets, neutral).unwrap();
+        assert_eq!((delivered.theme_frame, delivered.latch_cycles, delivered.theme.unwrap()), expected);
+        assert!(fight.machine().state.frame > delivered.theme_frame.unwrap());
     }
 }

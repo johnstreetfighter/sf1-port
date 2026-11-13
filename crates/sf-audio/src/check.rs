@@ -1004,8 +1004,17 @@ impl crate::music::MusicBus for TimedChip {
         // A stop supersedes earlier queued requests. Keep it even after
         // an idle write if a separate score was playing or waiting.
         if let Some(stop) = (0..due).rev().find(|&i| self.score_events[i].2.is_none()) {
-            let (_, command, _) = self.score_events.drain(..=stop).last().expect("a due stop");
-            if separate_live || stop > 0 {
+            let mut command = self.score_events[stop].1;
+            let mut superseded_score = false;
+            for (_, earlier, score) in self.score_events.drain(..=stop) {
+                if score.is_some() {
+                    superseded_score = true;
+                } else if earlier == 0x00 {
+                    // A later music-only stop still owes the earlier effect stop.
+                    command = 0x00;
+                }
+            }
+            if separate_live || superseded_score {
                 return Some((command, None));
             }
         }
