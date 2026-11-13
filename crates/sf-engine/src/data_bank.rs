@@ -1595,6 +1595,7 @@ fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFig
     }
     match fighter {
         TournamentFighter::Ryu => {
+            write_st_ryu_far_jab(rom, region, rom_table);
             // The wind-up, thrust and settle in Ryu's Hadoken (0x1362).
             // Keep the original spawn routine so the engine attributes
             // projectile durability, tint and hits to the active move.
@@ -1621,6 +1622,25 @@ fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFig
         TournamentFighter::Ken => write_shoryureppa(rom, rom_table, region),
         _ => unreachable!("only Ryu and Ken have ROM player tables"),
     }
+}
+
+fn write_st_ryu_far_jab(rom: &[u8], region: &mut Region, rom_table: u32) {
+    const STANDING_LP: u8 = 0x0d;
+    let source = rom_table + u32::from(STANDING_LP) * MOVE_HEADER_SIZE;
+    let mut header = std::array::from_fn(|offset| rom_b(rom, source + offset as u32));
+    let mut active = rom_record(rom, 0x09ca);
+    let mut recovery = rom_record(rom, 0x09ea);
+    // World 940223 at Turbo 1. The translated durations count from zero.
+    // The port's final neutral transition also takes a tick, giving 4 ticks
+    // to the first live box and 11 to the first accepted walk input.
+    header[0xe] = 3;
+    active[1] = 3;
+    recovery[1] = 1;
+    let stream = region.put(&active);
+    region.put(&recovery);
+    region.end();
+    header[0x2c..0x30].copy_from_slice(&stream.to_be_bytes());
+    put_era_header(region, EraFamily::Sf2, STANDING_LP, &header);
 }
 
 fn build_shoto_alpha_supers(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {

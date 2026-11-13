@@ -730,7 +730,9 @@ impl Bus<'_> {
         let big = self.is_big(e);
         let hx = Self::half_extent(self.eb(e, 0xd), big);
         let hy = Self::half_extent(self.eb(e, 0xc), big);
-        let dx = self.world_tour_horizontal_step(self.el(e, 0x38), self.eb(e, 0xa), sext8(self.eb(e, 0x15)) as i16);
+        let dx = self.pose_horizontal_step(
+            self.el(e, 0x38), self.eb(e, 0xa), sext8(self.eb(e, 0x15)) as i16,
+        );
         let sx = self.ew(e, 6).wrapping_sub(hx).wrapping_add(dx as u16);
         self.set_ew(e, 6, sx);
         let x = sext8(self.eb(e, 0x26)).wrapping_add(sx);
@@ -738,6 +740,18 @@ impl Bus<'_> {
         self.set_ew(e, 4, sy);
         let y = sext8(self.eb(e, 0x14)).wrapping_add(sy);
         (x, y)
+    }
+
+    fn pose_horizontal_step(&mut self, ps: u32, mv: u8, dx: i16) -> i16 {
+        if self.st_ryu_forward_walk(ps, mv) {
+            // The ST forward step runs every tick, independently of the 1987 pose stream.
+            return 0;
+        }
+        self.world_tour_horizontal_step(ps, mv, dx)
+    }
+
+    fn st_ryu_forward_walk(&self, ps: u32, mv: u8) -> bool {
+        mv == 2 && self.st_ryu_loadout(ps).is_some()
     }
 
     /// 0x44506 / 0x442ca: zero the position of every remaining entry of the
@@ -863,6 +877,8 @@ impl Bus<'_> {
             });
         let src = if let Some(state) = family_move {
             self.family_move_header(state, e, mv)
+        } else if let Some(header) = self.st_ryu_far_jab_header(ps, e, mv) {
+            Some(header)
         } else if mv == crate::data_bank::ALPHA_COUNTER_SLOT {
             self.alpha_counter_header(ps)
         } else if mv == 1 && self.era_state(ps).is_some_and(|era| {
@@ -885,6 +901,11 @@ impl Bus<'_> {
         let Some(src) = src else {
             return;
         };
+        if self.st_ryu_forward_walk(ps, mv) {
+            // Preserve the walk cadence when held Forward restarts the pose cycle.
+            let age = if self.eb(e, 0xa) == 2 { self.eb(e, 0x30).wrapping_add(1) } else { 0 };
+            self.set_eb(e, 0x30, age);
+        }
         self.control_move_started(ps, mv);
         for i in 0..0x30u32 {
             let b = self.rb(src + i);
@@ -947,7 +968,7 @@ impl Bus<'_> {
             }
             // 0x4420c-0x44228 also negate the new x-offset into a scratch
             // register that nothing reads.
-            let dx = self.world_tour_horizontal_step(ps, mv, self.ew(e, 6) as i16);
+            let dx = self.pose_horizontal_step(ps, mv, self.ew(e, 6) as i16);
             let x = d3.wrapping_add(dx as u16);
             self.set_ew(e, 6, x);
         }
@@ -1144,6 +1165,7 @@ impl Bus<'_> {
             if snd != 0 {
                 self.queue_sound(snd as u16);
             }
+            self.step_st_ryu_forward_walk(me);
             self.push_apart(me, other);
             self.clamp_y(me);
             self.clamp_x(me);
@@ -1155,6 +1177,22 @@ impl Bus<'_> {
             self.buffer_air_strength(me);
         }
         self.animate(me, other);
+    }
+
+    fn step_st_ryu_forward_walk(&mut self, e: u16) -> bool {
+        let ps = self.el(e, 0x38);
+        if !self.st_ryu_forward_walk(ps, self.eb(e, 0xa)) {
+            return false;
+        }
+        // World Turbo 1 advances 3 px per arcade game step, with occasional
+        // 6 px display intervals. At 60 Hz this cadence covers 60 px in 16 ticks.
+        let step = [3, 3, 3, 6][usize::from(self.eb(e, 0x30) % 4)];
+        let dx = if self.eb(e, 0x37) & 4 != 0 { -step } else { step };
+        let dx = self.world_tour_horizontal_step(ps, 2, dx);
+        // clamp_x forwards this step to the camera when the fighter reaches its screen edge.
+        self.set_eb(e, 0x15, dx as u8);
+        self.shift_grid_x(e, dx as u16);
+        true
     }
 
     fn is_ashura_move(&self, ps: u32, mv: u8) -> bool {
@@ -1361,6 +1399,10 @@ impl Bus<'_> {
         if hold != 0 {
             self.set_eb(me, 0x33, hold - 1);
             self.step_air_attack_trajectory(me);
+            if self.step_st_ryu_forward_walk(me) {
+                self.push_apart(me, other);
+                self.clamp_x(me);
+            }
             self.judge_targets(me, other);
             return;
         }
@@ -1369,7 +1411,7 @@ impl Bus<'_> {
             // 0x42cd6: repeat the frame with its (dy, dx) step.
             self.set_eb(me, 0xb, self.eb(me, 0xb) - 1);
             let dy = sext8(self.eb(me, 0x14));
-            let dx = self.world_tour_horizontal_step(
+            let dx = self.pose_horizontal_step(
                 self.el(me, 0x38), self.eb(me, 0xa), sext8(self.eb(me, 0x15)) as i16,
             ) as u16;
             for s in self.grid_entries(me) {
@@ -1379,6 +1421,7 @@ impl Bus<'_> {
                 self.set_ew(s, 6, x);
             }
             self.step_air_attack_trajectory(me);
+            self.step_st_ryu_forward_walk(me);
             self.push_apart(me, other);
             self.clamp_y(me);
             self.clamp_x(me);
@@ -1445,6 +1488,10 @@ impl Bus<'_> {
                 }
                 0xfe => a1 = self.rl(a1 + 2),
                 0xfd => {
+                    if self.step_st_ryu_forward_walk(me) {
+                        self.push_apart(me, other);
+                        self.clamp_x(me);
+                    }
                     self.end_move(me);
                     return;
                 }
@@ -1453,6 +1500,7 @@ impl Bus<'_> {
         }
         self.load_frame(me, a1);
         self.step_air_attack_trajectory(me);
+        self.step_st_ryu_forward_walk(me);
         let (me, other) = self.effect_flag_spawn(me, other);
         self.push_apart(me, other);
         self.clamp_y(me);
@@ -6332,6 +6380,23 @@ impl Bus<'_> {
         }
     }
 
+    fn st_ryu_far_jab_header(&self, ps: u32, entity: u16, move_id: u8) -> Option<u32> {
+        use crate::era::EraFamily::Sf2;
+        use crate::roster::TournamentFighter::Ryu;
+
+        if move_id != 0x0d {
+            return None;
+        }
+        self.st_ryu_loadout(ps)?;
+        // Both World ST loadouts switch to far LP above 64 px between axes.
+        let (_, opponent) = self.player_entities(ps);
+        let axis = |e| self.center_x(e).wrapping_sub(sext8(self.eb(e, 0x26))) as i16;
+        if opponent == 0 || axis(entity).abs_diff(axis(opponent)) <= 64 {
+            return None;
+        }
+        self.data_bank?.era_move_header(Ryu, Sf2, move_id)
+    }
+
     fn era_normal_contact(&mut self, entity: u16, guarded: bool) {
         use crate::combo::{Class, class_of, level};
 
@@ -6364,12 +6429,35 @@ impl Bus<'_> {
         self.era_meter_gain(owner, if guarded { guard } else { hit });
     }
 
+    fn st_ryu_loadout(&self, ps: u32) -> Option<crate::era::Loadout> {
+        use crate::era::{Loadout, Revision};
+        use crate::roster::TournamentFighter::Ryu;
+
+        let era = self.sf2_state(ps)?;
+        (era.style.revision == Revision::St
+            && matches!(era.style.loadout, Loadout::Standard | Loadout::Old)
+            && era.fighter == Some(Ryu)
+            && self.evil_ryu_profile(ps).is_none())
+        .then_some(era.style.loadout)
+    }
+
     fn era_move_recovery(&mut self, entity: u16, frame: u32) {
         let owner = self.el(entity, 0x38);
+        let move_id = self.eb(entity, 0xa);
+        if frame == 0x13a8 && move_id == 0x1a && self.eb(entity, 0x34) == 1 {
+            if let Some(loadout) = self.st_ryu_loadout(owner) {
+                // This pose loads on the projectile spawn tick. With the settle
+                // pose and return to input, these holds give 33 (New) and 32 (Old)
+                // ticks of recovery at 60 Hz, within the World Turbo 1 ranges.
+                let hold = if loadout == crate::era::Loadout::Old { 24 } else { 27 };
+                self.set_eb(entity, 0xe, hold);
+                self.set_eb(entity, 0x33, hold);
+                return;
+            }
+        }
         let Some(delta) = self.sf2_state(owner).and_then(|era| crate::era_fight::RevisionDelta::of(era.style)) else {
             return;
         };
-        let move_id = self.eb(entity, 0xa);
         if !matches!(move_id, 0x0d..=crate::era_fight::SF2_EXTRA_SPECIAL | 0x20..=0x26)
             || self.eb(entity, 0xf) & 0x80 != 0
         {
@@ -6377,6 +6465,13 @@ impl Bus<'_> {
         }
         let next = frame + 0x20;
         if self.rb(next) == 0xfd || (self.rb(next) == 0xff && self.rl(next + 2) == 0x45630) {
+            // The ST Ryu far jab's banked stream already has the arcade timing.
+            if move_id == 0x0d
+                && crate::data_bank::in_bank(frame)
+                && self.st_ryu_loadout(owner).is_some()
+            {
+                return;
+            }
             for byte in [0xe, 0x33] {
                 self.set_eb(entity, byte, self.eb(entity, byte).saturating_add_signed(delta.recovery));
             }
@@ -6785,8 +6880,12 @@ impl Bus<'_> {
             // 0x4059c: reset the Hadoken tracker.
             self.clear_tracker(self.tracker_base(ps) + 0x1c);
             self.start_move(me, ps, mv);
-        } else if !(self.eb(me, 9) & 0x80 != 0 && self.eb(me, 0xa) & 3 != 0) {
-            if self.eb(me, 0xa) == 1 {
+        } else {
+            let move_id = self.eb(me, 0xa);
+            if self.eb(me, 9) & 0x80 != 0 && move_id & 3 != 0 && !self.st_ryu_forward_walk(ps, move_id) {
+                return;
+            }
+            if move_id == 1 {
                 match self.eb(me, 0x37) {
                     5 => self.face_left(me),
                     3 => self.face_right(me),
