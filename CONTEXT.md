@@ -383,6 +383,22 @@ _Avoid_: network driver (the host's socket transport), prototype peer
 An in-memory packet router connecting two or more online sessions in headless tests under scripted latency, jitter, packet loss and reordering, without opening OS sockets.
 _Avoid_: mock server, socket driver
 
+**Internet room code**:
+A shareable code for a live room on the players' selected relay. The host and guest use the same relay to use the code.
+_Avoid_: IP address, LAN address code
+
+**LAN address code**:
+A shareable form of the host's IPv4 address and UDP port for direct joins. It remains usable wherever that address is reachable.
+_Avoid_: Internet room code
+
+**Default relay**:
+The project-operated relay selected by a fresh install for Internet rooms.
+_Avoid_: room directory, match host
+
+**Community relay**:
+An independently operated relay that players select in Netplay settings to host and join Internet rooms together.
+_Avoid_: community directory, match host
+
 ## Training
 
 **Training**:
