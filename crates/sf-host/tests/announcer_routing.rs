@@ -137,3 +137,39 @@ fn changing_voices_restarts_fight_immediately_at_announcer_volume() {
         assert_eq!(Gains::from_volumes(10, 0, 0, 0).sample(&mut board, t), [0.0, 0.0]);
     }
 }
+
+#[test]
+fn impact_tracks_master_and_samples_independently_of_the_announcer() {
+    use sf_audio::mix::{GameSound, ImpactAccent};
+
+    let mut sound = GameSound::power_on(
+        vec![0; 0x40000],
+        vec![0; 0x8000],
+        LatchTimeline::default(),
+        0.0,
+    );
+    let mut playback = VoicePlayback::new(voices(true), &mut sound);
+    playback.push_frame(&mut sound, AnnouncerFrame {
+        frame: 6,
+        latch: sound::IDLE,
+        latch_cycles: 0,
+        overhaul_fight: true,
+        voice: Voice::Ringside,
+        lines: &[Line::Fight],
+    });
+    sound.play_impact(6, ImpactAccent::HeavyStrike);
+    let t = 6.5 / f64::from(FRAME_HZ);
+    assert!(sound.wait_ready(t));
+    let mut sample = |master, fm, samples, announcer| {
+        Gains::from_volumes(master, fm, samples, announcer).sample(&mut sound, t)[0]
+    };
+    let accent = sample(10, 0, 10, 0);
+    let line = sample(10, 0, 0, 10);
+    assert!(accent.abs() > 0.01);
+    assert!(line.abs() > 0.01);
+    assert_eq!(sample(10, 10, 10, 0), accent);
+    assert_eq!(sample(10, 0, 5, 0), accent / 2.0);
+    assert_eq!(sample(5, 0, 10, 0), accent / 2.0);
+    assert_eq!(sample(0, 0, 10, 10), 0.0);
+    assert!((sample(10, 0, 5, 10) - (accent / 2.0 + line)).abs() < 1e-6);
+}

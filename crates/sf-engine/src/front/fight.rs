@@ -46,6 +46,8 @@ use crate::run::{PowerOnMachine, PowerOnSnapshot};
 use crate::tasks::Io;
 use crate::utility::{ComboTrialSpec, Drill, DrillController, RosterFighter, TrialController, TrialFrame};
 
+use crate::impact::{ImpactCue, ImpactFighter};
+
 mod gauge_effects;
 
 use gauge_effects::{Corner as GaugeCorner, GaugeEffects, Spends};
@@ -355,6 +357,7 @@ pub struct FightFrame {
     /// The announcer's lines asked for on this frame, in order (ADR 0011):
     /// none under the Faithful 1987 preset.
     pub announcements: Vec<AnnouncerLine>,
+    pub impacts: Vec<ImpactCue>,
     pub event: Option<FightEvent>,
 }
 
@@ -406,6 +409,7 @@ pub struct Fight {
     /// The active gauge art from Settings or the pause box.
     gauge_art: GaugeArt,
     gauge_effects: GaugeEffects,
+    impact_visuals: [Option<ImpactCue>; 3],
     /// The machine at the start of the current round (`0x3ea3e`).
     round_start: Option<PowerOnSnapshot>,
     last_flow: u32,
@@ -473,6 +477,7 @@ pub struct FightSnapshot {
     pub last_flow: u32,
     pub callouts: CalloutBoard,
     pub(crate) gauge_effects: GaugeEffects,
+    impact_visuals: [Option<ImpactCue>; 3],
     pub pending_callouts: Vec<CalloutEvent>,
     pub pending_combos: Vec<AnnouncerLine>,
     pub reader: FightReader,
@@ -578,7 +583,7 @@ impl Fight {
         let Self {
             machine, setup, country, black, over, continuing, round_start,
             last_flow, show, read, fed_reads,
-            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, callouts: _, pending_callouts: _,
+            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
             drill, trial: _,
@@ -628,7 +633,7 @@ impl Fight {
         // Exhaustive destructuring makes new wrapper fields require an audit.
         let Self {
             machine, setup, country, black, sounds, over, continuing,
-            overlay: _, gauge_art: _, gauge_effects, selected_styles: _, round_start, last_flow, callouts,
+            overlay: _, gauge_art: _, gauge_effects, impact_visuals, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
             drill, trial,
@@ -646,6 +651,7 @@ impl Fight {
             last_flow: *last_flow,
             callouts: callouts.clone(),
             gauge_effects: *gauge_effects,
+            impact_visuals: *impact_visuals,
             pending_callouts: pending_callouts.clone(),
             pending_combos: pending_combos.clone(),
             reader: reader.clone(),
@@ -671,7 +677,7 @@ impl Fight {
     pub fn restore_netplay_snapshot(&mut self, snap: &FightSnapshot) {
         let FightSnapshot {
             frame: _, machine, setup, country, black, sounds, over, continuing,
-            round_start, last_flow, callouts, gauge_effects, pending_callouts, pending_combos,
+            round_start, last_flow, callouts, gauge_effects, impact_visuals, pending_callouts, pending_combos,
             reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails,
             show, coach, practice_meters, drill, trial,
         } = snap;
@@ -686,6 +692,7 @@ impl Fight {
         self.last_flow = *last_flow;
         self.callouts.clone_from(callouts);
         self.gauge_effects = *gauge_effects;
+        self.impact_visuals = *impact_visuals;
         self.pending_callouts.clone_from(pending_callouts);
         self.pending_combos.clone_from(pending_combos);
         self.reader.clone_from(reader);
@@ -779,6 +786,7 @@ impl Fight {
             overlay: OverlayMode::Off,
             gauge_art: GaugeArt::default(),
             gauge_effects: GaugeEffects::default(),
+            impact_visuals: [None; 3],
             round_start: None,
             last_flow,
             callouts: CalloutBoard::new(),
@@ -953,6 +961,13 @@ impl Fight {
         self.machine.seed_utility_cpu(seed);
     }
 
+    /// Latest contact per fighter and its age in native simulation frames.
+    /// The renderer uses this history from the corrected fight state.
+    pub fn impact_visuals(&self) -> impl Iterator<Item = (ImpactCue, u32)> + '_ {
+        let frame = self.machine.state.frame;
+        self.impact_visuals.iter().flatten().map(move |&cue| (cue, frame - cue.frame))
+    }
+
     pub fn machine(&self) -> &PowerOnMachine {
         &self.machine
     }
@@ -1035,6 +1050,7 @@ impl Fight {
         // The abandoned attempt's words go with it.
         self.callouts = CalloutBoard::new();
         self.gauge_effects = GaugeEffects::default();
+        self.impact_visuals.fill(None);
         self.pending_callouts.clear();
         self.show = None;
         self.coach = None;
@@ -1086,6 +1102,7 @@ impl Fight {
             self.set_drill(None);
         }
         self.gauge_effects = GaugeEffects::default();
+        self.impact_visuals.fill(None);
     }
 
     pub(crate) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
@@ -1818,9 +1835,55 @@ impl Fight {
         }
     }
 
+    fn heavy_impact_sparks(&self, scene: &mut SceneState) -> Vec<sf_video::compositor::HeavyImpactSpark> {
+        use crate::impact::{ImpactDirection, ImpactFighter, ImpactKind};
+        use sf_video::compositor::HeavyImpactSpark;
+        use sf_video::render::{VISAREA_X, VISAREA_Y};
+
+        const RECOIL: [i16; 6] = [4, 3, 2, 1, 0, 0];
+        const OBJECT_BYTES: usize = 0x40;
+        let mut sparks = Vec::new();
+        let mut telemetry = None;
+        for (cue, age) in self.impact_visuals() {
+            if cue.kind != ImpactKind::HeavyStrike || age >= RECOIL.len() as u32 {
+                continue;
+            }
+            let mut x = i32::from(cue.x) - i32::from(self.machine.camera_x());
+            let mut y = i32::from(cue.y);
+            if scene.flip_screen {
+                x = 512 - x;
+                y = 256 - y;
+            }
+            sparks.push(HeavyImpactSpark { x: x - VISAREA_X as i32, y: y - VISAREA_Y as i32, age });
+
+            let fighters = telemetry.get_or_insert_with(|| self.machine.diagnostic_telemetry());
+            let player = match cue.fighter {
+                ImpactFighter::P1 => Some(fighters.p1),
+                ImpactFighter::P2 => Some(fighters.p2),
+                ImpactFighter::Ally2 => fighters.ally2,
+            };
+            let Some(player) = player.filter(|player| player.active) else { continue };
+            let start = usize::from(player.entity_offset);
+            let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
+            let cells = ((usize::from(grid[0]) + 1) * (usize::from(grid[1]) + 1)).min(24);
+            let offset = match cue.direction {
+                ImpactDirection::Left => -RECOIL[age as usize],
+                ImpactDirection::Right => RECOIL[age as usize],
+                ImpactDirection::Down => 0,
+            };
+            let Some(grid) = scene.objectram.get_mut(start..start + cells * OBJECT_BYTES) else { continue };
+            for entry in grid.chunks_exact_mut(OBJECT_BYTES) {
+                let x = u16::from_be_bytes([entry[6], entry[7]]);
+                entry[6..8].copy_from_slice(&x.wrapping_add_signed(offset).to_be_bytes());
+            }
+        }
+        sparks
+    }
+
     fn render_scene(&self, assets: &Assets) -> Frame {
-        let scene = self.machine.state.scene();
+        let mut scene = self.machine.state.scene();
         let layout = self.layout(&scene);
+        let heavy_impacts = self.heavy_impact_sparks(&mut scene);
         let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
         let ally2_quarter_dim = self.era_combatants().get(2).is_some_and(|state| state.is_sf2());
         let callouts = self.callouts.frame_with_ally2_quarter_dim(quarter_dim, ally2_quarter_dim);
@@ -1836,7 +1899,7 @@ impl Fight {
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
                     && (!callouts.is_empty() || era_hud != EraHud::NONE || ally2_gauge.is_some()
-                        || !tints.is_empty() || !sprite_art.is_empty()) =>
+                        || !tints.is_empty() || !sprite_art.is_empty() || !heavy_impacts.is_empty()) =>
             {
                 let (mut hardware, stage) = render_frame_staged_with_art(assets, &scene, edits, &tints, &sprite_art);
                 if boxes {
@@ -1848,6 +1911,7 @@ impl Fight {
                     PresentMode::Overhaul,
                     &hardware,
                     &OverhaulScene {
+                        heavy_impacts: &heavy_impacts,
                         callouts,
                         hud: era_hud,
                         gauge_presentation: [
@@ -1869,6 +1933,13 @@ impl Fight {
                     return hud;
                 }
                 return render_diagnostic_overlay_parts(&hud, &telemetry(), false, true);
+            }
+            _ if !heavy_impacts.is_empty() => {
+                let (hardware, _) = render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &tints, &sprite_art);
+                present(PresentMode::Overhaul, &hardware, &OverhaulScene {
+                    heavy_impacts: &heavy_impacts,
+                    ..OverhaulScene::EMPTY
+                })
             }
             _ if !sprite_art.is_empty() => {
                 render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &[], &sprite_art).0
@@ -1911,10 +1982,12 @@ impl Fight {
                 theme_frame: None,
                 theme_event: None,
                 announcements: Vec::new(),
+                impacts: Vec::new(),
                 event: None,
             };
         }
         let was_over = self.over;
+        let mut impacts = Vec::new();
         let mut event = None;
         let mut ally2_events = [None; 5];
         if !self.over {
@@ -1993,6 +2066,15 @@ impl Fight {
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
             m.step_with_training_pad(scripted_p2.is_some() || override_p2);
+            for (slot, (fighter, contact)) in ImpactFighter::SLOTS.into_iter()
+                .zip(m.toggle_state().impact_contacts).enumerate()
+            {
+                if let Some(contact) = contact {
+                    let cue = contact.cue(m.state.frame, fighter);
+                    self.impact_visuals[slot] = Some(cue);
+                    impacts.push(cue);
+                }
+            }
             let spends = Spends {
                 drive: m.take_gauge_drive_spends(),
                 v_trigger: m.take_gauge_v_trigger_spends(),
@@ -2032,6 +2114,7 @@ impl Fight {
             }
             if flow == ROUND_START && self.last_flow != ROUND_START {
                 self.round_start = Some(m.save_snapshot());
+                self.impact_visuals.fill(None);
                 self.moments.new_round();
             }
             self.last_flow = flow;
@@ -2048,6 +2131,9 @@ impl Fight {
             } else if m.work_ram()[(MODE_DEMO - 0xff8000) as usize] == 0 {
                 self.over = true;
                 event = Some(FightEvent::ReturnedToAttract);
+            }
+            if self.over {
+                self.impact_visuals.fill(None);
             }
             let after_gauges = if flow == FIGHT_LOOP { self.current_gauge_corners() } else { [None; 3] };
             self.gauge_effects.step(before_gauges, after_gauges, spends);
@@ -2157,6 +2243,7 @@ impl Fight {
             theme_frame: theme.map(|_| self.machine.state.frame),
             theme_event: music.map(|music| music.event),
             announcements,
+            impacts,
             event,
         }
     }

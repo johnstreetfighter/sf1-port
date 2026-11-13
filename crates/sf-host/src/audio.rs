@@ -30,10 +30,11 @@
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use sf_audio::mix::GameSound;
+use sf_audio::mix::{GameSound, ImpactAccent};
 use sf_audio::score::NativeScore;
 use sf_audio::{LatchTimeline, FRAME_HZ, IRQ_LATENCY_MID};
-use sf_engine::front::{settings::LiveSound, FrameOutput};
+use sf_engine::front::{settings::LiveSound, FrameOutput, MenuItem, Transition};
+use sf_engine::impact::ImpactKind;
 
 use crate::jukebox::{soft_limit, TrackMixer, TRACK_GAIN};
 use crate::track::Track;
@@ -260,6 +261,26 @@ impl Audio {
         } else {
             sound.push_frame_with_score(frame, latch, latch_cycles, IRQ_LATENCY_MID, score);
         }
+        if !out.overhaul_fight
+            || matches!(
+                out.transition,
+                Some(
+                    Transition::MatchOver
+                    | Transition::Choose(MenuItem::ResetPositions | MenuItem::RestartRound)
+                )
+            )
+        {
+            sound.clear_impacts(frame);
+            return;
+        }
+        for cue in &out.impacts {
+            let accent = match cue.kind {
+                ImpactKind::HeavyStrike => ImpactAccent::HeavyStrike,
+                ImpactKind::MatSlam => ImpactAccent::MatSlam,
+                ImpactKind::WallSlam => ImpactAccent::WallSlam,
+            };
+            sound.play_impact(frame, accent);
+        }
     }
 
     /// Give the music CPU the extended tune table `table` (`None`: the ROM
@@ -325,7 +346,7 @@ impl Audio {
 }
 
 /// The front end's volumes as gains on the mixer: `MASTER` scales every
-/// route, `FM` the YM2151's, `SAMPLES` the board's two MSM5205s',
+/// route, `FM` the YM2151's, `SAMPLES` the board's two MSM5205s and impacts,
 /// `ANNOUNCER` the announcer's own chip (0 is off).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Gains {

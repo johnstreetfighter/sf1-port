@@ -111,10 +111,19 @@ impl AfterimageTrail {
     }
 }
 
+/// The contact point and age of a heavy normal's spark in the visible frame.
+#[derive(Clone, Copy)]
+pub struct HeavyImpactSpark {
+    pub x: i32,
+    pub y: i32,
+    pub age: u32,
+}
+
 /// Layers the overhaul presenter may add. Faithful play ignores the struct.
 #[derive(Clone)]
 pub struct OverhaulScene<'a> {
     pub sprites: &'a [IndexedSprite],
+    pub heavy_impacts: &'a [HeavyImpactSpark],
     /// The era gauges, drawn in the bottom corners in `gauge_art`.
     pub hud: EraHud,
     /// Labels, source palettes, and animation for each gauge corner.
@@ -150,6 +159,7 @@ pub struct OverhaulScene<'a> {
 impl OverhaulScene<'static> {
     pub const EMPTY: Self = Self {
         sprites: &[],
+        heavy_impacts: &[],
         hud: EraHud::NONE,
         gauge_presentation: [None; 2],
         ally2_gauge: None,
@@ -206,6 +216,9 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
             }
         }
     }
+    for spark in scene.heavy_impacts {
+        draw_heavy_impact(&mut argb, *spark);
+    }
     era_hud::draw_lifted_presented(
         &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font,
         scene.hud_lift, scene.gauge_presentation,
@@ -222,6 +235,29 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
         blit_training(&mut argb, training);
     }
     Frame { argb }
+}
+
+fn draw_heavy_impact(argb: &mut [u32], spark: HeavyImpactSpark) {
+    const RADII: [i32; 6] = [8, 10, 12, 11, 9, 7];
+    let Some(&radius) = RADII.get(spark.age as usize) else { return };
+    let mut pixel = |dx, dy, color| {
+        let x = spark.x + dx;
+        let y = spark.y + dy;
+        if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
+            argb[y as usize * WIDTH + x as usize] = color;
+        }
+    };
+    for step in 1..=radius {
+        let color = if step <= radius / 2 && spark.age < 3 { 0xffffe4a0 } else { 0xffe99745 };
+        for (dx, dy) in [(step, 0), (-step, 0), (step / 2, -step), (-step / 2, step)] {
+            pixel(dx, dy, color);
+        }
+        if step <= radius / 2 {
+            pixel(-step, -step, color);
+            pixel(step, step, color);
+        }
+    }
+    pixel(0, 0, if spark.age < 3 { 0xfffffaf1 } else { 0xffffc96c });
 }
 
 fn blit_sprite(argb: &mut [u32], sprite: &IndexedSprite) {

@@ -1940,6 +1940,7 @@ impl PowerOnMachine {
         let frame = self.state.frame;
         self.latch_writes.clear();
         self.program.toggle_state.latched_theme = None;
+        self.program.toggle_state.impact_contacts.fill(None);
         let io = self.io;
         let scheduler = &mut self.scheduler;
         let mut bus = self.program.bus_with_dsw1(&mut self.state, io.dsw1);
@@ -2001,6 +2002,13 @@ impl PowerOnMachine {
     /// The work RAM (`0xff8000..0xffe000`).
     pub fn work_ram(&self) -> &[u8] {
         &self.program.work
+    }
+
+    /// The horizontal camera position in stage pixels.
+    pub fn camera_x(&self) -> u16 {
+        use crate::fighter::{CAMERA, WORK_BASE};
+        let at = (CAMERA - WORK_BASE) as usize;
+        u16::from_be_bytes([self.program.work[at], self.program.work[at + 1]])
     }
 
     /// Training's rules' state (the refill waits and the hit record), for

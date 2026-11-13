@@ -102,7 +102,7 @@ const GUARD_SPECIAL_PRESSURE: u8 = 8;
 pub const SCENE_MODE: u32 = 0xffc008; // ($4008,A5): 0x80 during the fight
 const DRIFT_COUNT: u32 = 0xffc010; // ($4010,A5): stage-drift frame counter
 const DRIFT_POS: u32 = 0xffc00e; // ($400e,A5): stage-drift position
-const CAMERA: u32 = 0xffc00c; // ($400c,A5): camera x (0..=0x180)
+pub(crate) const CAMERA: u32 = 0xffc00c; // ($400c,A5): camera x (0..=0x180)
 const HISCORE: u32 = 0xffc012; // ($4012,A5): top-score digits
 const FG_SCROLL_COPY: u32 = 0xffc680; // ($4680,A5): fg_scroll register copy
 const BG_SCROLL_COPY: u32 = 0xffc682; // ($4682,A5): bg_scroll register copy
@@ -2578,9 +2578,8 @@ impl Bus<'_> {
         {
             return;
         }
-        let ax = sext8(self.eb(me, 0x24)).wrapping_add(self.center_x(me));
+        let (ax, ay) = self.contact_position(me);
         let aw = self.eb(me, 0x25) as u16;
-        let ay = self.center_y(me).wrapping_sub(sext8(self.eb(me, 0x22)));
         let ah = self.eb(me, 0x23) as u16;
         let dcx = self.center_x(other);
         let dcy = self.center_y(other);
@@ -3318,6 +3317,7 @@ impl Bus<'_> {
             return;
         }
         if src == HitSource::Melee {
+            self.record_heavy_strike(me, other);
             self.era_normal_contact(me, false);
         }
         self.react_one(me, other, entry, src);
@@ -3619,6 +3619,50 @@ impl Bus<'_> {
         }
     }
 
+    /// Centre of the strike box, also the native hit spark's anchor.
+    fn contact_position(&self, e: u16) -> (u16, u16) {
+        (
+            self.center_x(e).wrapping_add(sext8(self.eb(e, 0x24))),
+            self.center_y(e).wrapping_sub(sext8(self.eb(e, 0x22))),
+        )
+    }
+
+    /// Called after collision, guarding and armor have resolved. The cue
+    /// describes the contact even when Training clamps the defender's life.
+    fn record_heavy_strike(&mut self, me: u16, other: u16) {
+        use crate::combo::{Class, class_of, level};
+        use crate::impact::{ImpactContact, ImpactDirection, ImpactKind};
+        use std::cmp::Ordering;
+
+        if self.preset == crate::config::RulesetPreset::Faithful1987 || self.rb(MODE_DEMO) == 0 {
+            return;
+        }
+        let owner = self.el(me, 0x38);
+        let move_id = self.eb(me, 0xa);
+        // Family specials can borrow native jumping-normal move numbers.
+        if !Self::is_player_table(self.rl(owner + 0x12))
+            || self.era_state(owner).is_some_and(|state| state.alpha_move_active(move_id))
+            || !matches!(class_of(move_id, level(self.eb(me, 0x34))), Class::Heavy | Class::Sweep | Class::Jump(3))
+        {
+            return;
+        }
+        let slot = self.combo_slot(other);
+        let (x, y) = self.contact_position(me);
+        let direction = match self.center_x(me).cmp(&self.center_x(other)) {
+            Ordering::Greater => ImpactDirection::Left,
+            Ordering::Less => ImpactDirection::Right,
+            Ordering::Equal if self.eb(me, 0x37) & 4 != 0 => ImpactDirection::Left,
+            Ordering::Equal => ImpactDirection::Right,
+        };
+        let contact = ImpactContact {
+            kind: ImpactKind::HeavyStrike,
+            x: x.wrapping_add(self.rw(CAMERA)),
+            y,
+            direction,
+        };
+        self.toggle_state.impact_contacts[slot].get_or_insert(contact);
+    }
+
     fn spawn_contact_effect(&mut self, me: u16, template: u32, demon_spark: bool) {
         let Some(s) = (0..12u16)
             .map(|k| 0x100 + 0x40 * k)
@@ -3663,8 +3707,7 @@ impl Bus<'_> {
             self.set_eb(s, 0xb, self.eb(s, 0xb).wrapping_neg());
             self.set_ew(s, 2, self.ew(s, 2) | 0x100);
         }
-        let x = self.center_x(me).wrapping_add(sext8(self.eb(me, 0x24)));
-        let y = self.center_y(me).wrapping_sub(sext8(self.eb(me, 0x22)));
+        let (x, y) = self.contact_position(me);
         let half = if self.ew(s, 2) & 0x400 != 0 { 0x10 } else { 8 };
         self.set_ew(s, 4, self.ew(s, 4).wrapping_add(y).wrapping_sub(half));
         self.set_ew(s, 6, self.ew(s, 6).wrapping_add(x).wrapping_sub(half));

@@ -53,6 +53,7 @@ pub mod fair_cpu;
 pub mod fight;
 pub mod fight_reader;
 pub mod front;
+pub mod impact;
 pub mod jukebox;
 pub mod fighter;
 pub mod machine;

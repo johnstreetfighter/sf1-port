@@ -324,3 +324,26 @@ fn portrait_select_moves_the_yellow_cursor_and_blits_the_bust() {
     assert_eq!(at(&ken, 0), SELECT_GOLD);
     assert_ne!(ken.argb[40 * WIDTH + 18], 0xff_e0_20_20);
 }
+
+#[test]
+fn a_heavy_contact_draws_a_short_spark_without_moving_the_scene_or_hud() {
+    let hardware = blank();
+    let gauge = EraGauge::one(GaugeRow::stock(1, 1, Fill::FULL));
+    let hud = EraHud { p1: Some(gauge), p2: None };
+    let baseline = present(PresentMode::Overhaul, &hardware, &OverhaulScene { hud, ..OverhaulScene::EMPTY });
+    let sparks = [sf_video::compositor::HeavyImpactSpark { x: 190, y: 105, age: 0 }];
+    let scene = OverhaulScene { hud, heavy_impacts: &sparks, ..OverhaulScene::EMPTY };
+    let shown = present(PresentMode::Overhaul, &hardware, &scene);
+
+    assert_ne!(shown.argb[105 * WIDTH + 190], baseline.argb[105 * WIDTH + 190]);
+    for (index, (before, after)) in baseline.argb.iter().zip(&shown.argb).enumerate() {
+        if before != after {
+            assert!((178..=202).contains(&(index % WIDTH)));
+            assert!((93..=117).contains(&(index / WIDTH)));
+        }
+    }
+    assert_eq!(present(PresentMode::Faithful, &hardware, &scene).argb, hardware.argb);
+    let spent = [sf_video::compositor::HeavyImpactSpark { age: 6, ..sparks[0] }];
+    let settled = OverhaulScene { hud, heavy_impacts: &spent, ..OverhaulScene::EMPTY };
+    assert_eq!(present(PresentMode::Overhaul, &hardware, &settled).argb, baseline.argb);
+}

@@ -112,6 +112,8 @@ pub struct FrameOutput {
     /// Original native fight frame for this theme. It stays attached to the
     /// latch cycles if rollback or spectator playback delivers the cue later.
     pub theme_frame: Option<u32>,
+    /// Clean impact contacts to present, with their original fight frame.
+    pub impacts: Vec<crate::impact::ImpactCue>,
     /// The latch write's cycles into the frame (the machine's vblank
     /// handler's on attract frames, 0 on the front end's own).
     pub latch_cycles: u32,
@@ -2307,6 +2309,7 @@ impl GameSession {
                     sound_latch: m.state.sound_latch,
                     theme: None,
                     theme_frame: None,
+                    impacts: Vec::new(),
                     latch_cycles: m.state.latch_cycles,
                     announcements: Vec::new(),
                     overhaul_fight: false,
@@ -2366,7 +2369,12 @@ impl GameSession {
                 Some(self.net_spectators.step(&mut play.fight, assets))
             } else if let Some(rollback) = play.netplay.as_mut() {
                 let local = if online_menu_was_open || play.pause.is_some() { PlayerInputs::default() } else { input.p1 };
-                rollback.step(&mut play.fight, assets, local)
+                let corrected = rollback.take_corrected_picture();
+                let next = rollback.step(&mut play.fight, assets, local);
+                if corrected && next.is_none() && !play.fight.driving() {
+                    play.last = play.fight.render(assets);
+                }
+                next
             } else {
                 let driving = play.fight.driving();
                 let result = play.fight.step(assets, input.p1, input.p2, start);
@@ -2451,6 +2459,8 @@ impl GameSession {
         };
         let (theme, theme_frame) = self.play.as_ref().and(fight_frame.as_ref())
             .map_or((None, None), |frame| (frame.theme, frame.theme_frame));
+        let impacts = self.play.as_ref().and(fight_frame.as_mut())
+            .map(|frame| std::mem::take(&mut frame.impacts)).unwrap_or_default();
         let presented = self.play.as_ref().map(|play| {
             let boxed = |frame: Frame| match (&play.after, &play.pause) {
                 (Some(after), _) => after.render(&font, &frame),
@@ -2560,6 +2570,7 @@ impl GameSession {
             latch_cycles,
             theme,
             theme_frame,
+            impacts,
             announcements,
             overhaul_fight,
             tune_table: self.front_music == Some(FrontMusic::Title) || overhaul_fight,

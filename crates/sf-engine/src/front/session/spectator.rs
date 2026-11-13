@@ -66,6 +66,7 @@ impl State {
         }
         let mut last = None;
         let mut announcements = Vec::new();
+        let mut impacts = Vec::new();
         let mut event = None;
         for _ in 0..count {
             let (p1, p2) = self.confirmed[self.played as usize];
@@ -77,6 +78,7 @@ impl State {
                 self.latches.push_back(latch);
             }
             announcements.append(&mut frame.announcements);
+            impacts.append(&mut frame.impacts);
             if event.is_none() { event = frame.event.take(); }
             last = Some(frame);
         }
@@ -86,12 +88,13 @@ impl State {
             } else { fight.render(assets) },
             sound_latch: sound::IDLE, latch_cycles: 0, theme: None,
             theme_frame: None, theme_event: None,
-            announcements: Vec::new(), event: None,
+            announcements: Vec::new(), impacts: Vec::new(), event: None,
         });
         if let Some(latch) = self.latches.pop_front() {
             frame.put_latch(latch);
         }
         frame.announcements = announcements;
+        frame.impacts = impacts;
         frame.event = event;
         frame
     }
@@ -229,6 +232,33 @@ mod tests {
     use crate::front::fight::{FightDips, FightSetup};
     use crate::theme::ThemeId;
     use sf_video::romset::load_assets;
+
+    #[test]
+    fn spectator_catch_up_preserves_clean_heavy_impact_contact() {
+        let (assets, mut direct) = crate::impact::tests::close_local_fight();
+        let mut observer = direct.clone();
+        let idle = PlayerInputs::default();
+        let heavy = PlayerInputs { buttons: [false, false, true, false, false, false], ..idle };
+        let pads = std::iter::once(heavy).chain(std::iter::repeat_n(idle, 95));
+        let mut confirmed = Vec::new();
+        let mut expected = Vec::new();
+        for p1 in pads {
+            let out = direct.step(&assets, p1, idle, false);
+            confirmed.push((crate::netplay::encode_inputs(p1), 0));
+            expected.extend(out.impacts);
+        }
+        assert_eq!(expected.len(), 1, "the fight has a clean standing heavy");
+        let mut spectator = State { confirmed, ..State::default() };
+        let mut actual = Vec::new();
+        for _ in 0..15 {
+            let out = spectator.step(&mut observer, &assets);
+            if !out.impacts.is_empty() {
+                assert!(observer.machine().state.frame >= out.impacts[0].frame);
+            }
+            actual.extend(out.impacts);
+        }
+        assert_eq!(actual, expected, "confirmed catch-up emits the cue once on its original clock");
+    }
 
     #[test]
     fn late_spectator_delivers_the_original_latch_time_after_catching_up() {
