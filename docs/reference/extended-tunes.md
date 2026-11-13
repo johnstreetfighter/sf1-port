@@ -93,8 +93,9 @@ available.
 The host reads the `.score` files and compiles them against the player's
 sound ROM. A score with a mismatched identity and command, a conflicting
 command, or a compile error is reported by filename. Faithful 1987 opens
-neither pack. The Windows release ZIP continues to ship the art and voice
-packs. Source event data, captures, and listening audio remain local.
+neither pack. The Windows release ZIP includes the approved character scores
+listed in the tagged music manifest, along with the art and voice packs.
+Source event data, captures, and listening audio remain local.
 
 **Menu music.** In the overhaul front end, the title screen and Main Menu
 share the score on command `0x7e`. The SFII World Warrior title arrangement

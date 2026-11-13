@@ -15,7 +15,8 @@ import zlib
 
 ART_PACK = "assets/sf1-port-art"
 VOICE_PACK = "assets/sf1-port-voice"
-PACKS = (ART_PACK, VOICE_PACK)
+MUSIC_PACK = "assets/sf1-port-music"
+PACKS = (ART_PACK, VOICE_PACK, MUSIC_PACK)
 RESERVED_NAME = re.compile(r"(?i)(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)")
 EXCLUDED_FOLDERS = {"archive", "candidates", "captures", "roms", "sf1-port-music"}
 
@@ -41,12 +42,13 @@ def unique_fields(pairs: list[tuple[str, object]]) -> dict[str, object]:
 def manifest_entries(pack: str, raw: bytes) -> dict[str, tuple[int, str]]:
     manifest = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_fields)
     art = pack == ART_PACK
-    field = "files" if art else "lines"
-    fields = {"format", field} if art else {"format", field, "sample_rate"}
+    voice = pack == VOICE_PACK
+    field = "lines" if voice else "files"
+    fields = {"format", field, "sample_rate"} if voice else {"format", field}
     require(isinstance(manifest, dict) and set(manifest) == fields
             and type(manifest["format"]) is int and manifest["format"] == 1,
             f"invalid format in {pack}/manifest.json")
-    if not art:
+    if voice:
         rate = manifest["sample_rate"]
         require(type(rate) is int and rate == 4000, f"invalid sample rate in {pack}/manifest.json")
 
@@ -54,10 +56,10 @@ def manifest_entries(pack: str, raw: bytes) -> dict[str, tuple[int, str]]:
     require(isinstance(entries, dict) and bool(entries), f"empty or invalid entries in {pack}/manifest.json")
     files = {}
     for key, entry in entries.items():
-        path = key if art else f"{key}.vox"
+        path = f"{key}.vox" if voice else key
         parts = path.split("/")
-        suffix = ".png" if art else ".vox"
-        size_field = "size" if art else "nibbles"
+        suffix = ".png" if art else ".vox" if voice else ".score"
+        size_field = "nibbles" if voice else "size"
         require(len(parts) == (2 if art else 1)
                 and re.fullmatch(r"[a-z0-9_-]+" + re.escape(suffix), parts[-1]) is not None
                 and all(not RESERVED_NAME.match(part) for part in parts)
@@ -69,7 +71,7 @@ def manifest_entries(pack: str, raw: bytes) -> dict[str, tuple[int, str]]:
                 and isinstance(entry["crc32"], str) and re.fullmatch(r"[0-9a-f]{8}", entry["crc32"]) is not None,
                 f"invalid manifest entry for {pack}/{path}")
         size = entry[size_field]
-        files[f"{pack}/{path}"] = (size if art else (size + 1) // 2, entry["crc32"])
+        files[f"{pack}/{path}"] = ((size + 1) // 2 if voice else size, entry["crc32"])
     return files
 
 

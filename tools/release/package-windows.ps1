@@ -75,7 +75,7 @@ New-Item -ItemType Directory -Path $npPackage | Out-Null
 Copy-Item -LiteralPath $npExe -Destination $npPackage
 Copy-Item -LiteralPath (Join-Path $npSource 'shaders') -Destination $npPackage -Recurse
 Invoke-ReleaseCommand python (Join-Path $PSScriptRoot 'release_packs.py') $npSource $npHead $npPackage
-if ($LASTEXITCODE -ne 0) { throw 'Cannot stage the tagged art and voice packs.' }
+if ($LASTEXITCODE -ne 0) { throw 'Cannot stage the tagged art, voice, and music packs.' }
 foreach ($npFile in @('README.md', 'THIRD_PARTY_NOTICES.md', 'Cargo.lock')) {
     Copy-Item -LiteralPath (Join-Path $npSource $npFile) -Destination $npPackage
 }
@@ -212,8 +212,8 @@ $npBuildInfo = @(
     "Packaged (UTC): $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))",
     "sf-game.exe SHA-256: $(Get-Sha256 (Join-Path $npPackage 'sf-game.exe'))",
     '',
-    'Built from the tagged source with the playable art and voice packs.',
-    'ROMs, music packs, authoring archives, settings and logs are excluded.',
+    'Built from the tagged source with the playable art, voice, and music packs.',
+    'ROMs, authoring archives, settings and logs are excluded.',
     'This package does not grant new licenses; existing source/dependency notices are retained.'
 )
 [IO.File]::WriteAllLines((Join-Path $npPackage 'BUILD.txt'), $npBuildInfo)
@@ -232,7 +232,7 @@ $npQuickStart = @(
     '   Choose your extracted ROM folder, sf.zip or sf.7z. The game remembers a valid choice.',
     '   The --roms option also accepts a folder or archive path.',
     '',
-    'The playable art and voice packs are included under assets. Each pack has its own README.',
+    'The playable art, voice, and music packs are included under assets. Each pack has its own README.',
     'Settings and sf-game.log are saved in %APPDATA%\sf1-port. Run sf-game.exe --console to see the log live.',
     'See README.md for controls and features.',
     '',

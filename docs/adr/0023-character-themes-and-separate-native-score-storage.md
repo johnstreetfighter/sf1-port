@@ -18,6 +18,7 @@ track the thirty approved playable character scores in
 the executable or in the current directory. Valid ROM-adjacent scores
 override the tracked score with the same identity.
 
-The title arrangement, extracted event data, source captures, and listening
-artifacts remain local. The Windows release ZIP continues to include the
-art and voice packs. See the [extended tunes reference](../reference/extended-tunes.md#the-music-pack).
+The Windows release ZIP includes the thirty approved character scores, the
+tagged music manifest, and the music pack README alongside the art and voice
+packs. The title arrangement, extracted event data, source captures, and
+listening artifacts remain local. See the [extended tunes reference](../reference/extended-tunes.md#the-music-pack).

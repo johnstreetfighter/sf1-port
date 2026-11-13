@@ -112,7 +112,7 @@ The Windows ZIP includes the approved SF1+ art in `assets/sf1-port-art`. A `sf1-
 
 The Windows ZIP includes the overhaul announcer in `assets/sf1-port-voice`. A `sf1-port-voice` folder beside the ROM set takes precedence as a local override. The announcer plays on a third emulated MSM5205, and `ANNOUNCER` on the Sound tab sets his volume. See the [announcer reference](docs/reference/announcer.md) for the pack format and fallback behavior.
 
-The source checkout includes 30 native character arrangements in `assets/sf1-port-music`. Overhaul presets use them when available. Valid scores beside the ROM set take precedence for the matching theme. See the [music pack](assets/sf1-port-music/README.md).
+The Windows ZIP and source checkout include 30 native character arrangements in `assets/sf1-port-music`. Overhaul presets use them when available. Valid scores beside the ROM set take precedence for the matching theme. See the [music pack](assets/sf1-port-music/README.md).
 
 ### Tracker modules and the C++ build
 
