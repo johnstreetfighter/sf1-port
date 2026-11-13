@@ -1,6 +1,10 @@
 //! Street Fighter V's meters, defensive windows and input priority on the 1987 engine.
-use super::{Bus, EraFighterState, MotionTracker, DOUBLE_QUARTER_CIRCLE, STOCK_AT};
+use super::{Bus, EraFighterState, EvilRyuKit, MotionTracker, DOUBLE_QUARTER_CIRCLE, STOCK_AT};
 use crate::config::RulesetPreset;
+use crate::data_bank::{
+    KAGE_ASHURA_AIR_BACK, KAGE_ASHURA_AIR_FORWARD, KAGE_ASHURA_BACK, KAGE_ASHURA_FORWARD,
+    KAGE_HADOKEN, KAGE_KUREKIJIN, KAGE_MISOGI, KAGE_RYUSOKYAKU, KAGE_SEKIEIKEN, KAGE_SHAKUNETSU,
+};
 use crate::era::{EraFamily, GaugeMode, Loadout, Revision, StylePick};
 use crate::moves::{Availability, ButtonClass, Dir, MoveEntry, MoveInput, MoveKind, Recognizer};
 use crate::roster::TournamentFighter::{self, Birdie, Ken, Ryu, Sagat};
@@ -35,11 +39,21 @@ const QCF: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward];
 const QCB: &[Dir] = &[Dir::Down, Dir::DownBack, Dir::Back];
 const DP: &[Dir] = &[Dir::Forward, Dir::Down, Dir::DownForward];
 const FORWARD: &[Dir] = &[Dir::Forward];
+const BACK: &[Dir] = &[Dir::Back];
+const HALF_FORWARD: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down, Dir::DownForward, Dir::Forward];
+const HALF_BACK: &[Dir] = &[Dir::Forward, Dir::DownForward, Dir::Down, Dir::DownBack, Dir::Back];
 const FIGHTERS: &[TournamentFighter] = &TournamentFighter::ALL;
 const SHIFT_FRAMES: u8 = 10;
 const SHIFT_BREAK_FRAMES: u8 = 18;
 const COUNTER_FRAMES: u8 = 12;
 const WHITE_RECOVERY_DELAY: u8 = 60;
+const KAGE_TRIGGER_DURATION: u16 = 800;
+const KAGE_ASHURA_COST: u16 = 250;
+const KAGE_RIKUDO_DURATION: u16 = 900;
+const KAGE_SEKIEIKEN_V_GAIN: u8 = 20;
+const SENHA_CHARGE_TICKS: u8 = 18;
+const SENHA_ARMOR_TICK: u8 = 3;
+const KAGE_SHORYUKEN: u8 = 0x19;
 
 pub(crate) fn available(style: StylePick, fighter: Option<TournamentFighter>) -> bool {
     style.family == EraFamily::Sf5
@@ -61,6 +75,33 @@ fn second_skill(loadout: Loadout) -> bool {
 
 fn second_trigger(loadout: Loadout) -> bool {
     matches!(loadout, Loadout::Skill1Trigger2 | Loadout::Skill2Trigger2)
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct KageVState {
+    senha_hold: Option<u8>,
+    senha_armor: bool,
+    senha_vt_charged: bool,
+    absorbed: bool,
+    vt2_confirm: Option<u8>,
+    half_forward: MotionTracker,
+    half_back: MotionTracker,
+}
+
+crate::canonical::canonical_struct!(KageVState, "KageVState.v1", {
+    senha_hold, senha_armor, senha_vt_charged, absorbed, vt2_confirm, half_forward, half_back,
+});
+
+impl KageVState {
+    fn step(&mut self, direction: u8) {
+        self.half_forward.step(direction, HALF_FORWARD);
+        self.half_back.step(direction, HALF_BACK);
+    }
+
+    fn clear_motions(&mut self) {
+        self.half_forward = MotionTracker::default();
+        self.half_back = MotionTracker::default();
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -94,6 +135,11 @@ crate::canonical::canonical_struct!(VSystem, "Sf5VSystem.v1", {
 impl VSystem {
     pub(super) fn share_meter(&mut self, source: Self) {
         self.meter = source.meter;
+    }
+
+    pub(super) fn apply_satsui_surge(&mut self, previous: Self) {
+        self.meter = previous.meter;
+        self.gain(self.capacity / 2);
     }
 
     pub(crate) fn configure(
@@ -259,6 +305,18 @@ const SHOTO_EX: &[Special] = &[
         kick: true,
     },
 ];
+const KAGE_SPECIALS: &[Special] = &[
+    Special { slot: KAGE_SHORYUKEN, name: "SHORYUKEN", motion: DP, kick: false },
+    Special { slot: KAGE_HADOKEN, name: "HADOKEN", motion: QCF, kick: false },
+    Special { slot: KAGE_SHAKUNETSU, name: "SHAKUNETSU HADOKEN", motion: HALF_BACK, kick: false },
+    Special { slot: KAGE_KUREKIJIN, name: "KUREKIJIN", motion: QCB, kick: true },
+    Special { slot: KAGE_RYUSOKYAKU, name: "RYUSOKYAKU", motion: HALF_FORWARD, kick: true },
+];
+const KAGE_EX: &[Special] = &[
+    SHOTO_EX[0],
+    SHOTO_EX[1],
+    Special { name: "EX KUREKIJIN", ..SHOTO_EX[2] },
+];
 const BIRDIE_EX: &[Special] = &[
     Special {
         slot: EX_FORWARD,
@@ -420,6 +478,99 @@ impl VSystem {
 }
 
 impl EraFighterState {
+    fn sf5_ex_specials(&self, fighter: TournamentFighter) -> &'static [Special] {
+        if self.is_kage() { KAGE_EX } else { ex_specials(fighter) }
+    }
+
+    fn sf5_critical(&self, fighter: TournamentFighter) -> (&'static str, ButtonClass) {
+        if self.is_kage() { ("METSU SHORYUKEN", ButtonClass::Punch) } else { critical(fighter) }
+    }
+
+    fn sf5_skill(&self, fighter: TournamentFighter) -> (u8, &'static str) {
+        match (self.is_kage(), second_skill(self.style.loadout)) {
+            (true, true) => (KAGE_SEKIEIKEN, "SEKIEIKEN"),
+            (true, false) => (SKILL_ONE, "SENHA KASSATSU"),
+            _ => skill(fighter, self.style.loadout),
+        }
+    }
+
+    fn sf5_trigger(&self, fighter: TournamentFighter) -> (&'static str, u16) {
+        if self.sf5_kage_rikudo() {
+            ("RIKUDO OSATSU", KAGE_RIKUDO_DURATION)
+        } else if self.is_kage() {
+            ("TAIGYAKU MUDO", KAGE_TRIGGER_DURATION)
+        } else {
+            trigger(fighter, self.style.loadout)
+        }
+    }
+
+    fn sf5_kage_rikudo(&self) -> bool {
+        self.is_kage() && second_trigger(self.style.loadout)
+    }
+
+    pub(super) fn sf5_spend_kage_demon(&mut self) -> bool {
+        if !self.sf5_kage_rikudo() || !self.sf5.warm() || self.super_meter < 3 * STOCK_AT {
+            return false;
+        }
+        self.super_meter -= 3 * STOCK_AT;
+        self.sf5.trigger_left = 0;
+        self.sf5.clear_motions();
+        if let EvilRyuKit::Kage { v } = &mut self.evil_ryu_kit {
+            v.clear_motions();
+            v.vt2_confirm = None;
+        }
+        true
+    }
+
+    fn sf5_record_rikudo_contact(&mut self, slot: u8, guarded: bool) {
+        if !self.sf5_kage_rikudo()
+            || (guarded && self.sf5.warm() && matches!(slot, KAGE_SHORYUKEN | EX_RISE))
+        {
+            return;
+        }
+        let grounded_normal = matches!(slot, 0x0d..=0x18);
+        let authored_special = self.alpha_move_active(slot) && matches!(slot,
+            KAGE_SHORYUKEN | KAGE_HADOKEN | KAGE_KUREKIJIN | KAGE_SHAKUNETSU | KAGE_RYUSOKYAKU
+                | EX_FORWARD | EX_RISE | EX_KICK | KAGE_SEKIEIKEN
+        );
+        if grounded_normal || authored_special {
+            if let EvilRyuKit::Kage { v } = &mut self.evil_ryu_kit {
+                v.vt2_confirm = Some(slot);
+            }
+        }
+    }
+
+    fn sf5_rikudo_confirmed(&self, slot: u8) -> bool {
+        matches!(self.evil_ryu_kit, EvilRyuKit::Kage { v } if v.vt2_confirm == Some(slot))
+            && (!self.sf5.warm() || slot != KAGE_SEKIEIKEN)
+    }
+
+    fn sf5_motion(&self, pattern: &[Dir]) -> MotionTracker {
+        if let EvilRyuKit::Kage { v } = self.evil_ryu_kit {
+            if pattern == HALF_FORWARD {
+                return v.half_forward;
+            }
+            if pattern == HALF_BACK {
+                return v.half_back;
+            }
+        }
+        self.sf5.motion(pattern)
+    }
+
+    pub(crate) fn sf5_keep_senha_hold(&mut self, buttons: u8) {
+        if let EvilRyuKit::Kage { v } = &mut self.evil_ryu_kit {
+            if v.senha_hold.is_none() || !ButtonClass::MediumPair.held(buttons) {
+                v.senha_hold = None;
+                v.senha_armor = false;
+            }
+        }
+    }
+
+    pub(crate) fn sf5_vt_charged_senha(&self) -> bool {
+        self.alpha_move_active(SKILL_ONE)
+            && matches!(self.evil_ryu_kit, EvilRyuKit::Kage { v } if v.senha_vt_charged)
+    }
+
     pub(crate) fn sf5_active_moves(&self) -> Vec<MoveEntry> {
         if !available(self.style, self.fighter) {
             return Vec::new();
@@ -439,6 +590,12 @@ impl EraFighterState {
             },
         };
         let mut entries = Vec::new();
+        if self.is_kage() {
+            entries.extend(KAGE_SPECIALS.iter().map(|special| {
+                let button = if special.kick { ButtonClass::Kick } else { ButtonClass::Punch };
+                move_entry(special.name, special.slot, MoveKind::Special, special.motion, button)
+            }));
+        }
         if fighter == Sagat {
             entries.push(move_entry(
                 "TIGER UPPERCUT",
@@ -451,7 +608,7 @@ impl EraFighterState {
         if self.sf5.capacity == 0 {
             return entries;
         }
-        for special in ex_specials(fighter) {
+        for special in self.sf5_ex_specials(fighter) {
             let button = if special.kick {
                 ButtonClass::PairKick
             } else {
@@ -466,7 +623,7 @@ impl EraFighterState {
             ));
         }
         if canonical(fighter) && !self.what_if_active() {
-            let (name, button) = critical(fighter);
+            let (name, button) = self.sf5_critical(fighter);
             entries.push(move_entry(
                 name,
                 CRITICAL_ART,
@@ -476,7 +633,7 @@ impl EraFighterState {
             ));
         }
 
-        let (slot, name) = skill(fighter, self.style.loadout);
+        let (slot, name) = self.sf5_skill(fighter);
         entries.push(move_entry(
             name,
             slot,
@@ -484,7 +641,7 @@ impl EraFighterState {
             &[],
             ButtonClass::MediumPair,
         ));
-        let (name, _) = trigger(fighter, self.style.loadout);
+        let (name, _) = self.sf5_trigger(fighter);
         entries.push(move_entry(
             name,
             trigger_slot(fighter, self.style.loadout),
@@ -492,30 +649,29 @@ impl EraFighterState {
             &[],
             ButtonClass::HeavyPair,
         ));
-        if let Some((slot, name)) = trigger_follow_up(fighter, self.style.loadout, false)
-            .filter(|(slot, _)| *slot != trigger_slot(fighter, self.style.loadout))
-        {
-            entries.push(move_entry(
-                name,
-                slot,
-                MoveKind::System,
-                &[],
-                ButtonClass::HeavyPair,
-            ));
-        }
-        if let Some((slot, name)) = trigger_follow_up(fighter, self.style.loadout, true)
-            .filter(|(slot, _)| *slot == TRIGGER_FORWARD)
-        {
-            entries.push(move_entry(
-                name,
-                slot,
-                MoveKind::System,
-                FORWARD,
-                ButtonClass::HeavyPair,
-            ));
+        if self.sf5_kage_rikudo() {
+            entries.push(move_entry("MISOGI", KAGE_MISOGI, MoveKind::System, &[], ButtonClass::HeavyPair));
+        } else if self.is_kage() {
+            for (name, slot, motion) in [
+                ("ASHURA SENKU FORWARD", KAGE_ASHURA_FORWARD, FORWARD),
+                ("ASHURA SENKU BACKWARD", KAGE_ASHURA_BACK, BACK),
+            ] {
+                entries.push(move_entry(name, slot, MoveKind::System, motion, ButtonClass::HeavyPair));
+            }
+        } else {
+            if let Some((slot, name)) = trigger_follow_up(fighter, self.style.loadout, false)
+                .filter(|(slot, _)| *slot != trigger_slot(fighter, self.style.loadout))
+            {
+                entries.push(move_entry(name, slot, MoveKind::System, &[], ButtonClass::HeavyPair));
+            }
+            if let Some((slot, name)) = trigger_follow_up(fighter, self.style.loadout, true)
+                .filter(|(slot, _)| *slot == TRIGGER_FORWARD)
+            {
+                entries.push(move_entry(name, slot, MoveKind::System, FORWARD, ButtonClass::HeavyPair));
+            }
         }
         entries.push(move_entry(
-            reversal(fighter),
+            if self.is_kage() { "SENBUGEKI" } else { reversal(fighter) },
             REVERSAL,
             MoveKind::System,
             FORWARD,
@@ -534,7 +690,7 @@ impl EraFighterState {
                 ButtonClass::ShiftPair,
             ));
             entries.push(move_entry(
-                shift_break(fighter),
+                if self.is_kage() { "YASHAZUKI" } else { shift_break(fighter) },
                 SHIFT_BREAK,
                 MoveKind::System,
                 &[],
@@ -550,13 +706,13 @@ impl EraFighterState {
         };
         let tracker = if slot == CRITICAL_ART {
             self.sf5.critical
-        } else if slot == UPPERCUT {
+        } else if slot == UPPERCUT && !self.is_kage() {
             self.sf5.rising
-        } else if let Some(special) = ex_specials(fighter)
-            .iter()
+        } else if let Some(special) = self.sf5_ex_specials(fighter).iter()
+            .chain(KAGE_SPECIALS.iter().filter(|_| self.is_kage()))
             .find(|special| special.slot == slot)
         {
-            self.sf5.motion(special.motion)
+            self.sf5_motion(special.motion)
         } else {
             return (0, 0);
         };
@@ -587,8 +743,11 @@ impl EraFighterState {
             self.sf5.trigger_left = 0;
             self.sf5.trigger_total = 0;
             self.sf5.meter = self.sf5.capacity;
-        } else if matches!(slot, TRIGGER_ATTACK | TRIGGER_FORWARD | COUNTER_STRIKE) {
-            let (_, duration) = trigger(fighter, self.style.loadout);
+        } else if matches!(slot, TRIGGER_ATTACK | TRIGGER_FORWARD | COUNTER_STRIKE)
+            || self.is_kage() && slot == KAGE_ASHURA_AIR_BACK
+            || self.sf5_kage_rikudo() && slot == KAGE_MISOGI
+        {
+            let (_, duration) = self.sf5_trigger(fighter);
             self.sf5.trigger_total = duration;
             self.sf5.trigger_left = duration;
         } else if self.sf5.trigger_left == 0 {
@@ -603,6 +762,13 @@ impl EraFighterState {
                 color: 0xff46_dfff,
                 strength: 112,
             })
+        } else if let EvilRyuKit::Kage { v } = self.evil_ryu_kit {
+            if v.senha_hold.is_some_and(|ticks| ticks >= SENHA_ARMOR_TICK) {
+                Some(PaletteTint { color: 0xffdd_483c, strength: 105 })
+            } else {
+                let color = if self.sf5_kage_rikudo() { 0xffbb_3527 } else { 0xffae_366e };
+                self.sf5.warm().then_some(PaletteTint { color, strength: 65 })
+            }
         } else if self.sf5.warm() {
             Some(PaletteTint {
                 color: 0xffff_7426,
@@ -615,6 +781,8 @@ impl EraFighterState {
 
     pub(crate) fn sf5_afterimages(&self) -> bool {
         self.sf5.evading()
+            || (self.is_kage() && matches!(self.active_alpha_slot,
+                KAGE_ASHURA_FORWARD | KAGE_ASHURA_BACK | KAGE_ASHURA_AIR_FORWARD | KAGE_ASHURA_AIR_BACK))
     }
 
     pub(crate) fn v_trigger_cost(&self, mode: GaugeMode) -> u8 {
@@ -661,6 +829,29 @@ fn pair(held: u8, pressed: u8, mask: u8) -> bool {
 }
 
 impl Bus<'_> {
+    pub(crate) fn sf5_kage_senha_branch(&mut self, ps: u32) -> Option<u8> {
+        let Some(side) = self.era_side(ps) else { return Some(0) };
+        let state = &mut self.toggle_state.era.fighters[side];
+        let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit else { return Some(0) };
+        let mut charged = false;
+        if let Some(ticks) = &mut v.senha_hold {
+            *ticks += 1;
+            if *ticks == SENHA_ARMOR_TICK {
+                v.senha_armor = true;
+            }
+            if *ticks < SENHA_CHARGE_TICKS {
+                return None;
+            }
+            charged = true;
+            v.senha_hold = None;
+        }
+        let triggered = state.sf5.warm();
+        v.senha_vt_charged = triggered && charged;
+        // The ROM-bank continuation table orders tap, charged, and then the
+        // same two releases during Taigyaku Mudo.
+        Some(2 * u8::from(triggered) + u8::from(charged))
+    }
+
     pub(crate) fn sf5_input(
         &mut self,
         ps: u32,
@@ -669,6 +860,7 @@ impl Bus<'_> {
         free_ground: bool,
         cancel_ground: bool,
         blockstun: bool,
+        in_jump: bool,
     ) -> bool {
         let Some(side) = self.era_side(ps) else {
             return false;
@@ -682,14 +874,23 @@ impl Bus<'_> {
         };
         let (held, pressed) = self.era_buttons(ps);
         let move_id = self.eb(entity, 0xa);
-        let special_cancel = self.eb(entity, 9) & 0xc1 == 0xc0
-            && self.eb(entity, 0x14) == 0
-            && (matches!(move_id, 0x19..=0x1b)
-                || (state.alpha_move_active(move_id)
-                    && matches!(move_id, UPPERCUT | EX_FORWARD..=EX_LOW_SHOT)));
+        let posture = self.eb(entity, 9);
+        let special_cancel = if state.sf5_kage_rikudo() {
+            posture & 0x80 != 0 && state.sf5_rikudo_confirmed(move_id)
+        } else {
+            posture & 0xc1 == 0xc0
+                && self.eb(entity, 0x14) == 0
+                && (matches!(move_id, 0x19..=0x1b)
+                    || (state.alpha_move_active(move_id)
+                        && (matches!(move_id, UPPERCUT | EX_FORWARD..=EX_LOW_SHOT)
+                            || state.is_kage() && move_id == KAGE_RYUSOKYAKU)))
+        };
         let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
         state.sf5.step(relative);
+        if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+            v.step(relative);
+        }
         let Some(action) = sf5_action(
             state,
             fighter,
@@ -701,16 +902,36 @@ impl Bus<'_> {
             cancel_ground,
             special_cancel,
             blockstun,
+            in_jump,
         ) else {
             return false;
         };
-        let call_out = matches!(action, Action::CriticalArt).then(|| critical(fighter).0);
+        let kage = state.is_kage();
+        let call_out = matches!(action, Action::CriticalArt).then(|| state.sf5_critical(fighter).0);
+        let trigger_name = (kage && matches!(action, Action::Trigger(_)))
+            .then(|| state.sf5_trigger(fighter).0);
         if !self.era_start_banked_move(ps, entity, action.slot(), action.level(fighter), call_out) {
             return false;
+        }
+        if let Action::Special(slot) = action {
+            if kage {
+                let buttons = if matches!(slot, KAGE_KUREKIJIN | KAGE_RYUSOKYAKU) {
+                    pressed >> 3
+                } else {
+                    pressed
+                };
+                // Attack strength selects the ROM animation without marking
+                // the special as a meter-spending Super in banked move state.
+                let strength = if buttons & HP != 0 { 3 } else if buttons & MP != 0 { 2 } else { 1 };
+                self.set_eb(entity, 0x34, strength);
+            }
         }
 
         let state = &mut self.toggle_state.era.fighters[side];
         state.sf5.clear_motions();
+        if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+            v.clear_motions();
+        }
         match action {
             Action::CriticalArt => state.super_meter -= state.meter_cost(3 * STOCK_AT),
             Action::Enhanced(_) => state.super_meter -= state.meter_cost(STOCK_AT),
@@ -728,11 +949,17 @@ impl Bus<'_> {
             }
 
             Action::Trigger(_) => {
-                let (_, duration) = trigger(fighter, state.style.loadout);
+                let (_, duration) = state.sf5_trigger(fighter);
                 state.spend_v(mode, state.v_trigger_cost(mode));
                 state.sf5.trigger_left = duration;
                 state.sf5.trigger_total = duration;
                 self.toggle_state.era.freeze = self.toggle_state.era.freeze.max(15);
+            }
+            Action::TriggerFollowUp(KAGE_MISOGI) if state.sf5_kage_rikudo() => {
+                state.sf5.trigger_left = state.sf5.trigger_left.saturating_sub(state.sf5.trigger_total / 2);
+            }
+            Action::TriggerFollowUp(_) if state.is_kage() => {
+                state.sf5.trigger_left = state.sf5.trigger_left.saturating_sub(KAGE_ASHURA_COST);
             }
             Action::TriggerFollowUp(_) if fighter == Ryu => {
                 state.sf5.counter_left = COUNTER_FRAMES;
@@ -744,6 +971,12 @@ impl Bus<'_> {
                     .sf5
                     .trigger_left
                     .saturating_sub(state.sf5.trigger_total / 2);
+            }
+            Action::Skill(SKILL_ONE) if state.is_kage() => {
+                if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+                    v.senha_hold = Some(0);
+                    v.senha_armor = false;
+                }
             }
             Action::Skill(SKILL_ONE) if fighter == Ryu => {
                 state.sf5.counter_left = COUNTER_FRAMES;
@@ -761,6 +994,9 @@ impl Bus<'_> {
             }
             Action::Skill(SKILL_ONE) if fighter == Birdie => state.award_v_meter(16),
             _ => {}
+        }
+        if let Some(word) = trigger_name {
+            self.era_emit_callout(ps, CalloutKind::Move { word });
         }
         self.era_share_gauge(side);
         true
@@ -834,6 +1070,14 @@ impl Bus<'_> {
     pub(crate) fn sf5_on_move_started(&mut self, ps: u32, slot: u8) {
         if let Some(side) = self.era_side(ps) {
             let state = &mut self.toggle_state.era.fighters[side];
+            if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+                v.senha_vt_charged = false;
+                v.vt2_confirm = None;
+                if slot != SKILL_ONE {
+                    v.senha_hold = None;
+                    v.senha_armor = false;
+                }
+            }
             state.sf5.charged_move = 0;
             let basic = match slot {
                 EX_RISE => UPPERCUT,
@@ -868,7 +1112,9 @@ impl Bus<'_> {
         if state.sf5.capacity == 0 {
             return false;
         }
-        if matches!(slot, SKILL_ONE | SKILL_TWO | COUNTER_STRIKE) {
+        if slot == KAGE_SEKIEIKEN && state.is_kage() && state.alpha_move_active(slot) {
+            state.award_v_meter(KAGE_SEKIEIKEN_V_GAIN);
+        } else if slot == SKILL_ONE || (!state.is_kage() && matches!(slot, SKILL_TWO | COUNTER_STRIKE)) {
             state.award_v_meter(20);
         }
         let crush_move = matches!(slot, 0x16 | 0x18)
@@ -897,6 +1143,7 @@ fn sf5_action(
     cancel_ground: bool,
     special_cancel: bool,
     blockstun: bool,
+    in_jump: bool,
 ) -> Option<Action> {
     let gauge = state.sf5.capacity != 0;
     if blockstun {
@@ -909,6 +1156,21 @@ fn sf5_action(
     let shifting = held & (HP | MK) == HP | MK;
     if shifting && state.sf5.break_left != 0 {
         return Some(Action::ShiftBreak);
+    }
+    if state.is_kage() && state.sf5.warm() && chord(held, pressed, HP | HK) {
+        if state.sf5_kage_rikudo() {
+            return (free_ground || special_cancel).then_some(Action::TriggerFollowUp(KAGE_MISOGI));
+        }
+        if free_ground || cancel_ground || special_cancel || in_jump {
+            let back = relative & (Dir::Forward.bits() | Dir::Back.bits()) == Dir::Back.bits();
+            let slot = match (in_jump, back) {
+                (false, false) => KAGE_ASHURA_FORWARD,
+                (false, true) => KAGE_ASHURA_BACK,
+                (true, false) => KAGE_ASHURA_AIR_FORWARD,
+                (true, true) => KAGE_ASHURA_AIR_BACK,
+            };
+            return Some(Action::TriggerFollowUp(slot));
+        }
     }
     if !free_ground && !cancel_ground && !special_cancel {
         return None;
@@ -935,9 +1197,9 @@ fn sf5_action(
         return Some(Action::Shift);
     }
     if gauge && (free_ground || cancel_ground) && chord(held, pressed, MP | MK) {
-        return Some(Action::Skill(skill(fighter, state.style.loadout).0));
+        return Some(Action::Skill(state.sf5_skill(fighter).0));
     }
-    let (_, critical_button) = critical(fighter);
+    let (_, critical_button) = state.sf5_critical(fighter);
     let family = if critical_button.kick() {
         KICKS
     } else {
@@ -956,11 +1218,21 @@ fn sf5_action(
         return None;
     }
     if gauge && !state.what_if_active() && state.super_meter >= state.meter_cost(STOCK_AT) {
-        for special in ex_specials(fighter) {
+        for special in state.sf5_ex_specials(fighter) {
             if pair(held, pressed, if special.kick { KICKS } else { PUNCHES })
-                && state.sf5.motion(special.motion).ready(special.motion)
+                && state.sf5_motion(special.motion).ready(special.motion)
             {
                 return Some(Action::Enhanced(special.slot));
+            }
+        }
+    }
+    if state.is_kage() {
+        for special in KAGE_SPECIALS {
+            let buttons = if special.kick { KICKS } else { PUNCHES };
+            if pressed & buttons != 0
+                && state.sf5_motion(special.motion).ready(special.motion)
+            {
+                return Some(Action::Special(special.slot));
             }
         }
     }
@@ -982,25 +1254,33 @@ impl Bus<'_> {
         let owner = self.era_side(attacker);
         let target = self.era_side(defender);
         let comeback = !self.era_rules.disable_comeback_scaling;
+        let demon_slam = slot == crate::combo::throw::THROW_MOVE && self.toggle_state.raging_demon.active;
         let mut recoverable = false;
+        let mut armor_break = false;
         if let Some(owner) = owner {
             let state = &mut self.toggle_state.era.fighters[owner];
             if state.sf5.capacity != 0 {
+                state.sf5_record_rikudo_contact(slot, chip);
                 let authored = state.alpha_move_active(slot);
-                if !chip && state.fighter == Some(Ryu) && slot == CRITICAL_ART {
+                armor_break = authored && slot == CRITICAL_ART;
+                if !chip && state.fighter == Some(Ryu) && !state.is_kage() && slot == CRITICAL_ART {
                     damage = 72;
                 }
                 recoverable = authored && slot == REVERSAL;
                 let powered = state.sf5.charged_move == slot
                     || (state.sf5.warm()
+                        && !state.is_kage()
                         && (!second_trigger(state.style.loadout) || state.what_if_active())
                         && matches!(slot, 0x19..=0x1b | UPPERCUT | CRITICAL_ART)
                         && state.fighter != Some(Sagat));
                 if powered && !chip {
                     damage = damage.saturating_add(damage / 4);
                 }
+                let kage_meterless = state.is_kage()
+                    && (demon_slam || authored && slot == KAGE_SEKIEIKEN);
                 if !chip
                     && !recoverable
+                    && !kage_meterless
                     && !(authored && matches!(slot, EX_FORWARD..=EX_LOW_SHOT | CRITICAL_ART))
                 {
                     state.award_super_meter(5);
@@ -1012,7 +1292,14 @@ impl Bus<'_> {
         if let Some(target) = target {
             let mode = self.era_gauge_mode(target);
             let state = &mut self.toggle_state.era.fighters[target];
-            if recoverable {
+            let mut armored = false;
+            if !chip && !armor_break && state.alpha_move_active(SKILL_ONE) {
+                if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+                    armored = std::mem::take(&mut v.senha_armor);
+                    v.absorbed = armored;
+                }
+            }
+            if recoverable || armored {
                 damage = damage.min(state.sub_hp.saturating_sub(1));
                 state.sf5.add_white(damage);
             } else if !chip {
@@ -1026,12 +1313,30 @@ impl Bus<'_> {
         damage
     }
 
+    pub(crate) fn sf5_take_absorbed(&mut self, ps: u32) -> bool {
+        let Some(side) = self.era_side(ps) else { return false };
+        let state = &mut self.toggle_state.era.fighters[side];
+        if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
+            std::mem::take(&mut v.absorbed)
+        } else {
+            false
+        }
+    }
+
     /// Medium and heavy blocked normals add recoverable White Life. Chip
     /// from specials keeps its ordinary health and KO rules.
     pub(crate) fn sf5_block(&mut self, attacker: u16, defender: u16) {
         let atk_ps = self.el(attacker, 0x38);
         let def_ps = self.el(defender, 0x38);
         let slot = self.eb(attacker, 0xa);
+        if let Some(side) = self.era_side(atk_ps) {
+            let state = &mut self.toggle_state.era.fighters[side];
+            state.sf5_record_rikudo_contact(slot, true);
+            if slot == KAGE_SEKIEIKEN && state.is_kage() && state.alpha_move_active(slot) {
+                state.sf5.gain(KAGE_SEKIEIKEN_V_GAIN / 2);
+                self.era_share_gauge(side);
+            }
+        }
         let Some(attacking) = self.era_state(atk_ps) else {
             return;
         };

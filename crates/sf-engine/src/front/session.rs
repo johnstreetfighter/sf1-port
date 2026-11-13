@@ -9,7 +9,7 @@ use std::sync::{Arc, OnceLock};
 
 use sf_video::busts::{decode_select_busts, Bust};
 use sf_video::compositor::RomFont;
-use sf_video::render::{render_frame, Frame};
+use sf_video::render::{render_frame, Frame, SpriteArt};
 use sf_video::romset::Assets;
 use sf_video::background_bank::{shown_stages, BackgroundBank, MissingTheme, RELEASED_WAVES};
 use sf_video::stage_preview::StagePreviews;
@@ -20,7 +20,7 @@ use super::attract::{FreePlay, TitleLogo};
 use super::cabinet::Players;
 use super::dramatic_select::{boot_flag, DramaticGuest, DramaticPicks, DramaticSetupScreen};
 use super::faithful::{Cabinet, CabinetEvent, DipScreen};
-use super::fight::{first_opponent_flag, Fight, FightDips, FightEvent, FightKind, FightSetup};
+use super::fight::{first_opponent_flag, Fight, FightDips, FightEvent, FightKind, FightSetup, SatsuiArt};
 use super::menu::{MenuItem, MenuScreen};
 use super::online::{OnlineAction, OnlineScreen};
 use super::moves::MovesPanel;
@@ -34,10 +34,10 @@ use super::settings::{default_looks, frame_delay_cap, look_in_use, Aspect, Displ
 use super::tune::{DemoScene, LookParam, LookTuning, Panel, SaveLook, TuneScreen, TypedKey};
 use super::world_tour::WorldTourScreen;
 use super::{sound, Transition};
-use crate::config::{MatchConfig, RulesetPreset};
+use crate::config::{EvilRyuPlaytest, MatchConfig, RulesetPreset};
 use crate::data_bank::DataBank;
 use crate::dramatic::DramaticRules;
-use crate::era::{EraFamily, StylePick};
+use crate::era::{Costume, EraFamily, GaugeMode, Loadout, Revision, StylePick};
 use crate::jukebox::{Cues, Resolved, TrackCue};
 use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
@@ -256,6 +256,8 @@ pub struct GameSession {
     /// cabinet and Faithful 1987 fights always draw with `assets`, the
     /// ROM's own.
     bank_assets: Option<Arc<Assets>>,
+    /// Alternate sprite art for the active Arcade awakening.
+    satsui_art: Option<Arc<SatsuiArt>>,
     /// The extended background bank, given to the machine of every fight
     /// under an overhaul preset (never the attract's, the cabinet's or a
     /// Faithful 1987 fight's).
@@ -362,6 +364,7 @@ impl GameSession {
         GameSession {
             assets: Arc::new(assets),
             bank_assets: None,
+            satsui_art: None,
             backgrounds: None,
             data_bank: None,
             previews: OnceLock::new(),
@@ -411,6 +414,12 @@ impl GameSession {
             net_spectators: spectator::State::default(),
             log: Vec::new(),
         }
+    }
+
+    /// Install alternate art for the awakened fighter and its red fireball.
+    pub fn with_satsui_art(mut self, body: SpriteArt, fire: SpriteArt) -> Self {
+        self.satsui_art = Some(Arc::new(SatsuiArt { body, fire }));
+        self
     }
 
     /// The host loaded the look `look`, whose parameters are `params` (in
@@ -889,6 +898,38 @@ impl GameSession {
         self.launch_fight(setup, flag, styles);
     }
 
+    /// Open the configured private playtest at the Thailand final.
+    pub fn start_evil_ryu_playtest(&mut self) {
+        let Some(playtest) = self.config.evil_ryu_playtest else { return };
+        let mut config = self.stamped(PlayMode::Arcade, TournamentFighter::Ryu, TournamentFighter::Sagat);
+        config.p2_fair_cpu = true;
+        config.gauge_mode = GaugeMode::EraDefault;
+        if playtest == EvilRyuPlaytest::Sf6 {
+            config.roster.what_if_styles = true;
+        }
+        let setup = FightSetup {
+            kind: FightKind::Arcade,
+            players: Players::One,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: self.fight_dips().dsw2(),
+        };
+        let style = match playtest {
+            EvilRyuPlaytest::UltraSf2 => StylePick::sf2(Revision::St, Loadout::Standard, Costume::Classic1987, 0),
+            EvilRyuPlaytest::Alpha2 => StylePick::for_revision(Revision::Sfz2, Loadout::Standard),
+            EvilRyuPlaytest::Alpha3A => StylePick::for_revision(Revision::Sfz3, Loadout::AIsm),
+            EvilRyuPlaytest::Alpha3V => StylePick::for_revision(Revision::Sfz3, Loadout::VIsm),
+            EvilRyuPlaytest::Alpha3X => StylePick::for_revision(Revision::Sfz3, Loadout::XIsm),
+            EvilRyuPlaytest::Ae2012 => StylePick::for_revision(Revision::Ae2012, Loadout::Ultra1),
+            EvilRyuPlaytest::Ae2012Ultra2 => StylePick::for_revision(Revision::Ae2012, Loadout::Ultra2),
+            EvilRyuPlaytest::Usf4 => StylePick::for_revision(Revision::Usf4, Loadout::UltraDouble),
+            EvilRyuPlaytest::Kage => StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+            EvilRyuPlaytest::KageII => StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill2Trigger2),
+            EvilRyuPlaytest::Sf6 => StylePick::for_revision(Revision::Sf6, Loadout::Standard),
+        };
+        self.launch_fight(setup, Some(HIDDEN_FLAG), [Some(style), None]);
+    }
+
     pub(super) fn stamp_dramatic(
         &self,
         ally1: TournamentFighter,
@@ -947,6 +988,7 @@ impl GameSession {
         });
         match Fight::start_banked(&self.assets.maincpu, setup, flag, backgrounds, data) {
             Ok(mut fight) => {
+                fight.set_satsui_art(self.satsui_art.clone());
                 fight.set_selected_styles(styles);
                 if setup.config.dramatic.is_some() && self.net_setup.is_some() {
                     if let Some(connection) = &self.net_connection {
@@ -1506,11 +1548,16 @@ impl GameSession {
         }
         // A pad's back (Circle) is MK in a fight: only its Start opens the
         // box, and on the keyboard Start, Esc and Backspace.
-        let opens = any_menu_edge(prev, now, |m| m.start)
-            || edge(prev.menu.back, now.menu.back)
-            || edge(prev.cabinet[2], now.cabinet[2])
+        let p1_start = edge(prev.menu.start, now.menu.start)
+            || pad_edge(prev, now, 0, |m| m.start)
+            || edge(prev.cabinet[2], now.cabinet[2]);
+        let other_pause = edge(prev.menu.back, now.menu.back)
+            || pad_edge(prev, now, 1, |m| m.start)
             || edge(prev.cabinet[3], now.cabinet[3]);
-        if opens && can_pause {
+        if can_pause && (p1_start || other_pause) {
+            if !other_pause && play.fight.try_alpha2_feint(now.p1) {
+                return None;
+            }
             // The side whose pad's Start did it; a key is P1's.
             play.paused_by = if online { local_side }
                 else { (0..2).find(|&s| pad_edge(prev, now, s, |m| m.start)).unwrap_or(0) };
@@ -1703,6 +1750,7 @@ impl GameSession {
                         MenuItem::Rematch if setup.config.dramatic.is_some() => {
                             self.start_dramatic(setup.config);
                         }
+                        MenuItem::Rematch if setup.config.evil_ryu_playtest.is_some() => self.start_evil_ryu_playtest(),
                         MenuItem::Rematch => {
                             // The stage screen opens with the loser in
                             // control and the cursor on the stage just
@@ -2320,12 +2368,31 @@ fn fight_assets<'a>(rom: &'a Arc<Assets>, bank: &'a Option<Arc<Assets>>, preset:
 fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel {
     let setup = fight.setup();
     let machine = fight.machine();
-    let player = if side == 0 { P1_STRUCT } else { P2_STRUCT };
+    let game_mode = machine.work_ram()[(crate::fighter::GAME_MODE - crate::fighter::WORK_BASE) as usize];
+    let player = if side == 0 && game_mode != 4 { P1_STRUCT } else { P2_STRUCT };
     let facing_right = facing_right(machine.work_ram(), &machine.state.objectram, player);
     let fighter = fight.player_fighter(side);
     let player_table = machine.data_bank().is_some_and(|b| b.table(fighter).is_some());
-    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, fight.pad_era_state(side));
-    MovesPanel::from_entries(fighter, entries)
+    let state = fight.pad_era_state(side);
+    let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, state);
+    let panel = MovesPanel::from_entries(fighter, entries);
+    let panel = if let Some(form) = machine.satsui_awakening().filter(|form| form.side.fighter_struct() == player) {
+        use crate::era::{EraFamily, Loadout, Revision};
+
+        let base_kit = state.style.revision != Revision::St || state.style.loadout != Loadout::Standard;
+        if form.profile == crate::config::EvilRyuPlaytest::UltraSf2
+            && !matches!(state.style.family, EraFamily::Sf1Plus | EraFamily::Sf2)
+        {
+            panel.with_evil_ryu_name()
+        } else {
+            panel.with_evil_ryu_moves(form.profile, form.profile == crate::config::EvilRyuPlaytest::UltraSf2 && base_kit)
+        }
+    } else if let (0, Some(playtest)) = (side, setup.config.evil_ryu_playtest) {
+        panel.with_evil_ryu_moves(playtest, false)
+    } else {
+        panel
+    };
+    panel
         .with_inputs(notation, facing_right)
         .with_show(fight.training())
 }

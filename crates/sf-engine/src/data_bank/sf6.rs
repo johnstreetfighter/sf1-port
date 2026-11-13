@@ -2,8 +2,29 @@
 
 use super::*;
 use crate::era::EraFamily::Sf6;
-use crate::era_fight::sf6::{IMPACT, PARRY, REVERSAL, RUSH};
+use crate::era_fight::sf6::{
+    ASHURA_BACK, ASHURA_FORWARD, IMPACT, OD_RYUSOKYAKU, PARRY, REVERSAL, RUSH, RYUSOKYAKU,
+};
 use TournamentFighter::{Ken, Retsu, Ryu};
+
+const SHAKUNETSU_HEADER: u8 = 0x30;
+const OD_SHAKUNETSU_HEADER: u8 = 0x31;
+const ASHURA_FORWARD_HEADER: u8 = 0x32;
+const ASHURA_BACK_HEADER: u8 = 0x33;
+const RYUSOKYAKU_HEADER: u8 = 0x34;
+const OD_RYUSOKYAKU_HEADER: u8 = 0x35;
+
+pub(super) fn evil_ryu_header_slot(slot: u8) -> Option<u8> {
+    match slot {
+        SF2_SPECIAL_SLOT => Some(SHAKUNETSU_HEADER),
+        0x22 => Some(OD_SHAKUNETSU_HEADER),
+        ASHURA_FORWARD => Some(ASHURA_FORWARD_HEADER),
+        ASHURA_BACK => Some(ASHURA_BACK_HEADER),
+        RYUSOKYAKU => Some(RYUSOKYAKU_HEADER),
+        OD_RYUSOKYAKU => Some(OD_RYUSOKYAKU_HEADER),
+        _ => None,
+    }
+}
 
 pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
     if rom.len() < 0x45f5a {
@@ -43,6 +64,9 @@ pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter)
             write_strikes(rom, region, 0x1f, poses, 9, 1, 5, 0);
             write_strikes(rom, region, 0x22, poses, 7, 2, 4, 1);
             write_install(region, pose, boxes, 0x20, 20);
+            write_evil_ryu_shakunetsu(region);
+            write_evil_ryu_ashura(rom, region, pose, boxes);
+            write_evil_ryu_ryusokyaku(region);
         }
         Ken => {
             let kick = [0x2f40, 0x2f80, 0x2f60];
@@ -69,6 +93,53 @@ pub(super) fn build(rom: &[u8], region: &mut Region, fighter: TournamentFighter)
             write_install(region, pose, boxes, 0x26, 11);
         }
         _ => {}
+    }
+}
+
+fn write_evil_ryu_shakunetsu(region: &mut Region) {
+    // Use the existing red fireball stream in two private header slots.
+    let source = bank_header_offset(SF2_SPECIAL_SLOT) as usize;
+    let normal: [u8; 0x30] = region.bytes[source..source + 0x30].try_into().unwrap();
+    let mut overdrive = normal;
+    overdrive[0xa] = 0x22;
+    overdrive[0xe] = 1;
+    put_era_header(region, Sf6, SHAKUNETSU_HEADER, &normal);
+    put_era_header(region, Sf6, OD_SHAKUNETSU_HEADER, &overdrive);
+}
+
+fn write_evil_ryu_ashura(rom: &[u8], region: &mut Region, stance: PoseGeom, stance_boxes: [u8; 16]) {
+    // Use the same gather and raised-knee poses as Kage's grounded Ashura.
+    let gather = rom_pose(rom, 0x1362);
+    let gather_boxes = rom_boxes(rom, 0x1362);
+    let glide = rom_pose(rom, 0x0e20);
+    let glide_boxes = rom_boxes(rom, 0x0e20);
+    for (slot, startup, travel, step, recovery) in [
+        (ASHURA_FORWARD, 17, 14, 10, 17),
+        (ASHURA_BACK, 13, 12, -8, 22),
+    ] {
+        let stream = region.here();
+        let mut animation = Stream::new(region, gather, gather.top_on_ground());
+        animation.call(routine::SOUND, 0xa2);
+        animation.travel(glide, glide.top_on_ground(), travel, (0, step), glide_boxes, SF6_ASHURA_GLIDE, 0);
+        animation.hold(stance, stance.top_on_ground(), recovery, stance_boxes, 0, 0);
+        animation.end();
+
+        let first = still(gather, startup, gather_boxes);
+        let header = header(&first.bytes(), gather.top_on_ground(), 0xc2, slot, [0; 3], stream);
+        put_era_header(region, Sf6, evil_ryu_header_slot(slot).unwrap(), &header);
+    }
+}
+
+fn write_evil_ryu_ryusokyaku(region: &mut Region) {
+    // The SF4 bank already supplies the strength-specific axe kick streams.
+    let pointer = era_header_offset(EraFamily::Sf4, crate::era_fight::sf4::RYUSOKYAKU).unwrap() as usize;
+    let address = u32::from_be_bytes(region.bytes[pointer..pointer + 4].try_into().unwrap());
+    let Some(source) = address.checked_sub(region.base) else { return };
+    let source = source as usize;
+    let mut header: [u8; 0x30] = region.bytes[source..source + 0x30].try_into().unwrap();
+    for (slot, key) in [(RYUSOKYAKU, RYUSOKYAKU_HEADER), (OD_RYUSOKYAKU, OD_RYUSOKYAKU_HEADER)] {
+        header[0xa] = slot;
+        put_era_header(region, Sf6, key, &header);
     }
 }
 

@@ -316,7 +316,7 @@ fn read_roster(read: &mut Reader<'_>) -> Option<RosterSettings> {
 fn write_config(value: &MatchConfig, out: &mut Vec<u8>) {
     let MatchConfig { preset, toggles, roster, fill_meters, p2_fair_cpu, p1_scheme: _, p2_scheme: _,
         modern_control_damage_penalty, sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
-        tour, difficulty, round_time, dramatic: _, world_tour: _ } = value;
+        tour, difficulty, round_time, dramatic: _, world_tour: _, evil_ryu_playtest: _ } = value;
     write_preset(*preset, out); write_toggles(toggles, out); write_roster(roster, out);
     fill_meters.write(out); p2_fair_cpu.write(out); modern_control_damage_penalty.write(out);
     write_sf1plus(sf1plus, out); write_gauge(*gauge_mode, out);
@@ -326,6 +326,7 @@ fn write_config(value: &MatchConfig, out: &mut Vec<u8>) {
 
 fn read_config(read: &mut Reader<'_>) -> Option<MatchConfig> {
     let value = MatchConfig {
+        evil_ryu_playtest: None,
         preset: read_preset(read)?, toggles: read_toggles(read)?, roster: read_roster(read)?,
         fill_meters: read.boolean()?, p2_fair_cpu: read.boolean()?,
         p1_scheme: ControlScheme::Classic, p2_scheme: ControlScheme::Classic,

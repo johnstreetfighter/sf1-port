@@ -17,7 +17,10 @@ use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
 use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
 use sf_video::era_hud::{EraGauge, GaugeArt};
-use sf_video::render::{capture_sprite_pose, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan};
+use sf_video::render::{
+    capture_sprite_pose_with_art, render_frame, render_frame_edited, render_frame_staged_with_art,
+    render_frame_staged_with_tints, Frame, SpriteArt, SpriteArtOverride, SpriteTint, TextEdits, TextSpan,
+};
 use sf_video::scene::SceneState;
 use sf_video::romset::Assets;
 
@@ -35,7 +38,7 @@ use crate::data_bank::DataBank;
 use crate::era::StylePick;
 use crate::fight_reader::{ComboCounter, FightRead, FightReader, FighterRead, RoundMoments};
 use crate::fight_reader::FIGHTER_SLOTS;
-use crate::fighter::{CPU_STRUCT, GAME_MODE, P1_STRUCT, P2_STRUCT};
+use crate::fighter::{CPU_STRUCT, DEMON_SPARK_MARKER, GAME_MODE, P1_STRUCT, P2_STRUCT};
 use crate::moves::{InputNotation, MachineRead, MoveEntry};
 use crate::roster::{PlayMode, TournamentFighter};
 use crate::overlay::{gauge_lift, render_diagnostic_overlay_parts};
@@ -368,6 +371,7 @@ pub struct Fight {
     /// The preview gauges supplied through the renderer's test hook.
     era_hud: EraHud,
     trails: [AfterimageTrail; 3],
+    satsui_art: Option<Arc<SatsuiArt>>,
     /// Training's Show of a move (ticket #230): its input stands in for the
     /// player's pad until the move ends.
     show: Option<Show>,
@@ -381,6 +385,11 @@ pub struct Fight {
     /// INPUTS`, ticket #232, ML6): a player's own choice, set by the session
     /// when a Show or Try starts.
     notation: InputNotation,
+}
+
+pub(crate) struct SatsuiArt {
+    pub body: SpriteArt,
+    pub fire: SpriteArt,
 }
 
 /// Complete mutable fight state at a pre-step netplay frame (NP1).
@@ -509,7 +518,7 @@ impl Fight {
             last_flow, show, read, fed_reads,
             sounds: _, overlay: _, gauge_art: _, callouts: _, pending_callouts: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
-            era_hud: _, trails: _, coach, notation: _, selected_styles: _, practice_meters,
+            era_hud: _, trails: _, satsui_art: _, coach, notation: _, selected_styles: _, practice_meters,
         } = self;
         let mut out = CanonicalHasher::new();
         out.tag("sf1-port/fight-gameplay/v2");
@@ -552,7 +561,7 @@ impl Fight {
             machine, setup, country, black, sounds, over, continuing,
             overlay: _, gauge_art: _, selected_styles: _, round_start, last_flow, callouts,
             pending_callouts, pending_combos, reader, read, fed_reads,
-            combo, moments, hold_combo, era_hud, trails, show, coach, practice_meters, notation: _,
+            combo, moments, hold_combo, era_hud, trails, satsui_art: _, show, coach, practice_meters, notation: _,
         } = self;
         FightSnapshot {
             frame: net_frame,
@@ -706,11 +715,16 @@ impl Fight {
             hold_combo: false,
             era_hud: EraHud::NONE,
             trails: Default::default(),
+            satsui_art: None,
             show: None,
             coach: None,
             practice_meters: None,
             notation: InputNotation::default(),
         })
+    }
+
+    pub(crate) fn set_satsui_art(&mut self, art: Option<Arc<SatsuiArt>>) {
+        self.satsui_art = art;
     }
 
     /// Whether this is a Training fight.
@@ -933,6 +947,11 @@ impl Fight {
         self.machine.set_match_config(config);
     }
 
+    pub(super) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
+        !self.over && flow_position(&self.machine) == FIGHT_LOOP
+            && self.machine.try_alpha2_feint(input.directions)
+    }
+
     /// Whether the ROM's continue countdown is running (`0x3f162`).
     pub fn in_continue(&self) -> bool {
         flow_position(&self.machine) == CONTINUE_LOOP
@@ -1119,6 +1138,18 @@ impl Fight {
         (coin, start1)
     }
 
+    fn fighter_display_name(&self, player: u32, fighter: TournamentFighter) -> &'static str {
+        if fighter == TournamentFighter::Ryu {
+            if self.machine.satsui_awakening().is_some_and(|form| form.side.fighter_struct() == player) {
+                return "Evil Ryu";
+            }
+            if let Some(playtest) = self.setup.config.evil_ryu_playtest.filter(|_| player == P1_STRUCT) {
+                return playtest.display_name();
+            }
+        }
+        fighter.name()
+    }
+
     /// The overhaul fight layout, as edits to the presented text layer:
     /// the ROM's TIME tiles hidden and drawn again centred under the health
     /// bars (not while the ROM has text there, such as the bonus tally's
@@ -1213,7 +1244,8 @@ impl Fight {
             };
             hide(row, (LABEL_COL, LABEL_COL + label.len() - 1));
             let colour = (LABEL_COL..LABEL_COL + label.len()).find(|&col| !wiped(col, row)).map_or(0, |col| cell(col, row) & !0x3ff);
-            names.push((row, fighter.name().to_ascii_uppercase(), colour));
+            let name = self.fighter_display_name(player, fighter).to_ascii_uppercase();
+            names.push((row, name, colour));
         }
         // The round result names its winner: the ROM's name swapped for the
         // fighter's, the rest of the line as typed so far, centred again; a
@@ -1233,7 +1265,7 @@ impl Fight {
             let Some(fighter) = TournamentFighter::from_move_table(table) else {
                 continue;
             };
-            let name = fighter.name().to_ascii_uppercase();
+            let name = self.fighter_display_name(player, fighter).to_ascii_uppercase();
             if name == word {
                 break;
             }
@@ -1278,6 +1310,11 @@ impl Fight {
     /// viewer draws under the era HUD, so its fills never cover a word or a
     /// gauge; the frame meter and telemetry, which never meet it, draw last.
     pub fn render(&self, assets: &Assets) -> Frame {
+        if self.setup.config.evil_ryu_playtest.is_some()
+            && self.machine.toggle_state().raging_demon.blackout_frames.is_some()
+        {
+            return self.render_demon_blackout(assets);
+        }
         let mut frame = self.render_scene(assets);
         self.draw_ally_lifebar(&mut frame);
         // Training's Show strip, under the health block in every preset.
@@ -1305,6 +1342,36 @@ impl Fight {
             }
         }
         frame
+    }
+
+    /// Keep the cabinet's sprite drawing for the Demon sparks. Disable the
+    /// other layers and park unrelated objects on this copy of the scene.
+    fn render_demon_blackout(&self, assets: &Assets) -> Frame {
+        const OBJECT_BYTES: usize = 0x40;
+        let mut scene = self.machine.state.scene();
+        scene.active = 0x80;
+        scene.paletteram[..2].fill(0);
+        let kage = self.setup.config.evil_ryu_playtest == Some(crate::config::EvilRyuPlaytest::KageII);
+        let mut tints = Vec::new();
+        for (slot, object) in scene.objectram.chunks_exact_mut(OBJECT_BYTES).enumerate() {
+            let offset = slot * OBJECT_BYTES;
+            let demon_spark = (0x100..0x400).contains(&offset)
+                && object[8] != 0
+                && object[DEMON_SPARK_MARKER] == 1;
+            if !demon_spark {
+                object[..8].fill(0);
+            } else if kage {
+                tints.push(SpriteTint {
+                    entries: offset..offset + OBJECT_BYTES,
+                    tint: PaletteTint { color: 0xffff3038, strength: 128 },
+                });
+            }
+        }
+        if tints.is_empty() {
+            render_frame(assets, &scene)
+        } else {
+            render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0
+        }
     }
 
     fn draw_ally_lifebar(&self, frame: &mut Frame) {
@@ -1378,6 +1445,28 @@ impl Fight {
         tints
     }
 
+    fn satsui_sprite_art(&self, scene: &SceneState) -> Vec<SpriteArtOverride<'_>> {
+        const OBJECT_STRIDE: usize = 0x40;
+        let Some(art) = &self.satsui_art else { return Vec::new() };
+        let Some(awakening) = self.machine.satsui_awakening() else { return Vec::new() };
+        let owner = awakening.side.fighter_struct();
+        let at = (owner + 0x10 - 0xff8000) as usize;
+        let ram = self.machine.work_ram();
+        let entity = u16::from_be_bytes([ram[at], ram[at + 1]]);
+        let mut overrides = Vec::new();
+        if FIGHTER_SLOTS.contains(&entity) {
+            let start = usize::from(entity);
+            overrides.push(SpriteArtOverride { entries: start..start + 24 * OBJECT_STRIDE, art: &art.body });
+        }
+        for (index, effect) in scene.objectram[0x100..0x400].chunks_exact(OBJECT_STRIDE).enumerate() {
+            if effect[8] != 0 && effect[3] & 0xf == 14 && effect[0x20..0x24] == owner.to_be_bytes() {
+                let start = 0x100 + index * OBJECT_STRIDE;
+                overrides.push(SpriteArtOverride { entries: start..start + OBJECT_STRIDE, art: &art.fire });
+            }
+        }
+        overrides
+    }
+
     fn update_era_trails(&mut self, assets: &Assets) {
         let mut colors = [None; 3];
         for (color, state) in colors.iter_mut().zip(self.era_combatants()) {
@@ -1393,13 +1482,16 @@ impl Fight {
         }
         let scene = self.machine.state.scene();
         let telemetry = self.machine.diagnostic_telemetry();
+        let satsui_owner = self.machine.satsui_awakening().map(|awakening| awakening.side.fighter_struct());
+        let satsui_art = self.satsui_art.as_ref().map(|art| &art.body);
         let fighters = [Some(telemetry.p1), Some(telemetry.p2), telemetry.ally2];
         for (index, fighter) in fighters.into_iter().flatten().enumerate() {
             let Some(color) = colors[index].filter(|_| fighter.active) else { continue };
             let start = usize::from(fighter.entity_offset);
             let Some(grid) = scene.objectram.get(start + 0xc..start + 0xe) else { continue };
             let cells = ((usize::from(grid[0]) + 1) * (usize::from(grid[1]) + 1)).min(24);
-            self.trails[index].record_colored(capture_sprite_pose(assets, &scene, start, cells), color);
+            let art = satsui_art.filter(|_| satsui_owner == Some(fighter.player_struct));
+            self.trails[index].record_colored(capture_sprite_pose_with_art(assets, &scene, start, cells, art), color);
         }
     }
 
@@ -1412,6 +1504,7 @@ impl Fight {
         let era_hud = self.era_hud();
         let ally2_gauge = self.ally2_gauge();
         let tints = self.era_sprite_tints(&scene);
+        let sprite_art = self.satsui_sprite_art(&scene);
         let (boxes, meter) = self.overlay.parts();
         let telemetry = || self.machine.diagnostic_telemetry();
         let base = match &layout {
@@ -1420,9 +1513,9 @@ impl Fight {
             Some(edits)
                 if self.setup.config.preset != RulesetPreset::Faithful1987
                     && (!callouts.is_empty() || era_hud != EraHud::NONE || ally2_gauge.is_some()
-                        || !tints.is_empty()) =>
+                        || !tints.is_empty() || !sprite_art.is_empty()) =>
             {
-                let (mut hardware, stage) = render_frame_staged_with_tints(assets, &scene, edits, &tints);
+                let (mut hardware, stage) = render_frame_staged_with_art(assets, &scene, edits, &tints, &sprite_art);
                 if boxes {
                     hardware = render_diagnostic_overlay_parts(&hardware, &telemetry(), true, false);
                 }
@@ -1447,6 +1540,9 @@ impl Fight {
                     return hud;
                 }
                 return render_diagnostic_overlay_parts(&hud, &telemetry(), false, true);
+            }
+            _ if !sprite_art.is_empty() => {
+                render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &[], &sprite_art).0
             }
             _ => render_frame_edited(assets, &scene, &layout.unwrap_or_default()),
         };
@@ -1587,7 +1683,7 @@ impl Fight {
                     frame: m.state.frame,
                     addresses,
                 });
-            } else if self.setup.kind.stops_at_match_end() && m.match_over() {
+            } else if (self.setup.kind.stops_at_match_end() || self.setup.config.evil_ryu_playtest.is_some()) && m.match_over() {
                 self.over = true;
                 event = Some(FightEvent::MatchOver);
             } else if m.work_ram()[(MODE_DEMO - 0xff8000) as usize] == 0 {

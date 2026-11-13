@@ -29,7 +29,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use sf_engine::config::{MatchConfig, RulesetPreset};
+use sf_engine::config::{EvilRyuPlaytest, MatchConfig, RulesetPreset};
 use sf_engine::front::rom_missing::RomMissing;
 use sf_engine::front::settings::{Aspect, DisplayInfo, Settings, FRAME_DELAY_CAP_MS, LOOK_OFF, MAX_SCALE};
 use sf_engine::world_tour::native::WorldTourProfile;
@@ -51,6 +51,26 @@ use sf_host::roms::{self, Candidate, RomSet};
 use sf_host::shaders::{self, Catalogue};
 use sf_host::themes::{self, Themes};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
+
+mod evil_ryu_art;
+mod evil_ryu_vs;
+mod evil_ryu_vs_name;
+
+fn evil_ryu_title(playtest: EvilRyuPlaytest) -> &'static str {
+    match playtest {
+        EvilRyuPlaytest::UltraSf2 => "Ultra SFII Playtest - Evil Ryu vs. Sagat",
+        EvilRyuPlaytest::Alpha2 => "Alpha 2 Playtest - Evil Ryu vs. Sagat",
+        EvilRyuPlaytest::Alpha3A => "Alpha 3 A-ISM Playtest - Evil Ryu vs. Sagat",
+        EvilRyuPlaytest::Alpha3V => "Alpha 3 V-ISM Playtest - Evil Ryu vs. Sagat",
+        EvilRyuPlaytest::Alpha3X => "Alpha 3 X-ISM Playtest - Evil Ryu vs. Sagat",
+        EvilRyuPlaytest::Ae2012 => "Arcade Edition 2012 Playtest - Evil Ryu vs. Sagat (Ultra I)",
+        EvilRyuPlaytest::Ae2012Ultra2 => "Arcade Edition 2012 Playtest - Evil Ryu vs. Sagat (Ultra II)",
+        EvilRyuPlaytest::Usf4 => "Ultra SFIV Playtest - Evil Ryu vs. Sagat (Ultra Combo Double)",
+        EvilRyuPlaytest::Kage => "SFV Champion Edition Playtest - Kage vs. Sagat (V-Skill I / V-Trigger I)",
+        EvilRyuPlaytest::KageII => "SFV Champion Edition Playtest - Kage vs. Sagat (V-Skill II / V-Trigger II)",
+        EvilRyuPlaytest::Sf6 => "SF6 What-If Playtest - Evil Ryu vs. Sagat",
+    }
+}
 
 /// The `--roms` directory or archive, when given.
 fn roms_arg(args: &[String]) -> Option<PathBuf> {
@@ -146,7 +166,35 @@ fn main() {
     if command == Some("smoke") {
         std::process::exit(smoke(&args));
     }
-    let app_dir = files::app_dir();
+    let normal_app_dir = files::app_dir();
+    let evil_ryu_playtest = args.iter().find_map(|arg| match arg.as_str() {
+        "--evil-ryu-usf2" => Some(EvilRyuPlaytest::UltraSf2),
+        "--evil-ryu-alpha2" => Some(EvilRyuPlaytest::Alpha2),
+        "--evil-ryu-alpha3-a" => Some(EvilRyuPlaytest::Alpha3A),
+        "--evil-ryu-alpha3-v" => Some(EvilRyuPlaytest::Alpha3V),
+        "--evil-ryu-alpha3-x" => Some(EvilRyuPlaytest::Alpha3X),
+        "--evil-ryu-ae2012" => Some(EvilRyuPlaytest::Ae2012),
+        "--evil-ryu-ae2012-ultra2" => Some(EvilRyuPlaytest::Ae2012Ultra2),
+        "--evil-ryu-usf4" => Some(EvilRyuPlaytest::Usf4),
+        "--kage-sfv" => Some(EvilRyuPlaytest::Kage),
+        "--kage-sfv-ii" => Some(EvilRyuPlaytest::KageII),
+        "--evil-ryu-sf6" => Some(EvilRyuPlaytest::Sf6),
+        _ => None,
+    });
+    let app_dir = match evil_ryu_playtest {
+        Some(EvilRyuPlaytest::UltraSf2) => normal_app_dir.join("evil-ryu-spike"),
+        Some(EvilRyuPlaytest::Alpha2) => normal_app_dir.join("evil-ryu-alpha2"),
+        Some(EvilRyuPlaytest::Alpha3A) => normal_app_dir.join("evil-ryu-alpha3-a"),
+        Some(EvilRyuPlaytest::Alpha3V) => normal_app_dir.join("evil-ryu-alpha3-v"),
+        Some(EvilRyuPlaytest::Alpha3X) => normal_app_dir.join("evil-ryu-alpha3-x"),
+        Some(EvilRyuPlaytest::Ae2012) => normal_app_dir.join("evil-ryu-ae2012"),
+        Some(EvilRyuPlaytest::Ae2012Ultra2) => normal_app_dir.join("evil-ryu-ae2012-ultra2"),
+        Some(EvilRyuPlaytest::Usf4) => normal_app_dir.join("evil-ryu-usf4"),
+        Some(EvilRyuPlaytest::Kage) => normal_app_dir.join("kage-sfv"),
+        Some(EvilRyuPlaytest::KageII) => normal_app_dir.join("kage-sfv-ii"),
+        Some(EvilRyuPlaytest::Sf6) => normal_app_dir.join("evil-ryu-sf6"),
+        None => normal_app_dir.clone(),
+    };
     let mut log = Log::create(&files::log_path(&app_dir));
     log.line("version", &sf_engine::version::full_banner());
     let Files { mut settings, config, bindings } = files::load(&app_dir, &mut log);
@@ -169,11 +217,12 @@ fn main() {
     let candidates = roms::candidates(
         roms_arg(&args).as_deref(),
         exe_dir().as_deref(),
-        &app_dir,
+        &normal_app_dir,
         settings.rom_folder.as_deref(),
     );
     let mut game = Game {
         args,
+        evil_ryu_playtest,
         app_dir,
         log,
         bindings,
@@ -195,7 +244,11 @@ fn main() {
         Ok(set) => game.start(set),
         Err(looked) => game.missing(looked),
     }
-    let title = format!("{} (v{})", sf_engine::version::EDITION_NAME, sf_engine::version::VERSION);
+    let title = if let Some(playtest) = evil_ryu_playtest {
+        evil_ryu_title(playtest).to_owned()
+    } else {
+        format!("{} (v{})", sf_engine::version::EDITION_NAME, sf_engine::version::VERSION)
+    };
     if let Err(e) = gpu_window::run(&title, game.video, &mut game, None) {
         game.log.line("window", &e);
         eprintln!("sf-game: {e}");
@@ -207,6 +260,7 @@ fn main() {
 /// found, then the session.
 struct Game {
     args: Vec<String>,
+    evil_ryu_playtest: Option<EvilRyuPlaytest>,
     app_dir: PathBuf,
     log: Log,
     bindings: BindingsTable,
@@ -299,7 +353,7 @@ impl Game {
             "roms",
             &format!("{}: all {} files match the manifest", set.folder.display(), set.files),
         );
-        let RomSet { folder, assets, audio2, audiocpu, .. } = set;
+        let RomSet { folder, mut assets, audio2, audiocpu, .. } = set;
         // Local packs beside the ROMs take precedence over bundled assets.
         let asset_roots: Vec<_> = [exe_dir(), std::env::current_dir().ok()]
             .into_iter()
@@ -311,13 +365,26 @@ impl Game {
         let art = sf_host::art::load_with_fallbacks(&assets, &rom_folders, &asset_roots, log);
         // The background bank, from the committed stage records and the ROM,
         // with the two-player VS screens built from the ROM.
-        let stages = sf_host::stages::load(&assets, log);
+        let mut stages = sf_host::stages::load(&assets, log);
+        if let Some(playtest) = self.evil_ryu_playtest {
+            let bank = stages.get_or_insert_with(Default::default);
+            if let Err(error) = evil_ryu_vs::install(&assets, bank, playtest) {
+                log.line("playtest", &format!("could not load the {} VS screen: {error}", playtest.display_name()));
+            }
+        }
         // The announcer's voice pack, looked for as the art pack is.
         let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
 
-        let config = self.config.take().unwrap_or_default();
+        let (satsui_body, satsui_fire) = evil_ryu_art::satsui_art(&assets);
+        let mut config = self.config.take().unwrap_or_default();
+        if let Some(playtest) = self.evil_ryu_playtest {
+            config = MatchConfig::definitive();
+            config.evil_ryu_playtest = Some(playtest);
+            evil_ryu_art::apply(&mut assets, playtest);
+        }
         let saved_world_tour = files::load_world_tour(&self.app_dir, log);
         let mut session = GameSession::new(assets, config)
+            .with_satsui_art(satsui_body, satsui_fire)
             .with_settings(self.settings.clone())
             .with_world_tour_profile(saved_world_tour.clone())
             .with_looks(self.catalogue.names())
@@ -341,6 +408,10 @@ impl Game {
                 }
                 None => log.line("stages", &format!("--stage {name}: the background bank holds no such stage")),
             }
+        }
+        if let Some(playtest) = self.evil_ryu_playtest {
+            session.start_evil_ryu_playtest();
+            log.line("playtest", evil_ryu_title(playtest));
         }
         // Tracks set for a stage or fighter the game does not have never play.
         let stage_names: Vec<&str> = session.background_bank().map(|b| b.stage_names().collect()).unwrap_or_default();
@@ -554,7 +625,7 @@ impl Driver for Game {
                     }
                     s.announce(out.sound_frame, &out.announcements);
                 }
-                if out.quit {
+                if out.quit || (self.evil_ryu_playtest.is_some() && session.fight().is_none()) {
                     return false;
                 }
                 if session.take_world_tour_changed() {

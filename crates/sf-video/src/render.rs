@@ -12,10 +12,12 @@
 //! - tx tilemap (gfx4): 64x32 row-major 8px tiles from video RAM, pen 3
 //!   transparent.
 
+use std::collections::BTreeMap;
+
 use crate::background_bank::PAGE_BYTES;
 use crate::decode::{decode_char_tile, decode_sprite_tile};
 use crate::compositor::{IndexedSprite, PaletteTint};
-use crate::palette::Palette;
+use crate::palette::{xrgb444, Palette};
 use crate::romset::Assets;
 use crate::scene::SceneState;
 
@@ -82,7 +84,7 @@ pub fn render_frame(assets: &Assets, scene: &SceneState) -> Frame {
 /// `render_frame` with the text layer's `edits` applied to the presented
 /// frame only.
 pub fn render_frame_edited(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Frame {
-    let pens = compose_pens(assets, scene, edits, &[]);
+    let pens = compose_pens(assets, scene, edits, &[], &[]);
     frame_from_pens(scene, &pens)
 }
 
@@ -99,8 +101,28 @@ pub struct SpriteTint {
     pub tint: PaletteTint,
 }
 
-// Native pens occupy the low bits. Reserve the high nibble for an optional
-// sprite tint index while retaining the original sprite and text draw order.
+/// Alternate sprite palette and sparse 16×16 tile replacements.
+pub struct SpriteArt {
+    colors: [u32; 16],
+    tiles: BTreeMap<usize, [[u8; 16]; 16]>,
+}
+
+impl SpriteArt {
+    /// Replacement tiles are indexed by decoded sprite slot.
+    pub fn new(palette: [u16; 16], tiles: impl IntoIterator<Item = (usize, [[u8; 16]; 16])>) -> Self {
+        Self { colors: palette.map(xrgb444), tiles: tiles.into_iter().collect() }
+    }
+}
+
+/// Alternate art applied to entries in an object RAM byte range.
+pub struct SpriteArtOverride<'a> {
+    pub entries: std::ops::Range<usize>,
+    pub art: &'a SpriteArt,
+}
+
+// Sprite art uses palette indices above native palette RAM. The high nibble
+// carries the tint index independently of the sprite or text draw order.
+const ALT_PALETTE_BASE: usize = 1024;
 const TINT_SHIFT: usize = 12;
 const PEN_MASK: u16 = (1 << TINT_SHIFT) - 1;
 
@@ -110,15 +132,32 @@ pub fn render_frame_staged_with_tints(
     edits: &TextEdits,
     tints: &[SpriteTint],
 ) -> (Frame, Vec<bool>) {
+    render_frame_staged_with_art(assets, scene, edits, tints, &[])
+}
+
+pub fn render_frame_staged_with_art(
+    assets: &Assets,
+    scene: &SceneState,
+    edits: &TextEdits,
+    tints: &[SpriteTint],
+    art: &[SpriteArtOverride<'_>],
+) -> (Frame, Vec<bool>) {
     let tints = &tints[..tints.len().min(15)];
-    let pens = compose_pens(assets, scene, edits, tints);
+    let max_art = ((1 << TINT_SHIFT) - ALT_PALETTE_BASE) / 16;
+    let art = &art[..art.len().min(max_art)];
+    let pens = compose_pens(assets, scene, edits, tints, art);
     let stage = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
-    let frame = if tints.is_empty() {
+    let frame = if tints.is_empty() && art.is_empty() {
         frame_from_pens(scene, &pens)
     } else {
         let palette = Palette::from_ram(&scene.paletteram);
         let argb = pens.iter().map(|&pen| {
-            let pixel = palette.argb(usize::from(pen & PEN_MASK));
+            let index = usize::from(pen & PEN_MASK);
+            let pixel = if index < ALT_PALETTE_BASE {
+                palette.argb(index)
+            } else {
+                art[(index - ALT_PALETTE_BASE) / 16].art.colors[index % 16]
+            };
             match usize::from(pen >> TINT_SHIFT) {
                 0 => pixel,
                 tag => tints[tag - 1].tint.apply(pixel),
@@ -129,7 +168,10 @@ pub fn render_frame_staged_with_tints(
     (frame, stage)
 }
 
-fn compose_pens(assets: &Assets, scene: &SceneState, edits: &TextEdits, tints: &[SpriteTint]) -> Vec<u16> {
+fn compose_pens(
+    assets: &Assets, scene: &SceneState, edits: &TextEdits,
+    tints: &[SpriteTint], art: &[SpriteArtOverride<'_>],
+) -> Vec<u16> {
     let mut pens = vec![0u16; WIDTH * HEIGHT];
 
     if scene.active & 0x20 != 0 {
@@ -139,7 +181,7 @@ fn compose_pens(assets: &Assets, scene: &SceneState, edits: &TextEdits, tints: &
         draw_tile_layer(&mut pens, assets, scene, Layer::Fg);
     }
     if scene.active & 0x80 != 0 {
-        draw_sprites(&mut pens, assets, scene, tints);
+        draw_sprites(&mut pens, assets, scene, tints, art);
     }
     if scene.active & 0x08 != 0 {
         draw_text_layer(&mut pens, assets, scene, edits);
@@ -331,7 +373,10 @@ pub(crate) fn invert(code: u16) -> u16 {
     code ^ DELTA[((code >> 3) & 3) as usize]
 }
 
-fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState, tints: &[SpriteTint]) {
+fn draw_sprites(
+    pens: &mut [u16], assets: &Assets, scene: &SceneState,
+    tints: &[SpriteTint], art: &[SpriteArtOverride<'_>],
+) {
     // Object RAM as big-endian u16 words; entries of 0x20 words each,
     // iterated from the top of the list downward (draw order matters).
     let word = |i: usize| -> u16 {
@@ -345,9 +390,11 @@ fn draw_sprites(pens: &mut [u16], assets: &Assets, scene: &SceneState, tints: &[
         let sx = word(offs + 3) as i32;
         let tint_tag = tints.iter().position(|tint| tint.entries.contains(&(2 * offs)))
             .map_or(0, |index| (index + 1) << TINT_SHIFT);
-        let palette_base = (GFX3_PALETTE_BASE + usize::from(attr & 0x000f) * 16) | tint_tag;
+        let replacement = art.iter().enumerate().find(|(_, art)| art.entries.contains(&(2 * offs)));
+        let palette_base = replacement.map_or(GFX3_PALETTE_BASE + usize::from(attr & 0x000f) * 16,
+            |(index, _)| ALT_PALETTE_BASE + index * 16) | tint_tag;
         sprite_tiles(code, attr, (sx, sy), scene.flip_screen, |code, flip, pos| {
-            draw_sprite_tile(pens, assets, code, palette_base, flip, pos);
+            draw_sprite_tile(pens, assets, code, palette_base, flip, pos, replacement.map(|(_, art)| art.art));
         });
         if offs == 0 {
             break;
@@ -390,6 +437,12 @@ fn sprite_tiles(
 
 /// Copy the visible tiles in a native sprite grid for a presentation trail.
 pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, cells: usize) -> Vec<IndexedSprite> {
+    capture_sprite_pose_with_art(assets, scene, first, cells, None)
+}
+
+pub fn capture_sprite_pose_with_art(
+    assets: &Assets, scene: &SceneState, first: usize, cells: usize, art: Option<&SpriteArt>,
+) -> Vec<IndexedSprite> {
     let Some(entries) = scene.objectram.get(first..first + cells * 0x40) else { return Vec::new() };
     let palette = Palette::from_ram(&scene.paletteram);
     let tile_count = assets.sprite_tiles();
@@ -398,13 +451,15 @@ pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, ce
         let word = |i: usize| u16::from_be_bytes([entry[i], entry[i + 1]]);
         let (code, attr, sy, sx) = (word(0), word(2), word(4), word(6));
         let color = GFX3_PALETTE_BASE + usize::from(attr & 15) * 16;
-        let colors = std::array::from_fn(|pen| if pen == 0 { 0 } else { palette.argb(color + pen - 1) });
+        let colors = std::array::from_fn(|pen| {
+            if pen == 0 { 0 } else { art.map_or_else(|| palette.argb(color + pen - 1), |art| art.colors[pen - 1]) }
+        });
         sprite_tiles(code, attr, (i32::from(sx), i32::from(sy)), scene.flip_screen, |code, (fx, fy), (x, y)| {
             let slot = usize::from(code);
             if slot >= tile_count {
                 return;
             }
-            let tile = decode_sprite_tile(&assets.gfx3, slot);
+            let tile = sprite_tile(assets, slot, art);
             let pixels = std::array::from_fn(|i| {
                 let (x, y) = (i % 16, i / 16);
                 let pen = tile[if fy { 15 - y } else { y }][if fx { 15 - x } else { x }];
@@ -416,6 +471,11 @@ pub fn capture_sprite_pose(assets: &Assets, scene: &SceneState, first: usize, ce
     pose
 }
 
+fn sprite_tile(assets: &Assets, slot: usize, art: Option<&SpriteArt>) -> [[u8; 16]; 16] {
+    art.and_then(|art| art.tiles.get(&slot)).copied()
+        .unwrap_or_else(|| decode_sprite_tile(&assets.gfx3, slot))
+}
+
 fn draw_sprite_tile(
     pens: &mut [u16],
     assets: &Assets,
@@ -423,6 +483,7 @@ fn draw_sprite_tile(
     palette_base: usize,
     flip: (bool, bool),
     pos: (i32, i32),
+    art: Option<&SpriteArt>,
 ) {
     let (flipx, flipy) = flip;
     let (sx, sy) = pos;
@@ -431,7 +492,7 @@ fn draw_sprite_tile(
         // An unloaded bank tile has no sprite to draw at this index.
         return;
     }
-    let tile = decode_sprite_tile(&assets.gfx3, slot);
+    let tile = sprite_tile(assets, slot, art);
     for py in 0..16 {
         for px in 0..16 {
             let (cx, cy) = (

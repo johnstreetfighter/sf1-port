@@ -1925,6 +1925,11 @@ impl PowerOnMachine {
         &self.program.toggle_state
     }
 
+    /// The active Arcade Thailand transformation, if either fighter awakened.
+    pub fn satsui_awakening(&self) -> Option<crate::config::SatsuiAwakening> {
+        self.program.toggle_state.satsui_awakening
+    }
+
     /// Pass the locked Style cards to the native round setup.
     pub fn set_era_styles(&mut self, picks: [crate::era::StylePick; 2]) {
         self.program.toggle_state.era.selections = picks;
@@ -1950,6 +1955,12 @@ impl PowerOnMachine {
         if self.program.match_config.roster.mode == crate::roster::PlayMode::Training {
             self.program.toggle_state.era.fighters[0].set_super_meter(value);
         }
+    }
+
+    pub(crate) fn try_alpha2_feint(&mut self, directions: [bool; 4]) -> bool {
+        let direction = directions.into_iter().enumerate()
+            .fold(0, |bits, (index, held)| bits | (u8::from(held) << index));
+        self.program.bus_with_dsw1(&mut self.state, self.io.dsw1).try_alpha2_feint(direction)
     }
 
     /// Fight frames still frozen after a Super Combo starts.
@@ -2035,6 +2046,15 @@ impl PowerOnMachine {
         let previous_era = crate::era_fight::EraRules::from(self.program.match_config);
         let next_era = crate::era_fight::EraRules::from(config);
         self.program.match_config = config;
+        if config.roster.mode != crate::roster::PlayMode::Arcade
+            || !config.roster.full_cast
+            || !next_era.enabled
+            || config.evil_ryu_playtest.is_some()
+            || config.dramatic.is_some()
+            || config.world_tour.is_some()
+        {
+            self.program.toggle_state.satsui_awakening = None;
+        }
         if !config.toggles.positive_edge_attacks {
             self.program.toggle_state.neg_edge_latch.fill(false);
         }

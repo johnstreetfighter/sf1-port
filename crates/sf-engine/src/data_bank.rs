@@ -120,6 +120,12 @@ pub const ALPHA_SUPER_SECOND_SLOT: u8 = 0x2a;
 pub const ALPHA_SUPER_THIRD_SLOT: u8 = 0x2b;
 /// The native Alpha guard-cancel attack. Reaction ids start at `0x30`.
 pub const ALPHA_COUNTER_SLOT: u8 = 0x2e;
+pub(crate) const EVIL_RYU_ALPHA2_SENPUKYAKU: u8 = 0x22;
+pub(crate) const EVIL_RYU_ALPHA2_FAKE_HADOKEN: u8 = 0x23;
+const EVIL_RYU_ALPHA3_COUNTER_HEADER: u8 = 0x24;
+const EVIL_RYU_ALPHA3_SWEEP_COUNTER_HEADER: u8 = 0x21;
+const EVIL_RYU_ALPHA3_AIR_THROWER_HEADER: u8 = 0x25;
+const EVIL_RYU_ALPHA3_AIR_VICTIM_HEADER: u8 = 0x26;
 const MOVE_HEADER_SIZE: u32 = 0x30;
 /// Where, from a bank table, the long naming its jump-apex record sits
 /// (just after the table), for the anytime jump attacks.
@@ -211,13 +217,30 @@ pub const ROUTINE_ALPHA_REPEAT_K: u8 = 15;
 pub const ROUTINE_ALPHA_HOLD_P: u8 = 16;
 /// Sagat's Tiger Nexus follow-up, selected after hit or guard contact.
 pub const ROUTINE_SF6_TIGER_NEXUS: u8 = 17;
+/// Descend on the current pose before proceeding to the ground throw frames.
+pub const ROUTINE_AIR_THROW_LAND: u8 = 18;
+/// Select the axe kick's LK, MK, HK, EX or Ultra HK stream from five pointers at +4.
+pub const ROUTINE_RYUSOKYAKU_VARIANT: u8 = 19;
+/// Hold Kage's Senha Kassatsu chamber, then select its tap or charged stream.
+pub const ROUTINE_KAGE_SENHA: u8 = 20;
+/// Align Kage's dive from a bounded horizontal approach at the apex.
+pub const ROUTINE_KAGE_MISOGI_ALIGN: u8 = 21;
+
+/// Private SF6 Ashura travel frame. This leaves the ordinary hurtbox active.
+pub(crate) const SF6_ASHURA_GLIDE: u8 = 0x04;
 
 mod alpha_england;
 mod alpha_gen;
 mod alpha_thailand;
+mod evil_ryu_alpha2;
+mod evil_ryu_alpha3;
 mod sf3;
 mod sf4;
 mod sf5;
+pub(crate) use sf5::{
+    KAGE_ASHURA_AIR_BACK, KAGE_ASHURA_AIR_FORWARD, KAGE_ASHURA_BACK, KAGE_ASHURA_FORWARD,
+    KAGE_HADOKEN, KAGE_KUREKIJIN, KAGE_MISOGI, KAGE_RYUSOKYAKU, KAGE_SEKIEIKEN, KAGE_SHAKUNETSU,
+};
 mod sf6;
 mod what_if;
 mod what_if_others;
@@ -441,9 +464,42 @@ impl DataBank {
         (ERA_HEADERS..=FIGHTER_SPAN - MOVE_HEADER_SIZE).contains(&offset).then_some(header)
     }
 
+    pub(crate) fn kage_move_header(&self, slot: u8, airborne: bool) -> Option<u32> {
+        self.era_move_header(TournamentFighter::Ryu, EraFamily::Sf5, sf5::kage_header_slot(slot, airborne)?)
+    }
+
+    pub(crate) fn sf6_evil_ryu_move_header(&self, slot: u8) -> Option<u32> {
+        self.era_move_header(TournamentFighter::Ryu, EraFamily::Sf6, sf6::evil_ryu_header_slot(slot)?)
+    }
+
     pub(crate) fn alpha_move_header(&self, fighter: TournamentFighter, slot: u8) -> Option<u32> {
         self.era_move_header(fighter, EraFamily::SfZ, slot)
-            .or_else(|| self.move_header(fighter, slot))
+            .or_else(|| {
+                // Alpha Evil Ryu's air Tatsu uses the same ROM stream as SFII Ryu.
+                if fighter == TournamentFighter::Ryu && slot == crate::era_fight::sf3::AIR_TATSU {
+                    self.era_move_header(fighter, EraFamily::Sf2, slot)
+                } else {
+                    self.move_header(fighter, slot)
+                }
+            })
+    }
+
+    pub(crate) fn evil_ryu_alpha3_counter(&self, sweep: bool) -> Option<u32> {
+        let slot = if sweep { EVIL_RYU_ALPHA3_SWEEP_COUNTER_HEADER } else { EVIL_RYU_ALPHA3_COUNTER_HEADER };
+        self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot)
+    }
+
+    /// The private Alpha Tomoe Nage pair (Ryu, then Sagat).
+    pub(crate) fn evil_ryu_kick_throw(&self) -> Option<(u32, u32)> {
+        use crate::combo::throw::{THROWN_MOVE, THROW_MOVE};
+        let header = |slot| self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot);
+        Some((header(THROW_MOVE)?, header(THROWN_MOVE)?))
+    }
+
+    /// The private Alpha 3 air shoulder throw headers (Ryu, then Sagat).
+    pub(crate) fn evil_ryu_air_throw(&self) -> Option<(u32, u32)> {
+        let header = |slot| self.era_move_header(TournamentFighter::Ryu, EraFamily::SfZ, slot);
+        Some((header(EVIL_RYU_ALPHA3_AIR_THROWER_HEADER)?, header(EVIL_RYU_ALPHA3_AIR_VICTIM_HEADER)?))
     }
 
     /// `fighter`'s `"throw"` and `"thrown"` headers in the bank (SP19, `#263`).
@@ -502,6 +558,19 @@ impl DataBank {
                     None if rom.len() >= 0x40000 => Some(build_shoto_rom_throws(rom, &mut region, fighter)),
                     None => None,
                 };
+                if fighter == TournamentFighter::Ryu && rom.len() >= 0x40000 {
+                    evil_ryu_alpha2::build(rom, &mut region);
+                    let sagat = catalogues.iter().find(|catalogue| catalogue.fighter == "sagat");
+                    evil_ryu_alpha3::write_air_shoulder_throw(rom, &mut region, sagat);
+                    for (source, slot) in [(0x19, EVIL_RYU_ALPHA3_COUNTER_HEADER), (0x18, EVIL_RYU_ALPHA3_SWEEP_COUNTER_HEADER)] {
+                        let source = fighter.move_table() + source * MOVE_HEADER_SIZE;
+                        let mut counter: [u8; MOVE_HEADER_SIZE as usize] =
+                            std::array::from_fn(|offset| rom_b(rom, source + offset as u32));
+                        counter[0xa] = ALPHA_COUNTER_SLOT;
+                        counter[0xf] |= 0x08;
+                        put_era_header(&mut region, EraFamily::SfZ, slot, &counter);
+                    }
+                }
                 if rom.len() >= 0x40000 || entry.is_some() {
                     match fits(region) {
                         Ok(region) => {
@@ -1089,8 +1158,12 @@ fn put_header(region: &mut Region, base: u32, id: u8, h: &[u8]) {
 }
 
 fn put_era_header(region: &mut Region, family: EraFamily, slot: u8, header: &[u8; 0x30]) {
-    let offset = era_header_offset(family, slot).expect("extended era move slot");
     let address = region.put(header);
+    bind_era_header(region, family, slot, address);
+}
+
+fn bind_era_header(region: &mut Region, family: EraFamily, slot: u8, address: u32) {
+    let offset = era_header_offset(family, slot).expect("extended era move slot");
     region.patch(region.base + offset, &address.to_be_bytes());
 }
 

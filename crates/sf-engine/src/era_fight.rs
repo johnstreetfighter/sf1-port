@@ -3,7 +3,7 @@
 use sf_video::callouts::{CalloutKind, Side};
 use sf_video::era_hud::{EraGauge, Fill, GaugeRow, GaugeState};
 
-use crate::config::MatchConfig;
+use crate::config::{EvilRyuPlaytest, MatchConfig};
 use crate::data_bank::{ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT};
 use crate::era::{EraFamily, GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
 use crate::fight_reader::player_struct;
@@ -21,6 +21,7 @@ const GUARD_POWER_STANDARD: u8 = 60;
 const GUARD_POWER_X_ISM: u8 = 72;
 const GUARD_CRUSH_FRAMES: u8 = 32;
 const GUARD_CRUSH_CAPACITY_LOSS: u8 = 12;
+const ALPHA_COUNTER_GUARD_COST: u8 = GUARD_CRUSH_CAPACITY_LOSS;
 const GUARD_RECOVERY_DELAY: u8 = 60;
 const GUARD_RECOVERY_INTERVAL: u8 = 8;
 
@@ -63,11 +64,45 @@ const KICK_MASK: u8 = 0b111000;
 const ALPHA_REVISIONS: &[Revision] = &[Revision::Sfz1, Revision::Sfz2, Revision::Sfz2A, Revision::Sfz3];
 const ALPHA_3: &[Revision] = &[Revision::Sfz3];
 
+const SHINKUU_HADOKEN: AlphaMove =
+    AlphaMove::super_combo(SF2_SUPER, "SHINKUU HADOKEN", "SHINKUU HADOKEN!", DOUBLE_QUARTER_CIRCLE, ButtonClass::Punch);
+const SHINKUU_TATSUMAKI: AlphaMove =
+    AlphaMove::super_combo(ALPHA_SUPER_THIRD_SLOT, "SHINKUU TATSUMAKI", "SHINKUU TATSUMAKI!", DOUBLE_QUARTER_CIRCLE_BACK, ButtonClass::Kick);
+const COLLARBONE_BREAKER: AlphaMove =
+    AlphaMove::overhead_normal(0x1c, "COLLARBONE BREAKER", ButtonClass::MediumPunch);
+
 const RYU_ALPHA_SUPERS: &[AlphaMove] = &[
-    AlphaMove::super_combo(SF2_SUPER, "SHINKUU HADOKEN", "SHINKUU HADOKEN!", DOUBLE_QUARTER_CIRCLE, ButtonClass::Punch),
+    SHINKUU_HADOKEN,
     AlphaMove::super_combo(ALPHA_SUPER_SECOND_SLOT, "METSU SHORYUKEN", "METSU SHORYUKEN!", SHORT_DOUBLE_QUARTER_CIRCLE, ButtonClass::Kick).revision(ALPHA_3).level_three(),
-    AlphaMove::super_combo(ALPHA_SUPER_THIRD_SLOT, "SHINKUU TATSUMAKI", "SHINKUU TATSUMAKI!", DOUBLE_QUARTER_CIRCLE_BACK, ButtonClass::Kick),
-    AlphaMove::overhead_normal(0x1c, "COLLARBONE BREAKER", ButtonClass::MediumPunch),
+    SHINKUU_TATSUMAKI,
+    COLLARBONE_BREAKER,
+];
+
+const EVIL_RYU_ALPHA_MOVES: &[AlphaMove] = &[
+    SHINKUU_HADOKEN.no_x(),
+    AlphaMove::super_combo(
+        ALPHA_SUPER_SECOND_SLOT, "MESSATSU GOSHORYU", "MESSATSU GOSHORYU!",
+        SHORT_DOUBLE_QUARTER_CIRCLE, ButtonClass::Kick,
+    ),
+    SHINKUU_TATSUMAKI,
+    COLLARBONE_BREAKER,
+    {
+        let mut entry = AlphaMove::overhead_normal(
+            crate::data_bank::EVIL_RYU_ALPHA2_SENPUKYAKU, "SENPUKYAKU", ButtonClass::MediumKick,
+        ).no_x();
+        entry.overhead = false;
+        entry
+    },
+    {
+        let mut move_entry = AlphaMove::special(
+            sf3::AIR_TATSU, "AIR TATSUMAKI",
+            &[Dir::Jump, Dir::Down, Dir::DownBack, Dir::Back], ButtonClass::Kick,
+        );
+        move_entry.airborne = true;
+        move_entry
+    },
+    AlphaMove::special(SF2_EXTRA_SPECIAL, "SHAKUNETSU HADOKEN", HALF_CIRCLE, ButtonClass::Punch)
+        .revision(ALPHA_3),
 ];
 
 const KEN_ALPHA_SUPERS: &[AlphaMove] = &[
@@ -277,7 +312,7 @@ impl GuardPower {
         if self.remaining != 0 {
             return false;
         }
-        let minimum = Self::initial_maximum(loadout) / 2;
+        let minimum = (Self::initial_maximum(loadout) / 2).min(self.maximum);
         self.maximum = self.maximum.saturating_sub(GUARD_CRUSH_CAPACITY_LOSS).max(minimum);
         self.crush_left = GUARD_CRUSH_FRAMES;
         true
@@ -317,6 +352,45 @@ struct DeathMark {
 }
 
 crate::canonical::canonical_struct!(DeathMark, "DeathMark.v1", { source, frames });
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum EvilRyuKit {
+    #[default]
+    Standard,
+    EvilAlpha2 { custom_left: u16 },
+    EvilAlpha3A,
+    EvilAlpha3V,
+    EvilAlpha3X,
+    EvilSf4 { metsu_charge: Option<u8> },
+    Kage { v: sf5::KageVState },
+    EvilSf6,
+}
+
+impl crate::canonical::Canonical for EvilRyuKit {
+    fn encode(&self, out: &mut crate::canonical::CanonicalHasher) {
+        // Keep the existing checksum layout for the standard kit.
+        match self {
+            Self::Standard => {}
+            Self::EvilAlpha2 { custom_left } => {
+                out.tag("EvilRyuAlpha2Kit");
+                custom_left.encode(out);
+            }
+            Self::EvilAlpha3A => out.tag("EvilRyuAlpha3AKit"),
+            Self::EvilAlpha3V => out.tag("EvilRyuAlpha3VKit"),
+            Self::EvilAlpha3X => out.tag("EvilRyuAlpha3XKit"),
+            Self::EvilSf4 { metsu_charge } => {
+                // Keep the AE2012 tag. The style separately encodes the SFIV revision.
+                out.tag("EvilRyuAe2012Kit");
+                metsu_charge.encode(out);
+            }
+            Self::Kage { v } => {
+                out.tag("KageSf5CeKit");
+                v.encode(out);
+            }
+            Self::EvilSf6 => out.tag("EvilRyuSf6Kit"),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EraFighterState {
@@ -359,14 +433,15 @@ pub struct EraFighterState {
     pub(crate) juggle_count: u8,
     attack_reached_active: bool,
     tour: world_tour::TourFighter,
+    evil_ryu_kit: EvilRyuKit,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v9", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v10", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
-    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active, tour,
+    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active, tour, evil_ryu_kit,
 });
 
 impl EraFighterState {
@@ -390,6 +465,10 @@ impl EraFighterState {
             self.super_meter / STOCK_AT,
             Fill::of(u16::from(self.super_meter % STOCK_AT), u16::from(STOCK_AT)),
         );
+        if let EvilRyuKit::EvilAlpha2 { custom_left: left @ 1.. } = self.evil_ryu_kit {
+            let timer = GaugeRow::bar(Fill::of(left, u16::from(self.super_capacity) * 2), Fill::FULL);
+            return Some(EraGauge::two(timer, main));
+        }
         if !self.unified_gauge {
             if self.is_sf6() {
                 return Some(EraGauge::two(self.sf6.row(), main));
@@ -427,8 +506,36 @@ impl EraFighterState {
             && self.fighter.is_some_and(|fighter| self.what_if || !crate::era::what_if_sfz(fighter))
     }
 
+    pub(crate) fn evil_ryu_alpha2(&self) -> bool {
+        matches!(self.evil_ryu_kit, EvilRyuKit::EvilAlpha2 { .. })
+    }
+
+    fn evil_ryu_alpha3(&self) -> bool {
+        matches!(self.evil_ryu_kit, EvilRyuKit::EvilAlpha3A | EvilRyuKit::EvilAlpha3V | EvilRyuKit::EvilAlpha3X)
+    }
+
+    pub(crate) fn is_evil_ryu_sf4(&self) -> bool {
+        matches!(self.evil_ryu_kit, EvilRyuKit::EvilSf4 { .. })
+    }
+
+    pub(crate) fn is_kage(&self) -> bool {
+        matches!(self.evil_ryu_kit, EvilRyuKit::Kage { .. })
+    }
+
+    pub(crate) fn is_evil_ryu_sf6(&self) -> bool {
+        self.evil_ryu_kit == EvilRyuKit::EvilSf6
+    }
+
     pub fn custom_combo_active(&self) -> bool {
         self.custom_frames != 0
+            || matches!(self.evil_ryu_kit, EvilRyuKit::EvilAlpha2 { custom_left: 1.. })
+    }
+
+    fn clear_custom_combo(&mut self) {
+        self.custom_frames = 0;
+        if let EvilRyuKit::EvilAlpha2 { custom_left } = &mut self.evil_ryu_kit {
+            *custom_left = 0;
+        }
     }
 
     pub(crate) fn trail_color(&self) -> Option<u32> {
@@ -440,6 +547,8 @@ impl EraFighterState {
             Some(0xffded8c5)
         } else if self.sf5_afterimages() {
             Some(0xfff4f4f4)
+        } else if self.sf6_evil_ryu_ashura(self.active_alpha_slot) {
+            Some(0xffb48edf)
         } else if self.sf6_trail() {
             Some(0xff59d97d)
         } else {
@@ -448,8 +557,9 @@ impl EraFighterState {
     }
 
     pub(crate) fn custom_combo_available(&self) -> bool {
-        self.is_alpha() && self.style.revision == Revision::Sfz3
-            && self.style.loadout == Loadout::VIsm && self.super_capacity != 0
+        self.is_alpha() && self.super_capacity != 0
+            && (self.evil_ryu_alpha2()
+                || (self.style.revision == Revision::Sfz3 && self.style.loadout == Loadout::VIsm))
     }
 
     pub(crate) fn family_move_progress(&self, slot: u8) -> (u8, u8) {
@@ -518,6 +628,7 @@ impl EraFighterState {
             return &[];
         }
         match self.fighter {
+            Some(TournamentFighter::Ryu) if self.evil_ryu_kit != EvilRyuKit::Standard => EVIL_RYU_ALPHA_MOVES,
             Some(TournamentFighter::Ryu) => RYU_ALPHA_SUPERS,
             Some(TournamentFighter::Ken) => KEN_ALPHA_SUPERS,
             Some(TournamentFighter::Sagat) => alpha_moves::SAGAT,
@@ -534,7 +645,8 @@ impl EraFighterState {
     }
 
     pub(crate) fn replaces_special(&self, slot: u8) -> bool {
-        self.alpha_roster().iter().any(|entry| entry.kind == MoveKind::Special && entry.slot == slot)
+        (self.is_kage() && matches!(slot, 0x19..=0x1b))
+            || self.alpha_roster().iter().any(|entry| entry.kind == MoveKind::Special && entry.slot == slot)
             || (self.is_alpha() && match self.fighter {
                 Some(TournamentFighter::Eagle) => slot == 0x1b,
                 Some(TournamentFighter::Gen) => slot == 0x19,
@@ -654,7 +766,7 @@ impl EraFighterState {
         }
         if self.super_capacity == 0 {
             self.alpha_counter_motion = MotionTracker::default();
-            self.custom_frames = 0;
+            self.clear_custom_combo();
         }
     }
 
@@ -663,10 +775,22 @@ impl EraFighterState {
     }
 
     fn alpha_counter_ready(&self) -> bool {
-        self.alpha_counter_enabled()
-            && self.guard_power.crush_left == 0
-            && self.super_meter >= self.meter_cost(STOCK_AT)
-            && self.alpha_counter_motion.ready(ALPHA_COUNTER_MOTION)
+        if !self.alpha_counter_enabled()
+            || (self.evil_ryu_alpha2() && self.custom_combo_active())
+            || self.guard_power.crush_left != 0
+            || self.super_meter < self.meter_cost(STOCK_AT)
+        {
+            return false;
+        }
+        if self.evil_ryu_alpha3() {
+            let held = self.alpha_buttons;
+            let fresh = held & !self.alpha_previous_buttons;
+            self.guard_power.maximum >= 2 * ALPHA_COUNTER_GUARD_COST
+                && self.guard_power.remaining > ALPHA_COUNTER_GUARD_COST
+                && [0x09, 0x12, 0x24].into_iter().any(|pair| held & pair == pair && fresh & pair != 0)
+        } else {
+            self.alpha_counter_motion.ready(ALPHA_COUNTER_MOTION)
+        }
     }
 
     pub(crate) fn set_super_meter(&mut self, value: Option<u8>) {
@@ -675,11 +799,35 @@ impl EraFighterState {
             .min(self.super_capacity);
     }
 
+    fn apply_satsui_surge(&mut self, previous: Self) {
+        if self.super_capacity == 0 {
+            return;
+        }
+        if self.unified_gauge {
+            self.set_super_meter(Some(self.super_meter.saturating_add(STOCK_AT)));
+        } else if self.is_sf4() {
+            let half_ultra = sf4::REVENGE_MAX / 2;
+            self.sf4.revenge = (previous.sf4.revenge + half_ultra).min(sf4::REVENGE_MAX);
+        } else if self.style.family == EraFamily::Sf5 {
+            self.sf5.apply_satsui_surge(previous.sf5);
+        } else if !self.is_sf6() {
+            let stock = self.sf3_stock_cost().unwrap_or(STOCK_AT);
+            self.set_super_meter(Some(self.super_meter.saturating_add(stock)));
+        }
+        // SF6's native round setup already fills all six Drive stocks.
+    }
+
     pub(crate) fn super_ready(&self) -> bool {
-        self.st_new()
-            && self.super_capacity > 0
-            && self.super_meter >= self.meter_cost(self.super_capacity)
-            && self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
+        self.super_stock_full() && self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
+    }
+
+    pub(crate) fn super_stock_full(&self) -> bool {
+        self.st_new() && self.super_capacity > 0 && self.super_meter >= self.meter_cost(self.super_capacity)
+    }
+
+    fn spend_super_stock(&mut self) {
+        self.super_meter -= self.meter_cost(self.super_capacity);
+        self.super_motion = MotionTracker::default();
     }
 
     pub(crate) fn command_progress(&self, super_move: bool) -> (u8, u8) {
@@ -860,7 +1008,7 @@ impl Bus<'_> {
     }
 
     pub(crate) fn era_begin_round(&mut self) {
-        use TournamentFighter::{Adon, Birdie, Geki, Gen, Mike, Sagat};
+        use TournamentFighter::{Adon, Birdie, Geki, Gen, Mike, Ryu, Sagat};
 
         if !self.era_rules.enabled || self.rb(0xff8003) == 0 {
             return;
@@ -869,6 +1017,7 @@ impl Bus<'_> {
         let dramatic = self.dramatic_rules();
         let tour = self.world_tour_rules();
         let state = self.toggle_state.era;
+        let awakening = self.toggle_state.satsui_awakening;
         let step = arcade.then(|| u16::from(self.rb(0xffc003)) * 2 + u16::from(self.rb(0xffc004)));
         let new_match = step != state.arcade_step;
         self.toggle_state.era.arcade_step = step;
@@ -902,12 +1051,24 @@ impl Bus<'_> {
             } else {
                 state.selections[index]
             };
+            let awakened = awakening.filter(|form| form.side.fighter_struct() == ps);
+            let profile = awakened.map(|form| form.profile)
+                .or_else(|| self.evil_ryu_playtest.filter(|_| ps == crate::fighter::P1_STRUCT))
+                .filter(|_| dramatic.is_none() && fighter == Some(Ryu));
+            let kage = style.revision == Revision::Sf5Ce && matches!(
+                (profile, style.loadout),
+                (Some(EvilRyuPlaytest::Kage), Loadout::Skill1Trigger1)
+                    | (Some(EvilRyuPlaytest::KageII), Loadout::Skill2Trigger2)
+            );
             let hp = if dramatic.is_some() {
                 self.toggle_state.dramatic.health[index]
             } else if index == 0 && tour.is_some_and(|rules| matches!(rules.mission, crate::world_tour::native::MissionKind::SurvivalGauntlet { .. })) {
                 FULL_SUB_HP
             } else {
                 match (style.family, fighter) {
+                    // Champion Edition Kage has 925 of the standard 1000 vitality.
+                    _ if kage => FULL_SUB_HP * 37 / 40,
+                    _ if profile.is_some() => 864,
                     (EraFamily::Sf3 | EraFamily::Sf4 | EraFamily::Sf5 | EraFamily::Sf6, fighter) => match fighter {
                         Some(Gen) => 864,
                         Some(Adon | Geki) => 912,
@@ -926,6 +1087,19 @@ impl Bus<'_> {
                 }),
                 sub_hp: hp,
                 max_sub_hp: hp,
+                evil_ryu_kit: match (profile, style.revision, style.loadout) {
+                    _ if kage => EvilRyuKit::Kage { v: sf5::KageVState::default() },
+                    (Some(EvilRyuPlaytest::Sf6), Revision::Sf6, Loadout::Standard) => EvilRyuKit::EvilSf6,
+                    (Some(EvilRyuPlaytest::Alpha2), Revision::Sfz2, _) => EvilRyuKit::EvilAlpha2 { custom_left: 0 },
+                    (Some(EvilRyuPlaytest::Alpha3A), Revision::Sfz3, Loadout::AIsm) => EvilRyuKit::EvilAlpha3A,
+                    (Some(EvilRyuPlaytest::Alpha3V), Revision::Sfz3, Loadout::VIsm) => EvilRyuKit::EvilAlpha3V,
+                    (Some(EvilRyuPlaytest::Alpha3X), Revision::Sfz3, Loadout::XIsm) => EvilRyuKit::EvilAlpha3X,
+                    (Some(EvilRyuPlaytest::Ae2012 | EvilRyuPlaytest::Ae2012Ultra2), Revision::Ae2012, Loadout::Ultra1 | Loadout::Ultra2)
+                    | (Some(EvilRyuPlaytest::Usf4), Revision::Usf4, Loadout::Ultra1 | Loadout::Ultra2 | Loadout::UltraDouble) => {
+                        EvilRyuKit::EvilSf4 { metsu_charge: None }
+                    }
+                    _ => EvilRyuKit::Standard,
+                },
                 ..EraFighterState::default()
             };
             next.set_gauge_mode(self.era_gauge_mode(index));
@@ -944,6 +1118,13 @@ impl Bus<'_> {
                 0
             };
             next.world_tour_start_meter();
+            if let Some(form) = awakened.filter(|form| form.surge_pending && profile.is_some()) {
+                next.apply_satsui_surge(previous);
+                self.toggle_state.satsui_awakening = Some(crate::config::SatsuiAwakening {
+                    surge_pending: false,
+                    ..form
+                });
+            }
             self.toggle_state.era.fighters[index] = next;
         }
         self.era_share_gauge(0);
@@ -1058,6 +1239,7 @@ impl Bus<'_> {
         let alpha_super_level = era.alpha_super_level(move_id);
         let sf3 = era.sf3_projectile(move_id);
         let family_hits = sf3.as_ref().map(|projectile| projectile.hits)
+            .or_else(|| era.sf6_evil_ryu_projectile_hits(move_id))
             .or_else(|| era.what_if_others_projectile_hits(move_id))
             .or_else(|| era.what_if_projectile_hits(move_id))
             .unwrap_or_else(|| {
@@ -1163,11 +1345,53 @@ impl Bus<'_> {
             return;
         };
         let state = &mut self.toggle_state.era.fighters[index];
-        state.super_meter -= state.meter_cost(state.super_capacity);
-        state.super_motion = MotionTracker::default();
+        state.spend_super_stock();
         self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
         self.toggle_state.era.super_events[index] = state.fighter;
         self.era_share_gauge(index);
+    }
+
+    pub(crate) fn try_spend_demon_super(&mut self, ps: u32) -> bool {
+        let Some(index) = self.era_side(ps) else { return false };
+        let profile = self.evil_ryu_profile(ps);
+        let state = &mut self.toggle_state.era.fighters[index];
+        match (profile, state.evil_ryu_kit) {
+            (Some(EvilRyuPlaytest::UltraSf2), _) if state.super_stock_full() => state.spend_super_stock(),
+            (Some(EvilRyuPlaytest::KageII), EvilRyuKit::Kage { .. }) => {
+                if !state.sf5_spend_kage_demon() {
+                    return false;
+                }
+                self.era_share_gauge(index);
+                self.era_emit_callout(ps, CalloutKind::Super { name: "SHUN GOKU SATSU" });
+            }
+            (Some(EvilRyuPlaytest::Sf6), EvilRyuKit::EvilSf6) => {
+                if !state.sf6_spend_evil_ryu_demon(self.era_rules.disable_comeback_scaling) {
+                    return false;
+                }
+                self.era_share_gauge(index);
+                self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
+                self.era_emit_callout(ps, CalloutKind::Super { name: "SHUN GOKU SATSU" });
+            }
+            (Some(playtest), EvilRyuKit::EvilSf4 { .. }) if playtest.is_sf4() => {
+                let cost = state.sf4_super_cost();
+                if state.super_meter < cost {
+                    return false;
+                }
+                state.super_meter -= cost;
+                state.sf4.reset_command_motions();
+            }
+            (Some(EvilRyuPlaytest::Alpha2), EvilRyuKit::EvilAlpha2 { custom_left: 0 })
+            | (Some(EvilRyuPlaytest::Alpha3A), EvilRyuKit::EvilAlpha3A)
+            | (Some(EvilRyuPlaytest::Alpha3X), EvilRyuKit::EvilAlpha3X) => {
+                let Some(cost) = state.alpha_super_cost(3).filter(|&cost| state.super_meter >= cost) else {
+                    return false;
+                };
+                state.super_meter -= cost;
+                state.alpha_motions = [MotionTracker::default(); ALPHA_MOTION_SLOTS];
+            }
+            _ => return false,
+        }
+        true
     }
 
     pub(crate) fn era_read_buttons(&mut self, ps: u32, buttons: u8) {
@@ -1175,7 +1399,10 @@ impl Bus<'_> {
             let state = &self.toggle_state.era.fighters[i];
             state.is_alpha() || state.uses_family_bank()
         }) {
-            self.toggle_state.era.fighters[side].alpha_buttons = buttons;
+            let state = &mut self.toggle_state.era.fighters[side];
+            state.alpha_buttons = buttons;
+            state.sf4_keep_metsu_hold(buttons);
+            state.sf5_keep_senha_hold(buttons);
         }
     }
 
@@ -1190,6 +1417,7 @@ impl Bus<'_> {
         &self, ps: u32, strength: [u8; 2], airborne: bool, normal: bool,
     ) -> Option<(AlphaMove, u8, u8)> {
         let state = self.alpha_state(ps)?;
+        let alpha2_custom = state.evil_ryu_alpha2() && state.custom_combo_active();
         state.alpha_roster().iter().enumerate().find_map(|(index, entry)| {
             let tracker = state.alpha_motions[index];
             let direction_ready = if entry.kind == MoveKind::Normal {
@@ -1197,7 +1425,8 @@ impl Bus<'_> {
             } else {
                 tracker.ready(entry.motion())
             };
-            if !entry.available(state, false) || entry.airborne != airborne
+            if (alpha2_custom && entry.kind == MoveKind::Super)
+                || !entry.available(state, false) || entry.airborne != airborne
                 || (self.world_tour_trial(crate::world_tour::native::RuleModifier::PureFootsies) && entry.kind != MoveKind::Normal)
                 || (normal && entry.input.button != ButtonClass::MashPunch)
                 || !state.alpha_button_fires(entry.input.button, strength) || !direction_ready
@@ -1211,6 +1440,16 @@ impl Bus<'_> {
             }.max(1);
             Some((*entry, entry.level(state, requested)?, requested))
         })
+    }
+
+    pub(crate) fn era_begin_alpha2_feint(&mut self, ps: u32) {
+        let feint = AlphaMove::special(
+            crate::data_bank::EVIL_RYU_ALPHA2_FAKE_HADOKEN,
+            "HADO NO KAMAE",
+            &[Dir::Down, Dir::DownForward, Dir::Forward],
+            ButtonClass::DirectionOnly,
+        );
+        self.era_begin_alpha_move(ps, feint, 0);
     }
 
     pub(crate) fn era_begin_alpha_move(&mut self, ps: u32, entry: AlphaMove, level: u8) {
@@ -1252,17 +1491,22 @@ impl Bus<'_> {
         let Some(side) = self.era_side(ps) else { return false };
         let unified = self.era_gauge_mode(side) == GaugeMode::Unified;
         let state = &mut self.toggle_state.era.fighters[side];
-        let minimum = state.meter_cost(if unified { 2 * STOCK_AT } else { STOCK_AT });
+        let minimum = state.meter_cost(if unified && !state.evil_ryu_alpha2() { 2 * STOCK_AT } else { STOCK_AT });
         if !state.custom_combo_available() || state.custom_combo_active() || state.super_meter < minimum {
             return false;
         }
-        let points = if unified {
-            state.super_meter -= minimum;
-            minimum
+        if let EvilRyuKit::EvilAlpha2 { custom_left } = &mut state.evil_ryu_kit {
+            // Convert the whole charge using the engine's two frames per point.
+            *custom_left = u16::from(std::mem::take(&mut state.super_meter)) * 2;
         } else {
-            state.super_meter
-        };
-        state.custom_frames = points * 2;
+            let points = if unified {
+                state.super_meter -= minimum;
+                minimum
+            } else {
+                state.super_meter
+            };
+            state.custom_frames = points * 2;
+        }
         state.alpha_motions = [MotionTracker::default(); ALPHA_MOTION_SLOTS];
         self.era_stage_banked_move(ps, crate::data_bank::ALPHA_COUNTER_SLOT, 0, None);
         self.toggle_state.era.freeze = 8;
@@ -1325,7 +1569,7 @@ impl Bus<'_> {
         let states = &mut self.toggle_state.era.fighters;
         states[target].dizzy_frames = 0;
         if states[target].custom_combo_active() {
-            states[target].custom_frames = 0;
+            states[target].clear_custom_combo();
             if mode != GaugeMode::Unified {
                 states[target].super_meter = 0;
             }
@@ -1346,7 +1590,7 @@ impl Bus<'_> {
     pub(crate) fn era_track_alpha_counter(&mut self, ps: u32, relative_direction: u8) {
         if let Some(index) = self.era_side(ps) {
             let state = &mut self.toggle_state.era.fighters[index];
-            if state.alpha_counter_enabled() {
+            if state.alpha_counter_enabled() && !state.evil_ryu_alpha3() {
                 state.alpha_counter_motion.step(relative_direction, ALPHA_COUNTER_MOTION);
             }
         }
@@ -1390,6 +1634,10 @@ impl Bus<'_> {
             return false;
         }
         state.super_meter -= state.meter_cost(STOCK_AT);
+        if state.evil_ryu_alpha3() {
+            state.guard_power.maximum -= ALPHA_COUNTER_GUARD_COST;
+            state.guard_power.remaining -= ALPHA_COUNTER_GUARD_COST;
+        }
         state.alpha_counter_motion = MotionTracker::default();
         self.toggle_state.era.alpha_counter_events[index] = true;
         self.era_share_gauge(index);
@@ -1504,9 +1752,13 @@ impl Bus<'_> {
                     state.sf4.fill();
                 }
                 let was_custom = state.custom_combo_active();
-                state.custom_frames = state.custom_frames.saturating_sub(1);
-                if was_custom && state.custom_frames % 2 == 0 && gauge_mode != GaugeMode::Unified {
-                    state.super_meter = state.super_meter.saturating_sub(1);
+                if let EvilRyuKit::EvilAlpha2 { custom_left } = &mut state.evil_ryu_kit {
+                    *custom_left = custom_left.saturating_sub(1);
+                } else {
+                    state.custom_frames = state.custom_frames.saturating_sub(1);
+                    if was_custom && state.custom_frames % 2 == 0 && gauge_mode != GaugeMode::Unified {
+                        state.super_meter = state.super_meter.saturating_sub(1);
+                    }
                 }
                 state.guard_power.tick(guarding);
                 state.dizzy_frames = state.dizzy_frames.saturating_sub(1);
