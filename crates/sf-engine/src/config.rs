@@ -302,6 +302,7 @@ impl crate::canonical::Canonical for CoreToggleState {
             air_adj_frames_2, air_adj_rem_2, combo, cancel, throw, dramatic, era,
             utility, scripted_cpu_pad, cpu_drive_reserve: _, schemes,
             ashura_motion, raging_demon, satsui_awakening, missing_ryu_theme: _,
+            selected_theme: _, queued_themes: _, latched_theme: _, next_theme_event: _,
         } = self;
         out.tag("CoreToggleState.v4");
         neg_edge_latch.encode(out);
@@ -1733,4 +1734,9 @@ pub struct CoreToggleState {
     /// (`RYU_THEME`, `0x41`) was not in the playable extended tunes
     /// (SP15, `#267`).
     pub missing_ryu_theme: Option<u16>,
+    /// Presentation metadata travels alongside the native sound queue.
+    pub(crate) selected_theme: Option<crate::front::fight::MatchTheme>,
+    pub(crate) queued_themes: [Option<crate::tasks::StageMusic>; 16],
+    pub(crate) latched_theme: Option<crate::tasks::StageMusic>,
+    pub(crate) next_theme_event: u32,
 }

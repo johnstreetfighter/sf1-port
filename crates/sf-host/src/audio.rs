@@ -31,6 +31,7 @@ use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use sf_audio::mix::GameSound;
+use sf_audio::score::NativeScore;
 use sf_audio::{LatchTimeline, FRAME_HZ, IRQ_LATENCY_MID};
 use sf_engine::front::{settings::LiveSound, FrameOutput};
 
@@ -230,21 +231,29 @@ impl Audio {
 
     /// Push the front end's frame, with the latch already processed by
     /// the Jukebox and the live sound settings for the frame's audition.
-    pub fn push_game_frame(&self, out: &FrameOutput, latch: u8, live: LiveSound) {
+    pub fn push_game_frame(
+        &self,
+        out: &FrameOutput,
+        latch: u8,
+        score: Option<Arc<NativeScore>>,
+        live: LiveSound,
+    ) {
         let mut s = self.shared.lock().unwrap();
         let Shared { sound, voice, gains, .. } = &mut *s;
         *gains = Gains::from_volumes(live.master, live.fm, live.samples, live.announcer);
+        let frame = out.sound_frame;
+        let latch_cycles = out.latch_cycles;
         if let Some(voice) = voice {
-            voice.push_frame(sound, AnnouncerFrame {
-                frame: out.sound_frame,
+            voice.push_frame_with_score(sound, AnnouncerFrame {
+                frame,
                 latch,
-                latch_cycles: out.latch_cycles,
+                latch_cycles,
                 overhaul_fight: out.overhaul_fight,
                 voice: live.announcer_voice,
                 lines: &out.announcements,
-            });
+            }, score);
         } else {
-            sound.push_frame(out.sound_frame, latch, out.latch_cycles, IRQ_LATENCY_MID);
+            sound.push_frame_with_score(frame, latch, latch_cycles, IRQ_LATENCY_MID, score);
         }
     }
 

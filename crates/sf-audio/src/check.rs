@@ -3,9 +3,12 @@
 //! sound-latch timeline (reference before a native start frame, a native
 //! capture's latch after), and compare or render the native sound.
 
+use std::collections::VecDeque;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::samples::PortWrite;
+use crate::score::NativeScore;
 use crate::{LatchTimeline, SamplesSound, FRAME_HZ, M68K_HZ, TICK_HZ};
 
 /// A reference audio-probe tap log.
@@ -762,6 +765,15 @@ pub fn reference_opm_writes(log: &RefLog) -> Vec<OpmWrite> {
     out
 }
 
+/// One live frame's latch write and any separate score it requests.
+pub(crate) struct LatchFrame {
+    pub frame: u32,
+    pub value: u8,
+    pub cycles: u32,
+    pub latency: u32,
+    pub score: Option<Arc<NativeScore>>,
+}
+
 /// A source of latch writes that arrive while the music CPU runs (the live
 /// player, `mix::GameSound`): the chip asks for the next frame's write
 /// whenever the CPU reaches a time the writes known so far do not cover.
@@ -769,9 +781,9 @@ pub(crate) trait LatchFeed {
     /// Take the samples generated so far: `left` / `right` from sample
     /// index `first` (the buffers are left empty).
     fn flush(&mut self, first: u64, left: &mut Vec<f32>, right: &mut Vec<f32>);
-    /// Block until the next frame's write is known: (frame, value, the
-    /// vblank handler's cycles, the latency); None when no more come.
-    fn next(&mut self) -> Option<(u32, u8, u32, u32)>;
+    /// Block until the next frame's write is known. Return None when no
+    /// more writes can arrive.
+    fn next(&mut self) -> Option<LatchFrame>;
 }
 
 /// The chip and the 68000-side inputs as the timed music CPU sees them.
@@ -791,6 +803,7 @@ pub(crate) struct TimedChip {
     pub(crate) latch: LatchTimeline,
     pub(crate) nmis: Vec<u64>,
     nmi_next: usize,
+    score_events: VecDeque<(f64, u8, Option<Arc<NativeScore>>)>,
     addr: u8,
     end_sample: u64,
     /// Every NMI before this clock is in `nmis` and every write before it
@@ -831,6 +844,7 @@ impl TimedChip {
             latch,
             nmis,
             nmi_next: 0,
+            score_events: VecDeque::new(),
             addr: 0,
             end_sample,
             horizon: u64::MAX,
@@ -855,6 +869,12 @@ impl TimedChip {
         }
     }
 
+    fn push_score_event(&mut self, at: f64, command: u8, score: Option<Arc<NativeScore>>) {
+        if score.is_some() || matches!(command, 0x00 | 0x35 | 0x3d | 0x3f) {
+            self.score_events.push_back((at, command, score));
+        }
+    }
+
     /// Make every latch write before clock `t` known, waiting for the feed
     /// (the CPU is at `t`, so every sample before it is final and is handed
     /// over first). Without a feed every write is known already.
@@ -864,13 +884,20 @@ impl TimedChip {
             self.flush();
             let next = self.feed.as_mut().and_then(|f| f.next());
             match next {
-                Some((frame, value, cycles, latency)) => {
+                Some(LatchFrame {
+                    frame,
+                    value,
+                    cycles,
+                    latency,
+                    score,
+                }) => {
                     let wt = crate::latch_write_time(frame, cycles, latency);
                     // What the CPU has passed is never needed again.
                     self.latch.forget_read();
                     self.nmis.drain(..self.nmi_next);
                     self.nmi_next = 0;
                     self.latch.push_frame(frame, value, cycles, latency);
+                    self.push_score_event(wt, value, score);
                     self.nmis
                         .push((wt * crate::opm::OPM_CLOCK as f64).floor() as u64);
                     // The next frame's write lies at or after its start.
@@ -967,6 +994,34 @@ impl crate::music::MusicBus for TimedChip {
         }
         v
     }
+    fn take_score_event(
+        &mut self,
+        t: u64,
+        separate_live: bool,
+    ) -> Option<(u8, Option<Arc<NativeScore>>)> {
+        let time = t as f64 / crate::opm::OPM_CLOCK as f64;
+        let due = self.score_events.partition_point(|(at, _, _)| *at <= time);
+        // A stop supersedes earlier queued requests. Keep it even after
+        // an idle write if a separate score was playing or waiting.
+        if let Some(stop) = (0..due).rev().find(|&i| self.score_events[i].2.is_none()) {
+            let (_, command, _) = self.score_events.drain(..=stop).last().expect("a due stop");
+            if separate_live || stop > 0 {
+                return Some((command, None));
+            }
+        }
+        if self
+            .score_events
+            .front()
+            .is_some_and(|(at, _, _)| *at <= time)
+        {
+            return self
+                .score_events
+                .pop_front()
+                .map(|(_, command, score)| (command, score));
+        }
+        None
+    }
+
     fn take_nmi(&mut self, t: u64) -> Option<u64> {
         self.ensure_known(t);
         let n = *self.nmis.get(self.nmi_next)?;
@@ -1060,9 +1115,33 @@ pub fn run_music_from_power_on_with_fault(
     count: u64,
     fault: crate::music::MusicFault,
 ) -> MusicRun {
+    run_power_on(rom, TimedChip::new(latch, count, true), count, fault)
+}
+
+/// Capture register writes and PCM from the native driver given the timed
+/// latch writes and any separate scores they request.
+pub fn run_scored_music_from_power_on(
+    rom: Vec<u8>,
+    count: u64,
+    mut writes: Vec<(f64, u8, Option<Arc<NativeScore>>)>,
+) -> MusicRun {
+    writes.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let latch = LatchTimeline::new(writes.iter().map(|(at, byte, _)| (*at, *byte)).collect());
+    let mut chip = TimedChip::new(latch, count, true);
+    for (at, command, score) in writes {
+        chip.push_score_event(at, command, score);
+    }
+    run_power_on(rom, chip, count, crate::music::MusicFault::default())
+}
+
+fn run_power_on(
+    rom: Vec<u8>,
+    mut chip: TimedChip,
+    count: u64,
+    fault: crate::music::MusicFault,
+) -> MusicRun {
     let rate = crate::opm::OPM_RATE as f64;
     let clock = crate::opm::OPM_CLOCK as f64;
-    let mut chip = TimedChip::new(latch, count, true);
     let mut cpu = crate::music::MusicCpu::new(rom, vec![0; 0x800]);
     cpu.fault = fault;
     cpu.boot(&mut chip);

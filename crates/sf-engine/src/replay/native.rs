@@ -4,11 +4,12 @@ use super::{ReplayMode, TakeoverPlayer, DEFAULT_TAKEOVER_WINDOW_FRAMES};
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::era::StylePick;
 use crate::front::cabinet::Players;
-use crate::front::fight::{Fight, FightDips, FightFrame, FightKind, FightSetup, FightSnapshot};
+use crate::front::fight::{Fight, FightDips, FightFrame, FightKind, FightSetup, FightSnapshot, MatchTheme};
 use crate::front::PlayerInputs;
 use crate::netplay::decode_inputs;
 use crate::netplay::protocol::{read_replay_header, write_replay_header};
 use crate::roster::StagePick;
+use crate::theme::ThemeId;
 use crate::utility::{Drill, RosterFighter, UtilityState};
 use sf_video::romset::Assets;
 use std::collections::BTreeMap;
@@ -22,6 +23,7 @@ const RECENT_KEYFRAMES: u32 = 180 * KEYFRAME;
 const ARCHIVE_KEYFRAME: u32 = 30 * KEYFRAME;
 const MAX_TITLE: usize = 120;
 const MAGIC: &[u8] = b"SF1R\x01";
+const THEME_TRAILER: &[u8] = b"TH\x01";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MatchReplay {
@@ -39,6 +41,9 @@ pub struct MatchReplay {
     pub p2_fighter: RosterFighter,
     pub p1_style: StylePick,
     pub p2_style: StylePick,
+    /// Fixed selection for the match. Arcade derives the opponent from its
+    /// recorded ladder inputs, and files with the original layout lack this.
+    pub theme: Option<MatchTheme>,
     pub frames: Vec<(u16, u16)>,
     /// Paused-menu edits applied immediately before the indexed frame.
     pub commands: Vec<(u32, ReplayCommand)>,
@@ -171,6 +176,12 @@ impl MatchReplay {
             bytes.extend_from_slice(&index.to_le_bytes());
             bytes.extend_from_slice(&command.bytes());
         }
+        if let Some(theme) = self.theme {
+            let slug = theme.id.slug().as_bytes();
+            bytes.extend_from_slice(THEME_TRAILER);
+            bytes.extend_from_slice(&[theme.phase, slug.len() as u8]);
+            bytes.extend_from_slice(slug);
+        }
         bytes
     }
 
@@ -197,9 +208,22 @@ impl MatchReplay {
         {
             return Err("replay exceeds format limits".into());
         }
-        if tail.len() != title_len + header_len + count * 4 + commands_count * 6 {
-            return Err("replay length does not match its header".into());
-        }
+        let payload_len = title_len + header_len + count * 4 + commands_count * 6;
+        let (tail, trailer) = tail.split_at_checked(payload_len)
+            .ok_or("replay length does not match its header")?;
+        let theme = if trailer.is_empty() {
+            None
+        } else {
+            let Some([phase, length, slug @ ..]) = trailer.strip_prefix(THEME_TRAILER) else {
+                return Err("invalid replay theme trailer".into());
+            };
+            if usize::from(*length) != slug.len() || usize::from(*phase) >= ThemeId::ALL.len() {
+                return Err("invalid replay theme trailer".into());
+            }
+            let id = std::str::from_utf8(slug).ok().and_then(ThemeId::from_slug)
+                .ok_or("invalid replay theme identity")?;
+            Some(MatchTheme { id, phase: *phase })
+        };
         let flag = match header[21] {
             0xff => None,
             value @ 0..=3 => Some(value),
@@ -263,6 +287,7 @@ impl MatchReplay {
             p2_fighter,
             p1_style,
             p2_style,
+            theme,
             frames,
             commands,
         })
@@ -301,7 +326,8 @@ pub struct ReplayPlayback {
 impl ReplayPlayback {
     /// The supplied native fight uses the replay's original data banks and
     /// starts immediately after the hidden-drive frames.
-    pub fn new(replay: MatchReplay, fight: Fight) -> Self {
+    pub fn new(replay: MatchReplay, mut fight: Fight) -> Self {
+        fight.select_theme(replay.theme);
         let keyframes = BTreeMap::from([(0, fight.save_netplay_snapshot(0))]);
         Self {
             replay,

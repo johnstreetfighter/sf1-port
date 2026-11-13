@@ -2,7 +2,7 @@
 
 use super::*;
 use std::collections::{BTreeMap, VecDeque};
-use crate::front::fight::FightFrame;
+use crate::front::fight::{FightFrame, MatchTheme};
 use crate::netplay::decode_inputs;
 use crate::netplay::protocol::{LobbyPhase, NetPacket};
 
@@ -14,9 +14,10 @@ pub(super) struct State {
     dirty: bool,
     last_sent: u32,
     confirmed: Vec<(u16, u16)>,
+    theme: Option<MatchTheme>,
     played: u32,
     ack_by_peer: BTreeMap<u8, u32>,
-    latches: VecDeque<(u8, u32)>,
+    latches: VecDeque<(u8, u32, Option<ThemeCue>)>,
 }
 
 impl State {
@@ -37,10 +38,15 @@ impl State {
         self.dirty = true;
     }
 
-    fn receive_chunk(&mut self, start: u32, count: u8, pairs: &[(u16, u16); 16]) {
+    fn receive_chunk(&mut self, start: u32, count: u8, pairs: &[(u16, u16); 16], theme: Option<MatchTheme>) {
         let start = start as usize;
         let count = usize::from(count);
         if !(1..=16).contains(&count) || start > self.confirmed.len() { return; }
+        if self.confirmed.is_empty() {
+            self.theme = theme;
+        } else if self.theme != theme {
+            return;
+        }
         let overlap = (self.confirmed.len() - start).min(count);
         if self.confirmed[start..start + overlap] != pairs[..overlap] { return; }
         self.confirmed.extend_from_slice(&pairs[overlap..count]);
@@ -55,6 +61,9 @@ impl State {
     pub(super) fn step(&mut self, fight: &mut Fight, assets: &Assets) -> FightFrame {
         let count = self.confirmed.len().saturating_sub(self.played as usize)
             .saturating_sub(15).min(8);
+        if self.played == 0 && count > 0 {
+            fight.select_theme(self.theme);
+        }
         let mut last = None;
         let mut announcements = Vec::new();
         let mut event = None;
@@ -63,7 +72,7 @@ impl State {
             let mut frame = fight.step(assets, decode_inputs(p1), decode_inputs(p2), false);
             self.played += 1;
             if frame.sound_latch != sound::IDLE && self.latches.len() < 256 {
-                self.latches.push_back((frame.sound_latch, frame.latch_cycles));
+                self.latches.push_back((frame.sound_latch, frame.latch_cycles, frame.theme));
             }
             announcements.append(&mut frame.announcements);
             if event.is_none() { event = frame.event.take(); }
@@ -73,10 +82,12 @@ impl State {
             frame: if fight.driving() {
                 Frame { argb: vec![0xff00_0000; sf_video::render::WIDTH * sf_video::render::HEIGHT] }
             } else { fight.render(assets) },
-            sound_latch: sound::IDLE, latch_cycles: 0,
+            sound_latch: sound::IDLE, latch_cycles: 0, theme: None, theme_event: None,
             announcements: Vec::new(), event: None,
         });
-        (frame.sound_latch, frame.latch_cycles) = self.latches.pop_front().unwrap_or((sound::IDLE, 0));
+        (frame.sound_latch, frame.latch_cycles, frame.theme) =
+            self.latches.pop_front().unwrap_or((sound::IDLE, 0, None));
+        frame.theme_event = None;
         frame.announcements = announcements;
         frame.event = event;
         frame
@@ -125,10 +136,10 @@ impl GameSession {
                 self.net_spectator_picks();
                 true
             }
-            NetPacket::SpectatorChunk { generation, start_frame, count, pairs }
+            NetPacket::SpectatorChunk { generation, start_frame, count, pairs, theme }
                 if *generation == connection.generation() =>
             {
-                self.net_spectators.receive_chunk(*start_frame, *count, pairs);
+                self.net_spectators.receive_chunk(*start_frame, *count, pairs, *theme);
                 true
             }
             _ => false,
@@ -173,7 +184,10 @@ impl GameSession {
             self.net_spectators.last_sent = self.frames;
         }
         self.net_spectators.ack_by_peer.retain(|peer, _| spectators.contains(peer));
-        if let Some(rollback) = self.play.as_ref().and_then(|play| play.netplay.as_ref()) {
+        if let Some((fight, rollback)) = self.play.as_ref()
+            .and_then(|play| Some((&play.fight, play.netplay.as_ref()?)))
+        {
+            let theme = fight.selected_theme();
             let history = rollback.confirmed_inputs();
             for peer in spectators {
                 let start = self.net_spectators.ack_by_peer.get(&peer).copied().unwrap_or(0) as usize;
@@ -182,7 +196,7 @@ impl GameSession {
                 let mut pairs = [(0, 0); 16];
                 pairs[..count].copy_from_slice(&history[start..start + count]);
                 connection.send_to(peer, NetPacket::SpectatorChunk { generation: connection.generation(),
-                    start_frame: start as u32, count: count as u8, pairs });
+                    start_frame: start as u32, count: count as u8, pairs, theme });
             }
         }
         self.net_commands.extend(connection.drain_commands());

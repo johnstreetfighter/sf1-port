@@ -415,6 +415,7 @@ impl GameSession {
         self.net_commands.push(NetTransportCommand::Close);
         self.net_connection = None;
         self.net_setup = None;
+        self.online_theme_rotation = theme_selection::ThemeRotation::default();
         self.net_spectators = spectator::State::default();
         self.play = None;
         self.stack
@@ -473,7 +474,13 @@ impl GameSession {
         phase: LobbyPhase,
         picker: u8,
     ) {
+        if let Some(config) = self.play.as_ref().map(|play| play.fight.setup().config) {
+            self.stop_extended_theme(&config);
+        }
         self.finish_replay_recording(false);
+        if self.net_setup.is_none() {
+            self.online_theme_rotation = theme_selection::ThemeRotation::default();
+        }
         self.net_epoch_cursor.observe(generation, frame_base);
         self.net_saved_config.get_or_insert(self.config);
         self.config = rules.config;

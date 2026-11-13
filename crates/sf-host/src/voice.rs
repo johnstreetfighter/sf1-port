@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use sf_audio::announcer::{find_pack, pack_folders, Announcer, VoiceStore, MANIFEST, VOICE_FOLDER};
 use sf_audio::mix::GameSound;
+use sf_audio::score::NativeScore;
 use sf_audio::IRQ_LATENCY_MID;
 use sf_engine::front::sound;
 use sf_video::announcer::{AnnouncerLine, AnnouncerVoice};
@@ -127,6 +128,15 @@ impl VoicePlayback {
     }
 
     pub fn push_frame(&mut self, board: &mut GameSound, request: AnnouncerFrame<'_>) {
+        self.push_frame_with_score(board, request, None);
+    }
+
+    pub(crate) fn push_frame_with_score(
+        &mut self,
+        board: &mut GameSound,
+        request: AnnouncerFrame<'_>,
+        score: Option<Arc<NativeScore>>,
+    ) {
         let AnnouncerFrame { frame, latch, latch_cycles, overhaul_fight, voice, lines } = request;
         let store = self.packs.store(voice);
         let replacement = if overhaul_fight && voice == AnnouncerVoice::Japanese {
@@ -162,7 +172,8 @@ impl VoicePlayback {
         self.selected = voice;
         self.overhaul_fight = overhaul_fight;
 
-        board.push_frame(frame, if replacement.is_some() { sound::IDLE } else { latch }, latch_cycles, IRQ_LATENCY_MID);
+        let latch = if replacement.is_some() { sound::IDLE } else { latch };
+        board.push_frame_with_score(frame, latch, latch_cycles, IRQ_LATENCY_MID, score);
         if let Some(line) = replacement {
             board.announce(frame, &[line]);
         }

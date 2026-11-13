@@ -4,6 +4,8 @@
 - **Date:** 2026-11-09
 - **Context:** [`CONTEXT.md`](../../CONTEXT.md), [`docs/design/2026-11-03-bonus-roster-by-lore-design.md`](../design/2026-11-03-bonus-roster-by-lore-design.md), [`docs/design/2026-11-08-bonus-challengers-wave-1-design.md`](../design/2026-11-08-bonus-challengers-wave-1-design.md), [`ADR-0004`](0004-reach-fights-by-driving-the-faithful-flow.md), [`ADR-0007`](0007-extended-sprite-bank.md), [`ADR-0008`](0008-bonus-roster-chosen-by-lore.md), [`ADR-0009`](0009-stages-and-themes-in-extended-banks.md), [`ADR-0014`](0014-bosses-become-1987-player-fighters.md), [`ADR-0015`](0015-era-styles-and-sub-hp-on-the-1987-engine.md), [`ADR-0016`](0016-dramatic-battle-and-composite-endings-on-the-1987-engine.md)
 
+[ADR-0023](0023-character-themes-and-separate-native-score-storage.md) assigns Evil Ryu a separate command and specifies when a match selects its theme.
+
 ## Context
 
 Per [`ADR-0008`](0008-bonus-roster-chosen-by-lore.md) and [`docs/design/2026-11-03-bonus-roster-by-lore-design.md`](../design/2026-11-03-bonus-roster-by-lore-design.md), the complete roster grows from the 12 original tournament fighters to **40 fighters** (`12 + 28` lore-admitted bonus challengers) across three ordered release waves:
@@ -30,7 +32,7 @@ We need a clean, zero-rework architecture on the translated 1987 engine for:
 
 3. **Mid-Match Thailand Final Round 3 Transformation (`Flow::AwaitWipe` at `0x3ec58`):**
    - In 1P Arcade mode at ladder step 9 (`opponent_index == 9`) when `enable_bonus_challengers && enable_secret_arcade_intrusions && released_waves >= 1`, reaching a tied `1–1` deciding Round 3 (`bus.rb(0xffc00a) == 2`) in **Ryu vs. Sagat** or **Sagat vs. Stand-In Ryu** triggers **Final-Round Satsui Awakening** inside `Flow::AwaitWipe` (`0x3ec58`):
-     - Rewrites the transforming side's move-table pointer at **`ps + 0x12`** (`P1_STRUCT + 0x12` or `CPU_STRUCT + 0x12`) to `0x1c_0000` (`EvilRyu`), sets their round max Sub-HP to `864` (`90%` of `960`, filling the 48-px HUD bar), grants a **Satsui Awakening meter surge** (`+1` Super/V-ISM stock, `+50%` Ultra/V-Gauge, or full `6`-stock Drive Gauge) on top of carried meter, switches `Pause -> MOVES` dynamically to Evil Ryu's move list, and calls `request_stage_palette` + `stage_reset` + `stage_music` for `"evil-ryu"` (*Ayutthaya Storm (Night)*, tune `0x41`).
+     - Rewrites the transforming side's move-table pointer at **`ps + 0x12`** (`P1_STRUCT + 0x12` or `CPU_STRUCT + 0x12`) to `0x1c_0000` (`EvilRyu`), sets their round max Sub-HP to `864` (`90%` of `960`, filling the 48-px HUD bar), grants a **Satsui Awakening meter surge** (`+1` Super/V-ISM stock, `+50%` Ultra/V-Gauge, or full `6`-stock Drive Gauge) on top of carried meter, switches `Pause -> MOVES` dynamically to Evil Ryu's move list, and calls `request_stage_palette` + `stage_reset` + `stage_music` for `"evil-ryu"` (*Ayutthaya Storm (Night)*, tune `0x51`).
      - If human Ryu wins Round 3 as awakened Evil Ryu, the ending sequence (`0x44b00..0x44b86`) routes to `ending:Evil Ryu` and his *Satsui no Hado* epilogue (whereas winning `2–0` without Round 3 preserves pure Ryu's classic `0x7700` ending).
 
 ## Consequences

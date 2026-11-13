@@ -1,29 +1,18 @@
-//! The extended tune table at launch (ADR-0009, tickets #195 and #199): the
-//! committed themes and the music pack's, converted against the player's
-//! sound ROM, as the table the music CPU runs with for overhaul music.
-//! - Faithful 1987 gets no table and its music pack is never opened: under
-//!   that preset [`load`] returns nothing without looking for the pack.
-//! - The pack is looked for beside the ROM set, then beside each other
-//!   folder the ROMs are looked for in, as the art pack is. Without one, or
-//!   with a score that does not convert, the log says so and the themes it
-//!   would have held are missing.
-//! - A stage whose theme is missing plays a 1987 stage theme, and [`apply`]
-//!   logs a line naming the stage and the theme. The fight always starts.
-//! - A theme that fails to convert is logged and left out; there is no
-//!   table at all if even the committed ones fail.
-//!
-//! The music CPU is one object for the whole session while the preset can
-//! change between fights, so the table is not part of its program from
-//! launch. The launcher hands it over when an overhaul fight or the title
-//! theme needs it (`FrameOutput::tune_table`, `Audio::set_tune_table`).
+//! Load the local native score library and the legacy tune table. Faithful
+//! 1987 never opens the music pack. Overhaul sessions bind semantic match
+//! cues to their scores before pushing the timed latch to the music CPU.
+//! The legacy table continues to serve the title tune and raw callers.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Arc;
 
 use sf_audio::music_pack::{find_pack, pack_folders, MusicPack};
+use sf_audio::score::{self, CompiledScore, NativeScore};
 use sf_audio::tunes::{self, ExtendedTunes};
 use sf_engine::config::RulesetPreset;
 use sf_engine::front::{sound, GameSession};
+use sf_engine::theme::{ThemeCue, ThemeId};
 use sf_video::background_bank::FALLBACK_THEME;
 pub use sf_video::background_bank::RYU_THEME;
 
@@ -34,8 +23,9 @@ use crate::log::Log;
 pub struct Themes {
     /// The table's bytes, as `Audio::set_tune_table` takes them.
     pub table: Arc<Vec<u8>>,
-    /// The commands the table answers.
+    /// Commands available from the legacy table or the separate library.
     pub commands: Vec<u8>,
+    scores: BTreeMap<ThemeId, Arc<NativeScore>>,
 }
 
 impl Themes {
@@ -74,26 +64,128 @@ pub fn load_from(
             return None;
         }
     };
+    let mut scores = BTreeMap::new();
+    for text in tunes::COMMITTED {
+        match score::compile(text, audiocpu) {
+            Ok(compiled) if compiled.command == ThemeId::Test.command() => {
+                scores.insert(ThemeId::Test, compiled.score);
+            }
+            Ok(_) => {}
+            Err(error) => log.line("themes", &format!("committed score: {error}")),
+        }
+    }
     match pack() {
         Ok(pack) => {
             log.line("themes", &format!("the music pack at {}: {} score(s)", pack.folder.display(), pack.len()));
-            for why in &pack.unreadable {
-                log.line("themes", &format!("music pack: {why}"));
-            }
-            for why in tunes::add_pack(&mut table, audiocpu, &pack) {
-                log.line("themes", &format!("music pack: {why}"));
-            }
+            add_pack(&mut table, &mut scores, audiocpu, pack, log);
         }
         Err(why) => log.line("themes", &format!("no music pack: {why}")),
     }
-    Some(themes(table, log))
+
+    let mut commands = table.commands();
+    commands.extend(scores.keys().map(|id| id.command()));
+    commands.sort_unstable();
+    commands.dedup();
+    let legacy: Vec<_> = table.commands().into_iter().map(|c| format!("{c:#04x}")).collect();
+    log.line("themes", &format!("the extended tune table: {}", legacy.join(", ")));
+    log.line("themes", &format!("the separate score library: {} score(s)", scores.len()));
+    Some(Themes { table: Arc::new(table.image().to_vec()), commands, scores })
 }
 
-fn themes(table: ExtendedTunes, log: &mut Log) -> Themes {
-    let commands = table.commands();
-    let names: Vec<String> = commands.iter().map(|c| format!("{c:#04x}")).collect();
-    log.line("themes", &format!("the extended tune table: {}", names.join(", ")));
-    Themes { table: Arc::new(table.image().to_vec()), commands }
+fn registered_identity(score: &CompiledScore) -> Result<Option<ThemeId>, String> {
+    let command = score.command;
+    let id = ThemeId::from_command(command);
+    if command == ThemeId::Test.command() {
+        return Err(format!("{command:#04x} is reserved for the original test score"));
+    }
+    if let Some(slug) = &score.theme {
+        let expected = ThemeId::from_slug(slug).filter(|id| id.is_extended())
+            .ok_or_else(|| format!("unknown extended theme identity {slug:?}"))?;
+        if id != Some(expected) {
+            return Err(format!("theme {slug:?} uses command {:#04x}, not {command:#04x}", expected.command()));
+        }
+    }
+    Ok(id)
+}
+
+fn add_pack(
+    table: &mut ExtendedTunes,
+    library: &mut BTreeMap<ThemeId, Arc<NativeScore>>,
+    rom: &[u8],
+    pack: MusicPack,
+    log: &mut Log,
+) {
+    for why in pack.unreadable {
+        log.line("themes", &format!("music pack: {why}"));
+    }
+    let mut compiled = BTreeMap::new();
+    let mut ambiguous = BTreeSet::new();
+    for source in pack.scores {
+        let result = score::compile(&source.text, rom).map_err(|e| e.to_string())
+            .and_then(|score| registered_identity(&score).map(|id| (id, score)));
+        match result {
+            Ok((id, score)) => {
+                if compiled.contains_key(&score.command) {
+                    ambiguous.insert(score.command);
+                } else {
+                    compiled.insert(score.command, (source, id, score));
+                    continue;
+                }
+                log.line("themes", &format!("music pack: {}: duplicate command {:#04x}", source.file, score.command));
+            }
+            Err(why) => log.line("themes", &format!("music pack: {}: {why}", source.file)),
+        }
+    }
+    // Reserve the old window for the title and existing raw-command callers
+    // before mirroring named character scores for legacy tools.
+    let (legacy, named): (Vec<_>, Vec<_>) = compiled.into_values().partition(|(_, id, _)| id.is_none());
+    for (source, id, score) in legacy.into_iter().chain(named) {
+        if ambiguous.contains(&score.command) {
+            log.line("themes", &format!("music pack: {}: ambiguous command {:#04x}", source.file, score.command));
+            continue;
+        }
+        if let Some(id) = id {
+            library.insert(id, score.score);
+        }
+        let result = score::convert(&source.text, rom).map_err(|e| e.to_string())
+            .and_then(|score| score.add_to(table).map_err(|e| e.to_string()));
+        if let Err(error) = result {
+            if id.is_none() {
+                log.line("themes", &format!("music pack: {}: {error}", source.file));
+            }
+        }
+    }
+}
+
+/// An output latch and the exact in-memory score bound to it, if any.
+pub struct ThemeFrame {
+    pub latch: u8,
+    pub score: Option<Arc<NativeScore>>,
+}
+
+/// Resolve timed semantic cues without changing match selection or rotation.
+#[derive(Default)]
+pub struct ThemeDelivery {
+    missing: BTreeSet<(ThemeId, u8)>,
+}
+
+impl ThemeDelivery {
+    pub fn resolve(&mut self, themes: Option<&Themes>, cue: ThemeCue, log: &mut Log) -> ThemeFrame {
+        let command = cue.id.command();
+        if !cue.id.is_extended() {
+            return ThemeFrame { latch: command, score: None };
+        }
+        if let Some(score) = themes.and_then(|themes| themes.scores.get(&cue.id)) {
+            return ThemeFrame { latch: command, score: Some(score.clone()) };
+        }
+        if self.missing.insert((cue.id, cue.fallback)) {
+            log.line("themes", &format!(
+                "no usable score for {} ({command:#04x}); playing the stage's 1987 theme {:#04x}",
+                cue.id.slug(), cue.fallback
+            ));
+        }
+        ThemeFrame { latch: cue.fallback, score: None }
+    }
 }
 
 /// Tell `session` which extended themes the music CPU can play (none, when
@@ -192,6 +284,37 @@ mod tests {
     fn the_packs_scores_join_the_committed_themes() {
         let themes = load_from(RulesetPreset::DefinitiveOverhaul, &rom(), || Ok(pack(0x41)), &mut log()).unwrap();
         assert_eq!(themes.commands, [0x40, 0x41]);
+    }
+
+    #[test]
+    fn registered_cues_bind_a_score_and_fall_back_to_the_actual_stage() {
+        use sf_engine::theme::{ThemeCue, ThemeId};
+
+        let themes = load_from(RulesetPreset::DefinitiveOverhaul, &rom(), || Ok(pack(0x41)), &mut log()).unwrap();
+        let mut delivery = ThemeDelivery::default();
+        let ryu = delivery.resolve(Some(&themes), ThemeCue { id: ThemeId::Ryu, fallback: 0x31 }, &mut log());
+        assert_eq!(ryu.latch, 0x41);
+        assert!(ryu.score.is_some());
+
+        let evil = delivery.resolve(Some(&themes), ThemeCue { id: ThemeId::EvilRyu, fallback: 0x31 }, &mut log());
+        assert_eq!(evil.latch, 0x31, "a missing Evil Ryu score cannot play Ryu");
+        assert!(evil.score.is_none());
+
+        let gen = delivery.resolve(None, ThemeCue { id: ThemeId::Gen, fallback: 0x31 }, &mut log());
+        assert_eq!(gen.latch, 0x2f, "the selected native identity owns its ROM theme");
+        assert!(gen.score.is_none());
+    }
+
+    #[test]
+    fn the_registry_rejects_mismatched_named_scores_and_duplicate_commands() {
+        use sf_audio::music_pack::PackScore;
+
+        let mut entries = pack(0x41);
+        entries.scores[0].text.insert_str(0, "theme evil-ryu\n");
+        entries.scores.push(PackScore { file: "b.score".into(), text: pack(0x52).scores[0].text.clone() });
+        entries.scores.push(PackScore { file: "c.score".into(), text: pack(0x52).scores[0].text.clone() });
+        let themes = load_from(RulesetPreset::DefinitiveOverhaul, &rom(), || Ok(entries), &mut log()).unwrap();
+        assert_eq!(themes.commands, [0x40]);
     }
 
     #[test]

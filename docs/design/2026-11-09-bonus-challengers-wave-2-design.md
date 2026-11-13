@@ -7,6 +7,8 @@
 
 ---
 
+The stage-command columns below identify the primary owner's command. The [character-theme design](2026-11-10-character-themes-design.md) and [ADR-0023](../adr/0023-character-themes-and-separate-native-score-storage.md) assign individual themes and determine which one plays when fighters share a stage.
+
 ## 1. Intent
 
 Once the planned Wave 1 work in [`docs/design/2026-11-08-bonus-challengers-wave-1-design.md`](2026-11-08-bonus-challengers-wave-1-design.md) (`Spec #292`, `BC1`–`BC10`) is implemented, it will widen `RosterFighter` (`0..40`), `DataBank` (`0x10_0000..=0x37_ffff`), and the 40-slot Character Select screen once for all 40 fighters and ship **Wave 1 (*Super Street Fighter: Rising*)**: **Evil Ryu** (`slot 12`, `0x1c_0000`) and **M. Bison** (`slot 13`, `0x1d_0000`), bringing the active roster to `14` (`7×2` select grid).
@@ -34,8 +36,8 @@ Following the same **Code-First + Deterministic ROM Stand-In Catalogue** pattern
    - Every Wave 2 challenger has **native `SF1` and `SF1+` styles** (never marked `[WHAT-IF]`), **Canon** styles for every entry they appeared in, and **`[WHAT-IF]`** flagship styles (`SF2 ST`, `SFZ3`, `SF3 3S`, `USF4`, `SF5 CE`, `SF6`) for eras they missed (including all 6 later eras for `Gou Hibiki`, `Goutetsu`, and `Dorai`), plus full entries in [`crates/sf-engine/src/moves.rs`](../../crates/sf-engine/src/moves.rs) (`moves::REGISTRY`), `front/moves.rs` (`ML1`–`ML6`), and `ComboTrialSpec` (`TRD4` `#316`).
    - Add airborne special recognition in `fighter.rs` (`ryu_jump`) for fighters/styles with air specials (Akuma's *Zanku Hadoken* `air 236+P`, Dhalsim's *Yoga Drill* `air 2+K` / *Yoga Mummy* `air 2+P` / air *Yoga Teleport*, and Oro's air *Jinchu Watari* `air 236+K`).
    - Synthesize deterministic ROM-backed stand-in sprite catalogues in `DataBank::build` when a challenger's PixelLab sprite pack is not yet present on disk so all 10 fighters run through the real 68000 `fighter.rs` stream/hitbox/projectile engine in tests immediately.
-2. **Six 1987-Style Bloodlines Home Stages & Original YM2151 FM Themes (`0x43`–`0x48`):**
-   - Register 6 Wave 2 stages (`wave = 2`) in `BackgroundBank` and 6 committed original 1987-style YM2151 `.score` compositions (`0x43`–`0x48`, with optional `sf1-port-music` pack override) in `art/themes/` and `crates/sf-host/src/themes.rs`:
+2. **Six 1987-Style Bloodlines Home Stages & Primary Character Themes (`0x43`–`0x48`):**
+   - Register 6 Wave 2 stages (`wave = 2`) in `BackgroundBank` with six primary character theme assignments:
      1. **Goutetsu's Mountain Dojo (`0x43`, `"Japan"`):** Listed under owner `"Gouken"`, shared by **Gouken**, **Goutetsu**, and **Akuma**.
      2. **Chao Phraya Twilight Shrine (`0x44`, `"Thailand"`):** Listed under owner `"Gou Hibiki"`, shared by **Gou Hibiki** and **Dan**.
      3. **Hong Kong Kowloon Courtyard (`0x45`, `"China"`):** Listed under owner `"Dorai"`, shared by **Dorai** and **Chun-Li**.
@@ -57,7 +59,7 @@ Following the same **Code-First + Deterministic ROM Stand-In Catalogue** pattern
 
 ### Anti-Goals
 - **Never expose half-finished Wave 2 fighters on default menus:** Keep `RELEASED_WAVES = 1` until all 4 Wave 2 PixelLab art tickets (`BW8`–`BW11`) are complete and flip `RELEASED_WAVES = 2`.
-- **Never commit copyrighted Capcom melodies in `.score` files:** Per [`2026-11-03-stages-and-music-design.md` §2 Anti-Goal 4](2026-11-03-stages-and-music-design.md), committed `art/themes/*.score` files (`0x43`–`0x48`) must be original 1987-style YM2151 compositions; canonical SF2/Alpha arrangements live only in the optional local `sf1-port-music` pack.
+- **Music pack.** The character arrangements live in the local `sf1-port-music` folder beside the ROMs.
 
 ---
 
@@ -202,18 +204,18 @@ Following the same **Code-First + Deterministic ROM Stand-In Catalogue** pattern
 
 ---
 
-### 3.2 Pillar 2 — Six Wave 2 Bloodlines Stages, Shared-Owner Resolution & Original YM2151 FM Themes (`0x43`–`0x48`)
+### 3.2 Pillar 2 — Six Wave 2 Bloodlines Stages, Shared-Owner Resolution & Primary Character Themes (`0x43`–`0x48`)
 
-Per [`docs/design/2026-11-03-stages-and-music-design.md`](2026-11-03-stages-and-music-design.md), Wave 2 adds **6 home stages** (`wave = 2`) in `BackgroundBank` and **6 committed original 1987-style YM2151 `.score` compositions** (`0x43`–`0x48`) in `art/themes/` and `crates/sf-host/src/themes.rs`:
+Per [`docs/design/2026-11-03-stages-and-music-design.md`](2026-11-03-stages-and-music-design.md), Wave 2 adds **6 home stages** (`wave = 2`) in `BackgroundBank` and **six primary character theme assignments**:
 
 | Stage ID | Stage Title & Setting | Primary Listed `owner` (`list_wave_stage`) | Shared Fighters (`StageScreen::home_owner`) | Country / `place` | FM Command & `.score` File | Pre-Art Stand-In `StageView` Assembly |
 |---|---|---|---|---|---|---|
-| `"gouken"` | **Goutetsu's Mountain Dojo** (Bamboo cliff shrine & waterfall at dusk) | `"Gouken"` | `Gouken`, `Goutetsu`, `Akuma` -> `"Gouken"` | `"Japan"` | `0x43` (`art/themes/gouken.score`) | Re-paletted Country 1 (Japan Retsu temple/courtyard) in warm twilight gold & pine green |
-| `"gou-hibiki"` | **Chao Phraya Twilight Shrine** (Riverside Muay Thai / Saikyo pier with lanterns) | `"G.Hibiki"` | `GouHibiki`, `Dan` -> `"G.Hibiki"` | `"Thailand"` | `0x44` (`art/themes/gou-hibiki.score`) | Re-paletted Country 5 (Thailand Adon riverside temple) in sunset violet & lantern amber |
-| `"dorai"` | **Hong Kong Kowloon Courtyard** (Neon-lit 1987 Victoria Harbour terrace & stone dragon gate) | `"Dorai"` | `Dorai`, `ChunLi` -> `"Dorai"` | `"China"` | `0x45` (`art/themes/dorai.score`) | Re-paletted Country 3 (China Lee/Gen courtyard) in harbour night blue, jade & crimson |
-| `"guile"` | **US Air Force Tarmac** (1987 fighter-jet hangar & chain-link runway at dusk) | `"Guile"` | `Guile` -> `"Guile"` | `"USA"` | `0x46` (`art/themes/guile.score`) | Re-paletted Country 2 (USA Joe/Mike railyard/dock) in steel grey, olive & sunset orange |
-| `"dhalsim"` | **Ganges River Temple** (Carved sandstone elephants, ghats & burning braziers) | `"Dhalsim"` | `Dhalsim` -> `"Dhalsim"` | `"India"` | `0x47` (`art/themes/dhalsim.score`) | Re-paletted Country 5/1 temple tiles in warm sandstone ochre, saffron & brass |
-| `"oro"` | **Deep Hermit Cavern** (Subterranean stalactite cavern with glowing Senjutsu talismans) | `"Oro"` | `Oro` -> `"Oro"` | `"Brazil"` | `0x48` (`art/themes/oro.score`) | Re-paletted Country 3/4 stone cavern tiles in deep emerald, moss & talisman cyan |
+| `"gouken"` | **Goutetsu's Mountain Dojo** (Bamboo cliff shrine & waterfall at dusk) | `"Gouken"` | `Gouken`, `Goutetsu`, `Akuma` -> `"Gouken"` | `"Japan"` | `0x43` | Re-paletted Country 1 (Japan Retsu temple/courtyard) in warm twilight gold & pine green |
+| `"gou-hibiki"` | **Chao Phraya Twilight Shrine** (Riverside Muay Thai / Saikyo pier with lanterns) | `"G.Hibiki"` | `GouHibiki`, `Dan` -> `"G.Hibiki"` | `"Thailand"` | `0x44` | Re-paletted Country 5 (Thailand Adon riverside temple) in sunset violet & lantern amber |
+| `"dorai"` | **Hong Kong Kowloon Courtyard** (Neon-lit 1987 Victoria Harbour terrace & stone dragon gate) | `"Dorai"` | `Dorai`, `ChunLi` -> `"Dorai"` | `"China"` | `0x45` | Re-paletted Country 3 (China Lee/Gen courtyard) in harbour night blue, jade & crimson |
+| `"guile"` | **US Air Force Tarmac** (1987 fighter-jet hangar & chain-link runway at dusk) | `"Guile"` | `Guile` -> `"Guile"` | `"USA"` | `0x46` | Re-paletted Country 2 (USA Joe/Mike railyard/dock) in steel grey, olive & sunset orange |
+| `"dhalsim"` | **Ganges River Temple** (Carved sandstone elephants, ghats & burning braziers) | `"Dhalsim"` | `Dhalsim` -> `"Dhalsim"` | `"India"` | `0x47` | Re-paletted Country 5/1 temple tiles in warm sandstone ochre, saffron & brass |
+| `"oro"` | **Deep Hermit Cavern** (Subterranean stalactite cavern with glowing Senjutsu talismans) | `"Oro"` | `Oro` -> `"Oro"` | `"Brazil"` | `0x48` | Re-paletted Country 3/4 stone cavern tiles in deep emerald, moss & talisman cyan |
 
 1. **`StageScreen::home_owner` & `JukeboxScreen` Fighter Rows (`front/stage_select.rs` & `front/jukebox.rs`):**
    - `BackgroundBank::list_wave_stage` lists each of the 6 Wave 2 stages **once** under its primary `owner` (`"Gouken"`, `"G.Hibiki"`, `"Dorai"`, `"Guile"`, `"Dhalsim"`, `"Oro"`, each `<= 8` chars so it fits inside `TILE_NAME_CELLS = 9` without truncation), giving `10 + 2 + 6 = 18` stage tiles + `RANDOM` (`19` tiles total across 3 rows on `StageScreen`).
@@ -283,5 +285,5 @@ To keep PixelLab credit usage disciplined and explicit (`ADR-0006`):
 
 The following implementation details are intentionally left to engineering judgment during ticket execution:
 - Exact byte offsets within `0x1e_0000..=0x27_ffff` in `DataBank` for each Wave 2 challenger's move streams, projectile templates, and teleport/counter tables.
-- Exact YM2151 FM voice patches and note sequences in `art/themes/{gouken,gou-hibiki,dorai,guile,dhalsim,oro}.score` (`0x43`–`0x48`).
+- Local YM2151 scores and review evidence follow the approved individual character assignments.
 - Exact `(x, y)` coordinates of the 5 `[WAVE 2]` nodes (`jp-5-ansatsuken`, `us-5-airbase`, `cn-5-kowloon`, `en-5-ashram`, `th-5-eyepatch`) on `WorldTourScreen`.

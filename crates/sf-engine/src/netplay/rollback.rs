@@ -59,7 +59,9 @@ pub struct RollbackEngine {
     confirmed_fight_events: Vec<(u32, FightEvent)>,
     pending_checksums: BTreeMap<u32, u64>,
     reported_desyncs: BTreeSet<u32>,
-    pending_latches: VecDeque<(u8, u32)>,
+    pending_latches: VecDeque<(u8, u32, Option<crate::theme::ThemeCue>)>,
+    // A corrected input can move the same round's theme to another frame.
+    heard_themes: BTreeSet<(u32, crate::theme::ThemeId)>,
     pending_announcements: Vec<AnnouncerLine>,
     pending_fight_events: VecDeque<FightEvent>,
     events: VecDeque<RollbackEvent>,
@@ -92,6 +94,7 @@ impl RollbackEngine {
             pending_checksums: BTreeMap::new(),
             reported_desyncs: BTreeSet::new(),
             pending_latches: VecDeque::new(),
+            heard_themes: BTreeSet::new(),
             pending_announcements: Vec::new(),
             pending_fight_events: VecDeque::new(),
             events: VecDeque::new(),
@@ -219,8 +222,9 @@ impl RollbackEngine {
         let mut output = self.simulate(self.next, fight, assets);
         self.next = self.next.checked_add(1)?;
         self.advance_confirmed();
-        if let Some((latch, cycles)) = self.pending_latches.pop_front() {
+        if let Some((latch, cycles, theme)) = self.pending_latches.pop_front() {
             output.sound_latch = latch;
+            output.theme = theme;
             output.latch_cycles = cycles;
         }
         output.announcements.append(&mut self.pending_announcements);
@@ -352,11 +356,17 @@ impl RollbackEngine {
             heard_latches,
             heard_announcements,
         };
-        if output.sound_latch != IDLE && !slot.heard_latches[usize::from(output.sound_latch)] {
-            slot.heard_latches[usize::from(output.sound_latch)] = true;
+        let new_latch = match output.theme.zip(output.theme_event) {
+            Some((theme, event)) => self.heard_themes.insert((event, theme.id)),
+            None if output.sound_latch != IDLE => {
+                !std::mem::replace(&mut slot.heard_latches[usize::from(output.sound_latch)], true)
+            }
+            None => false,
+        };
+        if new_latch {
             if self.pending_latches.len() < MAX_PENDING_AUDIO {
                 self.pending_latches
-                    .push_back((output.sound_latch, output.latch_cycles));
+                    .push_back((output.sound_latch, output.latch_cycles, output.theme));
             } else if !self.disconnected {
                 self.disconnected = true;
                 self.push_event(RollbackEvent::PeerDisconnected);
@@ -379,6 +389,8 @@ impl RollbackEngine {
         }
         output.announcements.clear();
         output.sound_latch = IDLE;
+        output.theme = None;
+        output.theme_event = None;
         output.latch_cycles = 0;
         self.slots[index] = Some(slot);
         output

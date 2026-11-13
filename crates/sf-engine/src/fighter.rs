@@ -4674,13 +4674,26 @@ impl Bus<'_> {
     /// are dropped; in demo play with demo sounds off (0x3b7f2, DSW1 bit 13
     /// != 0), everything is.
     pub fn queue_sound(&mut self, cmd: u16) {
-        if self.dsw1 & 0x200 == 0 && (cmd as i16) >= 0x28 && cmd <= 0x3e {
-            return;
+        if self.sound_allowed(cmd) {
+            self.queue_sound_unfiltered(cmd);
         }
-        if self.rb(MODE_DEMO) == 0 && self.dsw1 & 0x2000 != 0 {
-            return;
+    }
+
+    fn sound_allowed(&self, cmd: u16) -> bool {
+        (self.dsw1 & 0x200 != 0 || !((cmd as i16) >= 0x28 && cmd <= 0x3e))
+            && (self.rb(MODE_DEMO) != 0 || self.dsw1 & 0x2000 == 0)
+    }
+
+    pub(crate) fn queue_stage_music(&mut self, fallback: u16, cue: Option<crate::theme::ThemeCue>, legacy: u8) {
+        if self.sound_allowed(fallback) {
+            let idx = usize::from(self.rw(SOUND_WRITE) / 2);
+            self.queue_sound_unfiltered(fallback);
+            if let Some(slot) = self.toggle_state.queued_themes.get_mut(idx) {
+                let event = self.toggle_state.next_theme_event;
+                self.toggle_state.next_theme_event = event.wrapping_add(1);
+                *slot = Some(crate::tasks::StageMusic { cue, legacy, event });
+            }
         }
-        self.queue_sound_unfiltered(cmd);
     }
 
     /// 0x3b802: queue a sound command into the 16-word ring at 0xff8662
@@ -4688,6 +4701,9 @@ impl Bus<'_> {
     /// 0x3b806 shared with 0x3b7c8).
     pub fn queue_sound_unfiltered(&mut self, cmd: u16) {
         let idx = self.rw(SOUND_WRITE);
+        if let Some(slot) = self.toggle_state.queued_themes.get_mut(usize::from(idx / 2)) {
+            *slot = None;
+        }
         self.ww(SOUND_QUEUE + idx as u32, cmd);
         let next = if idx + 2 == 0x20 { 0 } else { idx + 2 };
         self.ww(SOUND_WRITE, next);
@@ -4698,6 +4714,9 @@ impl Bus<'_> {
     pub fn pop_sound(&mut self) -> u8 {
         let idx = self.rw(SOUND_READ);
         let cmd = self.rw(SOUND_QUEUE + idx as u32);
+        let music = self.toggle_state.queued_themes
+            .get_mut(usize::from(idx / 2)).and_then(Option::take);
+        self.toggle_state.latched_theme = if cmd != 0xffff { music } else { None };
         if cmd != 0xffff {
             self.ww(SOUND_QUEUE + idx as u32, 0xffff);
             let next = if idx + 2 == 0x20 { 0 } else { idx + 2 };

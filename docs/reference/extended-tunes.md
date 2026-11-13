@@ -59,6 +59,28 @@ the committed score is `art/themes/test-theme.score`.
   `sf_host::themes::load` builds the table, and gives none under Faithful
   1987.
 
+## Character theme library
+
+[ADR-0023](../adr/0023-character-themes-and-separate-native-score-storage.md)
+adds a separate score library for character themes. The timed request carries
+a theme identity from the match to the host. The host resolves it to a compiled
+score before delivering the sound latch. The native YM2151 driver keeps the
+score with its current and saved stream positions. It reads logical offsets
+from the score while leaving the original sound ROM and RAM address map intact.
+
+New scores can put a stable identity in the header, such as `theme ken`
+with `command 0x52`. The registry in `sf_engine::theme` owns these pairs.
+Existing scores without a `theme` header still load by command. Ryu keeps
+`0x41`, the original test score keeps `0x40`, and Evil Ryu uses `0x51`.
+A named score with a mismatched command or a duplicate command is reported.
+The separate library can hold scores larger than the legacy 16 KiB window.
+
+The legacy table remains available for the title arrangement, raw-command
+callers and tooling that builds a ROM image. In matches the host uses the
+selected theme identity. Missing character scores play the original stage
+music, or `0x29` for a stage without a ROM theme. The logical choice and
+rotation are independent of music files and Jukebox overrides.
+
 ## The music pack
 
 Arrangements of Capcom melodies are scores in the converter's format in a
@@ -210,9 +232,9 @@ channel 0
 
 The converter writes these controls as `0x0a` subcommands inside the extended
 table: voice `0`, raw note `1`, held pitch `2`, wait `3`, off `4`. Durations
-are little-endian words. This family is recognized only for an extended
-stream in a loaded program image. ROM tunes and legacy scores retain their
-original event paths. The shared 16,384-byte table limit still applies.
+are little-endian words. The driver recognizes these commands in
+extended streams. The shared 16,384-byte limit applies to the mapped
+table. Separately compiled character scores use their own address space.
 
 `crates/sf-audio/tests/raw_tunes.rs` covers tone, fractional pitch, held
 updates, gates, native saves, effect hand-back and timing under eight-voice
@@ -220,6 +242,38 @@ load. The real-front-end fixture in `crates/sf-game/tests/stage_themes.rs`
 covers pack loading, live audio, invalid-score fallback and leaving a fight.
 All committed phrases are original test content; Capcom arrangements stay
 in the player's local pack.
+
+## Separate character score storage
+
+The host compiles character arrangements into a separate score library
+before playback. `score::compile` accepts the same notes, explicit voice
+controls and blocks as `score::convert`. The optional `theme <slug>` header
+pins the source to the registry. `saved advance` allows the saved tune to
+keep time silently while the new tune plays. The default is `saved pause`.
+
+Each compiled stream uses 32-bit positions and channel-relative jumps.
+The native driver keeps a reference to the exact compiled score in its
+current and saved slots. Channel records retain the native voice, pitch,
+gate and repeat state. The original mapped table still serves its existing
+callers, including the original test and the title arrangement.
+
+A cue supplies its compiled score with the timed latch write. The driver
+can queue two requests for the same command even when the scores differ
+or the latch never returns to idle. Replacing the library leaves already
+queued, playing and saved scores readable. The score compiler rejects a
+zero-time repeat before playback and rejects positions or jump targets that
+cannot be represented in the stream format.
+
+Audition a local score on the translated YM2151 path and measure the
+compiled stream size:
+
+```text
+sf-audio render-score --score local.score --seconds 30 --out local.wav
+```
+
+The command produces a stereo 48 kHz WAV. For a solo part, pass a copy of
+the score containing that channel. These renderings are local listening
+artifacts. Verify the arrangement in a match after the listening review.
 
 ## The test theme
 

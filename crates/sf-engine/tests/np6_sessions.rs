@@ -353,6 +353,9 @@ fn dramatic_custom_styles_and_team_meter_survive_rollback_and_spectating() {
     let host = &room.peers[0];
     let assets = host.fight_assets().unwrap();
     let mut direct = host.fight().unwrap().clone();
+    let host_theme = direct.selected_theme().expect("the designated boss owns this theme");
+    assert_eq!(config(0).roster.p2, TournamentFighter::Ryu);
+    assert_eq!(host_theme.id, sf_engine::theme::ThemeId::Ryu);
     assert_eq!(flow_position(direct.machine()), 0x3eafa, "the native round is live");
     let active_styles = |fight: &Fight| {
         fight.machine().dramatic_era_fighters().map(|state| state.style.revision)
@@ -400,6 +403,7 @@ fn dramatic_custom_styles_and_team_meter_survive_rollback_and_spectating() {
     }
     assert_eq!(room.peers[2].spectator_frame(), Some(capture_frame));
     let observer = room.peers[2].fight().expect("the spectator starts the negotiated fight");
+    assert_eq!(observer.selected_theme(), Some(host_theme));
     assert_eq!(observer.setup().config.dramatic.unwrap().styles, rules.styles);
     assert_eq!(active_styles(observer), rules.styles);
     let (host_snapshot, captured_hash) = room.host_snapshot.as_ref().expect("host snapshot at playback boundary");

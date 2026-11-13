@@ -21,6 +21,7 @@ use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::{FrameInputs, GameSession};
 use sf_engine::roster::StagePick;
+use sf_engine::theme::{ThemeCue, ThemeId};
 use sf_host::log::Log;
 use sf_host::themes;
 use sf_video::romset::{load_assets, load_region, Assets};
@@ -136,6 +137,8 @@ struct Fight {
     session: GameSession,
     /// Every frame's (frame, latch, cycles), as the launcher pushes them.
     pushed: Vec<(u32, u8, u32)>,
+    /// Semantic cues keyed by their frame index in the latch stream.
+    cues: Vec<(usize, ThemeCue)>,
     /// The tune table was the music CPU's on these frames.
     table_on: Vec<bool>,
     sound: GameSound,
@@ -154,6 +157,9 @@ impl Fight {
             self.sound.set_tune_table(table);
         }
         self.sound.push_frame(out.sound_frame, out.sound_latch, out.latch_cycles, IRQ_LATENCY_MID);
+        if let Some(cue) = out.theme {
+            self.cues.push((self.pushed.len(), cue));
+        }
         self.pushed.push((out.sound_frame, out.sound_latch, out.latch_cycles));
         self.table_on.push(self.on);
         out
@@ -233,7 +239,7 @@ fn fight(r: &Roms, bank: sf_video::background_bank::BackgroundBank, stage: &str,
     session.set_stage(Some(StagePick::Bank(index)));
     apply(&mut session);
     let sound = GameSound::power_on(r.audio2.clone(), r.audiocpu.clone(), LatchTimeline::default(), 0.0);
-    let mut f = Fight { session, pushed: Vec::new(), table_on: Vec::new(), sound, themes: themes.cloned(), on: false };
+    let mut f = Fight { session, pushed: Vec::new(), cues: Vec::new(), table_on: Vec::new(), sound, themes: themes.cloned(), on: false };
     for _ in 0..200 {
         f.step(idle());
     }
@@ -351,6 +357,53 @@ fn a_stage_in_the_music_pack_plays_its_arrangement() {
     let writes = f.writes(&themes.program(&r.audiocpu), at + 3.0);
     assert_eq!(&notes(&r.audiocpu, &writes, 0, at)[..4], &[idx(4, 0), idx(4, 4), idx(4, 0), idx(4, 4)]);
     assert!(f.loudest(at + 1.0, 2.5) > 0.05);
+}
+
+#[test]
+fn the_game_session_delivers_a_large_named_theme_through_native_audio() {
+    let Some(r) = roms() else { return };
+    let mut score = String::from(
+        "title Large native test\ntheme ken\ncommand 0x52\nunit 10\n\
+         channel 0\n  voice 16 4 0 native\n  forever {\n    raw 0x4a 0x00 22000 0\n",
+    );
+    score.push_str(&"    pitch 0x4e 0x80\n    wait 22000\n".repeat(10_000));
+    score.push_str("  }\n");
+    let compiled = sf_audio::score::compile(&score, &r.audiocpu).unwrap();
+    assert!(compiled.score.bytes() > 65_536);
+    let scratch = Scratch::new("large-native", Some(&score));
+    let preset = RulesetPreset::DefinitiveOverhaul;
+    let (themes, mut log) = launcher_themes(&r, &scratch, preset);
+    let themes = themes.unwrap();
+    assert!(themes.commands.contains(&0x52));
+    assert_eq!(themes.table.as_slice(), sf_audio::tunes::committed(&r.audiocpu).unwrap().image());
+
+    let [test, stage] = records();
+    let bank = bank(&r, &[test, stage.replace("0x41", "0x52")]);
+    let mut f = fight(&r, bank, "pack-stage", preset, None, |_| {}, 180);
+    let &(cue_index, cue) = f.cues.iter().find(|(_, cue)| cue.id == ThemeId::Ken).expect("the stage emits its semantic cue");
+    assert_eq!(cue.fallback, FALLBACK_THEME);
+
+    let mut delivery = themes::ThemeDelivery::default();
+    let mut sound = GameSound::power_on(r.audio2.clone(), r.audiocpu.clone(), LatchTimeline::default(), 0.0);
+    let mut cues = f.cues.iter().copied().peekable();
+    for (index, &(frame, raw, cycles)) in f.pushed.iter().enumerate() {
+        let (latch, score) = if cues.peek().is_some_and(|(i, _)| *i == index) {
+            let (_, cue) = cues.next().unwrap();
+            let routed = delivery.resolve(Some(&themes), cue, &mut log);
+            (routed.latch, routed.score)
+        } else {
+            (raw, None)
+        };
+        sound.push_frame_with_score(frame, latch, cycles, IRQ_LATENCY_MID, score);
+    }
+    let at = f.pushed[cue_index].0 as f64 / f64::from(FRAME_HZ);
+    let (from, to) = (at + 0.2, at + 1.2);
+    assert!(sound.wait_ready(to));
+    let fallback = f.live(from, to);
+    let actual: Vec<_> = (0..fallback.len()).map(|n| sound.sample_at(from + n as f64 / 8_000.0)).collect();
+    let peak = actual.iter().flatten().fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(peak > 0.02, "the native theme is heard ({peak})");
+    assert_ne!(actual, fallback, "the large named score changes the native mix");
 }
 
 #[test]

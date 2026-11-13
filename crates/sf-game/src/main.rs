@@ -49,7 +49,7 @@ use sf_host::pads::PadReader;
 use sf_host::picture::picture_rect;
 use sf_host::roms::{self, Candidate, RomSet};
 use sf_host::shaders::{self, Catalogue};
-use sf_host::themes::{self, Themes};
+use sf_host::themes::{self, ThemeDelivery, ThemeFrame, Themes};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 mod evil_ryu_art;
@@ -312,6 +312,7 @@ struct Play {
     rom_folders: Vec<PathBuf>,
     /// The music CPU runs with the tune table now.
     tune_table: bool,
+    theme_delivery: ThemeDelivery,
     /// The Jukebox's tracks, from the `jukebox` folder beside the ROM set
     /// (ticket #200).
     jukebox: Deck,
@@ -440,7 +441,7 @@ impl Game {
         }
         let saved = self.settings.clone();
         let (audiocpu, rom_folders) = themes_from;
-        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, jukebox };
+        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, theme_delivery: ThemeDelivery::default(), jukebox };
         self.phase = Phase::Playing(Box::new(play));
     }
 
@@ -618,8 +619,18 @@ impl Driver for Game {
                     // the theme's command is left out while the track plays,
                     // and passed on when the file could not be played.
                     let action = out.track.as_ref().map_or(Action::None, |cue| play.jukebox.cue(cue, log));
-                    let latch = play.jukebox.latch(&action, out.sound_latch);
-                    s.push_game_frame(&out, latch, session.live_sound());
+                    let ThemeFrame { latch, score } = if let Some(cue) = out.theme {
+                        if matches!(action, Action::Start(_)) {
+                            ThemeFrame { latch: cue.id.command(), score: None }
+                        } else {
+                            play.theme_delivery.resolve(play.themes.as_ref().and_then(Option::as_ref), cue, log)
+                        }
+                    } else {
+                        ThemeFrame { latch: out.sound_latch, score: None }
+                    };
+                    let routed = play.jukebox.latch(&action, latch);
+                    let score = if routed == latch { score } else { None };
+                    s.push_game_frame(&out, routed, score, session.live_sound());
                     match action {
                         Action::Start(track) => s.start_track(out.sound_frame, track),
                         Action::Stop => s.stop_track(out.sound_frame),

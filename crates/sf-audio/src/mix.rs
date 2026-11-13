@@ -44,10 +44,11 @@ use std::thread::JoinHandle;
 use sf_video::announcer::AnnouncerLine;
 
 use crate::announcer::Announcer;
-use crate::check::{idle_loop, LatchFeed, TimedChip};
+use crate::check::{idle_loop, LatchFeed, LatchFrame, TimedChip};
 use crate::music::{ExtensionCell, MusicCpu};
 use crate::opm::{OPM_CLOCK, OPM_RATE};
 use crate::samples::PortWrite;
+use crate::score::NativeScore;
 use crate::{LatchTimeline, SamplesSound, FRAME_HZ, TICK_HZ};
 
 /// sf.cpp: `ymsnd.add_route(0, "speaker", 0.60, 0)` and `(1, ..., 1)`.
@@ -67,13 +68,10 @@ const LOOKAHEAD: f64 = 0.25;
 /// clocks; 0.1 s), so a pre-roll never accumulates its discarded samples.
 const HAND_OVER: u64 = OPM_CLOCK as u64 / 10;
 
-/// A frame's latch write as pushed: (frame, value, cycles, latency).
-type FrameWrite = (u32, u8, u32, u32);
-
 /// What the host pushes to the music thread, in order: a frame's latch
 /// write, or the extended tune table to run with from the next write on.
 enum Push {
-    Frame(FrameWrite),
+    Frame(LatchFrame),
     Tunes(Option<Arc<Vec<u8>>>),
 }
 
@@ -120,7 +118,7 @@ impl LatchFeed for ChannelFeed {
         hand_over(&self.shared, first, left, right);
     }
 
-    fn next(&mut self) -> Option<FrameWrite> {
+    fn next(&mut self) -> Option<LatchFrame> {
         loop {
             // The check and the flag under the lock `push_frame` sends under:
             // a consumer that sees `starved` knows no frame is on its way.
@@ -292,6 +290,23 @@ impl GameSound {
     /// [`crate::IRQ_LATENCY_CYCLES`]); frames in order, each after the
     /// time already known.
     pub fn push_frame(&mut self, frame: u32, value: u8, cycles: u32, latency: u32) {
+        self.push_frame_with_score(frame, value, cycles, latency, None);
+    }
+
+    /// Append the latch write and the exact score selected for this frame.
+    /// The score is pinned through the music queue and both driver slots.
+    pub fn push_frame_with_score(
+        &mut self,
+        frame: u32,
+        value: u8,
+        cycles: u32,
+        latency: u32,
+        score: Option<Arc<NativeScore>>,
+    ) {
+        debug_assert!(
+            score.is_none()
+                || (crate::music::EXTENDED_FIRST..=crate::music::EXTENDED_LAST).contains(&value)
+        );
         let Some(tx) = &self.tx else {
             panic!("push_frame on a sound whose writes were all given at power-on");
         };
@@ -303,7 +318,13 @@ impl GameSound {
         {
             let mut o = self.shared.out.lock().unwrap();
             // A closed channel means the thread has stopped; nothing to do.
-            let _ = tx.send(Push::Frame((frame, value, cycles, latency)));
+            let _ = tx.send(Push::Frame(LatchFrame {
+                frame,
+                value,
+                cycles,
+                latency,
+                score,
+            }));
             o.starved = false;
         }
         // The samples CPU's reads never look back.

@@ -1939,6 +1939,7 @@ impl PowerOnMachine {
         self.state.frame += 1;
         let frame = self.state.frame;
         self.latch_writes.clear();
+        self.program.toggle_state.latched_theme = None;
         let io = self.io;
         let scheduler = &mut self.scheduler;
         let mut bus = self.program.bus_with_dsw1(&mut self.state, io.dsw1);
@@ -2196,6 +2197,10 @@ impl PowerOnMachine {
             std::mem::take(&mut era.alpha_counter_events[2]).then_some(CalloutKind::AlphaCounter),
             std::mem::take(&mut era.guard_crush_events[2]).then_some(CalloutKind::Move { word: "GUARD CRUSH" }),
         ]
+    }
+
+    pub(crate) fn select_theme(&mut self, theme: Option<crate::front::fight::MatchTheme>) {
+        self.program.toggle_state.selected_theme = theme;
     }
 
     /// Take the stage tune command a stand-in fight fell back to when Ryu's

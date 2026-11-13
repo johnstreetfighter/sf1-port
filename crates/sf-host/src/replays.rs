@@ -176,6 +176,7 @@ mod tests {
             p2_fighter: TournamentFighter::Ken.into(),
             p1_style: StylePick::default(),
             p2_style: StylePick::default(),
+            theme: None,
             frames: vec![(0x0402, 0x0020)],
             commands: Vec::new(),
         };

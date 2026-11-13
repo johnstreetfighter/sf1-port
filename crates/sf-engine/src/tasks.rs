@@ -3227,6 +3227,7 @@ fn boot_init(bus: &mut Bus) {
     bus.ww(0xff865e, 0);
     bus.ww(0xff8660, 0);
     fill_words_16(bus, 0xff8662, 0xffff);
+    bus.toggle_state.queued_themes.fill(None);
     queue_boot_sounds(bus);
 }
 
@@ -6605,32 +6606,55 @@ fn gfx_on(bus: &mut Bus, mask: u8) {
     *bus.flip_screen = v & 4 != 0;
 }
 
-/// 0x42332: the stage music for this opponent (word table by country, then
-/// by opponent index); the stage gate gives the picked stage's theme. In
-/// Arcade, whenever Ryu is the CPU opponent (a stand-in fight or Sagat's
-/// final battle, SP15 `#267`), his theme (`RYU_THEME`, `0x41`) plays from
-/// the extended tune table, or falls back to the stage's 1987 theme with a
-/// log note when the table lacks it.
+/// Presentation metadata for one native stage-music queue slot. The native
+/// byte written to 68000 work RAM never depends on the installed music pack.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct StageMusic {
+    pub cue: Option<crate::theme::ThemeCue>,
+    pub legacy: u8,
+    pub event: u32,
+}
+
+/// 0x42332: the native stage music for this opponent. Overhaul playback
+/// carries a semantic request beside the native sound-latch write.
 fn stage_music(bus: &mut Bus) {
+    use crate::theme::{ThemeCue, ThemeId};
+    use sf_video::background_bank::{EXTENDED_THEME_FIRST, FALLBACK_THEME};
+
     let c = ((sext(bus.rb(0xffc006)) as u32) << 2) & 0xffff;
     let table = bus.rl(0x42358 + c);
     let d0 =
         ((((sext(bus.rb(0xffc003)) << 1) as u8).wrapping_add(bus.rb(0xffc004)) as u16) << 1) as u32;
-    let stage_cmd = picked_stage(bus).map_or_else(|| bus.rw(table + d0), |s| s.theme);
-    let cmd = if bus.arcade_opponent() == Some(crate::roster::TournamentFighter::Ryu) {
-        if bus
-            .backgrounds
-            .is_some_and(|b| b.can_play(sf_video::background_bank::RYU_THEME))
-        {
-            u16::from(sf_video::background_bank::RYU_THEME)
-        } else {
-            bus.toggle_state.missing_ryu_theme.get_or_insert(stage_cmd);
-            stage_cmd
-        }
+    let rom_cmd = bus.rw(table + d0);
+    if bus.preset == crate::config::RulesetPreset::Faithful1987 || bus.rb(MODE_DEMO) == 0 {
+        bus.queue_sound(rom_cmd);
+        return;
+    }
+
+    let bank = bus.backgrounds;
+    let authored = if matches!(bus.roster.mode, PlayMode::Versus | PlayMode::Training) {
+        let index = bus.roster.stage.map(|StagePick::Bank(index)| index);
+        index.and_then(|index| bank?.stage_record(index)).map(|stage| stage.theme)
     } else {
-        stage_cmd
+        None
     };
-    bus.queue_sound(cmd);
+    let stage_cmd = authored.unwrap_or(rom_cmd);
+    let fallback = if stage_cmd < EXTENDED_THEME_FIRST { stage_cmd } else { FALLBACK_THEME };
+    let fighter = |fighter: TournamentFighter| ThemeId::from_fighter_slug(&fighter.name().to_ascii_lowercase());
+    let id = bus.toggle_state.selected_theme.map(|theme| theme.id)
+        .or_else(|| bus.dramatic_rules().is_some().then(|| fighter(bus.roster.p2)).flatten())
+        .or_else(|| bus.world_tour_rules().is_some().then(|| fighter(bus.roster.p2)).flatten())
+        .or_else(|| (bus.roster.mode == PlayMode::Arcade).then(|| bus.arcade_opponent().and_then(fighter)).flatten())
+        .or_else(|| u8::try_from(stage_cmd).ok().and_then(ThemeId::from_command));
+    let command = id.map_or(stage_cmd, |theme| u16::from(theme.command()));
+    let legacy = u8::try_from(command).ok()
+        .filter(|&command| u16::from(command) < EXTENDED_THEME_FIRST || bank.is_some_and(|b| b.can_play(command)))
+        .unwrap_or(fallback as u8);
+    if id == Some(ThemeId::Ryu) && bus.roster.mode == PlayMode::Arcade && legacy != ThemeId::Ryu.command() {
+        bus.toggle_state.missing_ryu_theme.get_or_insert(fallback);
+    }
+    let cue = id.map(|id| ThemeCue { id, fallback: fallback as u8 });
+    bus.queue_stage_music(fallback, cue, legacy);
 }
 
 /// 0x3e78c..0x3e81c (and its one-player twins): the round's HUD and the

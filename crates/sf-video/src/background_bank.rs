@@ -141,6 +141,8 @@ pub const EXTENDED_THEME_FIRST: u16 = 0x40;
 /// The extended tune command for Ryu's theme (`0x41`), played in Arcade
 /// whenever Ryu is the CPU opponent (ticket #267 `SP15`).
 pub const RYU_THEME: u8 = 0x41;
+/// Evil Ryu has a separate command from the approved Ryu score.
+pub const EVIL_RYU_THEME: u8 = 0x51;
 /// The 1987 stage theme a stage plays when its own theme is not in the
 /// extended tune table (Geki's, a stage tune of priority 8 like the
 /// extended themes' default).
@@ -332,6 +334,11 @@ impl BackgroundBank {
     /// ([`BackgroundBank::set_playable_themes`]), else [`FALLBACK_THEME`].
     pub fn stage(&self, index: u8) -> Option<StageView> {
         self.stages.get(index as usize).map(|(_, v)| StageView { theme: self.played(v.theme), ..*v })
+    }
+
+    /// The authored stage theme, independent of locally available music.
+    pub fn stage_record(&self, index: u8) -> Option<StageView> {
+        self.stages.get(usize::from(index)).map(|(_, view)| *view)
     }
 
     fn played(&self, theme: u16) -> u16 {

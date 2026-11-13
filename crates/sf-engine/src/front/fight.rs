@@ -330,11 +330,26 @@ impl From<DriveError> for FightEvent {
     }
 }
 
+/// A match's native theme and its position in the applicable rotation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MatchTheme {
+    pub id: crate::theme::ThemeId,
+    pub phase: u8,
+}
+
+impl MatchTheme {
+    pub(crate) const fn single(id: crate::theme::ThemeId) -> Self {
+        Self { id, phase: 0 }
+    }
+}
+
 /// One presented fight frame.
 pub struct FightFrame {
     pub frame: Frame,
     pub sound_latch: u8,
     pub latch_cycles: u32,
+    pub theme: Option<crate::theme::ThemeCue>,
+    pub(crate) theme_event: Option<u32>,
     /// The announcer's lines asked for on this frame, in order (ADR 0011):
     /// none under the Faithful 1987 preset.
     pub announcements: Vec<AnnouncerLine>,
@@ -764,6 +779,14 @@ impl Fight {
     /// Whether this is a Training fight.
     pub fn training(&self) -> bool {
         matches!(self.setup.kind, FightKind::TrainingCpu | FightKind::TrainingDummy)
+    }
+
+    pub(crate) fn select_theme(&mut self, theme: Option<MatchTheme>) {
+        self.machine.select_theme(theme);
+    }
+
+    pub fn selected_theme(&self) -> Option<MatchTheme> {
+        self.machine.toggle_state().selected_theme
     }
 
     /// Take the stage tune command a stand-in fight fell back to when Ryu's
@@ -1854,10 +1877,13 @@ impl Fight {
                 },
                 sound_latch: self.sounds.pop_front().unwrap_or(sound::IDLE),
                 latch_cycles: 0,
+                theme: None,
+                theme_event: None,
                 announcements: Vec::new(),
                 event: None,
             };
         }
+        let was_over = self.over;
         let mut event = None;
         let mut ally2_events = [None; 5];
         if !self.over {
@@ -2085,15 +2111,18 @@ impl Fight {
         if self.setup.config.preset == RulesetPreset::Faithful1987 {
             announcements.clear();
         }
-        let sound_latch = match self.sounds.pop_front() {
-            Some(cmd) => cmd,
-            None => self.machine.state.sound_latch,
-        };
+        let queued = self.sounds.pop_front();
+        let music = (queued.is_none() && !was_over)
+            .then_some(self.machine.toggle_state().latched_theme).flatten();
+        let sound_latch = queued.or_else(|| music.map(|music| music.legacy))
+            .unwrap_or(self.machine.state.sound_latch);
         self.update_era_trails(assets);
         FightFrame {
             frame: self.render(assets),
             sound_latch,
             latch_cycles: self.machine.state.latch_cycles,
+            theme: music.and_then(|music| music.cue),
+            theme_event: music.map(|music| music.event),
             announcements,
             event,
         }

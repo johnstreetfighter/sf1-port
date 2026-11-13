@@ -72,6 +72,7 @@ pub mod bonus;
 pub mod bonus_arcade;
 pub mod sf1plus;
 pub mod tasks;
+pub mod theme;
 pub mod training;
 pub mod versus;
 pub mod version;
