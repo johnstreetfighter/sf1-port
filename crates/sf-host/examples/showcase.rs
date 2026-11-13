@@ -287,7 +287,7 @@ fn menus(kit: &Kit, rec: &mut Recorder) {
     s.record();
     rec.caption("A new front end: Main Menu");
     idle_for(&mut s, rec, 50);
-    for _ in 0..2 {
+    for _ in 0..3 {
         tap(&mut s, rec, stick(DOWN));
         idle_for(&mut s, rec, 24);
     }

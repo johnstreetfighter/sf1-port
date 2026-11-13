@@ -202,8 +202,9 @@ fn the_rebind_walk_binds_keys_and_pad_buttons_and_the_bindings_survive_the_file(
     rig.plug(0);
     use PadButton::*;
     tap(&mut s, &rig, rig.pad1(&[Options]));
-    tap(&mut s, &rig, rig.pad1(&[DpadDown]));
-    tap(&mut s, &rig, rig.pad1(&[DpadDown]));
+    for _ in 0..3 {
+        tap(&mut s, &rig, rig.pad1(&[DpadDown]));
+    }
     assert_eq!(tap(&mut s, &rig, rig.pad1(&[Cross])).screen, "settings");
     for _ in 0..4 {
         tap(&mut s, &rig, rig.pad1(&[R1])); // R1 switches tabs: to CONTROLS
