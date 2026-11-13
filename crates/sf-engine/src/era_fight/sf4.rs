@@ -18,14 +18,20 @@ pub(crate) const FOCUS_CHARGE: u8 = 0x2e;
 pub(crate) const FOCUS: u8 = 0x2f;
 pub(crate) const DASH: u8 = 0x1e;
 pub(crate) const BACKDASH: u8 = 0x1d;
+pub(crate) const RYUSOKYAKU: u8 = 0x21;
 pub(crate) const REVENGE_MAX: u16 = FULL_SUB_HP * 2 / 3;
 const REVENGE_READY: u16 = REVENGE_MAX / 2;
+const METSU_HADOKEN: u8 = 0x2a;
+// Additional gameplay frames after the normal projectile launch point.
+const METSU_MAX_HOLD: u8 = 28;
+const METSU_FULL_CHARGE_DAMAGE_PERCENT: u16 = 115;
 const FOCUS_LEVEL_TWO: u8 = 20;
 const FOCUS_LEVEL_THREE: u8 = 50;
 const DASH_WINDOW: u8 = 12;
 const FOCUS_CONTACT_WINDOW: u8 = 15;
 const RECOVERY_DELAY: u8 = 70;
 const CRUMPLE_PAUSE: u8 = 20;
+const CHARGED_SENHA_CRUMPLE_PAUSE: u8 = 32;
 const MOTION_SLOTS: usize = 8;
 
 const QCF: &[Dir] = &[Down, DownForward, Forward];
@@ -40,6 +46,21 @@ const CHARGE_BF: &[Dir] = &[ChargeBack, Forward];
 const CHARGE_DU: &[Dir] = &[ChargeDown, Up];
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(u8)]
+enum FocusPayment {
+    #[default]
+    Free = 0,
+    Paid = 1,
+    ExRed = 2,
+}
+
+impl crate::canonical::Canonical for FocusPayment {
+    fn encode(&self, out: &mut crate::canonical::CanonicalHasher) {
+        crate::canonical::Canonical::encode(&(*self as u8), out);
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Sf4State {
     pub(crate) revenge: u16,
     motions: [MotionTracker; MOTION_SLOTS],
@@ -50,7 +71,7 @@ pub(crate) struct Sf4State {
     focus_level: u8,
     focus_contact: u8,
     focus_hit: bool,
-    focus_paid: bool,
+    focus_payment: FocusPayment,
     red: bool,
     absorbed: bool,
     tap_direction: u8,
@@ -71,7 +92,7 @@ pub(crate) struct Sf4State {
 
 crate::canonical::canonical_struct!(Sf4State, "Sf4State.v1", {
     revenge, motions, recoverable_hp, recovery_delay, focus_frames, focus_armor,
-    focus_level, focus_contact, focus_hit, focus_paid, red, absorbed, tap_direction,
+    focus_level, focus_contact, focus_hit, focus_payment, red, absorbed, tap_direction,
     tap_window, previous_direction, dash_trail, wakeup_requested, wakeup_used, crumple, ultra_scale,
     active_ex, punch_taps, punch_window, angry_scar, charged_uppercut, phase,
 });
@@ -114,7 +135,7 @@ impl Sf4State {
         self.focus_level = 0;
         self.focus_contact = 0;
         self.focus_hit = false;
-        self.focus_paid = false;
+        self.focus_payment = FocusPayment::Free;
         self.red = false;
     }
 
@@ -142,7 +163,7 @@ impl Sf4State {
         }
     }
 
-    fn reset_command_motions(&mut self) {
+    pub(super) fn reset_command_motions(&mut self) {
         self.motions = [MotionTracker::default(); MOTION_SLOTS];
         self.punch_taps = 0;
         self.punch_window = 0;
@@ -258,6 +279,17 @@ const RYU: &[Command] = &[
     Command::new(0x19, "SHORYUKEN", DP, Punch, Special).ex("EX SHORYUKEN"),
     Command::new(0x1b, "TATSUMAKI SENPUKYAKU", QCB, Kick, Special).ex("EX TATSUMAKI SENPUKYAKU"),
 ];
+const EVIL_RYU_SF4: &[Command] = &[
+    RYU[0],
+    Command::new(0x2b, "MESSATSU GOSHORYU", QCF2, TripleKick, Ultra2),
+    RYU[3],
+    RYU[4],
+    RYU[5],
+    Command::new(0x1f, "SHAKUNETSU HADOKEN", HCB, Punch, Special),
+    Command::new(0x20, "AIR TATSUMAKI", AIR_QCB, Kick, Special).air().ex("EX AIR TATSUMAKI"),
+    Command::new(0x21, "RYUSOKYAKU", &[Back, DownBack, Down, DownForward, Forward], Kick, Special)
+        .ex("EX RYUSOKYAKU"),
+];
 const KEN: &[Command] = &[
     Command::new(0x2a, "SHINRYUKEN", QCF2, TriplePunch, Ultra1),
     Command::new(0x2b, "GUREN SENPUKYAKU", QCF2, TripleKick, Ultra2),
@@ -321,6 +353,7 @@ impl EraFighterState {
             return &[];
         }
         match self.fighter {
+            Some(Ryu) if self.is_evil_ryu_sf4() => EVIL_RYU_SF4,
             Some(Ryu) => RYU,
             Some(Ken) => KEN,
             Some(Sagat) => SAGAT,
@@ -385,6 +418,15 @@ impl EraFighterState {
                 .any(|c| c.slot == slot && c.airborne)
     }
 
+    pub(crate) fn sf4_ex_axe_kick(&self, slot: u8) -> bool {
+        self.is_evil_ryu_sf4() && slot == 0x21
+            && self.alpha_move_active(slot) && self.sf4.active_ex == Some(slot)
+    }
+
+    pub(super) fn sf4_super_cost(&self) -> u8 {
+        if self.unified_gauge { 3 * STOCK_AT } else { 4 * STOCK_AT }
+    }
+
     pub(crate) fn sf4_special_active(&self, slot: u8) -> bool {
         self.is_sf4()
             && ((self.what_if_special_active(slot) && !self.what_if_airborne(slot))
@@ -395,7 +437,29 @@ impl EraFighterState {
     }
 
     pub(crate) fn sf4_tint(&self) -> Option<(u32, u8)> {
+        if let super::EvilRyuKit::EvilSf4 { metsu_charge: Some(frames @ 1..) } = self.evil_ryu_kit {
+            return Some((0xffff6633, 48 + 3 * frames));
+        }
         self.is_sf4().then(|| self.sf4.focus_tint()).flatten()
+    }
+
+    pub(super) fn sf4_keep_metsu_hold(&mut self, buttons: u8) {
+        if let super::EvilRyuKit::EvilSf4 { metsu_charge } = &mut self.evil_ryu_kit {
+            if metsu_charge.is_some_and(|frames| frames < METSU_MAX_HOLD) && !TriplePunch.held(buttons) {
+                *metsu_charge = None;
+            }
+        }
+    }
+
+    fn sf4_clear_metsu_charge(&mut self) {
+        if let super::EvilRyuKit::EvilSf4 { metsu_charge } = &mut self.evil_ryu_kit {
+            *metsu_charge = None;
+        }
+    }
+
+    pub(crate) fn sf4_metsu_fully_charged(&self, slot: u8) -> bool {
+        slot == METSU_HADOKEN && self.alpha_move_active(slot)
+            && matches!(self.evil_ryu_kit, super::EvilRyuKit::EvilSf4 { metsu_charge: Some(METSU_MAX_HOLD) })
     }
 
     pub(crate) fn sf4_dash_trail(&self) -> bool {
@@ -441,7 +505,11 @@ impl EraFighterState {
         if !self.is_sf4() || !self.alpha_move_active(slot) {
             0
         } else if self.sf4.ultra_scale != 0 {
-            self.sf4.ultra_scale
+            if self.sf4_metsu_fully_charged(slot) {
+                (u16::from(self.sf4.ultra_scale) * METSU_FULL_CHARGE_DAMAGE_PERCENT / 100) as u8
+            } else {
+                self.sf4.ultra_scale
+            }
         } else if self.sf4.active_ex == Some(slot) {
             120
         } else {
@@ -451,6 +519,26 @@ impl EraFighterState {
 }
 
 impl Bus<'_> {
+    pub(crate) fn era_sf4_hold_metsu(&mut self, ps: u32, slot: u8) -> bool {
+        let Some(side) = self.era_side(ps).filter(|&side| {
+            slot == METSU_HADOKEN && self.toggle_state.era.fighters[side].alpha_move_active(slot)
+        }) else { return false };
+        let super::EvilRyuKit::EvilSf4 { metsu_charge: Some(frames) } =
+            &mut self.toggle_state.era.fighters[side].evil_ryu_kit
+        else { return false };
+        if *frames >= METSU_MAX_HOLD {
+            return false;
+        }
+        *frames += 1;
+        true
+    }
+
+    pub(crate) fn era_sf4_finish_metsu(&mut self, ps: u32, slot: u8) {
+        if let Some(side) = self.era_side(ps).filter(|_| slot == METSU_HADOKEN) {
+            self.toggle_state.era.fighters[side].sf4_clear_metsu_charge();
+        }
+    }
+
     pub(crate) fn era_sf4_input(
         &mut self,
         ps: u32,
@@ -520,14 +608,16 @@ impl Bus<'_> {
             dash.filter(|_| charging || after_contact || actionable && fresh == 0)
         {
             let focus_cancel = charging || after_contact;
-            let paid = state.sf4.focus_paid || state.sf4.focus_hit && state.sf4.focus_level >= 2;
+            let paid = state.sf4.focus_payment != FocusPayment::Free
+                || state.sf4.focus_hit && state.sf4.focus_level >= 2;
             let cost = state.meter_cost(if focus_cancel && !paid { fadc_cost } else { 0 });
             if state.super_meter >= cost {
                 return self.era_sf4_dash(ps, entity, direction, cost, focus_cancel);
             }
         }
         if charging {
-            let held = MediumPair.held(held);
+            let focus = if state.sf4.red { RedFocus } else { MediumPair };
+            let held = focus.held(held);
             let state = &mut self.toggle_state.era.fighters[side].sf4;
             state.focus_frames += u8::from(held);
             if held && state.focus_frames < FOCUS_LEVEL_THREE {
@@ -540,15 +630,15 @@ impl Bus<'_> {
         let focus = if red { RedFocus } else { MediumPair };
         let rising_chord = focus.held(held) && !focus.held(held & !fresh);
         if rising_chord && (actionable || special_active) {
-            let cost = match (red, special_active && !actionable) {
-                (true, true) if state.unified_gauge => 3 * STOCK_AT,
-                (true, _) => 2 * STOCK_AT,
-                (false, true) => fadc_cost,
-                _ => 0,
+            let (cost, payment) = match (red, special_active && !actionable) {
+                (true, true) => (3 * STOCK_AT, FocusPayment::ExRed),
+                (true, false) => (2 * STOCK_AT, FocusPayment::Paid),
+                (false, true) => (fadc_cost, FocusPayment::Paid),
+                (false, false) => (0, FocusPayment::Free),
             };
             let cost = state.meter_cost(cost);
             if state.super_meter >= cost {
-                return self.era_sf4_begin_focus(ps, entity, cost, red);
+                return self.era_sf4_begin_focus(ps, entity, cost, red, payment);
             }
         }
         false
@@ -575,7 +665,14 @@ impl Bus<'_> {
         true
     }
 
-    fn era_sf4_begin_focus(&mut self, ps: u32, entity: u16, cost: u8, red: bool) -> bool {
+    fn era_sf4_begin_focus(
+        &mut self,
+        ps: u32,
+        entity: u16,
+        cost: u8,
+        red: bool,
+        payment: FocusPayment,
+    ) -> bool {
         if !self.era_start_banked_move(ps, entity, FOCUS_CHARGE, 0, None) {
             return false;
         }
@@ -583,7 +680,7 @@ impl Bus<'_> {
         let state = &mut self.toggle_state.era.fighters[side];
         state.super_meter -= cost;
         state.sf4.focus_frames = 1;
-        state.sf4.focus_paid = cost != 0;
+        state.sf4.focus_payment = payment;
         state.sf4.focus_armor = if red { u8::MAX } else { 1 };
         state.sf4.red = red;
         state.sf4.tap_window = 0;
@@ -606,7 +703,7 @@ impl Bus<'_> {
         let state = &mut self.toggle_state.era.fighters[side].sf4;
         state.focus_frames = 0;
         state.focus_level = level;
-        if level < 3 && !state.red {
+        if level < 3 {
             state.focus_armor = 0;
         }
         true
@@ -665,8 +762,7 @@ impl Bus<'_> {
                 let cost = match command.cost {
                     Special if ex => STOCK_AT,
                     AngryScar => STOCK_AT,
-                    Super if unified => 3 * STOCK_AT,
-                    Super => 4 * STOCK_AT,
+                    Super => state.sf4_super_cost(),
                     Ultra1 | Ultra2 if unified => 3 * STOCK_AT,
                     Ultra1 | Ultra2 if !state.sf4_ultra_ready() => return None,
                     _ => 0,
@@ -698,6 +794,11 @@ impl Bus<'_> {
         state.repeated_kick = false;
         if ultra {
             state.sf4_spend_ultra(self.era_rules.disable_comeback_scaling);
+            if command.slot == METSU_HADOKEN {
+                if let super::EvilRyuKit::EvilSf4 { metsu_charge } = &mut state.evil_ryu_kit {
+                    *metsu_charge = Some(0);
+                }
+            }
         } else if command.cost == Stance {
             state.gen_crane = !state.gen_crane;
         } else if command.cost == AngryScar {
@@ -734,6 +835,7 @@ impl Bus<'_> {
             return;
         };
         let state = &mut self.toggle_state.era.fighters[side];
+        state.sf4_clear_metsu_charge();
         state.sf4.active_ex = None;
         state.sf4.ultra_scale = 0;
         state.sf4.charged_uppercut = false;
@@ -767,25 +869,28 @@ impl Bus<'_> {
         }
     }
 
-    pub(crate) fn era_sf4_crumple_hit(&mut self, owner: u32, target: u32, move_id: u8) -> bool {
-        if move_id != FOCUS
-            || !self.era_state(owner).is_some_and(|state| {
-                state.is_sf4()
-                    && state.alpha_move_active(FOCUS)
-                    && (state.sf4.focus_level >= 2 || state.sf4.red)
-                    && state.sf4.focus_hit
-            })
+    pub(crate) fn era_crumple_hit(&mut self, owner: u32, target: u32, move_id: u8, grounded_alive: bool) -> bool {
+        let Some(state) = self.era_state(owner) else { return false };
+        let pause = if move_id == FOCUS
+            && state.is_sf4()
+            && state.alpha_move_active(FOCUS)
+            && (state.sf4.focus_level >= 2 || state.sf4.focus_payment == FocusPayment::ExRed)
+            && state.sf4.focus_hit
         {
+            CRUMPLE_PAUSE
+        } else if move_id == super::sf5::SKILL_ONE && grounded_alive && state.sf5_vt_charged_senha() {
+            CHARGED_SENHA_CRUMPLE_PAUSE
+        } else {
             return false;
-        }
+        };
         let Some(side) = self.era_side(target) else {
             return false;
         };
-        self.toggle_state.era.fighters[side].sf4.crumple = CRUMPLE_PAUSE;
+        self.toggle_state.era.fighters[side].sf4.crumple = pause;
         true
     }
 
-    pub(crate) fn era_sf4_holding_crumple(&self, ps: u32) -> bool {
+    pub(crate) fn era_holding_crumple(&self, ps: u32) -> bool {
         self.era_state(ps)
             .is_some_and(|state| state.sf4.crumple != 0)
     }
@@ -831,7 +936,12 @@ impl Bus<'_> {
         if let Some(side) = attacking {
             let state = &self.toggle_state.era.fighters[side];
             let focus = move_id == FOCUS && state.alpha_move_active(FOCUS);
+            let ultra_axe_kick = move_id == RYUSOKYAKU
+                && state.style.revision == Revision::Usf4
+                && state.is_evil_ryu_sf4()
+                && state.alpha_move_active(move_id);
             armor_break = focus && (state.sf4.focus_level >= 2 || state.sf4.red)
+                || ultra_axe_kick
                 || state
                     .sf4_commands()
                     .iter()
@@ -899,6 +1009,7 @@ impl Bus<'_> {
                 }
                 state.sf4.recoverable_hp = 0;
                 state.sf4.crumple = 0;
+                state.sf4_clear_metsu_charge();
                 state.sf4.active_ex = None;
                 state.sf4.ultra_scale = 0;
                 state.sf4.charged_uppercut = false;

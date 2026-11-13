@@ -17,7 +17,7 @@ use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side};
 use sf_video::compositor::{present, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont};
 use sf_video::era_hud::{EraGauge, GaugeArt};
-use sf_video::render::{capture_sprite_pose, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan};
+use sf_video::render::{capture_sprite_pose, render_frame, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan};
 use sf_video::scene::SceneState;
 use sf_video::romset::Assets;
 
@@ -35,7 +35,7 @@ use crate::data_bank::DataBank;
 use crate::era::StylePick;
 use crate::fight_reader::{ComboCounter, FightRead, FightReader, FighterRead, RoundMoments};
 use crate::fight_reader::FIGHTER_SLOTS;
-use crate::fighter::{CPU_STRUCT, GAME_MODE, P1_STRUCT, P2_STRUCT};
+use crate::fighter::{CPU_STRUCT, DEMON_SPARK_MARKER, GAME_MODE, P1_STRUCT, P2_STRUCT};
 use crate::moves::{InputNotation, MachineRead, MoveEntry};
 use crate::roster::{PlayMode, TournamentFighter};
 use crate::overlay::{gauge_lift, render_diagnostic_overlay_parts};
@@ -933,6 +933,12 @@ impl Fight {
         self.machine.set_match_config(config);
     }
 
+    pub(super) fn try_alpha2_feint(&mut self, input: PlayerInputs) -> bool {
+        self.setup.config.evil_ryu_playtest == Some(crate::config::EvilRyuPlaytest::Alpha2)
+            && !self.over && flow_position(&self.machine) == FIGHT_LOOP
+            && self.machine.try_alpha2_feint(input.directions)
+    }
+
     /// Whether the ROM's continue countdown is running (`0x3f162`).
     pub fn in_continue(&self) -> bool {
         flow_position(&self.machine) == CONTINUE_LOOP
@@ -1213,7 +1219,11 @@ impl Fight {
             };
             hide(row, (LABEL_COL, LABEL_COL + label.len() - 1));
             let colour = (LABEL_COL..LABEL_COL + label.len()).find(|&col| !wiped(col, row)).map_or(0, |col| cell(col, row) & !0x3ff);
-            names.push((row, fighter.name().to_ascii_uppercase(), colour));
+            let name = self.setup.config.evil_ryu_playtest
+                .filter(|_| player == P1_STRUCT && fighter == TournamentFighter::Ryu)
+                .map_or_else(|| fighter.name(), |playtest| playtest.display_name())
+                .to_ascii_uppercase();
+            names.push((row, name, colour));
         }
         // The round result names its winner: the ROM's name swapped for the
         // fighter's, the rest of the line as typed so far, centred again; a
@@ -1278,6 +1288,11 @@ impl Fight {
     /// viewer draws under the era HUD, so its fills never cover a word or a
     /// gauge; the frame meter and telemetry, which never meet it, draw last.
     pub fn render(&self, assets: &Assets) -> Frame {
+        if self.setup.config.evil_ryu_playtest.is_some()
+            && self.machine.toggle_state().raging_demon.blackout_frames.is_some()
+        {
+            return self.render_demon_blackout(assets);
+        }
         let mut frame = self.render_scene(assets);
         self.draw_ally_lifebar(&mut frame);
         // Training's Show strip, under the health block in every preset.
@@ -1305,6 +1320,36 @@ impl Fight {
             }
         }
         frame
+    }
+
+    /// Keep the cabinet's sprite drawing for the Demon sparks. Disable the
+    /// other layers and park unrelated objects on this copy of the scene.
+    fn render_demon_blackout(&self, assets: &Assets) -> Frame {
+        const OBJECT_BYTES: usize = 0x40;
+        let mut scene = self.machine.state.scene();
+        scene.active = 0x80;
+        scene.paletteram[..2].fill(0);
+        let kage = self.setup.config.evil_ryu_playtest == Some(crate::config::EvilRyuPlaytest::KageII);
+        let mut tints = Vec::new();
+        for (slot, object) in scene.objectram.chunks_exact_mut(OBJECT_BYTES).enumerate() {
+            let offset = slot * OBJECT_BYTES;
+            let demon_spark = (0x100..0x400).contains(&offset)
+                && object[8] != 0
+                && object[DEMON_SPARK_MARKER] == 1;
+            if !demon_spark {
+                object[..8].fill(0);
+            } else if kage {
+                tints.push(SpriteTint {
+                    entries: offset..offset + OBJECT_BYTES,
+                    tint: PaletteTint { color: 0xffff3038, strength: 128 },
+                });
+            }
+        }
+        if tints.is_empty() {
+            render_frame(assets, &scene)
+        } else {
+            render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0
+        }
     }
 
     fn draw_ally_lifebar(&self, frame: &mut Frame) {
@@ -1587,7 +1632,7 @@ impl Fight {
                     frame: m.state.frame,
                     addresses,
                 });
-            } else if self.setup.kind.stops_at_match_end() && m.match_over() {
+            } else if (self.setup.kind.stops_at_match_end() || self.setup.config.evil_ryu_playtest.is_some()) && m.match_over() {
                 self.over = true;
                 event = Some(FightEvent::MatchOver);
             } else if m.work_ram()[(MODE_DEMO - 0xff8000) as usize] == 0 {

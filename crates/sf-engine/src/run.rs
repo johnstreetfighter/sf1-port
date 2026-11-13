@@ -1952,6 +1952,12 @@ impl PowerOnMachine {
         }
     }
 
+    pub(crate) fn try_alpha2_feint(&mut self, directions: [bool; 4]) -> bool {
+        let direction = directions.into_iter().enumerate()
+            .fold(0, |bits, (index, held)| bits | (u8::from(held) << index));
+        self.program.bus_with_dsw1(&mut self.state, self.io.dsw1).try_alpha2_feint(direction)
+    }
+
     /// Fight frames still frozen after a Super Combo starts.
     pub fn era_super_freeze(&self) -> u8 {
         self.program.toggle_state.era.freeze

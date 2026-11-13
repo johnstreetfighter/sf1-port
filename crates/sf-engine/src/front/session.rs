@@ -34,10 +34,10 @@ use super::settings::{default_looks, frame_delay_cap, look_in_use, Aspect, Displ
 use super::tune::{DemoScene, LookParam, LookTuning, Panel, SaveLook, TuneScreen, TypedKey};
 use super::world_tour::WorldTourScreen;
 use super::{sound, Transition};
-use crate::config::{MatchConfig, RulesetPreset};
+use crate::config::{EvilRyuPlaytest, MatchConfig, RulesetPreset};
 use crate::data_bank::DataBank;
 use crate::dramatic::DramaticRules;
-use crate::era::{EraFamily, StylePick};
+use crate::era::{Costume, EraFamily, GaugeMode, Loadout, Revision, StylePick};
 use crate::jukebox::{Cues, Resolved, TrackCue};
 use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
@@ -889,6 +889,38 @@ impl GameSession {
         self.launch_fight(setup, flag, styles);
     }
 
+    /// Open the configured private playtest at the Thailand final.
+    pub fn start_evil_ryu_playtest(&mut self) {
+        let Some(playtest) = self.config.evil_ryu_playtest else { return };
+        let mut config = self.stamped(PlayMode::Arcade, TournamentFighter::Ryu, TournamentFighter::Sagat);
+        config.p2_fair_cpu = true;
+        config.gauge_mode = GaugeMode::EraDefault;
+        if playtest == EvilRyuPlaytest::Sf6 {
+            config.roster.what_if_styles = true;
+        }
+        let setup = FightSetup {
+            kind: FightKind::Arcade,
+            players: Players::One,
+            config,
+            dsw1: FightDips::DSW1,
+            dsw2: self.fight_dips().dsw2(),
+        };
+        let style = match playtest {
+            EvilRyuPlaytest::UltraSf2 => StylePick::sf2(Revision::St, Loadout::Standard, Costume::Classic1987, 0),
+            EvilRyuPlaytest::Alpha2 => StylePick::for_revision(Revision::Sfz2, Loadout::Standard),
+            EvilRyuPlaytest::Alpha3A => StylePick::for_revision(Revision::Sfz3, Loadout::AIsm),
+            EvilRyuPlaytest::Alpha3V => StylePick::for_revision(Revision::Sfz3, Loadout::VIsm),
+            EvilRyuPlaytest::Alpha3X => StylePick::for_revision(Revision::Sfz3, Loadout::XIsm),
+            EvilRyuPlaytest::Ae2012 => StylePick::for_revision(Revision::Ae2012, Loadout::Ultra1),
+            EvilRyuPlaytest::Ae2012Ultra2 => StylePick::for_revision(Revision::Ae2012, Loadout::Ultra2),
+            EvilRyuPlaytest::Usf4 => StylePick::for_revision(Revision::Usf4, Loadout::UltraDouble),
+            EvilRyuPlaytest::Kage => StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+            EvilRyuPlaytest::KageII => StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill2Trigger2),
+            EvilRyuPlaytest::Sf6 => StylePick::for_revision(Revision::Sf6, Loadout::Standard),
+        };
+        self.launch_fight(setup, Some(HIDDEN_FLAG), [Some(style), None]);
+    }
+
     pub(super) fn stamp_dramatic(
         &self,
         ally1: TournamentFighter,
@@ -1506,11 +1538,16 @@ impl GameSession {
         }
         // A pad's back (Circle) is MK in a fight: only its Start opens the
         // box, and on the keyboard Start, Esc and Backspace.
-        let opens = any_menu_edge(prev, now, |m| m.start)
-            || edge(prev.menu.back, now.menu.back)
-            || edge(prev.cabinet[2], now.cabinet[2])
+        let p1_start = edge(prev.menu.start, now.menu.start)
+            || pad_edge(prev, now, 0, |m| m.start)
+            || edge(prev.cabinet[2], now.cabinet[2]);
+        let other_pause = edge(prev.menu.back, now.menu.back)
+            || pad_edge(prev, now, 1, |m| m.start)
             || edge(prev.cabinet[3], now.cabinet[3]);
-        if opens && can_pause {
+        if can_pause && (p1_start || other_pause) {
+            if !other_pause && play.fight.try_alpha2_feint(now.p1) {
+                return None;
+            }
             // The side whose pad's Start did it; a key is P1's.
             play.paused_by = if online { local_side }
                 else { (0..2).find(|&s| pad_edge(prev, now, s, |m| m.start)).unwrap_or(0) };
@@ -1703,6 +1740,7 @@ impl GameSession {
                         MenuItem::Rematch if setup.config.dramatic.is_some() => {
                             self.start_dramatic(setup.config);
                         }
+                        MenuItem::Rematch if setup.config.evil_ryu_playtest.is_some() => self.start_evil_ryu_playtest(),
                         MenuItem::Rematch => {
                             // The stage screen opens with the loser in
                             // control and the cursor on the stage just
@@ -2325,7 +2363,13 @@ fn side_moves(fight: &Fight, side: usize, notation: InputNotation) -> MovesPanel
     let fighter = fight.player_fighter(side);
     let player_table = machine.data_bank().is_some_and(|b| b.table(fighter).is_some());
     let entries = crate::moves::live_move_list(fighter, setup.config.preset, player_table, fight.pad_era_state(side));
-    MovesPanel::from_entries(fighter, entries)
+    let panel = MovesPanel::from_entries(fighter, entries);
+    let panel = if let (0, Some(playtest)) = (side, setup.config.evil_ryu_playtest) {
+        panel.with_evil_ryu_playtest_moves(playtest)
+    } else {
+        panel
+    };
+    panel
         .with_inputs(notation, facing_right)
         .with_show(fight.training())
 }
