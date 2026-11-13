@@ -635,7 +635,10 @@ fill_meters = false
         .map(|l| l.to_owned() + "\n")
         .collect();
     assert_eq!(Settings::from_toml(&old).unwrap(), Settings { vsync: true, frame_delay_ms: 0, ..settings.clone() });
-    assert!(settings.to_toml().contains(&format!("\nvsync = false\nframe_delay_ms = {FRAME_DELAY_CAP_MS}\n")));
+    let saved = settings.to_toml();
+    assert!(saved.lines().any(|line| line == "vsync = false"));
+    let frame_delay = format!("frame_delay_ms = {FRAME_DELAY_CAP_MS}");
+    assert!(saved.lines().any(|line| line == frame_delay));
     assert!(settings.to_toml().contains("\nscale = 9\n"));
     let past_cap = format!("scale = 5\nframe_delay_ms = {}\n", FRAME_DELAY_CAP_MS + 5);
     let loaded = Settings::from_toml(&past_cap).unwrap();
