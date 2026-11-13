@@ -350,11 +350,13 @@ fn a_fresh_drive_parry_negates_actual_melee_contact_and_announces_perfect_parry(
     fight.step(assets, IDLE, pad(0, Some(5)), false);
     for _ in 0..25 {
         let mut parry = fight.clone();
-        fight.step(assets, IDLE, IDLE, false);
+        let clean = fight.step(assets, IDLE, IDLE, false);
         if fight.machine().era_fighters()[0].sub_hp == hp {
             continue;
         }
+        assert!(clean.impacts.iter().any(|cue| cue.kind == sf_engine::impact::ImpactKind::HeavyStrike));
         let output = parry.step(assets, pair(1, 4), IDLE, false);
+        assert!(output.impacts.iter().all(|cue| cue.kind != sf_engine::impact::ImpactKind::HeavyStrike));
         assert_eq!(parry.machine().era_fighters()[0].sub_hp, hp);
         assert!(output.announcements.contains(&AnnouncerLine::PerfectParry));
         assert_eq!(drive(&parry), 288);
@@ -499,6 +501,8 @@ fn an_sf6_punish_counter_drains_drive_even_without_drive_impact() {
 
 #[test]
 fn a_blocked_drive_impact_at_the_wall_keeps_the_defender_in_stun() {
+    use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind};
+
     let Some(session) =
         local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard)
     else {
@@ -506,31 +510,89 @@ fn a_blocked_drive_impact_at_the_wall_keeps_the_defender_in_stun() {
     };
     let session = local_fight(&session, Revision::Sf6, Loadout::Standard);
     let assets = session.assets();
-    let mut fight = session.fight().expect("local fight").clone();
-    let left = pad(LEFT, None);
-    for _ in 0..140 {
-        let pair = fight.machine().diagnostic_telemetry();
-        if pair.p1.center_x <= 0x86 && pair.p2.center_x.abs_diff(pair.p1.center_x) <= 52 {
-            break;
-        }
-        fight.step(assets, left, left, false);
+    let initial = session.fight().expect("local fight");
+    let mut midscreen = initial.clone();
+    for _ in 0..110 {
+        let pos = midscreen.machine().diagnostic_telemetry();
+        if pos.p1.center_x.abs_diff(pos.p2.center_x) <= 52 { break; }
+        midscreen.step(assets, pad(RIGHT, None), pad(LEFT, None), false);
     }
-    let pair_pos = fight.machine().diagnostic_telemetry();
-    assert!(pair_pos.p1.center_x <= 0x86, "P1 reached the left wall");
-    fight.step(assets, left, pair(2, 5), false);
-    let hp = fight.machine().era_fighters()[0].sub_hp;
+    assert!((0x86..=0x17a).contains(&midscreen.machine().diagnostic_telemetry().p1.center_x));
+    midscreen.step(assets, pad(LEFT, None), pair(2, 5), false);
+    let mut blocked = false;
     for _ in 0..40 {
-        fight.step(assets, left, IDLE, false);
-        if fight.fight_read().fighters[0].reacting() {
-            assert_eq!(fight.machine().era_fighters()[0].sub_hp, hp);
-            for _ in 0..8 {
-                fight.step(assets, pad(0, Some(0)), IDLE, false);
-                assert!(!fight.fight_read().fighters[0].attacking());
+        let result = midscreen.step(assets, pad(LEFT, None), IDLE, false);
+        assert!(result.impacts.iter().all(|cue| cue.kind != ImpactKind::WallSlam));
+        blocked |= midscreen.fight_read().blocked[1];
+    }
+    assert!(blocked, "Drive Impact also contacts a guard at midscreen");
+
+    // A punish also uses SF6's wall-stun timer, but has no wall contact.
+    let mut punish = initial.clone();
+    for _ in 0..100 {
+        let pos = punish.machine().diagnostic_telemetry();
+        if pos.p1.center_x.abs_diff(pos.p2.center_x) <= 44 { break; }
+        punish.step(assets, pad(RIGHT, None), pad(LEFT, None), false);
+    }
+    let hp = punish.machine().era_fighters()[1].sub_hp;
+    punish.step(assets, IDLE, pad(0, Some(5)), false);
+    rest(&mut punish, assets, 13);
+    punish.step(assets, pair(2, 5), IDLE, false);
+    let mut counter = false;
+    for _ in 0..50 {
+        let result = punish.step(assets, IDLE, IDLE, false);
+        assert!(result.impacts.iter().all(|cue| cue.kind != ImpactKind::WallSlam));
+        counter |= result.announcements.contains(&AnnouncerLine::PunishCounter);
+    }
+    assert!(punish.machine().era_fighters()[1].sub_hp < hp, "midscreen Impact lands");
+    assert!(counter, "Impact reaches the defender's recovery at midscreen");
+
+    for (wall, victim, direction) in [
+        (LEFT, ImpactFighter::P1, ImpactDirection::Right),
+        (RIGHT, ImpactFighter::P2, ImpactDirection::Left),
+    ] {
+        let mut fight = initial.clone();
+        let side = usize::from(victim == ImpactFighter::P2);
+        let at_wall = |fight: &Fight| {
+            let positions = fight.machine().diagnostic_telemetry();
+            let [p1, p2] = [positions.p1.center_x, positions.p2.center_x];
+            (if side == 0 { p1 < 0x86 } else { p2 > 0x17a }) && p1.abs_diff(p2) <= 52
+        };
+        let back = pad(wall, None);
+        for _ in 0..140 {
+            if at_wall(&fight) { break; }
+            assert!(fight.step(assets, back, back, false).impacts.is_empty());
+        }
+        assert!(at_wall(&fight), "{victim:?} reached the wall");
+        let step = |fight: &mut Fight, defending, attacking| {
+            let mut pads = [attacking; 2];
+            pads[side] = defending;
+            fight.step(assets, pads[0], pads[1], false)
+        };
+        let hp = fight.machine().era_fighters()[side].sub_hp;
+        assert!(step(&mut fight, back, pair(2, 5)).impacts.is_empty());
+        let mut splatted = false;
+        for _ in 0..40 {
+            let result = step(&mut fight, back, IDLE);
+            if fight.fight_read().fighters[side].reacting() {
+                assert_eq!(fight.machine().era_fighters()[side].sub_hp, hp);
+                assert_eq!(result.impacts.len(), 1);
+                let cue = result.impacts[0];
+                assert_eq!(cue.kind, ImpactKind::WallSlam);
+                assert_eq!(cue.fighter, victim);
+                assert_eq!(cue.direction, direction);
+                assert_eq!(cue.frame, fight.machine().state.frame);
+                splatted = true;
+                break;
             }
-            return;
+            assert!(result.impacts.is_empty());
+        }
+        assert!(splatted, "blocked Drive Impact causes a wall stun to {victim:?}");
+        for _ in 0..8 {
+            assert!(step(&mut fight, pad(0, Some(0)), IDLE).impacts.is_empty());
+            assert!(!fight.fight_read().fighters[side].attacking());
         }
     }
-    panic!("blocked Drive Impact did not cause a wall stun");
 }
 
 #[test]

@@ -48,6 +48,8 @@ impl<'a> Comparison<'a> {
     fn step_frames(&mut self, p1: PlayerInputs, p2: PlayerInputs) -> [Frame; 2] {
         let current = self.current.step(self.assets, p1, p2, false);
         let preview = self.preview.step(self.assets, p1, p2, false);
+        assert_eq!(current.impacts, preview.impacts);
+        assert_eq!(current.sound_latch, preview.sound_latch);
         assert_eq!(self.current.fight_read(), self.preview.fight_read());
         assert_eq!(self.current.state_checksum(), self.preview.state_checksum());
         [current.frame, preview.frame]
@@ -189,6 +191,9 @@ fn drive_impact_distinguishes_whiff_hit_and_guard() {
 
 #[test]
 fn body_landings_use_slam_dust_from_the_attacking_style() {
+    use sf_engine::fighter::{P2_STRUCT, WORK_BASE};
+    use sf_engine::impact::{ImpactFighter, ImpactKind};
+
     let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::Sf6, Loadout::Standard) else {
         return;
     };
@@ -203,17 +208,55 @@ fn body_landings_use_slam_dust_from_the_attacking_style() {
             old != new && matches!(new, 0xffefcf99 | 0xffcba77a | 0xff9e7957 | 0xff634840)
         })
     };
-    for (command, is_throw, is_jump) in [(pad(RIGHT, Some(HP)), true, false), (impact, false, false), (pad(UP, None), false, true)] {
+    for (command, is_throw, is_jump, lethal) in [
+        (pad(RIGHT, Some(HP)), true, false, false),
+        (impact, false, false, true),
+        (impact, false, false, false),
+        (pad(UP, None), false, true, false),
+    ] {
         let mut fight = Comparison::new(session.fight().unwrap(), session.assets());
         if !is_jump {
             fight.approach();
         }
+        if lethal {
+            let mut snapshot = fight.current.save_netplay_snapshot(0);
+            let health = (P2_STRUCT + 6 - WORK_BASE) as usize;
+            snapshot.machine.work[health..health + 2].copy_from_slice(&[1, 0]);
+            snapshot.machine.toggle_state.era.fighters[1].sub_hp = 4;
+            fight.current.restore_netplay_snapshot(&snapshot);
+            fight.preview.restore_netplay_snapshot(&snapshot);
+        }
         let mut hit_tick = None;
+        let mut mat_tick = None;
         let mut floor_tick = None;
         let mut dust_starts = 0;
         let mut dusty = false;
         for tick in 0..110 {
             let [current, preview] = fight.step_frames(if tick == 0 { command } else { idle }, idle);
+            if let Some((cue, _)) = fight.current.impact_visuals().find(|(cue, age)| {
+                cue.kind == ImpactKind::MatSlam && cue.fighter == ImpactFighter::P2 && *age == 0
+            }) {
+                use sf_video::render::{VISAREA_X, VISAREA_Y, WIDTH};
+
+                assert!(mat_tick.replace(tick).is_none(), "one shared mat cue per contact");
+                let machine = fight.current.machine();
+                assert!(!machine.state.scene().flip_screen);
+                let x = usize::from(cue.x - machine.camera_x()) - VISAREA_X;
+                let y = usize::from(cue.y) - VISAREA_Y;
+                let particle = (y + 1) * WIDTH + x + 13;
+                assert_eq!(current.argb[particle], 0xffe5c092, "the shared dust is visible");
+                assert_ne!(preview.argb[particle], 0xffe5c092, "the preview replaces the shared dust");
+
+                fight.preview.set_screen_shake(false);
+                let steady = fight.preview.render(fight.assets);
+                fight.preview.set_screen_shake(true);
+                let still_world = &steady.argb[120 * WIDTH..170 * WIDTH];
+                assert!(&preview.argb[120 * WIDTH..170 * WIDTH] != still_world);
+                let agreeing = preview.argb[128 * WIDTH..178 * WIDTH].iter().zip(still_world)
+                    .filter(|(moving, still)| moving == still).count();
+                assert!(agreeing * 100 >= still_world.len() * 99,
+                    "only {agreeing}/{} world pixels kept the 8px jolt", still_world.len());
+            }
             if tick == 0 && is_throw {
                 assert_eq!(fight.move_id(), sf_engine::combo::throw::THROW_MOVE);
             }
@@ -235,11 +278,16 @@ fn body_landings_use_slam_dust_from_the_attacking_style() {
         }
         if is_jump {
             assert_eq!((hit_tick, floor_tick), (None, None));
-        } else {
+        } else if is_throw || lethal {
             let hit_tick = hit_tick.expect("confirmed hit or throw damage");
             let floor_tick = floor_tick.expect("native body floor contact draws slam dust");
+            assert_eq!(Some(floor_tick), mat_tick, "preview dust starts on the shared mat cue");
             assert_eq!(dust_starts, 1);
             assert_eq!(floor_tick == hit_tick, is_throw, "throw damage occurs at the slam, strikes land before the victim does");
+        } else {
+            assert!(hit_tick.is_some(), "the live Drive Impact hits");
+            assert!(!fight.current.fight_read().fighters[1].knocked_out());
+            assert_eq!((floor_tick, mat_tick), (None, None), "feet-first recovery has no slam dust");
         }
         assert!(!dusty);
     }

@@ -27,6 +27,8 @@ fn step_pair(fights: &mut [Fight; 2], assets: &Assets, p1: PlayerInputs, p2: Pla
     let [current, preview] = fights;
     let original = current.step(assets, p1, p2, false);
     let new = preview.step(assets, p1, p2, false);
+    assert_eq!(original.impacts, new.impacts);
+    assert_eq!(original.sound_latch, new.sound_latch);
     assert_eq!(current.fight_read(), preview.fight_read());
     assert_eq!(current.state_checksum(), preview.state_checksum());
     original.frame.argb != new.frame.argb
@@ -138,6 +140,9 @@ fn landing_dust_starts_when_the_jump_lands_and_clears() {
 
 #[test]
 fn light_medium_and_heavy_sparks_replace_stock_after_contact() {
+    use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind as ContactKind};
+    use sf_video::render::{render_frame, HEIGHT, VISAREA_X, VISAREA_Y, WIDTH};
+
     let Some(select) =
         local_select_with_p1(GaugeMode::EraDefault, Revision::Sf1Plus, Loadout::Standard)
     else {
@@ -171,6 +176,40 @@ fn light_medium_and_heavy_sparks_replace_stock_after_contact() {
                 assert!(count > 0, "{kind:?} painted its colors");
                 pixel_counts.push(count);
                 let [current, preview] = &mut fights;
+                if kind == ImpactKind::HeavyHit {
+                    let (cue, age) = current.impact_visuals().next().expect("shared heavy contact");
+                    assert_eq!(age, 0);
+                    assert_eq!(cue.kind, ContactKind::HeavyStrike);
+                    assert_eq!(cue.fighter, ImpactFighter::P2);
+                    assert_eq!(cue.direction, ImpactDirection::Right);
+                    let original = current.render(assets);
+                    let new = preview.render(assets);
+                    let machine = current.machine();
+                    let mut scene = machine.state.scene();
+                    assert!(!scene.flip_screen);
+                    let x = usize::from(cue.x - machine.camera_x()) - VISAREA_X;
+                    let y = usize::from(cue.y) - VISAREA_Y;
+                    let ray = y * WIDTH + x + 7;
+                    assert_eq!(original.argb[ray], 0xffe99745, "the shared spark is visible");
+                    assert_ne!(new.argb[ray], 0xffe99745, "the preview replaces the shared spark");
+
+                    let raw = render_frame(assets, &scene);
+                    let victim = usize::from(machine.diagnostic_telemetry().p2.entity_offset);
+                    for tile in scene.objectram[victim..victim + 0x600].chunks_exact_mut(0x40) {
+                        tile[..8].fill(0);
+                    }
+                    let no_victim = render_frame(assets, &scene);
+                    let pixels: Vec<_> = (120..HEIGHT - 10)
+                        .flat_map(|y| (x + 15..WIDTH - 4).map(move |x| y * WIDTH + x))
+                        .filter(|&i| raw.argb[i] != no_victim.argb[i])
+                        .collect();
+                    assert!(pixels.len() > 50, "sample visible victim pixels outside the spark");
+                    let recoiling = pixels.iter().filter(|&&i| {
+                        raw.argb[i] == original.argb[i + 4] && raw.argb[i] == new.argb[i + 4]
+                    }).count();
+                    assert!(recoiling * 100 >= pixels.len() * 95,
+                        "only {recoiling}/{} victim pixels kept the 4px recoil", pixels.len());
+                }
                 preview.toggle_move_effects();
                 assert_eq!(current.render(assets).argb, preview.render(assets).argb);
                 preview.toggle_move_effects();

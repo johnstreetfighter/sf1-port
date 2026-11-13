@@ -303,6 +303,7 @@ impl crate::canonical::Canonical for CoreToggleState {
             utility, scripted_cpu_pad, cpu_drive_reserve: _, schemes,
             ashura_motion, raging_demon, satsui_awakening, missing_ryu_theme: _,
             selected_theme: _, queued_themes: _, latched_theme: _, next_theme_event: _,
+            impact_contacts: _,
         } = self;
         out.tag("CoreToggleState.v4");
         neg_edge_latch.encode(out);
@@ -1739,4 +1740,6 @@ pub struct CoreToggleState {
     pub(crate) queued_themes: [Option<crate::tasks::StageMusic>; 16],
     pub(crate) latched_theme: Option<crate::tasks::StageMusic>,
     pub(crate) next_theme_event: u32,
+    /// This frame's presentation contact for each affected fighter.
+    pub(crate) impact_contacts: [Option<crate::impact::ImpactContact>; 3],
 }

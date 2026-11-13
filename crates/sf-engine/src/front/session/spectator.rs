@@ -58,14 +58,21 @@ impl State {
 
     /// Playback consumes confirmed pairs only. The trailing fifteen remain a
     /// jitter buffer; a late join can replay at most eight pairs per display.
+    /// An impact ends the batch on its contact picture so the sound and spark
+    /// start together. A terminal event ends playback at the exact last input.
     pub(super) fn step(&mut self, fight: &mut Fight, assets: &Assets) -> FightFrame {
-        let count = self.confirmed.len().saturating_sub(self.played as usize)
-            .saturating_sub(15).min(8);
+        let count = if fight.is_over() {
+            0
+        } else {
+            self.confirmed.len().saturating_sub(self.played as usize).saturating_sub(15).min(8)
+        };
         if self.played == 0 && count > 0 {
             fight.select_theme(self.theme);
         }
         let mut last = None;
         let mut announcements = Vec::new();
+        let mut impacts = Vec::new();
+        let mut clear_impacts = false;
         let mut event = None;
         for _ in 0..count {
             let (p1, p2) = self.confirmed[self.played as usize];
@@ -77,8 +84,13 @@ impl State {
                 self.latches.push_back(latch);
             }
             announcements.append(&mut frame.announcements);
-            if event.is_none() { event = frame.event.take(); }
+            clear_impacts |= frame.clear_impacts;
+            impacts.append(&mut frame.impacts);
+            event = frame.event.take();
             last = Some(frame);
+            if event.is_some() || !impacts.is_empty() {
+                break;
+            }
         }
         let mut frame = last.unwrap_or_else(|| FightFrame {
             frame: if fight.driving() {
@@ -86,12 +98,14 @@ impl State {
             } else { fight.render(assets) },
             sound_latch: sound::IDLE, latch_cycles: 0, theme: None,
             theme_frame: None, theme_event: None,
-            announcements: Vec::new(), event: None,
+            announcements: Vec::new(), impacts: Vec::new(), clear_impacts: false, event: None,
         });
         if let Some(latch) = self.latches.pop_front() {
             frame.put_latch(latch);
         }
         frame.announcements = announcements;
+        frame.impacts = impacts;
+        frame.clear_impacts = clear_impacts;
         frame.event = event;
         frame
     }
@@ -229,6 +243,37 @@ mod tests {
     use crate::front::fight::{FightDips, FightSetup};
     use crate::theme::ThemeId;
     use sf_video::romset::load_assets;
+
+    #[test]
+    fn spectator_catch_up_preserves_clean_heavy_impact_contact() {
+        let (assets, mut direct) = crate::impact::tests::close_local_fight();
+        let mut observer = direct.clone();
+        let idle = PlayerInputs::default();
+        let heavy = PlayerInputs { buttons: [false, false, true, false, false, false], ..idle };
+        let pads = std::iter::once(heavy).chain(std::iter::repeat_n(idle, 95));
+        let mut confirmed = Vec::new();
+        let mut contact = None;
+        for p1 in pads {
+            let out = direct.step(&assets, p1, idle, false);
+            confirmed.push((crate::netplay::encode_inputs(p1), 0));
+            if !out.impacts.is_empty() {
+                assert!(contact.is_none(), "only one clean standing heavy");
+                contact = Some((out.frame, out.impacts));
+            }
+        }
+        let (expected_frame, expected_cues) = contact.expect("the heavy connects");
+        let mut spectator = State { confirmed, ..State::default() };
+        let mut actual = Vec::new();
+        for _ in 0..15 {
+            let out = spectator.step(&mut observer, &assets);
+            if let Some(cue) = out.impacts.first() {
+                assert_eq!(observer.machine().state.frame, cue.frame);
+                assert_eq!(out.frame.argb, expected_frame.argb);
+            }
+            actual.extend(out.impacts);
+        }
+        assert_eq!(actual, expected_cues, "the spectator presents the impact once on its contact frame");
+    }
 
     #[test]
     fn late_spectator_delivers_the_original_latch_time_after_catching_up() {

@@ -197,6 +197,20 @@ fn aspect_cycles_true_integer_square_and_reset_tab_puts_it_back() {
 }
 
 #[test]
+fn screen_shake_defaults_on_and_persists_when_disabled() {
+    assert!(Settings::from_toml("").unwrap().screen_shake);
+    let settings = Settings { screen_shake: false, ..Settings::default() };
+    let saved = settings.to_toml();
+    assert!(saved.contains("screen_shake = false"));
+    assert!(!Settings::from_toml(&saved).unwrap().screen_shake);
+    assert!(Settings::from_toml("screen_shake = maybe").is_err());
+    let mut screen = at_label(2, "SCREEN SHAKE");
+    assert_eq!(screen.value(Row::ScreenShake), "ON");
+    assert_eq!(screen.apply(MenuInput::Confirm), Some(Transition::ValueChanged));
+    assert_eq!(screen.value(Row::ScreenShake), "OFF");
+}
+
+#[test]
 fn the_video_tab_rows_step_clamp_and_reset_tab_restores_them_all() {
     let display = DisplayInfo { refresh_mhz: Some(120_000), max_scale: 6 };
     let mut s = at_label(2, "MODE");
@@ -250,6 +264,7 @@ fn the_video_tab_rows_step_clamp_and_reset_tab_restores_them_all() {
     let changed = s.settings().clone();
     let fresh = Settings::default();
     assert!(changed.fullscreen != fresh.fullscreen && changed.vsync != fresh.vsync);
+    assert_ne!(changed.screen_shake, fresh.screen_shake);
     assert!(changed.scale != fresh.scale && changed.aspect != fresh.aspect && changed.gauge_art != fresh.gauge_art);
     assert!(changed.frame_delay_ms != fresh.frame_delay_ms && changed.crt_look != fresh.crt_look);
     while s.row() != Row::ResetTab {
@@ -365,6 +380,7 @@ fn the_gameplay_rows_wording_and_values() {
             s_("MOTION", ""),
             s_("VSYNC", "ON"),
             s_("FRAME DELAY", "0MS"),
+            s_("SCREEN SHAKE", "ON"),
             s_("RESET TAB", ""),
         ],
         "the Video tab: DISPLAY, MONITOR and MOTION groups, every default"
@@ -619,7 +635,10 @@ fill_meters = false
         .map(|l| l.to_owned() + "\n")
         .collect();
     assert_eq!(Settings::from_toml(&old).unwrap(), Settings { vsync: true, frame_delay_ms: 0, ..settings.clone() });
-    assert!(settings.to_toml().contains(&format!("\nvsync = false\nframe_delay_ms = {FRAME_DELAY_CAP_MS}\n")));
+    let saved = settings.to_toml();
+    assert!(saved.lines().any(|line| line == "vsync = false"));
+    let frame_delay = format!("frame_delay_ms = {FRAME_DELAY_CAP_MS}");
+    assert!(saved.lines().any(|line| line == frame_delay));
     assert!(settings.to_toml().contains("\nscale = 9\n"));
     let past_cap = format!("scale = 5\nframe_delay_ms = {}\n", FRAME_DELAY_CAP_MS + 5);
     let loaded = Settings::from_toml(&past_cap).unwrap();

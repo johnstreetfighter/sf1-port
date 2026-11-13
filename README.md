@@ -101,7 +101,7 @@ The game opens on the 1987 attract. Press Start (`Space`, `Enter`, `1`, `2`, or 
 
 - **Single Player:** Arcade mode against the CPU ladder, or Training against a CPU or a dummy. Under the overhaul presets Training's CPU is the *fair CPU*: it plays Ryu, Ken or Retsu through Player 2's pad like a person, from what the screen shows after a human reaction delay (27 frames on Easy down to 12 on Very Hard, set by the Gameplay difficulty), and never reads your inputs. *Faithful 1987* keeps Capcom's CPU.
 - **Multi Player:** Local versus, each player choosing a fighter on the portrait select.
-- **Settings:** gameplay toggles and the preset, roster options, video, sound and controls. The game saves them when you leave the screen.
+- **Settings:** gameplay toggles and the preset, roster options, video, sound and controls. The game saves them when you leave the screen. The Video tab's `SCREEN SHAKE` setting controls the stage jolt on mat and wall impacts. Contact effects and audio still play with shake off.
 - **1987:** the original cabinet's DIP switches, then `POWER ON` to play the untouched 1987 machine from power-on. Hold `Esc` for one second to come back.
 
 The game draws through the graphics card (Vulkan, or Direct3D 12 without it) and waits for the display's refresh (VO2). When the refresh is a multiple of 60 Hz, every game frame is shown for the same number of refreshes: two at 120 Hz, one at 60 Hz. Other rates, such as 144 Hz, run the game on a 60 Hz clock. `cargo run -p sf-game --release -- smoke` opens the window, switches it to fullscreen and back, and reports presents and game frames per second and late refreshes over five seconds.

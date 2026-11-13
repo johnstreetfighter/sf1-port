@@ -8,6 +8,7 @@ use sf_video::move_effects::signature::{
 use sf_video::move_effects::{effect_frame, EffectKind};
 
 use crate::fight_reader::{MoveEffectCues, SignatureImpact};
+use crate::impact::{ImpactCue, ImpactFighter, ImpactKind as ContactKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct OneShot {
@@ -26,11 +27,30 @@ pub(super) struct MoveEffects {
     burn_left: [u8; 2],
     accent_age: [u8; 2],
     signature_impacts: Vec<(SignatureImpact, u8)>,
+    replaced_impacts: [Option<ImpactCue>; 2],
     pub(super) zanei_trails: [AfterimageTrail; 2],
 }
 
 impl MoveEffects {
-    pub(super) fn step(&mut self, cues: MoveEffectCues) {
+    pub(super) fn step(&mut self, mut cues: MoveEffectCues, contacts: &[ImpactCue]) {
+        // The preview is limited to two combatants. Substitute its art for
+        // the same defender's contact while retaining shared recoil and shake.
+        for &contact in contacts {
+            let defender = match contact.fighter {
+                ImpactFighter::P1 => 0,
+                ImpactFighter::P2 => 1,
+                ImpactFighter::Ally2 => continue,
+            };
+            if contact.kind != ContactKind::HeavyStrike {
+                cues.melee_hits[1 - defender] = None;
+            }
+            let replacement = match contact.kind {
+                ContactKind::HeavyStrike => cues.melee_hits[1 - defender],
+                ContactKind::MatSlam => cues.slam_dust[defender],
+                ContactKind::WallSlam => None,
+            };
+            self.replaced_impacts[defender] = replacement.map(|_| contact);
+        }
         self.signature_impacts.retain_mut(|(impact, age)| {
             *age += 1;
             *age < impact.kind.lifetime()
@@ -115,11 +135,20 @@ impl MoveEffects {
         self.cues = cues;
     }
 
-    pub(super) fn settle_knockout(&mut self, cues: MoveEffectCues) {
-        self.signature_impacts.retain(|(impact, _)| impact.kind == ImpactKind::SlamDust);
+    pub(super) fn settle_knockout(&mut self, cues: MoveEffectCues, contacts: &[ImpactCue]) {
+        // Finish the hit spark that started before the KO loop and accept the
+        // floor dust when the defeated fighter lands.
+        self.signature_impacts.retain(|(impact, _)| matches!(impact.kind,
+            ImpactKind::LightHit | ImpactKind::MediumHit | ImpactKind::HeavyHit | ImpactKind::SlamDust
+        ));
         let signature_impacts = std::mem::take(&mut self.signature_impacts);
-        *self = Self { signature_impacts, ..Self::default() };
-        self.step(cues);
+        let replaced_impacts = self.replaced_impacts;
+        *self = Self { signature_impacts, replaced_impacts, ..Self::default() };
+        self.step(cues, contacts);
+    }
+
+    pub(super) fn replaces_impact(&self, contact: ImpactCue) -> bool {
+        self.replaced_impacts.contains(&Some(contact))
     }
 
     pub(super) fn zanei_rush(&self) -> [bool; 2] {
