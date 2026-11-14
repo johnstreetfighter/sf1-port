@@ -1,0 +1,145 @@
+loadout	ryu_setup	direction	button	display_offset	fixture_gap	before_input_gap	before_input_ryu_y	before_input_ken_y	capture_display	capture_tick_mod_256	capture_gap	ryu_y	ken_y	first_animation	release_tick	damage_tick	damage	ken_ready_tick	ryu_ready_tick
+new	air	forward	lp	0	48	32	81	80											
+new	air	forward	mp	0	48	32	81	80											
+new	air	forward	hp	0	48	32	81	80											
+new	air	forward	lk	0	48	32	81	80											
+new	air	forward	mk	0	48	32	81	80											
+new	air	forward	hk	0	48	32	81	80											
+new	air	back	mk	0	48	32	81	80											
+new	air	back	hk	0	48	32	81	80											
+new	air	neutral	mk	0	48	32	81	80											
+new	air	neutral	hk	0	48	32	81	80											
+new	air	forward	hk	-3	48	37	59	59											
+new	air	forward	hk	-1	48	31	76	75											
+new	air	forward	hk	1	48	32	85	84											
+new	air	forward	hk	3	48	32	97	96	2123	219	32	97	96	0x131ff4	46	68	32	84	152
+new	air	forward	hk	6	48	31	109	107	2126	223	31	109	107	0x131ff4	46	67	32	84	153
+new	air	forward	hk	0	32	32	81	80											
+new	air	forward	hk	0	55	31	81	80											
+new	air	forward	hk	0	62	38	81	80											
+new	air	forward	hk	0	70	46	81	80											
+new	air	forward	hk	0	80	56	81	80											
+new	ground	forward	hk	0	48	32	40	80											
+old	air	forward	lp	0	48	32	81	84											
+old	air	forward	mp	0	48	32	81	84											
+old	air	forward	hp	0	48	32	81	84											
+old	air	forward	lk	0	48	32	81	84											
+old	air	forward	mk	0	48	32	81	84											
+old	air	forward	hk	0	48	32	81	84											
+old	air	back	mk	0	48	32	81	84											
+old	air	back	hk	0	48	32	81	84											
+old	air	neutral	mk	0	48	32	81	84											
+old	air	neutral	hk	0	48	32	81	84											
+old	air	forward	hk	-3	48	34	59	64											
+old	air	forward	hk	-1	48	32	76	80											
+old	air	forward	hk	1	48	31	85	88											
+old	air	forward	hk	3	48	31	97	99											
+old	air	forward	hk	6	48	32	109	109											
+old	air	forward	hk	0	32	32	81	84											
+old	air	forward	hk	0	55	31	81	84											
+old	air	forward	hk	0	62	34	81	84											
+old	air	forward	hk	0	70	42	81	84											
+old	air	forward	hk	0	80	52	81	84											
+old	ground	forward	hk	0	48	32	40	80											
+new	air	forward	mp	3	48	32	97	96											
+new	air	forward	hp	3	48	32	97	96											
+new	air	forward	mk	3	48	32	97	96	2123	219	32	97	96	0x131ff4	46	68	32	84	152
+new	air	back	mp	3	48	32	97	96											
+new	air	back	hp	3	48	32	97	96											
+new	air	back	mk	3	48	32	97	96	2123	219	32	97	96	0x131ff4	46	68	32	84	152
+new	air	back	hk	3	48	32	97	96	2123	219	32	97	96	0x131ff4	46	68	32	84	152
+new	air	neutral	mp	3	48	32	97	96											
+new	air	neutral	hp	3	48	32	97	96											
+new	air	neutral	mk	3	48	32	97	96											
+new	air	neutral	hk	3	48	32	97	96											
+new	air	forward	mp	6	48	31	109	107											
+new	air	forward	hp	6	48	31	109	107											
+new	air	forward	mk	6	48	31	109	107	2126	223	31	109	107	0x131ff4	46	67	32	84	153
+new	air	back	mp	6	48	31	109	107											
+new	air	back	hp	6	48	31	109	107											
+new	air	back	mk	6	48	31	109	107	2126	223	31	109	107	0x131ff4	46	67	32	84	153
+new	air	back	hk	6	48	31	109	107	2126	223	31	109	107	0x131ff4	46	67	32	84	153
+new	air	neutral	mp	6	48	31	109	107											
+new	air	neutral	hp	6	48	31	109	107											
+new	air	neutral	mk	6	48	31	109	107											
+new	air	neutral	hk	6	48	31	109	107											
+new	air	forward	hk	2	48	32	94	92											
+new	air	forward	hk	4	48	31	101	99	2124	220	31	101	99	0x131ff4	46	68	32	84	153
+new	air	forward	hk	5	48	31	106	105	2125	222	31	109	105	0x131ff4	46	67	32	84	153
+new	air	forward	hk	9	48	31	116	113	2129	227	31	116	113	0x131ff4	46	64	32	84	152
+new	air	forward	hk	12	48	31	117	114	2132	230	31	117	114	0x131ff4	46	62	32	84	152
+new	air	forward	hk	15	48	31	115	112	2135	234	31	115	112	0x131ff4	46	59	32	84	151
+new	air	forward	hk	18	48	32	108	104	2138	238	32	105	104	0x131ff4	46	57	32	84	150
+new	air	forward	hk	3	62	32	94	92											
+new	air	forward	hk	3	66	32	94	92											
+new	air	forward	hk	3	70	36	94	92											
+new	air	forward	hk	3	72	38	94	92											
+new	air	forward	hk	3	74	40	94	92											
+new	air	forward	hk	3	78	44	94	92											
+old	air	forward	mp	3	48	31	97	99											
+old	air	forward	hp	3	48	31	97	99											
+old	air	forward	mk	3	48	31	97	99											
+old	air	back	mp	3	48	31	97	99											
+old	air	back	hp	3	48	31	97	99											
+old	air	back	mk	3	48	31	97	99											
+old	air	back	hk	3	48	31	97	99											
+old	air	neutral	mp	3	48	31	97	99											
+old	air	neutral	hp	3	48	31	97	99											
+old	air	neutral	mk	3	48	31	97	99											
+old	air	neutral	hk	3	48	31	97	99											
+old	air	forward	mp	6	48	32	109	109											
+old	air	forward	hp	6	48	32	109	109											
+old	air	forward	mk	6	48	32	109	109											
+old	air	back	mp	6	48	32	109	109											
+old	air	back	hp	6	48	32	109	109											
+old	air	back	mk	6	48	32	109	109											
+old	air	back	hk	6	48	32	109	109											
+old	air	neutral	mp	6	48	32	109	109											
+old	air	neutral	hp	6	48	32	109	109											
+old	air	neutral	mk	6	48	32	109	109											
+old	air	neutral	hk	6	48	32	109	109											
+old	air	forward	hk	2	48	32	94	96											
+old	air	forward	hk	4	48	32	101	102											
+old	air	forward	hk	5	48	31	106	107											
+old	air	forward	hk	9	48	32	116	114											
+old	air	forward	hk	12	48	31	117	114											
+old	air	forward	hk	15	48	31	114	109											
+old	air	forward	hk	18	48	32	105	99											
+old	air	forward	hk	3	62	31	97	99											
+old	air	forward	hk	3	66	31	97	99											
+old	air	forward	hk	3	70	32	94	96											
+old	air	forward	hk	3	72	31	97	99											
+old	air	forward	hk	3	74	33	97	99											
+old	air	forward	hk	3	78	37	97	99											
+new	air	forward	hk	2	40	32	94	92											
+new	air	forward	hk	2	54	32	94	92											
+new	air	forward	hk	2	58	32	94	92											
+new	air	forward	hk	2	60	31	90	88											
+new	air	forward	hk	3	40	32	97	96	2123	219	32	97	96	0x131ff4	46	67	32	84	152
+new	air	forward	hk	3	54	32	97	96	2123	219	32	97	96	0x131ff4	46	69	32	84	152
+new	air	forward	hk	3	58	32	97	96	2123	219	32	97	96	0x131ff4	46	69	32	84	152
+new	air	forward	hk	3	60	32	94	92											
+new	air	forward	hk	4	40	31	101	99	2124	220	31	101	99	0x131ff4	46	67	32	84	153
+new	air	forward	hk	4	54	31	101	99	2124	220	31	101	99	0x131ff4	46	69	32	84	153
+new	air	forward	hk	4	58	31	101	99	2124	220	31	101	99	0x131ff4	46	69	32	84	153
+new	air	forward	hk	4	60	31	101	99	2124	220	31	101	99	0x131ff4	46	69	32	84	153
+new	air	forward	hk	6	40	31	109	107	2126	223	31	109	107	0x131ff4	46	65	32	84	153
+new	air	forward	hk	6	54	31	109	107	2126	223	31	109	107	0x131ff4	46	67	32	84	153
+new	air	forward	hk	6	58	31	109	107	2126	223	31	109	107	0x131ff4	46	68	32	84	153
+new	air	forward	hk	6	60	31	106	105	2126	222	31	109	105	0x131ff4	46	69	32	84	153
+old	air	forward	hk	2	40	32	94	96											
+old	air	forward	hk	2	54	32	94	96											
+old	air	forward	hk	2	58	32	94	96											
+old	air	forward	hk	2	60	32	94	96											
+old	air	forward	hk	3	40	31	97	99											
+old	air	forward	hk	3	54	31	97	99											
+old	air	forward	hk	3	58	31	97	99											
+old	air	forward	hk	3	60	31	97	99											
+old	air	forward	hk	4	40	32	101	102											
+old	air	forward	hk	4	54	32	101	102											
+old	air	forward	hk	4	58	32	101	102											
+old	air	forward	hk	4	60	32	101	102											
+old	air	forward	hk	6	40	32	109	109											
+old	air	forward	hk	6	54	32	109	109											
+old	air	forward	hk	6	58	32	109	109											
+old	air	forward	hk	6	60	32	109	109											

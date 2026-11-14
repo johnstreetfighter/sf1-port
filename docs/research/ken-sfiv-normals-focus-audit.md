@@ -1,0 +1,53 @@
+# Ken normals, target combo and Focus across Street Fighter IV builds
+
+Source evidence for [#148](https://github.com/johnstreetfighter/sf1-port/issues/148). The coverage uses the authenticated 2008 arcade and AE2012 latest files, the distinct resource and v101 layers in the authenticated AE archive, and standard PC Ultra v1.04 files retained in v1.05. The baseline audits give the archive fingerprints and BAC/BCM hashes. The older files inside the AE archive are tagged by directory. The standalone Super SFIV home release has separate provenance and remains open. [Arcade sources](ken-sfiv-arcade-moveset-audit.md#source-identity-and-extraction) · [Ultra sources](ken-usfiv-moveset-audit.md#regulation-identity)
+
+## Normal and target combo contacts
+
+The [normal contact matrix](ken-sfiv-normal-contacts.tsv) enumerates the first 40 BCM rows in every listed source, with 215 records including overlapping boxes and the non-attacking Thunder Kick feint. These rows cover every ordinary, rapid, neutral-jump, angled-jump and command-normal entry and the close MP → HP target combo. Each interval is local to its BAC action, with an exclusive end. Presence of a script box does not measure the number of hits in play.
+
+| Move | Original and arcade AE resource/v101 | AE2012 latest and retained Ultra |
+|---|---|---|
+| Close MP → HP | Close MP strikes `[11,14)` with 60 damage and 100 stun. The original target combo candidate prepares at `[1,14)`, executes `[11,14)`. Resource/v101 use `[11,14)` for both rows. The standalone HP follow-up command is masked to raw state 1. | Close MP keeps `[11,14)`, 60/100. Its hit and guard push change 0.50→0.30. Both target combo rows are `[11,35)`, while standard special/Super/Focus execution stays `[11,14)`. The HP command's state mask expands to 3. |
+| Target combo HP | `TC_1_5HP` attacks at `[16,18)` and `[18,20)`. Both boxes reuse reaction 83 at 30 damage/50 stun, 12/12 hit and guard stop, 0.5 push. First box X/Y/W/H = 0.45/0.15/0.25/0.20. `SUPER_MOVE` executes `[16,18)`. | `TC_1_HP_NEW` keeps both windows and IDs. First box becomes 0.55/0.05/0.35/0.30; second box remains 0.35/0.70/0.10/0.35. Reaction 83 now gives 70/50 with the same freeze and push. The special/Focus execute window stays `[16,18)`. |
+| Far MP | `[5,10)`, reaction 14, 70 damage/100 stun, hit/guard stop 10/10 and guard timer 12. Raw `SUPER_COMBO` execute over `[5,10)`. | Same. The only target combo candidate remains attached to close MP. |
+| Crouching MK | `[10,14)`, reaction 32. Original 70/100 with attack X 0.70. Resource/v101 60/100 with X 0.65. The source width is 0.45. | Latest AE2012 and late Ultra both use `2MK_NEW` and retain AE X 0.65/width 0.45, 10/10 hit and guard stop, and `SUPER_MOVE` execute `[10,14)`. Capcom explicitly restores AE2012 geometry in Ultra v1.04. |
+| Close MK | `[14,17)`, reaction 8, 70/100. Attack box Y 0.50, height 0.55. | AE2012 keeps this box. Ultra lowers Y to 0.32 and increases height to 0.73. Contact windows and reaction fields remain the same. |
+| Sweep | `[14,17)`, boundary 42, hit and guard stop 12/12, ground guard timer 16. Original is 110 damage/200 stun. Resource/v101 use 100/100. | Latest AE2012 uses `2HK_aer` with raw IASA 41 and 2× at tick 2. Ultra uses 42 and 2.3× at tick 0. Ultra hit stop becomes 14/12, guard 13/12, with guard timer 15. |
+| Thunder Kick | Held `6HK_FEINT` ends at raw 39; release during `[11,13)` starts `6HK`. Actual kick hits `[21,23)`, 120/150, 12/12 hit and guard stop. | Short `6HK_FEINT_aer` reaches raw boundary 35. Release window and strike persist. Ultra changes guard stop to 12/16 and moves the 1× rate write from 44 to 43, consistent with Capcom's change from −1 to 0 on block. |
+
+Both target combo HP boxes share reaction 83. Live hit count, spacing and acceptance of delayed HP remain open. The original MP's raw conditions are `0x103` and `0x40000000`. Later files use 6 and 1. [Capcom AE2012 change list, page 2](https://static.capcom.com/streetfighter/downloads/SSFIV%20Arcade%20Edition%202012%20Final%20Change%20List%20-%20US.pdf#page=2) · [Capcom Ultra launch changes](https://news.capcomusa.com/combofiend/blog/2014/05/22/usfiv-final-character-change-list) · [Capcom Ultra v1.04](https://news.capcomusa.com/lets/browse/usfiv-version-1-04-adjustments)
+
+## Focus release, guard and cancel timing
+
+The [Focus and cancel matrix](ken-sfiv-focus-contact-gates.tsv) has 141 selected action records across the five source layers. It preserves the normal/EX and Red/EX Red Focus actions, named route timing, exact blocking and hit reactions, pressure normals, dash links, and Shoryuken/FADC sources.
+
+| Route | Release, attack and guard data |
+|---|---|
+| Normal Focus 1 | `SAVING2` strikes `[17,19)` with reaction 60. Damage/stun 60/100, hit stop 16/16, guard 12/16, hit and guard timer 10, push 0.7. |
+| Normal Focus 2 | `SAVING3` strikes `[17,19)` with reaction 61. Damage/stun 90/150, grounded crumple, hit stop 30/30 and guard 24/30. Timer 14 on hit and guard. Push 0.5 on grounded hit, 0.7 in air and on guard. |
+| Normal Focus 3 | `SAVING_MAX` strikes `[77,79)` with reaction 62. Damage/stun 150/200, grounded crumple, hit stop 30/30 and guard row 22/30. Timer 20 on hit, 14 on guard. Push 0.5 grounded hit or 0.7 in air and on guard. The authored guard record does not settle full-charge guardability. |
+| Normal Focus charge and EX Focus | Both branch on release in `[13,21)` and `[21,59)` to the two levels. Dash/backdash execute during `[4,59)` on charge. Released levels 1/2 execute dash during `[17,19)` and maximum during `[77,79)`. `SAVING_EX` costs 500 raw Super and shares full-charge contacts. In the later decoded data, normal charge has an authored absorb-related record over `[0,77)`. Verify live armor separately for EX entry. |
+| Ultra Red Focus | LP+MP+MK costs 500. Reactions 70/71/72 deal 90/135/225 with the normal three timing and guard profiles. Maximum charge's absorb-related record ends at raw 78. |
+| Ultra EX Red Focus | LP+MP+MK cancel entries cost 750. Level 1's effect 73 gives 90 damage/100 stun and immediate grounded crumple. Hit/guard stop 30/30 and 24/30, timer 14, push 0.5/0.7. Level 2 and maximum reuse the normal Red effects 71/72. |
+| Dash follow-up | `DASH` has IASA 13 and reversal execute `[13,14)`; `BACKDASH` has IASA 30 and reversal execute `[30,37)`. These actions retain their route data in the three AE layers and late Ultra. |
+
+Raw ordinary Shoryuken, EX Shoryuken, and projectile/grounded Tatsumaki cancel windows agree across the sampled revisions, with Ultra adding EX Red Focus to the destination lists. `SUPER_COMBO` contains Shoryureppa and EX Focus. `SUPER_MOVE` additionally contains the grounded ordinary and EX specials. Both include the four EX Red Focus aliases only in Ultra. [Capcom Ultra Focus systems](https://news.capcomusa.com/lets/browse/new-battle-systems-in-ultra-sfiv)
+
+| From | Raw condition-1 equivalent execute | AE2012 → Ultra standing and crouching guard reaction |
+|---|---|---|
+| LP Shoryuken | `[10,12)`, inside first strike `[9,12)` | First reaction 66 timer 20→17. Stop 14/14 throughout. |
+| MP Shoryuken | `[9,11)`, inside first strike `[8,11)` | First reaction 118 timer 20→17. Stop 12/12. Ultra changes the standing first hit from grounded `DAMAGE_MM` to airborne `BLOW_VH`. |
+| HP Shoryuken | `[8,12)`, covering first `[8,10)` and second `[10,12)` | First reaction 120 timer 20→18, stop 14/12. Second reaction 121 timer 22→15, stop 8/6. Second hit damage 40→50 and chip 10→13. |
+| EX Shoryuken | `[8,12)`, first two coverage windows | Timers 20/22/22/20 and stops 14/12, 8/6, 8/6 and 8/8 are unchanged across AE2012 and Ultra. |
+| Hadoken L/M/H/EX | `[28,30)`; after the raw projectile emit event `[25,26)` | Ordinary preparation `[14,30)`, EX `[15,30)`. |
+| Ground Tatsumaki LK/MK/HK/EX | `[10,12)`, overlapping the first box | Prepare `[1,12)`. Air Tatsumaki actions have no corresponding list. |
+
+Capcom's Ultra launch notes specify ordinary first-hit Focus cancel → forward dash at −5 on guard and HP second-hit at −7. The raw HP gate already spans the same two boxes in original and AE2012. The broad source window alone does not establish the earlier builds' live contact rules. The Ultra `AIR_F` list retains EX but removes ordinary L/M/H Air Tatsumaki entries. An uncommitted Ultra forward jump still has the dedicated early `AIR_TATSU_F` execute `[0,16)` and regular `AIR_TATSU` execute `[16,36)`. Capcom reports the v1.04 change specifically for canceling a jumping attack. Test the jump with and without a prior normal. [Capcom Ultra launch changes](https://news.capcomusa.com/combofiend/blog/2014/05/22/usfiv-final-character-change-list) · [Capcom Ultra v1.04](https://news.capcomusa.com/lets/browse/usfiv-version-1-04-adjustments)
+
+## Extraction and verification boundaries
+
+- For the original, use the existing arcade extraction recipe, then read each BCM's BAC action ID from +0x1c of the 68-byte command row. Decode type 6 cancel and type 7 strike payloads from each action. Original flow uses the same timeline entries and an eight-byte `<hHhh>` payload for type, input/group, destination action and destination frame. Preserve both the box's own ID and its reaction ID.
+- For the later layers, use the hashed BAC/BCM pairs and the pinned format decoder. Join each input to its `Script`, and instance names to populated numeric BAC slots. Type 6 becomes `CANCELS`, type 7 becomes `HITBOX`; preserve the named `FLOW`, `SPEED`, `IASAFrame` and `TotalFrames` fields. The four later files have distinct version tags. [Original arcade recipe](ken-sfiv-arcade-moveset-audit.md#port-comparison-and-reproduction) · [Pinned BAC/BCM decoder](https://github.com/dantarion/sf4tools/tree/e5c17132f3b6e63f66150c3a347a9e8f6e0d73a4/SFUltraDiff/src)
+- The normal matrix's reaction cells are slash-delimited. In the Focus matrix they are JSON arrays within each contact. Both use damage, stun, effect, selector, attacker stop, defender stop, target animation timer, X/Y/Z velocity and push distance, in that order. The six reaction positions are stand/crouch/air on hit, then stand/crouch/air on guard. Original effect and selector are numeric. The gate table stores `[start,end,condition,list]` cancel rows and `[start,end,type,input_or_group,target,frame]` flow rows. Geometry, rate writes and timing are raw.
+- Paired traces remain open for guard, hit and whiff, directional input, LP/MP proximity at corrected axis separation, close MK and target HP against a croucher, and the first and last successful Focus release and dash. Test HP and EX Shoryuken cancel after each box with ordinary and Red Focus against both standing and crouching guard.

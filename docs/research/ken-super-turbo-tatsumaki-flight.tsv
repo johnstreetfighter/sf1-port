@@ -1,0 +1,1750 @@
+loadout	strength	route	setup_gap	jump_lead_displays	display_phase	posture	tick	travel_toward_facing_16_16	height_above_floor	animation_change	floor	ready
+new	hk	back	100	13	0	forced	0	-376576	66	0x133364	0	0
+new	hk	back	100	13	0	forced	1	-751872	69		0	0
+new	hk	back	100	13	0	forced	2	-1125888	72	0x13337c	0	0
+new	hk	back	100	13	0	forced	3	-1498624	75	0x133394	0	0
+new	hk	back	100	13	0	forced	4	-1870080	78		0	0
+new	hk	back	100	13	0	forced	5	-2240256	81	0x1333ac	0	0
+new	hk	back	100	13	0	forced	6	-2609152	83	0x1333c4	0	0
+new	hk	back	100	13	0	forced	7	-2976768	86	0x133364	0	0
+new	hk	back	100	13	0	forced	8	-3343104	88		0	0
+new	hk	back	100	13	0	forced	9	-3708160	90	0x13337c	0	0
+new	hk	back	100	13	0	forced	10	-4071936	92	0x133394	0	0
+new	hk	back	100	13	0	forced	11	-4434432	94		0	0
+new	hk	back	100	13	0	forced	12	-4795648	96	0x1333ac	0	0
+new	hk	back	100	13	0	forced	13	-5155584	98	0x1333c4	0	0
+new	hk	back	100	13	0	forced	14	-5514240	100	0x133364	0	0
+new	hk	back	100	13	0	forced	15	-5871616	101		0	0
+new	hk	back	100	13	0	forced	16	-6227712	103	0x13337c	0	0
+new	hk	back	100	13	0	forced	17	-6582528	104	0x133394	0	0
+new	hk	back	100	13	0	forced	18	-6936064	105		0	0
+new	hk	back	100	13	0	forced	19	-7288320	106	0x1333ac	0	0
+new	hk	back	100	13	0	forced	20	-7639296	107	0x1333c4	0	0
+new	hk	back	100	13	0	forced	21	-7988992	108	0x133364	0	0
+new	hk	back	100	13	0	forced	22	-8337408	108		0	0
+new	hk	back	100	13	0	forced	23	-8684544	109	0x13337c	0	0
+new	hk	back	100	13	0	forced	24	-9030400	109	0x133394	0	0
+new	hk	back	100	13	0	forced	25	-9374976	109		0	0
+new	hk	back	100	13	0	forced	26	-9718272	109	0x1333ac	0	0
+new	hk	back	100	13	0	forced	27	-10060288	109	0x1333c4	0	0
+new	hk	back	100	13	0	forced	28	-10138880	109	0x133364	0	0
+new	hk	back	100	13	0	forced	29	-10216192	109		0	0
+new	hk	back	100	13	0	forced	30	-10292224	109	0x13337c	0	0
+new	hk	back	100	13	0	forced	31	-10301440	108	0x133394	0	0
+new	hk	back	100	13	0	forced	32	-10309376	108		0	0
+new	hk	back	100	13	0	forced	33	-10316032	107	0x1333ac	0	0
+new	hk	back	100	13	0	forced	34	-10321408	106	0x1333e0	0	0
+new	hk	back	100	13	0	forced	35	-10259968	105		0	0
+new	hk	back	100	13	0	forced	36	-10262784	103		0	0
+new	hk	back	100	13	0	forced	37	-10264320	101		0	0
+new	hk	back	100	13	0	forced	38	-10264576	99	0x1333f8	0	0
+new	hk	back	100	13	0	forced	39	-10263552	97		0	0
+new	hk	back	100	13	0	forced	40	-10261248	94		0	0
+new	hk	back	100	13	0	forced	41	-10323200	91		0	0
+new	hk	back	100	13	0	forced	42	-10318336	88	0x133410	0	0
+new	hk	back	100	13	0	forced	43	-10312192	84		0	0
+new	hk	back	100	13	0	forced	44	-10304768	80		0	0
+new	hk	back	100	13	0	forced	45	-10296064	76		0	0
+new	hk	back	100	13	0	forced	46	-10286080	71	0x133428	0	0
+new	hk	back	100	13	0	forced	47	-10274816	66		0	0
+new	hk	back	100	13	0	forced	48	-10262272	61		0	0
+new	hk	back	100	13	0	forced	49	-10313984	55		0	0
+new	hk	back	100	13	0	forced	50	-10298880	49	0x133440	0	0
+new	hk	back	100	13	0	forced	51	-10282496	43	0x133440	0	0
+new	hk	back	100	13	0	forced	52	-10264832	37	0x133440	0	0
+new	hk	back	100	13	0	forced	53	-10311424	30	0x133440	0	0
+new	hk	back	100	13	0	forced	54	-10291200	23	0x133440	0	0
+new	hk	back	100	13	0	forced	55	-10269696	15	0x133440	0	0
+new	hk	back	100	13	0	forced	56	-10312448	8	0x133440	0	0
+new	hk	back	100	13	0	forced	57	-10288384	0	0x133440	1	0
+new	hk	back	100	13	0	forced	58	-10263040	0	0x13345c	0	0
+new	hk	back	100	13	0	forced	59	-10263040	0		0	0
+new	hk	back	100	13	0	forced	60	-10263040	0		0	0
+new	hk	back	100	13	0	forced	61	-10263040	0		0	0
+new	hk	back	100	13	0	forced	62	-10263040	0		0	0
+new	hk	back	100	13	0	forced	63	-10263040	0		0	0
+new	hk	back	100	13	0	forced	64	-10263040	0	0x133474	0	0
+new	hk	back	100	13	0	forced	65	-10263040	0		0	1
+new	hk	forward	171	13	0	forced	0	343808	62	0x133364	0	0
+new	hk	forward	171	13	0	forced	1	686336	65		0	0
+new	hk	forward	171	13	0	forced	2	1027584	68	0x13337c	0	0
+new	hk	forward	171	13	0	forced	3	1367552	71	0x133394	0	0
+new	hk	forward	171	13	0	forced	4	1706240	74		0	0
+new	hk	forward	171	13	0	forced	5	2043648	76	0x1333ac	0	0
+new	hk	forward	171	13	0	forced	6	2379776	78	0x1333c4	0	0
+new	hk	forward	171	13	0	forced	7	2714624	81	0x133364	0	0
+new	hk	forward	171	13	0	forced	8	3048192	83		0	0
+new	hk	forward	171	13	0	forced	9	3380480	85	0x13337c	0	0
+new	hk	forward	171	13	0	forced	10	3711488	87	0x133394	0	0
+new	hk	forward	171	13	0	forced	11	4041216	88		0	0
+new	hk	forward	171	13	0	forced	12	4369664	90	0x1333ac	0	0
+new	hk	forward	171	13	0	forced	13	4696832	92	0x1333c4	0	0
+new	hk	forward	171	13	0	forced	14	5022720	93	0x133364	0	0
+new	hk	forward	171	13	0	forced	15	5347328	94		0	0
+new	hk	forward	171	13	0	forced	16	5670656	95	0x13337c	0	0
+new	hk	forward	171	13	0	forced	17	5992704	96	0x133394	0	0
+new	hk	forward	171	13	0	forced	18	6313472	97		0	0
+new	hk	forward	171	13	0	forced	19	6632960	98	0x1333ac	0	0
+new	hk	forward	171	13	0	forced	20	6951168	99	0x1333c4	0	0
+new	hk	forward	171	13	0	forced	21	7268096	99	0x133364	0	0
+new	hk	forward	171	13	0	forced	22	7583744	99		0	0
+new	hk	forward	171	13	0	forced	23	7898112	100	0x13337c	0	0
+new	hk	forward	171	13	0	forced	24	8211200	100	0x133394	0	0
+new	hk	forward	171	13	0	forced	25	8523008	100		0	0
+new	hk	forward	171	13	0	forced	26	8833536	100	0x1333ac	0	0
+new	hk	forward	171	13	0	forced	27	9142784	99	0x1333c4	0	0
+new	hk	forward	171	13	0	forced	28	9450752	99	0x133364	0	0
+new	hk	forward	171	13	0	forced	29	9757440	99		0	0
+new	hk	forward	171	13	0	forced	30	10062848	98	0x13337c	0	0
+new	hk	forward	171	13	0	forced	31	10366976	97	0x133394	0	0
+new	hk	forward	171	13	0	forced	32	10669824	96		0	0
+new	hk	forward	171	13	0	forced	33	10971392	95	0x1333ac	0	0
+new	hk	forward	171	13	0	forced	34	11271680	94	0x1333e0	0	0
+new	hk	forward	171	13	0	forced	35	11570688	93		0	0
+new	hk	forward	171	13	0	forced	36	11868416	91		0	0
+new	hk	forward	171	13	0	forced	37	12164864	89		0	0
+new	hk	forward	171	13	0	forced	38	12460032	87	0x1333f8	0	0
+new	hk	forward	171	13	0	forced	39	12753920	84		0	0
+new	hk	forward	171	13	0	forced	40	13046528	81		0	0
+new	hk	forward	171	13	0	forced	41	13337856	78		0	0
+new	hk	forward	171	13	0	forced	42	13627904	74	0x133410	0	0
+new	hk	forward	171	13	0	forced	43	13916672	70		0	0
+new	hk	forward	171	13	0	forced	44	14204160	66		0	0
+new	hk	forward	171	13	0	forced	45	14490368	61		0	0
+new	hk	forward	171	13	0	forced	46	14775296	56	0x133428	0	0
+new	hk	forward	171	13	0	forced	47	15058944	51		0	0
+new	hk	forward	171	13	0	forced	48	15341312	46		0	0
+new	hk	forward	171	13	0	forced	49	15622400	40		0	0
+new	hk	forward	171	13	0	forced	50	15902208	34	0x133440	0	0
+new	hk	forward	171	13	0	forced	51	16180736	27	0x133440	0	0
+new	hk	forward	171	13	0	forced	52	16457984	20	0x133440	0	0
+new	hk	forward	171	13	0	forced	53	16733952	13	0x133440	0	0
+new	hk	forward	171	13	0	forced	54	17008640	6	0x133440	0	0
+new	hk	forward	171	13	0	forced	55	17282048	0	0x13345c	1	0
+new	hk	forward	171	13	0	forced	56	17282048	0		0	0
+new	hk	forward	171	13	0	forced	57	17282048	0		0	0
+new	hk	forward	171	13	0	forced	58	17282048	0		0	0
+new	hk	forward	171	13	0	forced	59	17282048	0		0	0
+new	hk	forward	171	13	0	forced	60	17282048	0		0	0
+new	hk	forward	171	13	0	forced	61	17282048	0	0x133474	0	0
+new	hk	forward	171	13	0	forced	62	17282048	0		0	1
+new	hk	ground	240	0	0	forced	0	0	0	0x132fe8	0	0
+new	hk	ground	240	0	0	forced	1	245760	4	0x133000	0	0
+new	hk	ground	240	0	0	forced	2	491520	7		0	0
+new	hk	ground	240	0	0	forced	3	737280	10		0	0
+new	hk	ground	240	0	0	forced	4	983040	13	0x133018	0	0
+new	hk	ground	240	0	0	forced	5	1228800	16		0	0
+new	hk	ground	240	0	0	forced	6	1474560	18		0	0
+new	hk	ground	240	0	0	forced	7	1720320	20	0x133030	0	0
+new	hk	ground	240	0	0	forced	8	1966080	21		0	0
+new	hk	ground	240	0	0	forced	9	2211840	22		0	0
+new	hk	ground	240	0	0	forced	10	2457600	23	0x133048	0	0
+new	hk	ground	240	0	0	forced	11	2703360	23	0x133174	0	0
+new	hk	ground	240	0	0	forced	12	2949120	23		0	0
+new	hk	ground	240	0	0	forced	13	3194880	23	0x13318c	0	0
+new	hk	ground	240	0	0	forced	14	3440640	23	0x1331a4	0	0
+new	hk	ground	240	0	0	forced	15	3686400	23		0	0
+new	hk	ground	240	0	0	forced	16	3932160	23	0x1331bc	0	0
+new	hk	ground	240	0	0	forced	17	4177920	23	0x1331d4	0	0
+new	hk	ground	240	0	0	forced	18	4423680	23	0x133174	0	0
+new	hk	ground	240	0	0	forced	19	4669440	23		0	0
+new	hk	ground	240	0	0	forced	20	4915200	23	0x13318c	0	0
+new	hk	ground	240	0	0	forced	21	5160960	23	0x1331a4	0	0
+new	hk	ground	240	0	0	forced	22	5406720	23		0	0
+new	hk	ground	240	0	0	forced	23	5652480	23	0x1331bc	0	0
+new	hk	ground	240	0	0	forced	24	5898240	23	0x1331d4	0	0
+new	hk	ground	240	0	0	forced	25	6144000	23	0x133174	0	0
+new	hk	ground	240	0	0	forced	26	6389760	23		0	0
+new	hk	ground	240	0	0	forced	27	6635520	23	0x13318c	0	0
+new	hk	ground	240	0	0	forced	28	6881280	23	0x1331a4	0	0
+new	hk	ground	240	0	0	forced	29	7127040	23		0	0
+new	hk	ground	240	0	0	forced	30	7372800	23	0x1331bc	0	0
+new	hk	ground	240	0	0	forced	31	7618560	23	0x1331d4	0	0
+new	hk	ground	240	0	0	forced	32	7864320	23	0x133174	0	0
+new	hk	ground	240	0	0	forced	33	8110080	23		0	0
+new	hk	ground	240	0	0	forced	34	8355840	23	0x13318c	0	0
+new	hk	ground	240	0	0	forced	35	8601600	23	0x1331a4	0	0
+new	hk	ground	240	0	0	forced	36	8847360	23		0	0
+new	hk	ground	240	0	0	forced	37	9093120	23	0x1331bc	0	0
+new	hk	ground	240	0	0	forced	38	9338880	23	0x1331d4	0	0
+new	hk	ground	240	0	0	forced	39	9584640	23	0x133174	0	0
+new	hk	ground	240	0	0	forced	40	9830400	23		0	0
+new	hk	ground	240	0	0	forced	41	10076160	23	0x13318c	0	0
+new	hk	ground	240	0	0	forced	42	10321920	23	0x1331a4	0	0
+new	hk	ground	240	0	0	forced	43	10567680	23		0	0
+new	hk	ground	240	0	0	forced	44	10813440	23	0x1331bc	0	0
+new	hk	ground	240	0	0	forced	45	11059200	23	0x1331d4	0	0
+new	hk	ground	240	0	0	forced	46	11059200	23	0x1331f0	0	0
+new	hk	ground	240	0	0	forced	47	11304960	23		0	0
+new	hk	ground	240	0	0	forced	48	11550720	22		0	0
+new	hk	ground	240	0	0	forced	49	11796480	21		0	0
+new	hk	ground	240	0	0	forced	50	12042240	20	0x133208	0	0
+new	hk	ground	240	0	0	forced	51	12288000	19		0	0
+new	hk	ground	240	0	0	forced	52	12533760	17		0	0
+new	hk	ground	240	0	0	forced	53	12779520	14		0	0
+new	hk	ground	240	0	0	forced	54	13025280	11	0x133220	0	0
+new	hk	ground	240	0	0	forced	55	13271040	8		0	0
+new	hk	ground	240	0	0	forced	56	13516800	5		0	0
+new	hk	ground	240	0	0	forced	57	13762560	1		0	0
+new	hk	ground	240	0	0	forced	58	14008320	0	0x133c74	1	0
+new	hk	ground	240	0	0	forced	59	14008320	0		0	0
+new	hk	ground	240	0	0	forced	60	14008320	0		0	0
+new	hk	ground	240	0	0	forced	61	14008320	0		0	0
+new	hk	ground	240	0	0	forced	62	14008320	0		0	0
+new	hk	ground	240	0	0	forced	63	14008320	0		0	0
+new	hk	ground	240	0	0	forced	64	14008320	0		0	1
+new	hk	ground	240	0	1	forced	0	0	0	0x132fe8	0	0
+new	hk	ground	240	0	1	forced	1	245760	4	0x133000	0	0
+new	hk	ground	240	0	1	forced	2	491520	7		0	0
+new	hk	ground	240	0	1	forced	3	737280	10		0	0
+new	hk	ground	240	0	1	forced	4	983040	13	0x133018	0	0
+new	hk	ground	240	0	1	forced	5	1228800	16		0	0
+new	hk	ground	240	0	1	forced	6	1474560	18		0	0
+new	hk	ground	240	0	1	forced	7	1720320	20	0x133030	0	0
+new	hk	ground	240	0	1	forced	8	1966080	21		0	0
+new	hk	ground	240	0	1	forced	9	2211840	22		0	0
+new	hk	ground	240	0	1	forced	10	2457600	23	0x133048	0	0
+new	hk	ground	240	0	1	forced	11	2703360	23	0x133174	0	0
+new	hk	ground	240	0	1	forced	12	2949120	23		0	0
+new	hk	ground	240	0	1	forced	13	3194880	23	0x13318c	0	0
+new	hk	ground	240	0	1	forced	14	3440640	23	0x1331a4	0	0
+new	hk	ground	240	0	1	forced	15	3686400	23		0	0
+new	hk	ground	240	0	1	forced	16	3932160	23	0x1331bc	0	0
+new	hk	ground	240	0	1	forced	17	4177920	23	0x1331d4	0	0
+new	hk	ground	240	0	1	forced	18	4423680	23	0x133174	0	0
+new	hk	ground	240	0	1	forced	19	4669440	23		0	0
+new	hk	ground	240	0	1	forced	20	4915200	23	0x13318c	0	0
+new	hk	ground	240	0	1	forced	21	5160960	23	0x1331a4	0	0
+new	hk	ground	240	0	1	forced	22	5406720	23		0	0
+new	hk	ground	240	0	1	forced	23	5652480	23	0x1331bc	0	0
+new	hk	ground	240	0	1	forced	24	5898240	23	0x1331d4	0	0
+new	hk	ground	240	0	1	forced	25	6144000	23	0x133174	0	0
+new	hk	ground	240	0	1	forced	26	6389760	23		0	0
+new	hk	ground	240	0	1	forced	27	6635520	23	0x13318c	0	0
+new	hk	ground	240	0	1	forced	28	6881280	23	0x1331a4	0	0
+new	hk	ground	240	0	1	forced	29	7127040	23		0	0
+new	hk	ground	240	0	1	forced	30	7372800	23	0x1331bc	0	0
+new	hk	ground	240	0	1	forced	31	7618560	23	0x1331d4	0	0
+new	hk	ground	240	0	1	forced	32	7864320	23	0x133174	0	0
+new	hk	ground	240	0	1	forced	33	8110080	23		0	0
+new	hk	ground	240	0	1	forced	34	8355840	23	0x13318c	0	0
+new	hk	ground	240	0	1	forced	35	8601600	23	0x1331a4	0	0
+new	hk	ground	240	0	1	forced	36	8847360	23		0	0
+new	hk	ground	240	0	1	forced	37	9093120	23	0x1331bc	0	0
+new	hk	ground	240	0	1	forced	38	9338880	23	0x1331d4	0	0
+new	hk	ground	240	0	1	forced	39	9584640	23	0x133174	0	0
+new	hk	ground	240	0	1	forced	40	9830400	23		0	0
+new	hk	ground	240	0	1	forced	41	10076160	23	0x13318c	0	0
+new	hk	ground	240	0	1	forced	42	10321920	23	0x1331a4	0	0
+new	hk	ground	240	0	1	forced	43	10567680	23		0	0
+new	hk	ground	240	0	1	forced	44	10813440	23	0x1331bc	0	0
+new	hk	ground	240	0	1	forced	45	11059200	23	0x1331d4	0	0
+new	hk	ground	240	0	1	forced	46	11059200	23	0x1331f0	0	0
+new	hk	ground	240	0	1	forced	47	11304960	23		0	0
+new	hk	ground	240	0	1	forced	48	11550720	22		0	0
+new	hk	ground	240	0	1	forced	49	11796480	21		0	0
+new	hk	ground	240	0	1	forced	50	12042240	20	0x133208	0	0
+new	hk	ground	240	0	1	forced	51	12288000	19		0	0
+new	hk	ground	240	0	1	forced	52	12533760	17		0	0
+new	hk	ground	240	0	1	forced	53	12779520	14		0	0
+new	hk	ground	240	0	1	forced	54	13025280	11	0x133220	0	0
+new	hk	ground	240	0	1	forced	55	13271040	8		0	0
+new	hk	ground	240	0	1	forced	56	13516800	5		0	0
+new	hk	ground	240	0	1	forced	57	13762560	1		0	0
+new	hk	ground	240	0	1	forced	58	14008320	0	0x133c74	1	0
+new	hk	ground	240	0	1	forced	59	14008320	0		0	0
+new	hk	ground	240	0	1	forced	60	14008320	0		0	0
+new	hk	ground	240	0	1	forced	61	14008320	0		0	0
+new	hk	ground	240	0	1	forced	62	14008320	0		0	0
+new	hk	ground	240	0	1	forced	63	14008320	0		0	0
+new	hk	ground	240	0	1	forced	64	14008320	0		0	1
+new	hk	neutral	100	13	0	forced	0	131072	67	0x133364	0	0
+new	hk	neutral	100	13	0	forced	1	262144	69		0	0
+new	hk	neutral	100	13	0	forced	2	393216	72	0x13337c	0	0
+new	hk	neutral	100	13	0	forced	3	524288	75	0x133394	0	0
+new	hk	neutral	100	13	0	forced	4	655360	77		0	0
+new	hk	neutral	100	13	0	forced	5	786432	79	0x1333ac	0	0
+new	hk	neutral	100	13	0	forced	6	917504	82	0x1333c4	0	0
+new	hk	neutral	100	13	0	forced	7	1048576	84	0x133364	0	0
+new	hk	neutral	100	13	0	forced	8	1179648	86		0	0
+new	hk	neutral	100	13	0	forced	9	1310720	87	0x13337c	0	0
+new	hk	neutral	100	13	0	forced	10	1441792	89	0x133394	0	0
+new	hk	neutral	100	13	0	forced	11	1572864	91		0	0
+new	hk	neutral	100	13	0	forced	12	1703936	92	0x1333ac	0	0
+new	hk	neutral	100	13	0	forced	13	1835008	93	0x1333c4	0	0
+new	hk	neutral	100	13	0	forced	14	1966080	95	0x133364	0	0
+new	hk	neutral	100	13	0	forced	15	2097152	96		0	0
+new	hk	neutral	100	13	0	forced	16	2228224	97	0x13337c	0	0
+new	hk	neutral	100	13	0	forced	17	2359296	97	0x133394	0	0
+new	hk	neutral	100	13	0	forced	18	2490368	98		0	0
+new	hk	neutral	100	13	0	forced	19	2621440	99	0x1333ac	0	0
+new	hk	neutral	100	13	0	forced	20	2752512	99	0x1333c4	0	0
+new	hk	neutral	100	13	0	forced	21	2883584	99	0x133364	0	0
+new	hk	neutral	100	13	0	forced	22	3014656	100		0	0
+new	hk	neutral	100	13	0	forced	23	3145728	100	0x13337c	0	0
+new	hk	neutral	100	13	0	forced	24	3276800	100	0x133394	0	0
+new	hk	neutral	100	13	0	forced	25	3407872	99		0	0
+new	hk	neutral	100	13	0	forced	26	3538944	99	0x1333ac	0	0
+new	hk	neutral	100	13	0	forced	27	3670016	99	0x1333c4	0	0
+new	hk	neutral	100	13	0	forced	28	3801088	98	0x133364	0	0
+new	hk	neutral	100	13	0	forced	29	3932160	97		0	0
+new	hk	neutral	100	13	0	forced	30	4063232	97	0x13337c	0	0
+new	hk	neutral	100	13	0	forced	31	4194304	96	0x133394	0	0
+new	hk	neutral	100	13	0	forced	32	4325376	95		0	0
+new	hk	neutral	100	13	0	forced	33	4456448	93	0x1333ac	0	0
+new	hk	neutral	100	13	0	forced	34	4587520	92	0x1333e0	0	0
+new	hk	neutral	100	13	0	forced	35	4718592	91		0	0
+new	hk	neutral	100	13	0	forced	36	4849664	89		0	0
+new	hk	neutral	100	13	0	forced	37	4980736	86		0	0
+new	hk	neutral	100	13	0	forced	38	5111808	84	0x1333f8	0	0
+new	hk	neutral	100	13	0	forced	39	5242880	81		0	0
+new	hk	neutral	100	13	0	forced	40	5373952	78		0	0
+new	hk	neutral	100	13	0	forced	41	5505024	74		0	0
+new	hk	neutral	100	13	0	forced	42	5636096	70	0x133410	0	0
+new	hk	neutral	100	13	0	forced	43	5767168	66		0	0
+new	hk	neutral	100	13	0	forced	44	5898240	62		0	0
+new	hk	neutral	100	13	0	forced	45	6029312	57		0	0
+new	hk	neutral	100	13	0	forced	46	6160384	52	0x133428	0	0
+new	hk	neutral	100	13	0	forced	47	6291456	47		0	0
+new	hk	neutral	100	13	0	forced	48	6422528	41		0	0
+new	hk	neutral	100	13	0	forced	49	6553600	35		0	0
+new	hk	neutral	100	13	0	forced	50	6684672	29	0x133440	0	0
+new	hk	neutral	100	13	0	forced	51	6815744	22	0x133440	0	0
+new	hk	neutral	100	13	0	forced	52	6946816	15	0x133440	0	0
+new	hk	neutral	100	13	0	forced	53	7077888	8	0x133440	0	0
+new	hk	neutral	100	13	0	forced	54	7208960	0	0x133440	1	0
+new	hk	neutral	100	13	0	forced	55	7340032	0	0x13345c	0	0
+new	hk	neutral	100	13	0	forced	56	7340032	0		0	0
+new	hk	neutral	100	13	0	forced	57	7340032	0		0	0
+new	hk	neutral	100	13	0	forced	58	7340032	0		0	0
+new	hk	neutral	100	13	0	forced	59	7340032	0		0	0
+new	hk	neutral	100	13	0	forced	60	7340032	0		0	0
+new	hk	neutral	100	13	0	forced	61	7340032	0	0x133474	0	0
+new	hk	neutral	100	13	0	forced	62	7340032	0		0	1
+new	lk	back	100	13	0	forced	0	-311040	66	0x13326c	0	0
+new	lk	back	100	13	0	forced	1	-620800	69		0	0
+new	lk	back	100	13	0	forced	2	-929280	72	0x133284	0	0
+new	lk	back	100	13	0	forced	3	-1236480	75	0x13329c	0	0
+new	lk	back	100	13	0	forced	4	-1542400	78		0	0
+new	lk	back	100	13	0	forced	5	-1847040	81	0x1332b4	0	0
+new	lk	back	100	13	0	forced	6	-2150400	83	0x1332cc	0	0
+new	lk	back	100	13	0	forced	7	-2452480	86	0x13326c	0	0
+new	lk	back	100	13	0	forced	8	-2753280	88		0	0
+new	lk	back	100	13	0	forced	9	-3052800	90	0x133284	0	0
+new	lk	back	100	13	0	forced	10	-3351040	92	0x13329c	0	0
+new	lk	back	100	13	0	forced	11	-3648000	94		0	0
+new	lk	back	100	13	0	forced	12	-3943680	96	0x1332b4	0	0
+new	lk	back	100	13	0	forced	13	-4238080	98	0x1332cc	0	0
+new	lk	back	100	13	0	forced	14	-4531200	100	0x13326c	0	0
+new	lk	back	100	13	0	forced	15	-4823040	101		0	0
+new	lk	back	100	13	0	forced	16	-5113600	103	0x133284	0	0
+new	lk	back	100	13	0	forced	17	-5402880	104	0x13329c	0	0
+new	lk	back	100	13	0	forced	18	-5690880	105		0	0
+new	lk	back	100	13	0	forced	19	-5977600	106	0x1332b4	0	0
+new	lk	back	100	13	0	forced	20	-6263040	107	0x1333e0	0	0
+new	lk	back	100	13	0	forced	21	-6547200	107		0	0
+new	lk	back	100	13	0	forced	22	-6830080	108		0	0
+new	lk	back	100	13	0	forced	23	-7111680	108		0	0
+new	lk	back	100	13	0	forced	24	-7392000	107	0x1333f8	0	0
+new	lk	back	100	13	0	forced	25	-7671040	106		0	0
+new	lk	back	100	13	0	forced	26	-7948800	105		0	0
+new	lk	back	100	13	0	forced	27	-8225280	104		0	0
+new	lk	back	100	13	0	forced	28	-8500480	103	0x133410	0	0
+new	lk	back	100	13	0	forced	29	-8774400	101		0	0
+new	lk	back	100	13	0	forced	30	-9047040	98		0	0
+new	lk	back	100	13	0	forced	31	-9318400	96		0	0
+new	lk	back	100	13	0	forced	32	-9588480	93	0x133428	0	0
+new	lk	back	100	13	0	forced	33	-9857280	90		0	0
+new	lk	back	100	13	0	forced	34	-10124800	86		0	0
+new	lk	back	100	13	0	forced	35	-10194432	82		0	0
+new	lk	back	100	13	0	forced	36	-10262784	78	0x133440	0	0
+new	lk	back	100	13	0	forced	37	-10264320	74	0x133440	0	0
+new	lk	back	100	13	0	forced	38	-10264576	69	0x133440	0	0
+new	lk	back	100	13	0	forced	39	-10263552	64	0x133440	0	0
+new	lk	back	100	13	0	forced	40	-10261248	59	0x133440	0	0
+new	lk	back	100	13	0	forced	41	-10323200	53	0x133440	0	0
+new	lk	back	100	13	0	forced	42	-10318336	47	0x133440	0	0
+new	lk	back	100	13	0	forced	43	-10312192	41	0x133440	0	0
+new	lk	back	100	13	0	forced	44	-10304768	34	0x133440	0	0
+new	lk	back	100	13	0	forced	45	-10296064	27	0x133440	0	0
+new	lk	back	100	13	0	forced	46	-10286080	20	0x133440	0	0
+new	lk	back	100	13	0	forced	47	-10274816	12	0x133440	0	0
+new	lk	back	100	13	0	forced	48	-10262272	4	0x133440	0	0
+new	lk	back	100	13	0	forced	49	-10313984	0	0x13345c	1	0
+new	lk	back	100	13	0	forced	50	-10313984	0		0	0
+new	lk	back	100	13	0	forced	51	-10313984	0		0	0
+new	lk	back	100	13	0	forced	52	-10313984	0		0	0
+new	lk	back	100	13	0	forced	53	-10313984	0		0	0
+new	lk	back	100	13	0	forced	54	-10313984	0		0	0
+new	lk	back	100	13	0	forced	55	-10313984	0	0x133474	0	0
+new	lk	back	100	13	0	forced	56	-10313984	0		0	1
+new	lk	forward	171	13	0	forced	0	278272	62	0x13326c	0	0
+new	lk	forward	171	13	0	forced	1	555264	65		0	0
+new	lk	forward	171	13	0	forced	2	830976	68	0x133284	0	0
+new	lk	forward	171	13	0	forced	3	1105408	71	0x13329c	0	0
+new	lk	forward	171	13	0	forced	4	1378560	74		0	0
+new	lk	forward	171	13	0	forced	5	1650432	76	0x1332b4	0	0
+new	lk	forward	171	13	0	forced	6	1921024	78	0x1332cc	0	0
+new	lk	forward	171	13	0	forced	7	2190336	81	0x13326c	0	0
+new	lk	forward	171	13	0	forced	8	2458368	83		0	0
+new	lk	forward	171	13	0	forced	9	2725120	85	0x133284	0	0
+new	lk	forward	171	13	0	forced	10	2990592	87	0x13329c	0	0
+new	lk	forward	171	13	0	forced	11	3254784	88		0	0
+new	lk	forward	171	13	0	forced	12	3517696	90	0x1332b4	0	0
+new	lk	forward	171	13	0	forced	13	3779328	92	0x1332cc	0	0
+new	lk	forward	171	13	0	forced	14	4039680	93	0x13326c	0	0
+new	lk	forward	171	13	0	forced	15	4298752	94		0	0
+new	lk	forward	171	13	0	forced	16	4556544	95	0x133284	0	0
+new	lk	forward	171	13	0	forced	17	4813056	96	0x13329c	0	0
+new	lk	forward	171	13	0	forced	18	5068288	97		0	0
+new	lk	forward	171	13	0	forced	19	5322240	98	0x1332b4	0	0
+new	lk	forward	171	13	0	forced	20	5574912	99	0x1333e0	0	0
+new	lk	forward	171	13	0	forced	21	5826304	99		0	0
+new	lk	forward	171	13	0	forced	22	6076416	99		0	0
+new	lk	forward	171	13	0	forced	23	6325248	99		0	0
+new	lk	forward	171	13	0	forced	24	6572800	98	0x1333f8	0	0
+new	lk	forward	171	13	0	forced	25	6819072	97		0	0
+new	lk	forward	171	13	0	forced	26	7064064	96		0	0
+new	lk	forward	171	13	0	forced	27	7307776	94		0	0
+new	lk	forward	171	13	0	forced	28	7550208	92	0x133410	0	0
+new	lk	forward	171	13	0	forced	29	7791360	90		0	0
+new	lk	forward	171	13	0	forced	30	8031232	88		0	0
+new	lk	forward	171	13	0	forced	31	8269824	85		0	0
+new	lk	forward	171	13	0	forced	32	8507136	82	0x133428	0	0
+new	lk	forward	171	13	0	forced	33	8743168	78		0	0
+new	lk	forward	171	13	0	forced	34	8977920	74		0	0
+new	lk	forward	171	13	0	forced	35	9211392	70		0	0
+new	lk	forward	171	13	0	forced	36	9443584	66	0x133440	0	0
+new	lk	forward	171	13	0	forced	37	9674496	61	0x133440	0	0
+new	lk	forward	171	13	0	forced	38	9904128	56	0x133440	0	0
+new	lk	forward	171	13	0	forced	39	10132480	51	0x133440	0	0
+new	lk	forward	171	13	0	forced	40	10359552	45	0x133440	0	0
+new	lk	forward	171	13	0	forced	41	10585344	39	0x133440	0	0
+new	lk	forward	171	13	0	forced	42	10809856	33	0x133440	0	0
+new	lk	forward	171	13	0	forced	43	11033088	27	0x133440	0	0
+new	lk	forward	171	13	0	forced	44	11255040	20	0x133440	0	0
+new	lk	forward	171	13	0	forced	45	11475712	13	0x133440	0	0
+new	lk	forward	171	13	0	forced	46	11695104	5	0x133440	0	0
+new	lk	forward	171	13	0	forced	47	11913216	0	0x13345c	1	0
+new	lk	forward	171	13	0	forced	48	11913216	0		0	0
+new	lk	forward	171	13	0	forced	49	11913216	0		0	0
+new	lk	forward	171	13	0	forced	50	11913216	0		0	0
+new	lk	forward	171	13	0	forced	51	11913216	0		0	0
+new	lk	forward	171	13	0	forced	52	11913216	0		0	0
+new	lk	forward	171	13	0	forced	53	11913216	0	0x133474	0	0
+new	lk	forward	171	13	0	forced	54	11913216	0		0	1
+new	lk	ground	240	0	0	forced	0	0	0	0x132fe8	0	0
+new	lk	ground	240	0	0	forced	1	163840	4	0x133000	0	0
+new	lk	ground	240	0	0	forced	2	327680	7		0	0
+new	lk	ground	240	0	0	forced	3	491520	10		0	0
+new	lk	ground	240	0	0	forced	4	655360	13	0x133018	0	0
+new	lk	ground	240	0	0	forced	5	819200	16		0	0
+new	lk	ground	240	0	0	forced	6	983040	18		0	0
+new	lk	ground	240	0	0	forced	7	1146880	20	0x133030	0	0
+new	lk	ground	240	0	0	forced	8	1310720	21		0	0
+new	lk	ground	240	0	0	forced	9	1474560	22		0	0
+new	lk	ground	240	0	0	forced	10	1638400	23	0x133048	0	0
+new	lk	ground	240	0	0	forced	11	1802240	23	0x13307c	0	0
+new	lk	ground	240	0	0	forced	12	1966080	23		0	0
+new	lk	ground	240	0	0	forced	13	2129920	23	0x133094	0	0
+new	lk	ground	240	0	0	forced	14	2293760	23	0x1330ac	0	0
+new	lk	ground	240	0	0	forced	15	2457600	23		0	0
+new	lk	ground	240	0	0	forced	16	2621440	23	0x1330c4	0	0
+new	lk	ground	240	0	0	forced	17	2785280	23	0x1330dc	0	0
+new	lk	ground	240	0	0	forced	18	2949120	23	0x13307c	0	0
+new	lk	ground	240	0	0	forced	19	3112960	23		0	0
+new	lk	ground	240	0	0	forced	20	3276800	23	0x133094	0	0
+new	lk	ground	240	0	0	forced	21	3440640	23	0x1330ac	0	0
+new	lk	ground	240	0	0	forced	22	3604480	23		0	0
+new	lk	ground	240	0	0	forced	23	3768320	23	0x1330c4	0	0
+new	lk	ground	240	0	0	forced	24	3932160	23	0x1330dc	0	0
+new	lk	ground	240	0	0	forced	25	4096000	23	0x13307c	0	0
+new	lk	ground	240	0	0	forced	26	4259840	23		0	0
+new	lk	ground	240	0	0	forced	27	4423680	23	0x133094	0	0
+new	lk	ground	240	0	0	forced	28	4587520	23	0x1330ac	0	0
+new	lk	ground	240	0	0	forced	29	4751360	23		0	0
+new	lk	ground	240	0	0	forced	30	4915200	23	0x1330c4	0	0
+new	lk	ground	240	0	0	forced	31	5079040	23	0x1330dc	0	0
+new	lk	ground	240	0	0	forced	32	5079040	23	0x1331f0	0	0
+new	lk	ground	240	0	0	forced	33	5242880	23		0	0
+new	lk	ground	240	0	0	forced	34	5406720	22		0	0
+new	lk	ground	240	0	0	forced	35	5570560	21		0	0
+new	lk	ground	240	0	0	forced	36	5734400	20	0x133208	0	0
+new	lk	ground	240	0	0	forced	37	5898240	19		0	0
+new	lk	ground	240	0	0	forced	38	6062080	17		0	0
+new	lk	ground	240	0	0	forced	39	6225920	14		0	0
+new	lk	ground	240	0	0	forced	40	6389760	11	0x133220	0	0
+new	lk	ground	240	0	0	forced	41	6553600	8		0	0
+new	lk	ground	240	0	0	forced	42	6717440	5		0	0
+new	lk	ground	240	0	0	forced	43	6881280	1		0	0
+new	lk	ground	240	0	0	forced	44	7045120	0	0x133c74	1	0
+new	lk	ground	240	0	0	forced	45	7045120	0		0	0
+new	lk	ground	240	0	0	forced	46	7045120	0		0	0
+new	lk	ground	240	0	0	forced	47	7045120	0		0	0
+new	lk	ground	240	0	0	forced	48	7045120	0		0	0
+new	lk	ground	240	0	0	forced	49	7045120	0		0	0
+new	lk	ground	240	0	0	forced	50	7045120	0		0	1
+new	lk	ground	240	0	1	forced	0	0	0	0x132fe8	0	0
+new	lk	ground	240	0	1	forced	1	163840	4	0x133000	0	0
+new	lk	ground	240	0	1	forced	2	327680	7		0	0
+new	lk	ground	240	0	1	forced	3	491520	10		0	0
+new	lk	ground	240	0	1	forced	4	655360	13	0x133018	0	0
+new	lk	ground	240	0	1	forced	5	819200	16		0	0
+new	lk	ground	240	0	1	forced	6	983040	18		0	0
+new	lk	ground	240	0	1	forced	7	1146880	20	0x133030	0	0
+new	lk	ground	240	0	1	forced	8	1310720	21		0	0
+new	lk	ground	240	0	1	forced	9	1474560	22		0	0
+new	lk	ground	240	0	1	forced	10	1638400	23	0x133048	0	0
+new	lk	ground	240	0	1	forced	11	1802240	23	0x13307c	0	0
+new	lk	ground	240	0	1	forced	12	1966080	23		0	0
+new	lk	ground	240	0	1	forced	13	2129920	23	0x133094	0	0
+new	lk	ground	240	0	1	forced	14	2293760	23	0x1330ac	0	0
+new	lk	ground	240	0	1	forced	15	2457600	23		0	0
+new	lk	ground	240	0	1	forced	16	2621440	23	0x1330c4	0	0
+new	lk	ground	240	0	1	forced	17	2785280	23	0x1330dc	0	0
+new	lk	ground	240	0	1	forced	18	2949120	23	0x13307c	0	0
+new	lk	ground	240	0	1	forced	19	3112960	23		0	0
+new	lk	ground	240	0	1	forced	20	3276800	23	0x133094	0	0
+new	lk	ground	240	0	1	forced	21	3440640	23	0x1330ac	0	0
+new	lk	ground	240	0	1	forced	22	3604480	23		0	0
+new	lk	ground	240	0	1	forced	23	3768320	23	0x1330c4	0	0
+new	lk	ground	240	0	1	forced	24	3932160	23	0x1330dc	0	0
+new	lk	ground	240	0	1	forced	25	4096000	23	0x13307c	0	0
+new	lk	ground	240	0	1	forced	26	4259840	23		0	0
+new	lk	ground	240	0	1	forced	27	4423680	23	0x133094	0	0
+new	lk	ground	240	0	1	forced	28	4587520	23	0x1330ac	0	0
+new	lk	ground	240	0	1	forced	29	4751360	23		0	0
+new	lk	ground	240	0	1	forced	30	4915200	23	0x1330c4	0	0
+new	lk	ground	240	0	1	forced	31	5079040	23	0x1330dc	0	0
+new	lk	ground	240	0	1	forced	32	5079040	23	0x1331f0	0	0
+new	lk	ground	240	0	1	forced	33	5242880	23		0	0
+new	lk	ground	240	0	1	forced	34	5406720	22		0	0
+new	lk	ground	240	0	1	forced	35	5570560	21		0	0
+new	lk	ground	240	0	1	forced	36	5734400	20	0x133208	0	0
+new	lk	ground	240	0	1	forced	37	5898240	19		0	0
+new	lk	ground	240	0	1	forced	38	6062080	17		0	0
+new	lk	ground	240	0	1	forced	39	6225920	14		0	0
+new	lk	ground	240	0	1	forced	40	6389760	11	0x133220	0	0
+new	lk	ground	240	0	1	forced	41	6553600	8		0	0
+new	lk	ground	240	0	1	forced	42	6717440	5		0	0
+new	lk	ground	240	0	1	forced	43	6881280	1		0	0
+new	lk	ground	240	0	1	forced	44	7045120	0	0x133c74	1	0
+new	lk	ground	240	0	1	forced	45	7045120	0		0	0
+new	lk	ground	240	0	1	forced	46	7045120	0		0	0
+new	lk	ground	240	0	1	forced	47	7045120	0		0	0
+new	lk	ground	240	0	1	forced	48	7045120	0		0	0
+new	lk	ground	240	0	1	forced	49	7045120	0		0	0
+new	lk	ground	240	0	1	forced	50	7045120	0		0	1
+new	lk	neutral	100	13	0	forced	0	65536	67	0x13326c	0	0
+new	lk	neutral	100	13	0	forced	1	131072	69		0	0
+new	lk	neutral	100	13	0	forced	2	196608	72	0x133284	0	0
+new	lk	neutral	100	13	0	forced	3	262144	75	0x13329c	0	0
+new	lk	neutral	100	13	0	forced	4	327680	77		0	0
+new	lk	neutral	100	13	0	forced	5	393216	79	0x1332b4	0	0
+new	lk	neutral	100	13	0	forced	6	458752	82	0x1332cc	0	0
+new	lk	neutral	100	13	0	forced	7	524288	84	0x13326c	0	0
+new	lk	neutral	100	13	0	forced	8	589824	86		0	0
+new	lk	neutral	100	13	0	forced	9	655360	87	0x133284	0	0
+new	lk	neutral	100	13	0	forced	10	720896	89	0x13329c	0	0
+new	lk	neutral	100	13	0	forced	11	786432	91		0	0
+new	lk	neutral	100	13	0	forced	12	851968	92	0x1332b4	0	0
+new	lk	neutral	100	13	0	forced	13	917504	93	0x1332cc	0	0
+new	lk	neutral	100	13	0	forced	14	983040	95	0x13326c	0	0
+new	lk	neutral	100	13	0	forced	15	1048576	96		0	0
+new	lk	neutral	100	13	0	forced	16	1114112	97	0x133284	0	0
+new	lk	neutral	100	13	0	forced	17	1179648	97	0x13329c	0	0
+new	lk	neutral	100	13	0	forced	18	1245184	98		0	0
+new	lk	neutral	100	13	0	forced	19	1310720	99	0x1332b4	0	0
+new	lk	neutral	100	13	0	forced	20	1376256	99	0x1333e0	0	0
+new	lk	neutral	100	13	0	forced	21	1441792	99		0	0
+new	lk	neutral	100	13	0	forced	22	1507328	99		0	0
+new	lk	neutral	100	13	0	forced	23	1572864	99		0	0
+new	lk	neutral	100	13	0	forced	24	1638400	98	0x1333f8	0	0
+new	lk	neutral	100	13	0	forced	25	1703936	97		0	0
+new	lk	neutral	100	13	0	forced	26	1769472	95		0	0
+new	lk	neutral	100	13	0	forced	27	1835008	93		0	0
+new	lk	neutral	100	13	0	forced	28	1900544	91	0x133410	0	0
+new	lk	neutral	100	13	0	forced	29	1966080	89		0	0
+new	lk	neutral	100	13	0	forced	30	2031616	86		0	0
+new	lk	neutral	100	13	0	forced	31	2097152	83		0	0
+new	lk	neutral	100	13	0	forced	32	2162688	80	0x133428	0	0
+new	lk	neutral	100	13	0	forced	33	2228224	76		0	0
+new	lk	neutral	100	13	0	forced	34	2293760	72		0	0
+new	lk	neutral	100	13	0	forced	35	2359296	68		0	0
+new	lk	neutral	100	13	0	forced	36	2424832	64	0x133440	0	0
+new	lk	neutral	100	13	0	forced	37	2490368	59	0x133440	0	0
+new	lk	neutral	100	13	0	forced	38	2555904	54	0x133440	0	0
+new	lk	neutral	100	13	0	forced	39	2621440	48	0x133440	0	0
+new	lk	neutral	100	13	0	forced	40	2686976	42	0x133440	0	0
+new	lk	neutral	100	13	0	forced	41	2752512	36	0x133440	0	0
+new	lk	neutral	100	13	0	forced	42	2818048	30	0x133440	0	0
+new	lk	neutral	100	13	0	forced	43	2883584	23	0x133440	0	0
+new	lk	neutral	100	13	0	forced	44	2949120	16	0x133440	0	0
+new	lk	neutral	100	13	0	forced	45	3014656	9	0x133440	0	0
+new	lk	neutral	100	13	0	forced	46	3080192	1	0x133440	0	0
+new	lk	neutral	100	13	0	forced	47	3145728	0	0x13345c	1	0
+new	lk	neutral	100	13	0	forced	48	3145728	0		0	0
+new	lk	neutral	100	13	0	forced	49	3145728	0		0	0
+new	lk	neutral	100	13	0	forced	50	3145728	0		0	0
+new	lk	neutral	100	13	0	forced	51	3145728	0		0	0
+new	lk	neutral	100	13	0	forced	52	3145728	0		0	0
+new	lk	neutral	100	13	0	forced	53	3145728	0	0x133474	0	0
+new	lk	neutral	100	13	0	forced	54	3145728	0		0	1
+new	mk	back	100	13	0	forced	0	-343808	66	0x1332e8	0	0
+new	mk	back	100	13	0	forced	1	-686336	69		0	0
+new	mk	back	100	13	0	forced	2	-1027584	72	0x133300	0	0
+new	mk	back	100	13	0	forced	3	-1367552	75	0x133318	0	0
+new	mk	back	100	13	0	forced	4	-1706240	78		0	0
+new	mk	back	100	13	0	forced	5	-2043648	81	0x133330	0	0
+new	mk	back	100	13	0	forced	6	-2379776	83	0x133348	0	0
+new	mk	back	100	13	0	forced	7	-2714624	86	0x1332e8	0	0
+new	mk	back	100	13	0	forced	8	-3048192	88		0	0
+new	mk	back	100	13	0	forced	9	-3380480	90	0x133300	0	0
+new	mk	back	100	13	0	forced	10	-3711488	92	0x133318	0	0
+new	mk	back	100	13	0	forced	11	-4041216	94		0	0
+new	mk	back	100	13	0	forced	12	-4369664	96	0x133330	0	0
+new	mk	back	100	13	0	forced	13	-4696832	98	0x133348	0	0
+new	mk	back	100	13	0	forced	14	-5022720	100	0x1332e8	0	0
+new	mk	back	100	13	0	forced	15	-5347328	101		0	0
+new	mk	back	100	13	0	forced	16	-5670656	103	0x133300	0	0
+new	mk	back	100	13	0	forced	17	-5992704	104	0x133318	0	0
+new	mk	back	100	13	0	forced	18	-6313472	105		0	0
+new	mk	back	100	13	0	forced	19	-6632960	106	0x133330	0	0
+new	mk	back	100	13	0	forced	20	-6951168	107	0x133348	0	0
+new	mk	back	100	13	0	forced	21	-7268096	108	0x1332e8	0	0
+new	mk	back	100	13	0	forced	22	-7583744	108		0	0
+new	mk	back	100	13	0	forced	23	-7898112	109	0x133300	0	0
+new	mk	back	100	13	0	forced	24	-8211200	109	0x133318	0	0
+new	mk	back	100	13	0	forced	25	-8523008	109		0	0
+new	mk	back	100	13	0	forced	26	-8833536	109	0x133330	0	0
+new	mk	back	100	13	0	forced	27	-9142784	109	0x1333e0	0	0
+new	mk	back	100	13	0	forced	28	-9450752	109		0	0
+new	mk	back	100	13	0	forced	29	-9757440	108		0	0
+new	mk	back	100	13	0	forced	30	-9997312	108		0	0
+new	mk	back	100	13	0	forced	31	-10170368	106	0x1333f8	0	0
+new	mk	back	100	13	0	forced	32	-10211072	105		0	0
+new	mk	back	100	13	0	forced	33	-10316032	103		0	0
+new	mk	back	100	13	0	forced	34	-10288640	101		0	0
+new	mk	back	100	13	0	forced	35	-10259968	98	0x133410	0	0
+new	mk	back	100	13	0	forced	36	-10295552	95		0	0
+new	mk	back	100	13	0	forced	37	-10264320	92		0	0
+new	mk	back	100	13	0	forced	38	-10297344	89		0	0
+new	mk	back	100	13	0	forced	39	-10263552	85	0x133428	0	0
+new	mk	back	100	13	0	forced	40	-10294016	81		0	0
+new	mk	back	100	13	0	forced	41	-10323200	77		0	0
+new	mk	back	100	13	0	forced	42	-10285568	72		0	0
+new	mk	back	100	13	0	forced	43	-10312192	67	0x133440	0	0
+new	mk	back	100	13	0	forced	44	-10272000	62	0x133440	0	0
+new	mk	back	100	13	0	forced	45	-10296064	56	0x133440	0	0
+new	mk	back	100	13	0	forced	46	-10318848	50	0x133440	0	0
+new	mk	back	100	13	0	forced	47	-10274816	44	0x133440	0	0
+new	mk	back	100	13	0	forced	48	-10295040	37	0x133440	0	0
+new	mk	back	100	13	0	forced	49	-10313984	30	0x133440	0	0
+new	mk	back	100	13	0	forced	50	-10266112	23	0x133440	0	0
+new	mk	back	100	13	0	forced	51	-10282496	16	0x133440	0	0
+new	mk	back	100	13	0	forced	52	-10297600	8	0x133440	0	0
+new	mk	back	100	13	0	forced	53	-10311424	0	0x133440	1	0
+new	mk	back	100	13	0	forced	54	-10258432	0	0x13345c	0	0
+new	mk	back	100	13	0	forced	55	-10258432	0		0	0
+new	mk	back	100	13	0	forced	56	-10258432	0		0	0
+new	mk	back	100	13	0	forced	57	-10258432	0		0	0
+new	mk	back	100	13	0	forced	58	-10258432	0		0	0
+new	mk	back	100	13	0	forced	59	-10258432	0		0	0
+new	mk	back	100	13	0	forced	60	-10258432	0	0x133474	0	0
+new	mk	back	100	13	0	forced	61	-10258432	0		0	1
+new	mk	forward	171	13	0	forced	0	311040	62	0x1332e8	0	0
+new	mk	forward	171	13	0	forced	1	620800	65		0	0
+new	mk	forward	171	13	0	forced	2	929280	68	0x133300	0	0
+new	mk	forward	171	13	0	forced	3	1236480	71	0x133318	0	0
+new	mk	forward	171	13	0	forced	4	1542400	74		0	0
+new	mk	forward	171	13	0	forced	5	1847040	76	0x133330	0	0
+new	mk	forward	171	13	0	forced	6	2150400	78	0x133348	0	0
+new	mk	forward	171	13	0	forced	7	2452480	81	0x1332e8	0	0
+new	mk	forward	171	13	0	forced	8	2753280	83		0	0
+new	mk	forward	171	13	0	forced	9	3052800	85	0x133300	0	0
+new	mk	forward	171	13	0	forced	10	3351040	87	0x133318	0	0
+new	mk	forward	171	13	0	forced	11	3648000	88		0	0
+new	mk	forward	171	13	0	forced	12	3943680	90	0x133330	0	0
+new	mk	forward	171	13	0	forced	13	4238080	92	0x133348	0	0
+new	mk	forward	171	13	0	forced	14	4531200	93	0x1332e8	0	0
+new	mk	forward	171	13	0	forced	15	4823040	94		0	0
+new	mk	forward	171	13	0	forced	16	5113600	95	0x133300	0	0
+new	mk	forward	171	13	0	forced	17	5402880	96	0x133318	0	0
+new	mk	forward	171	13	0	forced	18	5690880	97		0	0
+new	mk	forward	171	13	0	forced	19	5977600	98	0x133330	0	0
+new	mk	forward	171	13	0	forced	20	6263040	99	0x133348	0	0
+new	mk	forward	171	13	0	forced	21	6547200	99	0x1332e8	0	0
+new	mk	forward	171	13	0	forced	22	6830080	99		0	0
+new	mk	forward	171	13	0	forced	23	7111680	100	0x133300	0	0
+new	mk	forward	171	13	0	forced	24	7392000	100	0x133318	0	0
+new	mk	forward	171	13	0	forced	25	7671040	100		0	0
+new	mk	forward	171	13	0	forced	26	7948800	100	0x133330	0	0
+new	mk	forward	171	13	0	forced	27	8225280	99	0x1333e0	0	0
+new	mk	forward	171	13	0	forced	28	8500480	99		0	0
+new	mk	forward	171	13	0	forced	29	8774400	98		0	0
+new	mk	forward	171	13	0	forced	30	9047040	97		0	0
+new	mk	forward	171	13	0	forced	31	9318400	95	0x1333f8	0	0
+new	mk	forward	171	13	0	forced	32	9588480	93		0	0
+new	mk	forward	171	13	0	forced	33	9857280	91		0	0
+new	mk	forward	171	13	0	forced	34	10124800	89		0	0
+new	mk	forward	171	13	0	forced	35	10391040	86	0x133410	0	0
+new	mk	forward	171	13	0	forced	36	10656000	83		0	0
+new	mk	forward	171	13	0	forced	37	10919680	80		0	0
+new	mk	forward	171	13	0	forced	38	11182080	76		0	0
+new	mk	forward	171	13	0	forced	39	11443200	72	0x133428	0	0
+new	mk	forward	171	13	0	forced	40	11703040	68		0	0
+new	mk	forward	171	13	0	forced	41	11961600	63		0	0
+new	mk	forward	171	13	0	forced	42	12218880	58		0	0
+new	mk	forward	171	13	0	forced	43	12474880	53	0x133440	0	0
+new	mk	forward	171	13	0	forced	44	12729600	47	0x133440	0	0
+new	mk	forward	171	13	0	forced	45	12983040	41	0x133440	0	0
+new	mk	forward	171	13	0	forced	46	13235200	35	0x133440	0	0
+new	mk	forward	171	13	0	forced	47	13486080	29	0x133440	0	0
+new	mk	forward	171	13	0	forced	48	13735680	22	0x133440	0	0
+new	mk	forward	171	13	0	forced	49	13984000	15	0x133440	0	0
+new	mk	forward	171	13	0	forced	50	14231040	7	0x133440	0	0
+new	mk	forward	171	13	0	forced	51	14476800	0	0x133440	1	0
+new	mk	forward	171	13	0	forced	52	14721280	0	0x13345c	0	0
+new	mk	forward	171	13	0	forced	53	14721280	0		0	0
+new	mk	forward	171	13	0	forced	54	14721280	0		0	0
+new	mk	forward	171	13	0	forced	55	14721280	0		0	0
+new	mk	forward	171	13	0	forced	56	14721280	0		0	0
+new	mk	forward	171	13	0	forced	57	14721280	0		0	0
+new	mk	forward	171	13	0	forced	58	14721280	0	0x133474	0	0
+new	mk	forward	171	13	0	forced	59	14721280	0		0	1
+new	mk	ground	240	0	0	forced	0	0	0	0x132fe8	0	0
+new	mk	ground	240	0	0	forced	1	204800	4	0x133000	0	0
+new	mk	ground	240	0	0	forced	2	409600	7		0	0
+new	mk	ground	240	0	0	forced	3	614400	10		0	0
+new	mk	ground	240	0	0	forced	4	819200	13	0x133018	0	0
+new	mk	ground	240	0	0	forced	5	1024000	16		0	0
+new	mk	ground	240	0	0	forced	6	1228800	18		0	0
+new	mk	ground	240	0	0	forced	7	1433600	20	0x133030	0	0
+new	mk	ground	240	0	0	forced	8	1638400	21		0	0
+new	mk	ground	240	0	0	forced	9	1843200	22		0	0
+new	mk	ground	240	0	0	forced	10	2048000	23	0x133048	0	0
+new	mk	ground	240	0	0	forced	11	2252800	23	0x1330f8	0	0
+new	mk	ground	240	0	0	forced	12	2457600	23		0	0
+new	mk	ground	240	0	0	forced	13	2662400	23	0x133110	0	0
+new	mk	ground	240	0	0	forced	14	2867200	23	0x133128	0	0
+new	mk	ground	240	0	0	forced	15	3072000	23		0	0
+new	mk	ground	240	0	0	forced	16	3276800	23	0x133140	0	0
+new	mk	ground	240	0	0	forced	17	3481600	23	0x133158	0	0
+new	mk	ground	240	0	0	forced	18	3686400	23	0x1330f8	0	0
+new	mk	ground	240	0	0	forced	19	3891200	23		0	0
+new	mk	ground	240	0	0	forced	20	4096000	23	0x133110	0	0
+new	mk	ground	240	0	0	forced	21	4300800	23	0x133128	0	0
+new	mk	ground	240	0	0	forced	22	4505600	23		0	0
+new	mk	ground	240	0	0	forced	23	4710400	23	0x133140	0	0
+new	mk	ground	240	0	0	forced	24	4915200	23	0x133158	0	0
+new	mk	ground	240	0	0	forced	25	5120000	23	0x1330f8	0	0
+new	mk	ground	240	0	0	forced	26	5324800	23		0	0
+new	mk	ground	240	0	0	forced	27	5529600	23	0x133110	0	0
+new	mk	ground	240	0	0	forced	28	5734400	23	0x133128	0	0
+new	mk	ground	240	0	0	forced	29	5939200	23		0	0
+new	mk	ground	240	0	0	forced	30	6144000	23	0x133140	0	0
+new	mk	ground	240	0	0	forced	31	6348800	23	0x133158	0	0
+new	mk	ground	240	0	0	forced	32	6553600	23	0x1330f8	0	0
+new	mk	ground	240	0	0	forced	33	6758400	23		0	0
+new	mk	ground	240	0	0	forced	34	6963200	23	0x133110	0	0
+new	mk	ground	240	0	0	forced	35	7168000	23	0x133128	0	0
+new	mk	ground	240	0	0	forced	36	7372800	23		0	0
+new	mk	ground	240	0	0	forced	37	7577600	23	0x133140	0	0
+new	mk	ground	240	0	0	forced	38	7782400	23	0x133158	0	0
+new	mk	ground	240	0	0	forced	39	7782400	23	0x1331f0	0	0
+new	mk	ground	240	0	0	forced	40	7987200	23		0	0
+new	mk	ground	240	0	0	forced	41	8192000	22		0	0
+new	mk	ground	240	0	0	forced	42	8396800	21		0	0
+new	mk	ground	240	0	0	forced	43	8601600	20	0x133208	0	0
+new	mk	ground	240	0	0	forced	44	8806400	19		0	0
+new	mk	ground	240	0	0	forced	45	9011200	17		0	0
+new	mk	ground	240	0	0	forced	46	9216000	14		0	0
+new	mk	ground	240	0	0	forced	47	9420800	11	0x133220	0	0
+new	mk	ground	240	0	0	forced	48	9625600	8		0	0
+new	mk	ground	240	0	0	forced	49	9830400	5		0	0
+new	mk	ground	240	0	0	forced	50	10035200	1		0	0
+new	mk	ground	240	0	0	forced	51	10240000	0	0x133c74	1	0
+new	mk	ground	240	0	0	forced	52	10240000	0		0	0
+new	mk	ground	240	0	0	forced	53	10240000	0		0	0
+new	mk	ground	240	0	0	forced	54	10240000	0		0	0
+new	mk	ground	240	0	0	forced	55	10240000	0		0	0
+new	mk	ground	240	0	0	forced	56	10240000	0		0	0
+new	mk	ground	240	0	0	forced	57	10240000	0		0	1
+new	mk	ground	240	0	1	forced	0	0	0	0x132fe8	0	0
+new	mk	ground	240	0	1	forced	1	204800	4	0x133000	0	0
+new	mk	ground	240	0	1	forced	2	409600	7		0	0
+new	mk	ground	240	0	1	forced	3	614400	10		0	0
+new	mk	ground	240	0	1	forced	4	819200	13	0x133018	0	0
+new	mk	ground	240	0	1	forced	5	1024000	16		0	0
+new	mk	ground	240	0	1	forced	6	1228800	18		0	0
+new	mk	ground	240	0	1	forced	7	1433600	20	0x133030	0	0
+new	mk	ground	240	0	1	forced	8	1638400	21		0	0
+new	mk	ground	240	0	1	forced	9	1843200	22		0	0
+new	mk	ground	240	0	1	forced	10	2048000	23	0x133048	0	0
+new	mk	ground	240	0	1	forced	11	2252800	23	0x1330f8	0	0
+new	mk	ground	240	0	1	forced	12	2457600	23		0	0
+new	mk	ground	240	0	1	forced	13	2662400	23	0x133110	0	0
+new	mk	ground	240	0	1	forced	14	2867200	23	0x133128	0	0
+new	mk	ground	240	0	1	forced	15	3072000	23		0	0
+new	mk	ground	240	0	1	forced	16	3276800	23	0x133140	0	0
+new	mk	ground	240	0	1	forced	17	3481600	23	0x133158	0	0
+new	mk	ground	240	0	1	forced	18	3686400	23	0x1330f8	0	0
+new	mk	ground	240	0	1	forced	19	3891200	23		0	0
+new	mk	ground	240	0	1	forced	20	4096000	23	0x133110	0	0
+new	mk	ground	240	0	1	forced	21	4300800	23	0x133128	0	0
+new	mk	ground	240	0	1	forced	22	4505600	23		0	0
+new	mk	ground	240	0	1	forced	23	4710400	23	0x133140	0	0
+new	mk	ground	240	0	1	forced	24	4915200	23	0x133158	0	0
+new	mk	ground	240	0	1	forced	25	5120000	23	0x1330f8	0	0
+new	mk	ground	240	0	1	forced	26	5324800	23		0	0
+new	mk	ground	240	0	1	forced	27	5529600	23	0x133110	0	0
+new	mk	ground	240	0	1	forced	28	5734400	23	0x133128	0	0
+new	mk	ground	240	0	1	forced	29	5939200	23		0	0
+new	mk	ground	240	0	1	forced	30	6144000	23	0x133140	0	0
+new	mk	ground	240	0	1	forced	31	6348800	23	0x133158	0	0
+new	mk	ground	240	0	1	forced	32	6553600	23	0x1330f8	0	0
+new	mk	ground	240	0	1	forced	33	6758400	23		0	0
+new	mk	ground	240	0	1	forced	34	6963200	23	0x133110	0	0
+new	mk	ground	240	0	1	forced	35	7168000	23	0x133128	0	0
+new	mk	ground	240	0	1	forced	36	7372800	23		0	0
+new	mk	ground	240	0	1	forced	37	7577600	23	0x133140	0	0
+new	mk	ground	240	0	1	forced	38	7782400	23	0x133158	0	0
+new	mk	ground	240	0	1	forced	39	7782400	23	0x1331f0	0	0
+new	mk	ground	240	0	1	forced	40	7987200	23		0	0
+new	mk	ground	240	0	1	forced	41	8192000	22		0	0
+new	mk	ground	240	0	1	forced	42	8396800	21		0	0
+new	mk	ground	240	0	1	forced	43	8601600	20	0x133208	0	0
+new	mk	ground	240	0	1	forced	44	8806400	19		0	0
+new	mk	ground	240	0	1	forced	45	9011200	17		0	0
+new	mk	ground	240	0	1	forced	46	9216000	14		0	0
+new	mk	ground	240	0	1	forced	47	9420800	11	0x133220	0	0
+new	mk	ground	240	0	1	forced	48	9625600	8		0	0
+new	mk	ground	240	0	1	forced	49	9830400	5		0	0
+new	mk	ground	240	0	1	forced	50	10035200	1		0	0
+new	mk	ground	240	0	1	forced	51	10240000	0	0x133c74	1	0
+new	mk	ground	240	0	1	forced	52	10240000	0		0	0
+new	mk	ground	240	0	1	forced	53	10240000	0		0	0
+new	mk	ground	240	0	1	forced	54	10240000	0		0	0
+new	mk	ground	240	0	1	forced	55	10240000	0		0	0
+new	mk	ground	240	0	1	forced	56	10240000	0		0	0
+new	mk	ground	240	0	1	forced	57	10240000	0		0	1
+new	mk	neutral	100	13	0	forced	0	98304	67	0x1332e8	0	0
+new	mk	neutral	100	13	0	forced	1	196608	69		0	0
+new	mk	neutral	100	13	0	forced	2	294912	72	0x133300	0	0
+new	mk	neutral	100	13	0	forced	3	393216	75	0x133318	0	0
+new	mk	neutral	100	13	0	forced	4	491520	77		0	0
+new	mk	neutral	100	13	0	forced	5	589824	79	0x133330	0	0
+new	mk	neutral	100	13	0	forced	6	688128	82	0x133348	0	0
+new	mk	neutral	100	13	0	forced	7	786432	84	0x1332e8	0	0
+new	mk	neutral	100	13	0	forced	8	884736	86		0	0
+new	mk	neutral	100	13	0	forced	9	983040	87	0x133300	0	0
+new	mk	neutral	100	13	0	forced	10	1081344	89	0x133318	0	0
+new	mk	neutral	100	13	0	forced	11	1179648	91		0	0
+new	mk	neutral	100	13	0	forced	12	1277952	92	0x133330	0	0
+new	mk	neutral	100	13	0	forced	13	1376256	93	0x133348	0	0
+new	mk	neutral	100	13	0	forced	14	1474560	95	0x1332e8	0	0
+new	mk	neutral	100	13	0	forced	15	1572864	96		0	0
+new	mk	neutral	100	13	0	forced	16	1671168	97	0x133300	0	0
+new	mk	neutral	100	13	0	forced	17	1769472	97	0x133318	0	0
+new	mk	neutral	100	13	0	forced	18	1867776	98		0	0
+new	mk	neutral	100	13	0	forced	19	1966080	99	0x133330	0	0
+new	mk	neutral	100	13	0	forced	20	2064384	99	0x133348	0	0
+new	mk	neutral	100	13	0	forced	21	2162688	99	0x1332e8	0	0
+new	mk	neutral	100	13	0	forced	22	2260992	100		0	0
+new	mk	neutral	100	13	0	forced	23	2359296	100	0x133300	0	0
+new	mk	neutral	100	13	0	forced	24	2457600	100	0x133318	0	0
+new	mk	neutral	100	13	0	forced	25	2555904	99		0	0
+new	mk	neutral	100	13	0	forced	26	2654208	99	0x133330	0	0
+new	mk	neutral	100	13	0	forced	27	2752512	99	0x1333e0	0	0
+new	mk	neutral	100	13	0	forced	28	2850816	98		0	0
+new	mk	neutral	100	13	0	forced	29	2949120	97		0	0
+new	mk	neutral	100	13	0	forced	30	3047424	96		0	0
+new	mk	neutral	100	13	0	forced	31	3145728	94	0x1333f8	0	0
+new	mk	neutral	100	13	0	forced	32	3244032	92		0	0
+new	mk	neutral	100	13	0	forced	33	3342336	90		0	0
+new	mk	neutral	100	13	0	forced	34	3440640	87		0	0
+new	mk	neutral	100	13	0	forced	35	3538944	84	0x133410	0	0
+new	mk	neutral	100	13	0	forced	36	3637248	81		0	0
+new	mk	neutral	100	13	0	forced	37	3735552	77		0	0
+new	mk	neutral	100	13	0	forced	38	3833856	73		0	0
+new	mk	neutral	100	13	0	forced	39	3932160	69	0x133428	0	0
+new	mk	neutral	100	13	0	forced	40	4030464	65		0	0
+new	mk	neutral	100	13	0	forced	41	4128768	60		0	0
+new	mk	neutral	100	13	0	forced	42	4227072	55		0	0
+new	mk	neutral	100	13	0	forced	43	4325376	49	0x133440	0	0
+new	mk	neutral	100	13	0	forced	44	4423680	43	0x133440	0	0
+new	mk	neutral	100	13	0	forced	45	4521984	37	0x133440	0	0
+new	mk	neutral	100	13	0	forced	46	4620288	31	0x133440	0	0
+new	mk	neutral	100	13	0	forced	47	4718592	24	0x133440	0	0
+new	mk	neutral	100	13	0	forced	48	4816896	17	0x133440	0	0
+new	mk	neutral	100	13	0	forced	49	4915200	10	0x133440	0	0
+new	mk	neutral	100	13	0	forced	50	5013504	2	0x133440	0	0
+new	mk	neutral	100	13	0	forced	51	5111808	0	0x13345c	1	0
+new	mk	neutral	100	13	0	forced	52	5111808	0		0	0
+new	mk	neutral	100	13	0	forced	53	5111808	0		0	0
+new	mk	neutral	100	13	0	forced	54	5111808	0		0	0
+new	mk	neutral	100	13	0	forced	55	5111808	0		0	0
+new	mk	neutral	100	13	0	forced	56	5111808	0		0	0
+new	mk	neutral	100	13	0	forced	57	5111808	0	0x133474	0	0
+new	mk	neutral	100	13	0	forced	58	5111808	0		0	1
+old	hk	back	100	13	0	forced	0	-374016	71	0x1c79e6	0	0
+old	hk	back	100	13	0	forced	1	-746752	74		0	0
+old	hk	back	100	13	0	forced	2	-1118208	76	0x1c79fe	0	0
+old	hk	back	100	13	0	forced	3	-1488384	78	0x1c7a16	0	0
+old	hk	back	100	13	0	forced	4	-1857280	81		0	0
+old	hk	back	100	13	0	forced	5	-2224896	83	0x1c7a2e	0	0
+old	hk	back	100	13	0	forced	6	-2591232	85	0x1c7a46	0	0
+old	hk	back	100	13	0	forced	7	-2956288	87	0x1c79e6	0	0
+old	hk	back	100	13	0	forced	8	-3320064	88		0	0
+old	hk	back	100	13	0	forced	9	-3682560	90	0x1c79fe	0	0
+old	hk	back	100	13	0	forced	10	-4043776	92	0x1c7a16	0	0
+old	hk	back	100	13	0	forced	11	-4403712	93		0	0
+old	hk	back	100	13	0	forced	12	-4762368	94	0x1c7a2e	0	0
+old	hk	back	100	13	0	forced	13	-5119744	95	0x1c7a46	0	0
+old	hk	back	100	13	0	forced	14	-5475840	96	0x1c79e6	0	0
+old	hk	back	100	13	0	forced	15	-5830656	97		0	0
+old	hk	back	100	13	0	forced	16	-6184192	98	0x1c79fe	0	0
+old	hk	back	100	13	0	forced	17	-6536448	99	0x1c7a16	0	0
+old	hk	back	100	13	0	forced	18	-6887424	99		0	0
+old	hk	back	100	13	0	forced	19	-7237120	99	0x1c7a2e	0	0
+old	hk	back	100	13	0	forced	20	-7585536	100	0x1c7a46	0	0
+old	hk	back	100	13	0	forced	21	-7932672	100	0x1c79e6	0	0
+old	hk	back	100	13	0	forced	22	-8278528	100		0	0
+old	hk	back	100	13	0	forced	23	-8623104	100	0x1c79fe	0	0
+old	hk	back	100	13	0	forced	24	-8966400	99	0x1c7a16	0	0
+old	hk	back	100	13	0	forced	25	-9308416	99		0	0
+old	hk	back	100	13	0	forced	26	-9518080	99	0x1c7a2e	0	0
+old	hk	back	100	13	0	forced	27	-9660928	98	0x1c7a46	0	0
+old	hk	back	100	13	0	forced	28	-9736960	97	0x1c79e6	0	0
+old	hk	back	100	13	0	forced	29	-9811712	96		0	0
+old	hk	back	100	13	0	forced	30	-9819648	95	0x1c79fe	0	0
+old	hk	back	100	13	0	forced	31	-9826304	94	0x1c7a16	0	0
+old	hk	back	100	13	0	forced	32	-9831680	93		0	0
+old	hk	back	100	13	0	forced	33	-9770240	92	0x1c7a2e	0	0
+old	hk	back	100	13	0	forced	34	-9773056	90	0x1c7a62	0	0
+old	hk	back	100	13	0	forced	35	-9774592	88		0	0
+old	hk	back	100	13	0	forced	36	-9774848	86		0	0
+old	hk	back	100	13	0	forced	37	-9773824	84		0	0
+old	hk	back	100	13	0	forced	38	-9771520	81	0x1c7a7a	0	0
+old	hk	back	100	13	0	forced	39	-9833472	78		0	0
+old	hk	back	100	13	0	forced	40	-9828608	75		0	0
+old	hk	back	100	13	0	forced	41	-9822464	71		0	0
+old	hk	back	100	13	0	forced	42	-9815040	67	0x1c7a92	0	0
+old	hk	back	100	13	0	forced	43	-9806336	63		0	0
+old	hk	back	100	13	0	forced	44	-9796352	58		0	0
+old	hk	back	100	13	0	forced	45	-9785088	53		0	0
+old	hk	back	100	13	0	forced	46	-9772544	48	0x1c7aaa	0	0
+old	hk	back	100	13	0	forced	47	-9824256	42		0	0
+old	hk	back	100	13	0	forced	48	-9809152	36		0	0
+old	hk	back	100	13	0	forced	49	-9792768	30		0	0
+old	hk	back	100	13	0	forced	50	-9775104	24	0x1c7ac2	0	0
+old	hk	back	100	13	0	forced	51	-9821696	17	0x1c7ac2	0	0
+old	hk	back	100	13	0	forced	52	-9801472	10	0x1c7ac2	0	0
+old	hk	back	100	13	0	forced	53	-9779968	2	0x1c7ac2	0	0
+old	hk	back	100	13	0	forced	54	-9822720	0	0x1c7ade	1	0
+old	hk	back	100	13	0	forced	55	-9822720	0		0	0
+old	hk	back	100	13	0	forced	56	-9822720	0		0	0
+old	hk	back	100	13	0	forced	57	-9822720	0		0	0
+old	hk	back	100	13	0	forced	58	-9822720	0		0	0
+old	hk	back	100	13	0	forced	59	-9822720	0		0	0
+old	hk	back	100	13	0	forced	60	-9822720	0	0x1c7af6	0	0
+old	hk	back	100	13	0	forced	61	-9822720	0		0	1
+old	hk	forward	171	13	0	forced	0	341248	67	0x1c79e6	0	0
+old	hk	forward	171	13	0	forced	1	681216	70		0	0
+old	hk	forward	171	13	0	forced	2	1019904	72	0x1c79fe	0	0
+old	hk	forward	171	13	0	forced	3	1357312	74	0x1c7a16	0	0
+old	hk	forward	171	13	0	forced	4	1693440	76		0	0
+old	hk	forward	171	13	0	forced	5	2028288	78	0x1c7a2e	0	0
+old	hk	forward	171	13	0	forced	6	2361856	80	0x1c7a46	0	0
+old	hk	forward	171	13	0	forced	7	2694144	81	0x1c79e6	0	0
+old	hk	forward	171	13	0	forced	8	3025152	83		0	0
+old	hk	forward	171	13	0	forced	9	3354880	84	0x1c79fe	0	0
+old	hk	forward	171	13	0	forced	10	3683328	85	0x1c7a16	0	0
+old	hk	forward	171	13	0	forced	11	4010496	86		0	0
+old	hk	forward	171	13	0	forced	12	4336384	87	0x1c7a2e	0	0
+old	hk	forward	171	13	0	forced	13	4660992	88	0x1c7a46	0	0
+old	hk	forward	171	13	0	forced	14	4984320	89	0x1c79e6	0	0
+old	hk	forward	171	13	0	forced	15	5306368	90		0	0
+old	hk	forward	171	13	0	forced	16	5627136	90	0x1c79fe	0	0
+old	hk	forward	171	13	0	forced	17	5946624	91	0x1c7a16	0	0
+old	hk	forward	171	13	0	forced	18	6264832	91		0	0
+old	hk	forward	171	13	0	forced	19	6581760	91	0x1c7a2e	0	0
+old	hk	forward	171	13	0	forced	20	6897408	91	0x1c7a46	0	0
+old	hk	forward	171	13	0	forced	21	7211776	91	0x1c79e6	0	0
+old	hk	forward	171	13	0	forced	22	7524864	91		0	0
+old	hk	forward	171	13	0	forced	23	7836672	90	0x1c79fe	0	0
+old	hk	forward	171	13	0	forced	24	8147200	90	0x1c7a16	0	0
+old	hk	forward	171	13	0	forced	25	8456448	89		0	0
+old	hk	forward	171	13	0	forced	26	8764416	88	0x1c7a2e	0	0
+old	hk	forward	171	13	0	forced	27	9071104	87	0x1c7a46	0	0
+old	hk	forward	171	13	0	forced	28	9376512	86	0x1c79e6	0	0
+old	hk	forward	171	13	0	forced	29	9680640	85		0	0
+old	hk	forward	171	13	0	forced	30	9983488	84	0x1c79fe	0	0
+old	hk	forward	171	13	0	forced	31	10285056	83	0x1c7a16	0	0
+old	hk	forward	171	13	0	forced	32	10585344	81		0	0
+old	hk	forward	171	13	0	forced	33	10884352	80	0x1c7a2e	0	0
+old	hk	forward	171	13	0	forced	34	11182080	78	0x1c7a62	0	0
+old	hk	forward	171	13	0	forced	35	11478528	76		0	0
+old	hk	forward	171	13	0	forced	36	11773696	73		0	0
+old	hk	forward	171	13	0	forced	37	12067584	71		0	0
+old	hk	forward	171	13	0	forced	38	12360192	68	0x1c7a7a	0	0
+old	hk	forward	171	13	0	forced	39	12651520	64		0	0
+old	hk	forward	171	13	0	forced	40	12941568	61		0	0
+old	hk	forward	171	13	0	forced	41	13230336	57		0	0
+old	hk	forward	171	13	0	forced	42	13517824	53	0x1c7a92	0	0
+old	hk	forward	171	13	0	forced	43	13804032	48		0	0
+old	hk	forward	171	13	0	forced	44	14088960	43		0	0
+old	hk	forward	171	13	0	forced	45	14372608	38		0	0
+old	hk	forward	171	13	0	forced	46	14654976	32	0x1c7aaa	0	0
+old	hk	forward	171	13	0	forced	47	14936064	27		0	0
+old	hk	forward	171	13	0	forced	48	15215872	21		0	0
+old	hk	forward	171	13	0	forced	49	15494400	14		0	0
+old	hk	forward	171	13	0	forced	50	15771648	7	0x1c7ac2	0	0
+old	hk	forward	171	13	0	forced	51	16047616	0	0x1c7ac2	1	0
+old	hk	forward	171	13	0	forced	52	16322304	0	0x1c7ade	0	0
+old	hk	forward	171	13	0	forced	53	16322304	0		0	0
+old	hk	forward	171	13	0	forced	54	16322304	0		0	0
+old	hk	forward	171	13	0	forced	55	16322304	0		0	0
+old	hk	forward	171	13	0	forced	56	16322304	0		0	0
+old	hk	forward	171	13	0	forced	57	16322304	0		0	0
+old	hk	forward	171	13	0	forced	58	16322304	0	0x1c7af6	0	0
+old	hk	forward	171	13	0	forced	59	16322304	0		0	1
+old	hk	ground	240	0	0	forced	0	0	0	0x1c766a	0	0
+old	hk	ground	240	0	0	forced	1	245760	4	0x1c7682	0	0
+old	hk	ground	240	0	0	forced	2	491520	7		0	0
+old	hk	ground	240	0	0	forced	3	737280	10		0	0
+old	hk	ground	240	0	0	forced	4	983040	13	0x1c769a	0	0
+old	hk	ground	240	0	0	forced	5	1228800	16		0	0
+old	hk	ground	240	0	0	forced	6	1474560	18		0	0
+old	hk	ground	240	0	0	forced	7	1720320	20	0x1c76b2	0	0
+old	hk	ground	240	0	0	forced	8	1966080	21		0	0
+old	hk	ground	240	0	0	forced	9	2211840	22		0	0
+old	hk	ground	240	0	0	forced	10	2457600	23	0x1c76ca	0	0
+old	hk	ground	240	0	0	forced	11	2703360	23	0x1c77f6	0	0
+old	hk	ground	240	0	0	forced	12	2949120	23		0	0
+old	hk	ground	240	0	0	forced	13	3194880	23	0x1c780e	0	0
+old	hk	ground	240	0	0	forced	14	3440640	23	0x1c7826	0	0
+old	hk	ground	240	0	0	forced	15	3686400	23		0	0
+old	hk	ground	240	0	0	forced	16	3932160	23	0x1c783e	0	0
+old	hk	ground	240	0	0	forced	17	4177920	23	0x1c7856	0	0
+old	hk	ground	240	0	0	forced	18	4423680	23	0x1c77f6	0	0
+old	hk	ground	240	0	0	forced	19	4669440	23		0	0
+old	hk	ground	240	0	0	forced	20	4915200	23	0x1c780e	0	0
+old	hk	ground	240	0	0	forced	21	5160960	23	0x1c7826	0	0
+old	hk	ground	240	0	0	forced	22	5406720	23		0	0
+old	hk	ground	240	0	0	forced	23	5652480	23	0x1c783e	0	0
+old	hk	ground	240	0	0	forced	24	5898240	23	0x1c7856	0	0
+old	hk	ground	240	0	0	forced	25	6144000	23	0x1c77f6	0	0
+old	hk	ground	240	0	0	forced	26	6389760	23		0	0
+old	hk	ground	240	0	0	forced	27	6635520	23	0x1c780e	0	0
+old	hk	ground	240	0	0	forced	28	6881280	23	0x1c7826	0	0
+old	hk	ground	240	0	0	forced	29	7127040	23		0	0
+old	hk	ground	240	0	0	forced	30	7372800	23	0x1c783e	0	0
+old	hk	ground	240	0	0	forced	31	7618560	23	0x1c7856	0	0
+old	hk	ground	240	0	0	forced	32	7864320	23	0x1c77f6	0	0
+old	hk	ground	240	0	0	forced	33	8110080	23		0	0
+old	hk	ground	240	0	0	forced	34	8355840	23	0x1c780e	0	0
+old	hk	ground	240	0	0	forced	35	8601600	23	0x1c7826	0	0
+old	hk	ground	240	0	0	forced	36	8847360	23		0	0
+old	hk	ground	240	0	0	forced	37	9093120	23	0x1c783e	0	0
+old	hk	ground	240	0	0	forced	38	9338880	23	0x1c7856	0	0
+old	hk	ground	240	0	0	forced	39	9584640	23	0x1c77f6	0	0
+old	hk	ground	240	0	0	forced	40	9830400	23		0	0
+old	hk	ground	240	0	0	forced	41	10076160	23	0x1c780e	0	0
+old	hk	ground	240	0	0	forced	42	10321920	23	0x1c7826	0	0
+old	hk	ground	240	0	0	forced	43	10567680	23		0	0
+old	hk	ground	240	0	0	forced	44	10813440	23	0x1c783e	0	0
+old	hk	ground	240	0	0	forced	45	11059200	23	0x1c7856	0	0
+old	hk	ground	240	0	0	forced	46	11059200	23	0x1c7872	0	0
+old	hk	ground	240	0	0	forced	47	11304960	23		0	0
+old	hk	ground	240	0	0	forced	48	11550720	22		0	0
+old	hk	ground	240	0	0	forced	49	11796480	21		0	0
+old	hk	ground	240	0	0	forced	50	12042240	20	0x1c788a	0	0
+old	hk	ground	240	0	0	forced	51	12288000	19		0	0
+old	hk	ground	240	0	0	forced	52	12533760	17		0	0
+old	hk	ground	240	0	0	forced	53	12779520	14		0	0
+old	hk	ground	240	0	0	forced	54	13025280	11	0x1c78a2	0	0
+old	hk	ground	240	0	0	forced	55	13271040	8		0	0
+old	hk	ground	240	0	0	forced	56	13516800	5		0	0
+old	hk	ground	240	0	0	forced	57	13762560	1		0	0
+old	hk	ground	240	0	0	forced	58	14008320	0	0x1c82f6	1	0
+old	hk	ground	240	0	0	forced	59	14008320	0		0	0
+old	hk	ground	240	0	0	forced	60	14008320	0		0	0
+old	hk	ground	240	0	0	forced	61	14008320	0		0	0
+old	hk	ground	240	0	0	forced	62	14008320	0		0	0
+old	hk	ground	240	0	0	forced	63	14008320	0		0	0
+old	hk	ground	240	0	0	forced	64	14008320	0		0	1
+old	hk	ground	240	0	1	forced	0	0	0	0x1c766a	0	0
+old	hk	ground	240	0	1	forced	1	245760	4	0x1c7682	0	0
+old	hk	ground	240	0	1	forced	2	491520	7		0	0
+old	hk	ground	240	0	1	forced	3	737280	10		0	0
+old	hk	ground	240	0	1	forced	4	983040	13	0x1c769a	0	0
+old	hk	ground	240	0	1	forced	5	1228800	16		0	0
+old	hk	ground	240	0	1	forced	6	1474560	18		0	0
+old	hk	ground	240	0	1	forced	7	1720320	20	0x1c76b2	0	0
+old	hk	ground	240	0	1	forced	8	1966080	21		0	0
+old	hk	ground	240	0	1	forced	9	2211840	22		0	0
+old	hk	ground	240	0	1	forced	10	2457600	23	0x1c76ca	0	0
+old	hk	ground	240	0	1	forced	11	2703360	23	0x1c77f6	0	0
+old	hk	ground	240	0	1	forced	12	2949120	23		0	0
+old	hk	ground	240	0	1	forced	13	3194880	23	0x1c780e	0	0
+old	hk	ground	240	0	1	forced	14	3440640	23	0x1c7826	0	0
+old	hk	ground	240	0	1	forced	15	3686400	23		0	0
+old	hk	ground	240	0	1	forced	16	3932160	23	0x1c783e	0	0
+old	hk	ground	240	0	1	forced	17	4177920	23	0x1c7856	0	0
+old	hk	ground	240	0	1	forced	18	4423680	23	0x1c77f6	0	0
+old	hk	ground	240	0	1	forced	19	4669440	23		0	0
+old	hk	ground	240	0	1	forced	20	4915200	23	0x1c780e	0	0
+old	hk	ground	240	0	1	forced	21	5160960	23	0x1c7826	0	0
+old	hk	ground	240	0	1	forced	22	5406720	23		0	0
+old	hk	ground	240	0	1	forced	23	5652480	23	0x1c783e	0	0
+old	hk	ground	240	0	1	forced	24	5898240	23	0x1c7856	0	0
+old	hk	ground	240	0	1	forced	25	6144000	23	0x1c77f6	0	0
+old	hk	ground	240	0	1	forced	26	6389760	23		0	0
+old	hk	ground	240	0	1	forced	27	6635520	23	0x1c780e	0	0
+old	hk	ground	240	0	1	forced	28	6881280	23	0x1c7826	0	0
+old	hk	ground	240	0	1	forced	29	7127040	23		0	0
+old	hk	ground	240	0	1	forced	30	7372800	23	0x1c783e	0	0
+old	hk	ground	240	0	1	forced	31	7618560	23	0x1c7856	0	0
+old	hk	ground	240	0	1	forced	32	7864320	23	0x1c77f6	0	0
+old	hk	ground	240	0	1	forced	33	8110080	23		0	0
+old	hk	ground	240	0	1	forced	34	8355840	23	0x1c780e	0	0
+old	hk	ground	240	0	1	forced	35	8601600	23	0x1c7826	0	0
+old	hk	ground	240	0	1	forced	36	8847360	23		0	0
+old	hk	ground	240	0	1	forced	37	9093120	23	0x1c783e	0	0
+old	hk	ground	240	0	1	forced	38	9338880	23	0x1c7856	0	0
+old	hk	ground	240	0	1	forced	39	9584640	23	0x1c77f6	0	0
+old	hk	ground	240	0	1	forced	40	9830400	23		0	0
+old	hk	ground	240	0	1	forced	41	10076160	23	0x1c780e	0	0
+old	hk	ground	240	0	1	forced	42	10321920	23	0x1c7826	0	0
+old	hk	ground	240	0	1	forced	43	10567680	23		0	0
+old	hk	ground	240	0	1	forced	44	10813440	23	0x1c783e	0	0
+old	hk	ground	240	0	1	forced	45	11059200	23	0x1c7856	0	0
+old	hk	ground	240	0	1	forced	46	11059200	23	0x1c7872	0	0
+old	hk	ground	240	0	1	forced	47	11304960	23		0	0
+old	hk	ground	240	0	1	forced	48	11550720	22		0	0
+old	hk	ground	240	0	1	forced	49	11796480	21		0	0
+old	hk	ground	240	0	1	forced	50	12042240	20	0x1c788a	0	0
+old	hk	ground	240	0	1	forced	51	12288000	19		0	0
+old	hk	ground	240	0	1	forced	52	12533760	17		0	0
+old	hk	ground	240	0	1	forced	53	12779520	14		0	0
+old	hk	ground	240	0	1	forced	54	13025280	11	0x1c78a2	0	0
+old	hk	ground	240	0	1	forced	55	13271040	8		0	0
+old	hk	ground	240	0	1	forced	56	13516800	5		0	0
+old	hk	ground	240	0	1	forced	57	13762560	1		0	0
+old	hk	ground	240	0	1	forced	58	14008320	0	0x1c82f6	1	0
+old	hk	ground	240	0	1	forced	59	14008320	0		0	0
+old	hk	ground	240	0	1	forced	60	14008320	0		0	0
+old	hk	ground	240	0	1	forced	61	14008320	0		0	0
+old	hk	ground	240	0	1	forced	62	14008320	0		0	0
+old	hk	ground	240	0	1	forced	63	14008320	0		0	0
+old	hk	ground	240	0	1	forced	64	14008320	0		0	1
+old	hk	neutral	100	13	0	forced	0	131072	69	0x1c79e6	0	0
+old	hk	neutral	100	13	0	forced	1	262144	72		0	0
+old	hk	neutral	100	13	0	forced	2	393216	74	0x1c79fe	0	0
+old	hk	neutral	100	13	0	forced	3	524288	76	0x1c7a16	0	0
+old	hk	neutral	100	13	0	forced	4	655360	78		0	0
+old	hk	neutral	100	13	0	forced	5	786432	80	0x1c7a2e	0	0
+old	hk	neutral	100	13	0	forced	6	917504	82	0x1c7a46	0	0
+old	hk	neutral	100	13	0	forced	7	1048576	84	0x1c79e6	0	0
+old	hk	neutral	100	13	0	forced	8	1179648	86		0	0
+old	hk	neutral	100	13	0	forced	9	1310720	87	0x1c79fe	0	0
+old	hk	neutral	100	13	0	forced	10	1441792	88	0x1c7a16	0	0
+old	hk	neutral	100	13	0	forced	11	1572864	90		0	0
+old	hk	neutral	100	13	0	forced	12	1703936	91	0x1c7a2e	0	0
+old	hk	neutral	100	13	0	forced	13	1835008	92	0x1c7a46	0	0
+old	hk	neutral	100	13	0	forced	14	1966080	93	0x1c79e6	0	0
+old	hk	neutral	100	13	0	forced	15	2097152	93		0	0
+old	hk	neutral	100	13	0	forced	16	2228224	94	0x1c79fe	0	0
+old	hk	neutral	100	13	0	forced	17	2359296	95	0x1c7a16	0	0
+old	hk	neutral	100	13	0	forced	18	2490368	95		0	0
+old	hk	neutral	100	13	0	forced	19	2621440	95	0x1c7a2e	0	0
+old	hk	neutral	100	13	0	forced	20	2752512	95	0x1c7a46	0	0
+old	hk	neutral	100	13	0	forced	21	2883584	95	0x1c79e6	0	0
+old	hk	neutral	100	13	0	forced	22	3014656	95		0	0
+old	hk	neutral	100	13	0	forced	23	3145728	95	0x1c79fe	0	0
+old	hk	neutral	100	13	0	forced	24	3276800	95	0x1c7a16	0	0
+old	hk	neutral	100	13	0	forced	25	3407872	94		0	0
+old	hk	neutral	100	13	0	forced	26	3538944	93	0x1c7a2e	0	0
+old	hk	neutral	100	13	0	forced	27	3670016	93	0x1c7a46	0	0
+old	hk	neutral	100	13	0	forced	28	3801088	92	0x1c79e6	0	0
+old	hk	neutral	100	13	0	forced	29	3932160	91		0	0
+old	hk	neutral	100	13	0	forced	30	4063232	90	0x1c79fe	0	0
+old	hk	neutral	100	13	0	forced	31	4194304	88	0x1c7a16	0	0
+old	hk	neutral	100	13	0	forced	32	4325376	87		0	0
+old	hk	neutral	100	13	0	forced	33	4456448	86	0x1c7a2e	0	0
+old	hk	neutral	100	13	0	forced	34	4587520	84	0x1c7a62	0	0
+old	hk	neutral	100	13	0	forced	35	4718592	82		0	0
+old	hk	neutral	100	13	0	forced	36	4849664	80		0	0
+old	hk	neutral	100	13	0	forced	37	4980736	77		0	0
+old	hk	neutral	100	13	0	forced	38	5111808	74	0x1c7a7a	0	0
+old	hk	neutral	100	13	0	forced	39	5242880	71		0	0
+old	hk	neutral	100	13	0	forced	40	5373952	68		0	0
+old	hk	neutral	100	13	0	forced	41	5505024	64		0	0
+old	hk	neutral	100	13	0	forced	42	5636096	60	0x1c7a92	0	0
+old	hk	neutral	100	13	0	forced	43	5767168	55		0	0
+old	hk	neutral	100	13	0	forced	44	5898240	51		0	0
+old	hk	neutral	100	13	0	forced	45	6029312	45		0	0
+old	hk	neutral	100	13	0	forced	46	6160384	40	0x1c7aaa	0	0
+old	hk	neutral	100	13	0	forced	47	6291456	34		0	0
+old	hk	neutral	100	13	0	forced	48	6422528	28		0	0
+old	hk	neutral	100	13	0	forced	49	6553600	22		0	0
+old	hk	neutral	100	13	0	forced	50	6684672	15	0x1c7ac2	0	0
+old	hk	neutral	100	13	0	forced	51	6815744	9	0x1c7ac2	0	0
+old	hk	neutral	100	13	0	forced	52	6946816	1	0x1c7ac2	0	0
+old	hk	neutral	100	13	0	forced	53	7077888	0	0x1c7ade	1	0
+old	hk	neutral	100	13	0	forced	54	7077888	0		0	0
+old	hk	neutral	100	13	0	forced	55	7077888	0		0	0
+old	hk	neutral	100	13	0	forced	56	7077888	0		0	0
+old	hk	neutral	100	13	0	forced	57	7077888	0		0	0
+old	hk	neutral	100	13	0	forced	58	7077888	0		0	0
+old	hk	neutral	100	13	0	forced	59	7077888	0	0x1c7af6	0	0
+old	hk	neutral	100	13	0	forced	60	7077888	0		0	1
+old	lk	back	100	13	0	forced	0	-308480	71	0x1c78ee	0	0
+old	lk	back	100	13	0	forced	1	-615680	74		0	0
+old	lk	back	100	13	0	forced	2	-921600	76	0x1c7906	0	0
+old	lk	back	100	13	0	forced	3	-1226240	78	0x1c791e	0	0
+old	lk	back	100	13	0	forced	4	-1529600	81		0	0
+old	lk	back	100	13	0	forced	5	-1831680	83	0x1c7936	0	0
+old	lk	back	100	13	0	forced	6	-2132480	85	0x1c794e	0	0
+old	lk	back	100	13	0	forced	7	-2432000	87	0x1c78ee	0	0
+old	lk	back	100	13	0	forced	8	-2730240	88		0	0
+old	lk	back	100	13	0	forced	9	-3027200	90	0x1c7906	0	0
+old	lk	back	100	13	0	forced	10	-3322880	92	0x1c791e	0	0
+old	lk	back	100	13	0	forced	11	-3617280	93		0	0
+old	lk	back	100	13	0	forced	12	-3910400	94	0x1c7936	0	0
+old	lk	back	100	13	0	forced	13	-4202240	95	0x1c794e	0	0
+old	lk	back	100	13	0	forced	14	-4492800	96	0x1c78ee	0	0
+old	lk	back	100	13	0	forced	15	-4782080	97		0	0
+old	lk	back	100	13	0	forced	16	-5070080	98	0x1c7906	0	0
+old	lk	back	100	13	0	forced	17	-5356800	99	0x1c791e	0	0
+old	lk	back	100	13	0	forced	18	-5642240	99		0	0
+old	lk	back	100	13	0	forced	19	-5926400	99	0x1c7936	0	0
+old	lk	back	100	13	0	forced	20	-6209280	100	0x1c7a62	0	0
+old	lk	back	100	13	0	forced	21	-6490880	100		0	0
+old	lk	back	100	13	0	forced	22	-6771200	99		0	0
+old	lk	back	100	13	0	forced	23	-7050240	99		0	0
+old	lk	back	100	13	0	forced	24	-7328000	98	0x1c7a7a	0	0
+old	lk	back	100	13	0	forced	25	-7604480	96		0	0
+old	lk	back	100	13	0	forced	26	-7879680	95		0	0
+old	lk	back	100	13	0	forced	27	-8153600	93		0	0
+old	lk	back	100	13	0	forced	28	-8426240	90	0x1c7a92	0	0
+old	lk	back	100	13	0	forced	29	-8697600	88		0	0
+old	lk	back	100	13	0	forced	30	-8967680	85		0	0
+old	lk	back	100	13	0	forced	31	-9236480	82		0	0
+old	lk	back	100	13	0	forced	32	-9504000	78	0x1c7aaa	0	0
+old	lk	back	100	13	0	forced	33	-9639168	75		0	0
+old	lk	back	100	13	0	forced	34	-9707520	70		0	0
+old	lk	back	100	13	0	forced	35	-9774592	66		0	0
+old	lk	back	100	13	0	forced	36	-9774848	61	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	37	-9773824	56	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	38	-9771520	51	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	39	-9833472	45	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	40	-9828608	39	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	41	-9822464	33	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	42	-9815040	26	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	43	-9806336	19	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	44	-9796352	12	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	45	-9785088	4	0x1c7ac2	0	0
+old	lk	back	100	13	0	forced	46	-9772544	0	0x1c7ade	1	0
+old	lk	back	100	13	0	forced	47	-9772544	0		0	0
+old	lk	back	100	13	0	forced	48	-9772544	0		0	0
+old	lk	back	100	13	0	forced	49	-9772544	0		0	0
+old	lk	back	100	13	0	forced	50	-9772544	0		0	0
+old	lk	back	100	13	0	forced	51	-9772544	0		0	0
+old	lk	back	100	13	0	forced	52	-9772544	0	0x1c7af6	0	0
+old	lk	back	100	13	0	forced	53	-9772544	0		0	1
+old	lk	forward	171	13	0	forced	0	275712	67	0x1c78ee	0	0
+old	lk	forward	171	13	0	forced	1	550144	70		0	0
+old	lk	forward	171	13	0	forced	2	823296	72	0x1c7906	0	0
+old	lk	forward	171	13	0	forced	3	1095168	74	0x1c791e	0	0
+old	lk	forward	171	13	0	forced	4	1365760	76		0	0
+old	lk	forward	171	13	0	forced	5	1635072	78	0x1c7936	0	0
+old	lk	forward	171	13	0	forced	6	1903104	80	0x1c794e	0	0
+old	lk	forward	171	13	0	forced	7	2169856	81	0x1c78ee	0	0
+old	lk	forward	171	13	0	forced	8	2435328	83		0	0
+old	lk	forward	171	13	0	forced	9	2699520	84	0x1c7906	0	0
+old	lk	forward	171	13	0	forced	10	2962432	85	0x1c791e	0	0
+old	lk	forward	171	13	0	forced	11	3224064	86		0	0
+old	lk	forward	171	13	0	forced	12	3484416	87	0x1c7936	0	0
+old	lk	forward	171	13	0	forced	13	3743488	88	0x1c794e	0	0
+old	lk	forward	171	13	0	forced	14	4001280	89	0x1c78ee	0	0
+old	lk	forward	171	13	0	forced	15	4257792	90		0	0
+old	lk	forward	171	13	0	forced	16	4513024	90	0x1c7906	0	0
+old	lk	forward	171	13	0	forced	17	4766976	91	0x1c791e	0	0
+old	lk	forward	171	13	0	forced	18	5019648	91		0	0
+old	lk	forward	171	13	0	forced	19	5271040	91	0x1c7936	0	0
+old	lk	forward	171	13	0	forced	20	5521152	91	0x1c7a62	0	0
+old	lk	forward	171	13	0	forced	21	5769984	91		0	0
+old	lk	forward	171	13	0	forced	22	6017536	90		0	0
+old	lk	forward	171	13	0	forced	23	6263808	89		0	0
+old	lk	forward	171	13	0	forced	24	6508800	88	0x1c7a7a	0	0
+old	lk	forward	171	13	0	forced	25	6752512	86		0	0
+old	lk	forward	171	13	0	forced	26	6994944	84		0	0
+old	lk	forward	171	13	0	forced	27	7236096	82		0	0
+old	lk	forward	171	13	0	forced	28	7475968	80	0x1c7a92	0	0
+old	lk	forward	171	13	0	forced	29	7714560	77		0	0
+old	lk	forward	171	13	0	forced	30	7951872	74		0	0
+old	lk	forward	171	13	0	forced	31	8187904	70		0	0
+old	lk	forward	171	13	0	forced	32	8422656	67	0x1c7aaa	0	0
+old	lk	forward	171	13	0	forced	33	8656128	63		0	0
+old	lk	forward	171	13	0	forced	34	8888320	58		0	0
+old	lk	forward	171	13	0	forced	35	9119232	53		0	0
+old	lk	forward	171	13	0	forced	36	9348864	48	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	37	9577216	43	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	38	9804288	38	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	39	10030080	32	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	40	10254592	25	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	41	10477824	19	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	42	10699776	12	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	43	10920448	5	0x1c7ac2	0	0
+old	lk	forward	171	13	0	forced	44	11139840	0	0x1c7ade	1	0
+old	lk	forward	171	13	0	forced	45	11139840	0		0	0
+old	lk	forward	171	13	0	forced	46	11139840	0		0	0
+old	lk	forward	171	13	0	forced	47	11139840	0		0	0
+old	lk	forward	171	13	0	forced	48	11139840	0		0	0
+old	lk	forward	171	13	0	forced	49	11139840	0		0	0
+old	lk	forward	171	13	0	forced	50	11139840	0	0x1c7af6	0	0
+old	lk	forward	171	13	0	forced	51	11139840	0		0	1
+old	lk	ground	240	0	0	forced	0	0	0	0x1c766a	0	0
+old	lk	ground	240	0	0	forced	1	163840	4	0x1c7682	0	0
+old	lk	ground	240	0	0	forced	2	327680	7		0	0
+old	lk	ground	240	0	0	forced	3	491520	10		0	0
+old	lk	ground	240	0	0	forced	4	655360	13	0x1c769a	0	0
+old	lk	ground	240	0	0	forced	5	819200	16		0	0
+old	lk	ground	240	0	0	forced	6	983040	18		0	0
+old	lk	ground	240	0	0	forced	7	1146880	20	0x1c76b2	0	0
+old	lk	ground	240	0	0	forced	8	1310720	21		0	0
+old	lk	ground	240	0	0	forced	9	1474560	22		0	0
+old	lk	ground	240	0	0	forced	10	1638400	23	0x1c76ca	0	0
+old	lk	ground	240	0	0	forced	11	1802240	23	0x1c76fe	0	0
+old	lk	ground	240	0	0	forced	12	1966080	23		0	0
+old	lk	ground	240	0	0	forced	13	2129920	23	0x1c7716	0	0
+old	lk	ground	240	0	0	forced	14	2293760	23	0x1c772e	0	0
+old	lk	ground	240	0	0	forced	15	2457600	23		0	0
+old	lk	ground	240	0	0	forced	16	2621440	23	0x1c7746	0	0
+old	lk	ground	240	0	0	forced	17	2785280	23	0x1c775e	0	0
+old	lk	ground	240	0	0	forced	18	2949120	23	0x1c76fe	0	0
+old	lk	ground	240	0	0	forced	19	3112960	23		0	0
+old	lk	ground	240	0	0	forced	20	3276800	23	0x1c7716	0	0
+old	lk	ground	240	0	0	forced	21	3440640	23	0x1c772e	0	0
+old	lk	ground	240	0	0	forced	22	3604480	23		0	0
+old	lk	ground	240	0	0	forced	23	3768320	23	0x1c7746	0	0
+old	lk	ground	240	0	0	forced	24	3932160	23	0x1c775e	0	0
+old	lk	ground	240	0	0	forced	25	4096000	23	0x1c76fe	0	0
+old	lk	ground	240	0	0	forced	26	4259840	23		0	0
+old	lk	ground	240	0	0	forced	27	4423680	23	0x1c7716	0	0
+old	lk	ground	240	0	0	forced	28	4587520	23	0x1c772e	0	0
+old	lk	ground	240	0	0	forced	29	4751360	23		0	0
+old	lk	ground	240	0	0	forced	30	4915200	23	0x1c7746	0	0
+old	lk	ground	240	0	0	forced	31	5079040	23	0x1c775e	0	0
+old	lk	ground	240	0	0	forced	32	5079040	23	0x1c7872	0	0
+old	lk	ground	240	0	0	forced	33	5242880	23		0	0
+old	lk	ground	240	0	0	forced	34	5406720	22		0	0
+old	lk	ground	240	0	0	forced	35	5570560	21		0	0
+old	lk	ground	240	0	0	forced	36	5734400	20	0x1c788a	0	0
+old	lk	ground	240	0	0	forced	37	5898240	19		0	0
+old	lk	ground	240	0	0	forced	38	6062080	17		0	0
+old	lk	ground	240	0	0	forced	39	6225920	14		0	0
+old	lk	ground	240	0	0	forced	40	6389760	11	0x1c78a2	0	0
+old	lk	ground	240	0	0	forced	41	6553600	8		0	0
+old	lk	ground	240	0	0	forced	42	6717440	5		0	0
+old	lk	ground	240	0	0	forced	43	6881280	1		0	0
+old	lk	ground	240	0	0	forced	44	7045120	0	0x1c82f6	1	0
+old	lk	ground	240	0	0	forced	45	7045120	0		0	0
+old	lk	ground	240	0	0	forced	46	7045120	0		0	0
+old	lk	ground	240	0	0	forced	47	7045120	0		0	0
+old	lk	ground	240	0	0	forced	48	7045120	0		0	0
+old	lk	ground	240	0	0	forced	49	7045120	0		0	0
+old	lk	ground	240	0	0	forced	50	7045120	0		0	1
+old	lk	ground	240	0	1	forced	0	0	0	0x1c766a	0	0
+old	lk	ground	240	0	1	forced	1	163840	4	0x1c7682	0	0
+old	lk	ground	240	0	1	forced	2	327680	7		0	0
+old	lk	ground	240	0	1	forced	3	491520	10		0	0
+old	lk	ground	240	0	1	forced	4	655360	13	0x1c769a	0	0
+old	lk	ground	240	0	1	forced	5	819200	16		0	0
+old	lk	ground	240	0	1	forced	6	983040	18		0	0
+old	lk	ground	240	0	1	forced	7	1146880	20	0x1c76b2	0	0
+old	lk	ground	240	0	1	forced	8	1310720	21		0	0
+old	lk	ground	240	0	1	forced	9	1474560	22		0	0
+old	lk	ground	240	0	1	forced	10	1638400	23	0x1c76ca	0	0
+old	lk	ground	240	0	1	forced	11	1802240	23	0x1c76fe	0	0
+old	lk	ground	240	0	1	forced	12	1966080	23		0	0
+old	lk	ground	240	0	1	forced	13	2129920	23	0x1c7716	0	0
+old	lk	ground	240	0	1	forced	14	2293760	23	0x1c772e	0	0
+old	lk	ground	240	0	1	forced	15	2457600	23		0	0
+old	lk	ground	240	0	1	forced	16	2621440	23	0x1c7746	0	0
+old	lk	ground	240	0	1	forced	17	2785280	23	0x1c775e	0	0
+old	lk	ground	240	0	1	forced	18	2949120	23	0x1c76fe	0	0
+old	lk	ground	240	0	1	forced	19	3112960	23		0	0
+old	lk	ground	240	0	1	forced	20	3276800	23	0x1c7716	0	0
+old	lk	ground	240	0	1	forced	21	3440640	23	0x1c772e	0	0
+old	lk	ground	240	0	1	forced	22	3604480	23		0	0
+old	lk	ground	240	0	1	forced	23	3768320	23	0x1c7746	0	0
+old	lk	ground	240	0	1	forced	24	3932160	23	0x1c775e	0	0
+old	lk	ground	240	0	1	forced	25	4096000	23	0x1c76fe	0	0
+old	lk	ground	240	0	1	forced	26	4259840	23		0	0
+old	lk	ground	240	0	1	forced	27	4423680	23	0x1c7716	0	0
+old	lk	ground	240	0	1	forced	28	4587520	23	0x1c772e	0	0
+old	lk	ground	240	0	1	forced	29	4751360	23		0	0
+old	lk	ground	240	0	1	forced	30	4915200	23	0x1c7746	0	0
+old	lk	ground	240	0	1	forced	31	5079040	23	0x1c775e	0	0
+old	lk	ground	240	0	1	forced	32	5079040	23	0x1c7872	0	0
+old	lk	ground	240	0	1	forced	33	5242880	23		0	0
+old	lk	ground	240	0	1	forced	34	5406720	22		0	0
+old	lk	ground	240	0	1	forced	35	5570560	21		0	0
+old	lk	ground	240	0	1	forced	36	5734400	20	0x1c788a	0	0
+old	lk	ground	240	0	1	forced	37	5898240	19		0	0
+old	lk	ground	240	0	1	forced	38	6062080	17		0	0
+old	lk	ground	240	0	1	forced	39	6225920	14		0	0
+old	lk	ground	240	0	1	forced	40	6389760	11	0x1c78a2	0	0
+old	lk	ground	240	0	1	forced	41	6553600	8		0	0
+old	lk	ground	240	0	1	forced	42	6717440	5		0	0
+old	lk	ground	240	0	1	forced	43	6881280	1		0	0
+old	lk	ground	240	0	1	forced	44	7045120	0	0x1c82f6	1	0
+old	lk	ground	240	0	1	forced	45	7045120	0		0	0
+old	lk	ground	240	0	1	forced	46	7045120	0		0	0
+old	lk	ground	240	0	1	forced	47	7045120	0		0	0
+old	lk	ground	240	0	1	forced	48	7045120	0		0	0
+old	lk	ground	240	0	1	forced	49	7045120	0		0	0
+old	lk	ground	240	0	1	forced	50	7045120	0		0	1
+old	lk	neutral	100	13	0	forced	0	65536	69	0x1c78ee	0	0
+old	lk	neutral	100	13	0	forced	1	131072	72		0	0
+old	lk	neutral	100	13	0	forced	2	196608	74	0x1c7906	0	0
+old	lk	neutral	100	13	0	forced	3	262144	76	0x1c791e	0	0
+old	lk	neutral	100	13	0	forced	4	327680	78		0	0
+old	lk	neutral	100	13	0	forced	5	393216	80	0x1c7936	0	0
+old	lk	neutral	100	13	0	forced	6	458752	82	0x1c794e	0	0
+old	lk	neutral	100	13	0	forced	7	524288	84	0x1c78ee	0	0
+old	lk	neutral	100	13	0	forced	8	589824	86		0	0
+old	lk	neutral	100	13	0	forced	9	655360	87	0x1c7906	0	0
+old	lk	neutral	100	13	0	forced	10	720896	88	0x1c791e	0	0
+old	lk	neutral	100	13	0	forced	11	786432	90		0	0
+old	lk	neutral	100	13	0	forced	12	851968	91	0x1c7936	0	0
+old	lk	neutral	100	13	0	forced	13	917504	92	0x1c794e	0	0
+old	lk	neutral	100	13	0	forced	14	983040	93	0x1c78ee	0	0
+old	lk	neutral	100	13	0	forced	15	1048576	93		0	0
+old	lk	neutral	100	13	0	forced	16	1114112	94	0x1c7906	0	0
+old	lk	neutral	100	13	0	forced	17	1179648	95	0x1c791e	0	0
+old	lk	neutral	100	13	0	forced	18	1245184	95		0	0
+old	lk	neutral	100	13	0	forced	19	1310720	95	0x1c7936	0	0
+old	lk	neutral	100	13	0	forced	20	1376256	95	0x1c7a62	0	0
+old	lk	neutral	100	13	0	forced	21	1441792	95		0	0
+old	lk	neutral	100	13	0	forced	22	1507328	95		0	0
+old	lk	neutral	100	13	0	forced	23	1572864	94		0	0
+old	lk	neutral	100	13	0	forced	24	1638400	93	0x1c7a7a	0	0
+old	lk	neutral	100	13	0	forced	25	1703936	91		0	0
+old	lk	neutral	100	13	0	forced	26	1769472	90		0	0
+old	lk	neutral	100	13	0	forced	27	1835008	87		0	0
+old	lk	neutral	100	13	0	forced	28	1900544	85	0x1c7a92	0	0
+old	lk	neutral	100	13	0	forced	29	1966080	82		0	0
+old	lk	neutral	100	13	0	forced	30	2031616	79		0	0
+old	lk	neutral	100	13	0	forced	31	2097152	76		0	0
+old	lk	neutral	100	13	0	forced	32	2162688	72	0x1c7aaa	0	0
+old	lk	neutral	100	13	0	forced	33	2228224	69		0	0
+old	lk	neutral	100	13	0	forced	34	2293760	64		0	0
+old	lk	neutral	100	13	0	forced	35	2359296	60		0	0
+old	lk	neutral	100	13	0	forced	36	2424832	55	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	37	2490368	50	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	38	2555904	44	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	39	2621440	38	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	40	2686976	32	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	41	2752512	26	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	42	2818048	19	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	43	2883584	12	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	44	2949120	5	0x1c7ac2	0	0
+old	lk	neutral	100	13	0	forced	45	3014656	0	0x1c7ade	1	0
+old	lk	neutral	100	13	0	forced	46	3014656	0		0	0
+old	lk	neutral	100	13	0	forced	47	3014656	0		0	0
+old	lk	neutral	100	13	0	forced	48	3014656	0		0	0
+old	lk	neutral	100	13	0	forced	49	3014656	0		0	0
+old	lk	neutral	100	13	0	forced	50	3014656	0		0	0
+old	lk	neutral	100	13	0	forced	51	3014656	0	0x1c7af6	0	0
+old	lk	neutral	100	13	0	forced	52	3014656	0		0	1
+old	mk	back	100	13	0	forced	0	-341248	71	0x1c796a	0	0
+old	mk	back	100	13	0	forced	1	-681216	74		0	0
+old	mk	back	100	13	0	forced	2	-1019904	76	0x1c7982	0	0
+old	mk	back	100	13	0	forced	3	-1357312	78	0x1c799a	0	0
+old	mk	back	100	13	0	forced	4	-1693440	81		0	0
+old	mk	back	100	13	0	forced	5	-2028288	83	0x1c79b2	0	0
+old	mk	back	100	13	0	forced	6	-2361856	85	0x1c79ca	0	0
+old	mk	back	100	13	0	forced	7	-2694144	87	0x1c796a	0	0
+old	mk	back	100	13	0	forced	8	-3025152	88		0	0
+old	mk	back	100	13	0	forced	9	-3354880	90	0x1c7982	0	0
+old	mk	back	100	13	0	forced	10	-3683328	92	0x1c799a	0	0
+old	mk	back	100	13	0	forced	11	-4010496	93		0	0
+old	mk	back	100	13	0	forced	12	-4336384	94	0x1c79b2	0	0
+old	mk	back	100	13	0	forced	13	-4660992	95	0x1c79ca	0	0
+old	mk	back	100	13	0	forced	14	-4984320	96	0x1c796a	0	0
+old	mk	back	100	13	0	forced	15	-5306368	97		0	0
+old	mk	back	100	13	0	forced	16	-5627136	98	0x1c7982	0	0
+old	mk	back	100	13	0	forced	17	-5946624	99	0x1c799a	0	0
+old	mk	back	100	13	0	forced	18	-6264832	99		0	0
+old	mk	back	100	13	0	forced	19	-6581760	99	0x1c79b2	0	0
+old	mk	back	100	13	0	forced	20	-6897408	100	0x1c79ca	0	0
+old	mk	back	100	13	0	forced	21	-7211776	100	0x1c796a	0	0
+old	mk	back	100	13	0	forced	22	-7524864	100		0	0
+old	mk	back	100	13	0	forced	23	-7836672	100	0x1c7982	0	0
+old	mk	back	100	13	0	forced	24	-8147200	99	0x1c799a	0	0
+old	mk	back	100	13	0	forced	25	-8456448	99		0	0
+old	mk	back	100	13	0	forced	26	-8764416	99	0x1c79b2	0	0
+old	mk	back	100	13	0	forced	27	-9071104	98	0x1c7a62	0	0
+old	mk	back	100	13	0	forced	28	-9376512	97		0	0
+old	mk	back	100	13	0	forced	29	-9615104	96		0	0
+old	mk	back	100	13	0	forced	30	-9721344	94		0	0
+old	mk	back	100	13	0	forced	31	-9826304	92	0x1c7a7a	0	0
+old	mk	back	100	13	0	forced	32	-9798912	90		0	0
+old	mk	back	100	13	0	forced	33	-9770240	88		0	0
+old	mk	back	100	13	0	forced	34	-9805824	85		0	0
+old	mk	back	100	13	0	forced	35	-9774592	82	0x1c7a92	0	0
+old	mk	back	100	13	0	forced	36	-9807616	78		0	0
+old	mk	back	100	13	0	forced	37	-9773824	75		0	0
+old	mk	back	100	13	0	forced	38	-9804288	70		0	0
+old	mk	back	100	13	0	forced	39	-9833472	66	0x1c7aaa	0	0
+old	mk	back	100	13	0	forced	40	-9795840	61		0	0
+old	mk	back	100	13	0	forced	41	-9822464	56		0	0
+old	mk	back	100	13	0	forced	42	-9782272	51		0	0
+old	mk	back	100	13	0	forced	43	-9806336	45	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	44	-9829120	40	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	45	-9785088	33	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	46	-9805312	27	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	47	-9824256	20	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	48	-9776384	13	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	49	-9792768	5	0x1c7ac2	0	0
+old	mk	back	100	13	0	forced	50	-9807872	0	0x1c7ade	1	0
+old	mk	back	100	13	0	forced	51	-9807872	0		0	0
+old	mk	back	100	13	0	forced	52	-9807872	0		0	0
+old	mk	back	100	13	0	forced	53	-9807872	0		0	0
+old	mk	back	100	13	0	forced	54	-9807872	0		0	0
+old	mk	back	100	13	0	forced	55	-9807872	0		0	0
+old	mk	back	100	13	0	forced	56	-9807872	0	0x1c7af6	0	0
+old	mk	back	100	13	0	forced	57	-9807872	0		0	1
+old	mk	forward	171	13	0	forced	0	308480	67	0x1c796a	0	0
+old	mk	forward	171	13	0	forced	1	615680	70		0	0
+old	mk	forward	171	13	0	forced	2	921600	72	0x1c7982	0	0
+old	mk	forward	171	13	0	forced	3	1226240	74	0x1c799a	0	0
+old	mk	forward	171	13	0	forced	4	1529600	76		0	0
+old	mk	forward	171	13	0	forced	5	1831680	78	0x1c79b2	0	0
+old	mk	forward	171	13	0	forced	6	2132480	80	0x1c79ca	0	0
+old	mk	forward	171	13	0	forced	7	2432000	81	0x1c796a	0	0
+old	mk	forward	171	13	0	forced	8	2730240	83		0	0
+old	mk	forward	171	13	0	forced	9	3027200	84	0x1c7982	0	0
+old	mk	forward	171	13	0	forced	10	3322880	85	0x1c799a	0	0
+old	mk	forward	171	13	0	forced	11	3617280	86		0	0
+old	mk	forward	171	13	0	forced	12	3910400	87	0x1c79b2	0	0
+old	mk	forward	171	13	0	forced	13	4202240	88	0x1c79ca	0	0
+old	mk	forward	171	13	0	forced	14	4492800	89	0x1c796a	0	0
+old	mk	forward	171	13	0	forced	15	4782080	90		0	0
+old	mk	forward	171	13	0	forced	16	5070080	90	0x1c7982	0	0
+old	mk	forward	171	13	0	forced	17	5356800	91	0x1c799a	0	0
+old	mk	forward	171	13	0	forced	18	5642240	91		0	0
+old	mk	forward	171	13	0	forced	19	5926400	91	0x1c79b2	0	0
+old	mk	forward	171	13	0	forced	20	6209280	91	0x1c79ca	0	0
+old	mk	forward	171	13	0	forced	21	6490880	91	0x1c796a	0	0
+old	mk	forward	171	13	0	forced	22	6771200	91		0	0
+old	mk	forward	171	13	0	forced	23	7050240	90	0x1c7982	0	0
+old	mk	forward	171	13	0	forced	24	7328000	90	0x1c799a	0	0
+old	mk	forward	171	13	0	forced	25	7604480	89		0	0
+old	mk	forward	171	13	0	forced	26	7879680	88	0x1c79b2	0	0
+old	mk	forward	171	13	0	forced	27	8153600	87	0x1c7a62	0	0
+old	mk	forward	171	13	0	forced	28	8426240	86		0	0
+old	mk	forward	171	13	0	forced	29	8697600	85		0	0
+old	mk	forward	171	13	0	forced	30	8967680	83		0	0
+old	mk	forward	171	13	0	forced	31	9236480	81	0x1c7a7a	0	0
+old	mk	forward	171	13	0	forced	32	9504000	78		0	0
+old	mk	forward	171	13	0	forced	33	9770240	76		0	0
+old	mk	forward	171	13	0	forced	34	10035200	73		0	0
+old	mk	forward	171	13	0	forced	35	10298880	69	0x1c7a92	0	0
+old	mk	forward	171	13	0	forced	36	10561280	66		0	0
+old	mk	forward	171	13	0	forced	37	10822400	62		0	0
+old	mk	forward	171	13	0	forced	38	11082240	57		0	0
+old	mk	forward	171	13	0	forced	39	11340800	53	0x1c7aaa	0	0
+old	mk	forward	171	13	0	forced	40	11598080	48		0	0
+old	mk	forward	171	13	0	forced	41	11854080	42		0	0
+old	mk	forward	171	13	0	forced	42	12108800	37		0	0
+old	mk	forward	171	13	0	forced	43	12362240	31	0x1c7ac2	0	0
+old	mk	forward	171	13	0	forced	44	12614400	25	0x1c7ac2	0	0
+old	mk	forward	171	13	0	forced	45	12865280	18	0x1c7ac2	0	0
+old	mk	forward	171	13	0	forced	46	13114880	11	0x1c7ac2	0	0
+old	mk	forward	171	13	0	forced	47	13363200	4	0x1c7ac2	0	0
+old	mk	forward	171	13	0	forced	48	13610240	0	0x1c7ade	1	0
+old	mk	forward	171	13	0	forced	49	13610240	0		0	0
+old	mk	forward	171	13	0	forced	50	13610240	0		0	0
+old	mk	forward	171	13	0	forced	51	13610240	0		0	0
+old	mk	forward	171	13	0	forced	52	13610240	0		0	0
+old	mk	forward	171	13	0	forced	53	13610240	0		0	0
+old	mk	forward	171	13	0	forced	54	13610240	0	0x1c7af6	0	0
+old	mk	forward	171	13	0	forced	55	13610240	0		0	1
+old	mk	ground	240	0	0	forced	0	0	0	0x1c766a	0	0
+old	mk	ground	240	0	0	forced	1	204800	4	0x1c7682	0	0
+old	mk	ground	240	0	0	forced	2	409600	7		0	0
+old	mk	ground	240	0	0	forced	3	614400	10		0	0
+old	mk	ground	240	0	0	forced	4	819200	13	0x1c769a	0	0
+old	mk	ground	240	0	0	forced	5	1024000	16		0	0
+old	mk	ground	240	0	0	forced	6	1228800	18		0	0
+old	mk	ground	240	0	0	forced	7	1433600	20	0x1c76b2	0	0
+old	mk	ground	240	0	0	forced	8	1638400	21		0	0
+old	mk	ground	240	0	0	forced	9	1843200	22		0	0
+old	mk	ground	240	0	0	forced	10	2048000	23	0x1c76ca	0	0
+old	mk	ground	240	0	0	forced	11	2252800	23	0x1c777a	0	0
+old	mk	ground	240	0	0	forced	12	2457600	23		0	0
+old	mk	ground	240	0	0	forced	13	2662400	23	0x1c7792	0	0
+old	mk	ground	240	0	0	forced	14	2867200	23	0x1c77aa	0	0
+old	mk	ground	240	0	0	forced	15	3072000	23		0	0
+old	mk	ground	240	0	0	forced	16	3276800	23	0x1c77c2	0	0
+old	mk	ground	240	0	0	forced	17	3481600	23	0x1c77da	0	0
+old	mk	ground	240	0	0	forced	18	3686400	23	0x1c777a	0	0
+old	mk	ground	240	0	0	forced	19	3891200	23		0	0
+old	mk	ground	240	0	0	forced	20	4096000	23	0x1c7792	0	0
+old	mk	ground	240	0	0	forced	21	4300800	23	0x1c77aa	0	0
+old	mk	ground	240	0	0	forced	22	4505600	23		0	0
+old	mk	ground	240	0	0	forced	23	4710400	23	0x1c77c2	0	0
+old	mk	ground	240	0	0	forced	24	4915200	23	0x1c77da	0	0
+old	mk	ground	240	0	0	forced	25	5120000	23	0x1c777a	0	0
+old	mk	ground	240	0	0	forced	26	5324800	23		0	0
+old	mk	ground	240	0	0	forced	27	5529600	23	0x1c7792	0	0
+old	mk	ground	240	0	0	forced	28	5734400	23	0x1c77aa	0	0
+old	mk	ground	240	0	0	forced	29	5939200	23		0	0
+old	mk	ground	240	0	0	forced	30	6144000	23	0x1c77c2	0	0
+old	mk	ground	240	0	0	forced	31	6348800	23	0x1c77da	0	0
+old	mk	ground	240	0	0	forced	32	6553600	23	0x1c777a	0	0
+old	mk	ground	240	0	0	forced	33	6758400	23		0	0
+old	mk	ground	240	0	0	forced	34	6963200	23	0x1c7792	0	0
+old	mk	ground	240	0	0	forced	35	7168000	23	0x1c77aa	0	0
+old	mk	ground	240	0	0	forced	36	7372800	23		0	0
+old	mk	ground	240	0	0	forced	37	7577600	23	0x1c77c2	0	0
+old	mk	ground	240	0	0	forced	38	7782400	23	0x1c77da	0	0
+old	mk	ground	240	0	0	forced	39	7782400	23	0x1c7872	0	0
+old	mk	ground	240	0	0	forced	40	7987200	23		0	0
+old	mk	ground	240	0	0	forced	41	8192000	22		0	0
+old	mk	ground	240	0	0	forced	42	8396800	21		0	0
+old	mk	ground	240	0	0	forced	43	8601600	20	0x1c788a	0	0
+old	mk	ground	240	0	0	forced	44	8806400	19		0	0
+old	mk	ground	240	0	0	forced	45	9011200	17		0	0
+old	mk	ground	240	0	0	forced	46	9216000	14		0	0
+old	mk	ground	240	0	0	forced	47	9420800	11	0x1c78a2	0	0
+old	mk	ground	240	0	0	forced	48	9625600	8		0	0
+old	mk	ground	240	0	0	forced	49	9830400	5		0	0
+old	mk	ground	240	0	0	forced	50	10035200	1		0	0
+old	mk	ground	240	0	0	forced	51	10240000	0	0x1c82f6	1	0
+old	mk	ground	240	0	0	forced	52	10240000	0		0	0
+old	mk	ground	240	0	0	forced	53	10240000	0		0	0
+old	mk	ground	240	0	0	forced	54	10240000	0		0	0
+old	mk	ground	240	0	0	forced	55	10240000	0		0	0
+old	mk	ground	240	0	0	forced	56	10240000	0		0	0
+old	mk	ground	240	0	0	forced	57	10240000	0		0	1
+old	mk	ground	240	0	1	forced	0	0	0	0x1c766a	0	0
+old	mk	ground	240	0	1	forced	1	204800	4	0x1c7682	0	0
+old	mk	ground	240	0	1	forced	2	409600	7		0	0
+old	mk	ground	240	0	1	forced	3	614400	10		0	0
+old	mk	ground	240	0	1	forced	4	819200	13	0x1c769a	0	0
+old	mk	ground	240	0	1	forced	5	1024000	16		0	0
+old	mk	ground	240	0	1	forced	6	1228800	18		0	0
+old	mk	ground	240	0	1	forced	7	1433600	20	0x1c76b2	0	0
+old	mk	ground	240	0	1	forced	8	1638400	21		0	0
+old	mk	ground	240	0	1	forced	9	1843200	22		0	0
+old	mk	ground	240	0	1	forced	10	2048000	23	0x1c76ca	0	0
+old	mk	ground	240	0	1	forced	11	2252800	23	0x1c777a	0	0
+old	mk	ground	240	0	1	forced	12	2457600	23		0	0
+old	mk	ground	240	0	1	forced	13	2662400	23	0x1c7792	0	0
+old	mk	ground	240	0	1	forced	14	2867200	23	0x1c77aa	0	0
+old	mk	ground	240	0	1	forced	15	3072000	23		0	0
+old	mk	ground	240	0	1	forced	16	3276800	23	0x1c77c2	0	0
+old	mk	ground	240	0	1	forced	17	3481600	23	0x1c77da	0	0
+old	mk	ground	240	0	1	forced	18	3686400	23	0x1c777a	0	0
+old	mk	ground	240	0	1	forced	19	3891200	23		0	0
+old	mk	ground	240	0	1	forced	20	4096000	23	0x1c7792	0	0
+old	mk	ground	240	0	1	forced	21	4300800	23	0x1c77aa	0	0
+old	mk	ground	240	0	1	forced	22	4505600	23		0	0
+old	mk	ground	240	0	1	forced	23	4710400	23	0x1c77c2	0	0
+old	mk	ground	240	0	1	forced	24	4915200	23	0x1c77da	0	0
+old	mk	ground	240	0	1	forced	25	5120000	23	0x1c777a	0	0
+old	mk	ground	240	0	1	forced	26	5324800	23		0	0
+old	mk	ground	240	0	1	forced	27	5529600	23	0x1c7792	0	0
+old	mk	ground	240	0	1	forced	28	5734400	23	0x1c77aa	0	0
+old	mk	ground	240	0	1	forced	29	5939200	23		0	0
+old	mk	ground	240	0	1	forced	30	6144000	23	0x1c77c2	0	0
+old	mk	ground	240	0	1	forced	31	6348800	23	0x1c77da	0	0
+old	mk	ground	240	0	1	forced	32	6553600	23	0x1c777a	0	0
+old	mk	ground	240	0	1	forced	33	6758400	23		0	0
+old	mk	ground	240	0	1	forced	34	6963200	23	0x1c7792	0	0
+old	mk	ground	240	0	1	forced	35	7168000	23	0x1c77aa	0	0
+old	mk	ground	240	0	1	forced	36	7372800	23		0	0
+old	mk	ground	240	0	1	forced	37	7577600	23	0x1c77c2	0	0
+old	mk	ground	240	0	1	forced	38	7782400	23	0x1c77da	0	0
+old	mk	ground	240	0	1	forced	39	7782400	23	0x1c7872	0	0
+old	mk	ground	240	0	1	forced	40	7987200	23		0	0
+old	mk	ground	240	0	1	forced	41	8192000	22		0	0
+old	mk	ground	240	0	1	forced	42	8396800	21		0	0
+old	mk	ground	240	0	1	forced	43	8601600	20	0x1c788a	0	0
+old	mk	ground	240	0	1	forced	44	8806400	19		0	0
+old	mk	ground	240	0	1	forced	45	9011200	17		0	0
+old	mk	ground	240	0	1	forced	46	9216000	14		0	0
+old	mk	ground	240	0	1	forced	47	9420800	11	0x1c78a2	0	0
+old	mk	ground	240	0	1	forced	48	9625600	8		0	0
+old	mk	ground	240	0	1	forced	49	9830400	5		0	0
+old	mk	ground	240	0	1	forced	50	10035200	1		0	0
+old	mk	ground	240	0	1	forced	51	10240000	0	0x1c82f6	1	0
+old	mk	ground	240	0	1	forced	52	10240000	0		0	0
+old	mk	ground	240	0	1	forced	53	10240000	0		0	0
+old	mk	ground	240	0	1	forced	54	10240000	0		0	0
+old	mk	ground	240	0	1	forced	55	10240000	0		0	0
+old	mk	ground	240	0	1	forced	56	10240000	0		0	0
+old	mk	ground	240	0	1	forced	57	10240000	0		0	1
+old	mk	neutral	100	13	0	forced	0	98304	69	0x1c796a	0	0
+old	mk	neutral	100	13	0	forced	1	196608	72		0	0
+old	mk	neutral	100	13	0	forced	2	294912	74	0x1c7982	0	0
+old	mk	neutral	100	13	0	forced	3	393216	76	0x1c799a	0	0
+old	mk	neutral	100	13	0	forced	4	491520	78		0	0
+old	mk	neutral	100	13	0	forced	5	589824	80	0x1c79b2	0	0
+old	mk	neutral	100	13	0	forced	6	688128	82	0x1c79ca	0	0
+old	mk	neutral	100	13	0	forced	7	786432	84	0x1c796a	0	0
+old	mk	neutral	100	13	0	forced	8	884736	86		0	0
+old	mk	neutral	100	13	0	forced	9	983040	87	0x1c7982	0	0
+old	mk	neutral	100	13	0	forced	10	1081344	88	0x1c799a	0	0
+old	mk	neutral	100	13	0	forced	11	1179648	90		0	0
+old	mk	neutral	100	13	0	forced	12	1277952	91	0x1c79b2	0	0
+old	mk	neutral	100	13	0	forced	13	1376256	92	0x1c79ca	0	0
+old	mk	neutral	100	13	0	forced	14	1474560	93	0x1c796a	0	0
+old	mk	neutral	100	13	0	forced	15	1572864	93		0	0
+old	mk	neutral	100	13	0	forced	16	1671168	94	0x1c7982	0	0
+old	mk	neutral	100	13	0	forced	17	1769472	95	0x1c799a	0	0
+old	mk	neutral	100	13	0	forced	18	1867776	95		0	0
+old	mk	neutral	100	13	0	forced	19	1966080	95	0x1c79b2	0	0
+old	mk	neutral	100	13	0	forced	20	2064384	95	0x1c79ca	0	0
+old	mk	neutral	100	13	0	forced	21	2162688	95	0x1c796a	0	0
+old	mk	neutral	100	13	0	forced	22	2260992	95		0	0
+old	mk	neutral	100	13	0	forced	23	2359296	95	0x1c7982	0	0
+old	mk	neutral	100	13	0	forced	24	2457600	95	0x1c799a	0	0
+old	mk	neutral	100	13	0	forced	25	2555904	94		0	0
+old	mk	neutral	100	13	0	forced	26	2654208	93	0x1c79b2	0	0
+old	mk	neutral	100	13	0	forced	27	2752512	93	0x1c7a62	0	0
+old	mk	neutral	100	13	0	forced	28	2850816	92		0	0
+old	mk	neutral	100	13	0	forced	29	2949120	90		0	0
+old	mk	neutral	100	13	0	forced	30	3047424	89		0	0
+old	mk	neutral	100	13	0	forced	31	3145728	87	0x1c7a7a	0	0
+old	mk	neutral	100	13	0	forced	32	3244032	84		0	0
+old	mk	neutral	100	13	0	forced	33	3342336	82		0	0
+old	mk	neutral	100	13	0	forced	34	3440640	79		0	0
+old	mk	neutral	100	13	0	forced	35	3538944	75	0x1c7a92	0	0
+old	mk	neutral	100	13	0	forced	36	3637248	72		0	0
+old	mk	neutral	100	13	0	forced	37	3735552	68		0	0
+old	mk	neutral	100	13	0	forced	38	3833856	64		0	0
+old	mk	neutral	100	13	0	forced	39	3932160	59	0x1c7aaa	0	0
+old	mk	neutral	100	13	0	forced	40	4030464	55		0	0
+old	mk	neutral	100	13	0	forced	41	4128768	49		0	0
+old	mk	neutral	100	13	0	forced	42	4227072	44		0	0
+old	mk	neutral	100	13	0	forced	43	4325376	38	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	44	4423680	32	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	45	4521984	26	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	46	4620288	19	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	47	4718592	12	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	48	4816896	5	0x1c7ac2	0	0
+old	mk	neutral	100	13	0	forced	49	4915200	0	0x1c7ade	1	0
+old	mk	neutral	100	13	0	forced	50	4915200	0		0	0
+old	mk	neutral	100	13	0	forced	51	4915200	0		0	0
+old	mk	neutral	100	13	0	forced	52	4915200	0		0	0
+old	mk	neutral	100	13	0	forced	53	4915200	0		0	0
+old	mk	neutral	100	13	0	forced	54	4915200	0		0	0
+old	mk	neutral	100	13	0	forced	55	4915200	0	0x1c7af6	0	0
+old	mk	neutral	100	13	0	forced	56	4915200	0		0	1

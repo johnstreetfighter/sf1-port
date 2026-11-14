@@ -128,6 +128,7 @@ impl Dir {
 pub enum ButtonClass {
     Punch,
     Kick,
+    KickOnLastDirection,
     Either,
     MashPunch,
     TriplePunch,
@@ -150,7 +151,7 @@ impl ButtonClass {
     /// The letter the move list writes.
     pub const fn letter(self) -> char {
         match self {
-            Self::Kick | Self::TripleKick | Self::PairKick | Self::MediumKick => 'K',
+            Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick => 'K',
             _ => 'P',
         }
     }
@@ -158,7 +159,7 @@ impl ButtonClass {
     pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Punch => "P",
-            Self::Kick => "K",
+            Self::Kick | Self::KickOnLastDirection => "K",
             Self::Either => "P/K",
             Self::MashPunch => "TAP P",
             Self::TriplePunch => "PPP",
@@ -179,7 +180,7 @@ impl ButtonClass {
     }
 
     pub const fn kick(self) -> bool {
-        matches!(self, Self::Kick | Self::TripleKick | Self::PairKick | Self::MediumKick)
+        matches!(self, Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick)
     }
 
     /// The other class.
@@ -200,7 +201,7 @@ impl ButtonClass {
         let kicks = buttons >> 3 & 0b000111;
         match self {
             Self::Punch | Self::MashPunch => punches != 0,
-            Self::Kick => kicks != 0,
+            Self::Kick | Self::KickOnLastDirection => kicks != 0,
             Self::Either => punches | kicks != 0,
             Self::TriplePunch => punches == 7,
             Self::TripleKick => kicks == 7,
@@ -236,7 +237,7 @@ impl ButtonClass {
             Self::PairPunch => strength | adjacent,
             Self::PairKick => (strength | adjacent) << 3,
             Self::SameStrength => strength | (strength << 3),
-            Self::Kick => strength << 3,
+            Self::Kick | Self::KickOnLastDirection => strength << 3,
             Self::Punch | Self::Either => strength,
             chord => chord.fixed_mask(),
         }
@@ -431,7 +432,8 @@ impl MoveInput {
         // A raw up input can start a jump immediately. Complete the
         // grounded command on that same frame.
         let dash = self.motion.ends_with(&[Dir::Neutral, Dir::Forward]);
-        usize::from(!dash && !matches!(self.motion.last(), Some(Dir::Up | Dir::UpForward)))
+        usize::from(!dash && self.button != ButtonClass::KickOnLastDirection
+            && !matches!(self.motion.last(), Some(Dir::Up | Dir::UpForward)))
     }
 
     /// The input written in `notation`. Arrows are drawn for a fighter
@@ -971,7 +973,21 @@ impl MoveEntry {
         toggles: &CoreToggles,
         era: &crate::era_fight::EraFighterState,
     ) -> RecognizerView {
+        let tiger_genocide = self.produces == crate::data_bank::SF2_SUPER_SLOT && era.st_sagat();
         let (stage, remaining) = match self.recognizer {
+            Recognizer::EraMotion { super_move: true } if tiger_genocide => {
+                era.st_sagat_genocide_progress(self.input.button.kick())
+            }
+            Recognizer::EraMotion { super_move: false }
+                if era.st_new_ken_kicks() && crate::era_fight::st_ken_kicks::slot(self.produces) =>
+            {
+                let (stage, remaining) = era.st_ken_kick_progress(self.input.motion);
+                if remaining < 2 && usize::from(stage) == self.input.motion.len() {
+                    (0, 0)
+                } else {
+                    (stage, remaining)
+                }
+            }
             Recognizer::EraMotion { super_move } => era.command_progress(super_move),
             Recognizer::AlphaCounter => era.alpha_counter_progress(),
             Recognizer::AlphaMove => era.alpha_move_progress(self.produces),
@@ -989,6 +1005,9 @@ impl MoveEntry {
             view.gate_free = stage != 0
                 && matches!(view.current_move, 4 | 8)
                 && era.super_meter >= crate::era::STOCK_AT;
+        }
+        if tiger_genocide {
+            view.gate_free &= era.super_stock_full();
         }
         view
     }
@@ -1359,7 +1378,7 @@ pub(crate) fn live_move_list(
 ) -> Vec<MoveEntry> {
     use crate::data_bank::{ALPHA_COUNTER_SLOT, SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
     use crate::era::Revision;
-    use crate::era_fight::DOUBLE_QUARTER_CIRCLE;
+    use crate::era_fight::{DOUBLE_QUARTER_CIRCLE, SHORT_DOUBLE_QUARTER_CIRCLE, ST_TIGER_KNEE};
     use TournamentFighter::{Ken, Ryu, Sagat};
 
     let mut entries: Vec<_> = move_list(fighter, preset).into_iter()
@@ -1436,6 +1455,24 @@ pub(crate) fn live_move_list(
         _ => return entries,
     };
     let available = Availability { fighters, presets: OVERHAUL_PRESETS, player_table: fighter == Sagat };
+    if era.st_new_ken_kicks() {
+        use crate::era_fight::st_ken_kicks::*;
+        for (name, call_out, motion, produces) in [
+            ("KAMA BARAI GERI", "KAMA BARAI GERI!", KAMA_MOTION, KAMA_BARAI),
+            ("NATA OTOSHI GERI", "NATA OTOSHI GERI!", NATA_MOTION, NATA_OTOSHI),
+            ("OSOTO MAWASHI GERI", "OSOTO MAWASHI GERI!", OSOTO_MOTION, OSOTO_MAWASHI),
+        ] {
+            entries.push(MoveEntry {
+                name,
+                kind: MoveKind::Special,
+                input: MoveInput { motion, button: ButtonClass::Kick },
+                recognizer: Recognizer::EraMotion { super_move: false },
+                produces,
+                call_out,
+                available,
+            });
+        }
+    }
     if fighter == Ryu && matches!(era.style.revision, Revision::Super | Revision::St) {
         entries.push(MoveEntry {
             name: "SHAKUNETSU HADOKEN",
@@ -1449,7 +1486,7 @@ pub(crate) fn live_move_list(
     }
     if fighter == Sagat && player_table {
         if let Some(knee) = entries.iter_mut().find(|entry| entry.name == "TIGER KNEE") {
-            knee.input.motion = TIGER_KNEE;
+            knee.input.motion = if era.st_sagat() { ST_TIGER_KNEE } else { TIGER_KNEE };
             knee.recognizer = Recognizer::EraMotion { super_move: false };
         }
         entries.push(MoveEntry {
@@ -1465,21 +1502,28 @@ pub(crate) fn live_move_list(
     if era.style.revision == Revision::St && era.style.loadout == crate::era::Loadout::Standard
         && era.gauge().is_some() && (fighter != Sagat || player_table)
     {
-        let (name, call_out, button) = match fighter {
-            Ryu => ("SHINKU HADOKEN", "SHINKU HADOKEN!", ButtonClass::Punch),
-            Ken => ("SHORYUREPPA", "SHORYUREPPA!", ButtonClass::Punch),
-            Sagat => ("TIGER GENOCIDE", "TIGER GENOCIDE!", ButtonClass::Kick),
+        let (name, call_out) = match fighter {
+            Ryu => ("SHINKU HADOKEN", "SHINKU HADOKEN!"),
+            Ken => ("SHORYUREPPA", "SHORYUREPPA!"),
+            Sagat => ("TIGER GENOCIDE", "TIGER GENOCIDE!"),
             _ => unreachable!(),
         };
-        entries.push(MoveEntry {
+        let super_entry = MoveEntry {
             name,
             kind: MoveKind::Super,
-            input: MoveInput { motion: DOUBLE_QUARTER_CIRCLE, button },
+            input: MoveInput { motion: DOUBLE_QUARTER_CIRCLE, button: ButtonClass::Punch },
             recognizer: Recognizer::EraMotion { super_move: true },
             produces: SF2_SUPER_SLOT,
             call_out,
             available,
-        });
+        };
+        entries.push(super_entry);
+        if fighter == Sagat {
+            entries.push(MoveEntry {
+                input: MoveInput { motion: SHORT_DOUBLE_QUARTER_CIRCLE, button: ButtonClass::KickOnLastDirection },
+                ..super_entry
+            });
+        }
     }
     entries
 }

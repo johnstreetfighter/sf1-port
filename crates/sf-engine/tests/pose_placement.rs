@@ -325,7 +325,7 @@ fn sf2_rising_specials_keep_both_fighters_above_the_floor() {
             TournamentFighter::Sagat,
             &[
                 ("Tiger Uppercut", uppercut_motion, 0, SF2_SPECIAL_SLOT),
-                ("Tiger Genocide", super_motion, 3, SF2_SUPER_SLOT),
+                ("Tiger Genocide", super_motion, 0, SF2_SUPER_SLOT),
             ][..],
         ),
     ] {

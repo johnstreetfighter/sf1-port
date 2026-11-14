@@ -40,6 +40,14 @@ use crate::machine::MachineState;
 use crate::roster::PlayMode;
 
 mod move_effects;
+mod ryu_walk_pacing;
+mod st_ryu_contact;
+mod st_ryu_shinku;
+mod st_ryu_normals;
+mod st_ryu_red;
+mod st_ryu_throw;
+mod st_sagat_air;
+mod st_ken_air_normals;
 
 /// A4: object RAM base (entity offsets are relative to it).
 pub const OBJ_BASE: u32 = 0xffe000;
@@ -745,15 +753,18 @@ impl Bus<'_> {
     }
 
     fn pose_horizontal_step(&mut self, ps: u32, mv: u8, dx: i16) -> i16 {
-        if self.st_ryu_forward_walk(ps, mv) {
-            // The ST forward step runs every tick, independently of the 1987 pose stream.
+        let slot = crate::combo::slot_in_fight(ps, self.rb(GAME_MODE), self.dramatic_rules().is_some());
+        if self.toggle_state.combo.st_ryu_pushback[slot].is_some()
+            || self.toggle_state.combo.st_red_launch[slot].is_some()
+            || self.st_ryu_red_move(ps, mv)
+        {
+            return 0;
+        }
+        if self.measured_walk(ps, mv) {
+            // Measured steps run every tick outside the 1987 pose stream.
             return 0;
         }
         self.world_tour_horizontal_step(ps, mv, dx)
-    }
-
-    fn st_ryu_forward_walk(&self, ps: u32, mv: u8) -> bool {
-        mv == 2 && self.st_ryu_loadout(ps).is_some()
     }
 
     /// 0x44506 / 0x442ca: zero the position of every remaining entry of the
@@ -865,6 +876,8 @@ impl Bus<'_> {
     /// placement entries 0x44114.. enter here with 0 (keep the header's
     /// position) or an x such as 0x1c0.
     pub fn start_move_at(&mut self, e: u16, ps: u32, mv: u8, mut d3: u16) {
+        let retreat_after_red = mv == 3 && self.st_ryu_red_move(ps, self.eb(e, 0xa));
+        let retreat_origin = d3;
         self.world_tour_guard_reaction(ps, false);
         self.world_tour_shuriken_recovery(ps, false);
         if self.evil_ryu_profile(ps).is_some() {
@@ -872,6 +885,24 @@ impl Bus<'_> {
         }
         self.era_clear_alpha_move(ps, mv);
         let table = self.rl(ps + 0x12);
+        let move_origin = d3;
+        let paced_jab = self.ryu_jab_header(ps, e, mv);
+        let st_crouching = self.st_ryu_crouching_header(ps, e, mv);
+        let ken_crouching = self.st_ken_crouching_kick(ps, e, mv).and_then(|(loadout, strength)| {
+            let slot = crate::data_bank::st_ken_normals::crouching_kick_slot(loadout, strength);
+            self.data_bank?.era_move_header(crate::roster::TournamentFighter::Ken, crate::era::EraFamily::Sf2, slot)
+        });
+        let shinku = self.st_ryu_shinku(ps, mv).then(|| {
+            self.data_bank?.era_move_header(crate::roster::TournamentFighter::Ryu, crate::era::EraFamily::Sf2, mv)
+        }).flatten();
+        let shoryureppa = self.st_ken_shoryureppa(ps, mv).then(|| {
+            self.data_bank?.era_move_header(crate::roster::TournamentFighter::Ken, crate::era::EraFamily::Sf2, mv)
+        }).flatten();
+        let sagat_special = self.st_sagat_special_header(ps, mv, self.eb(e, 0x34));
+        let sagat_normal = self.st_sagat_normal_header(ps, e, mv);
+        let ken_kick = self.st_ken_kick_header(ps, mv);
+        let ken_jump = self.st_ken_jump_header(ps, mv);
+        let ken_tatsu = self.st_ken_ground_tatsumaki_header(ps, mv, self.eb(e, 0x34));
         let family_move = self.era_state(ps)
             .filter(|state| {
                 state.alpha_move_active(mv) && (state.uses_family_bank()
@@ -879,7 +910,9 @@ impl Bus<'_> {
             });
         let src = if let Some(state) = family_move {
             self.family_move_header(state, e, mv)
-        } else if let Some(header) = self.st_ryu_far_jab_header(ps, e, mv) {
+        } else if let Some(header) = paced_jab.or(st_crouching).or(ken_crouching).or(shinku).or(shoryureppa).or(sagat_special).or(sagat_normal).or(ken_kick).or(ken_jump).or(ken_tatsu)
+            .or_else(|| self.st_ryu_standing_header(ps, e, mv))
+        {
             Some(header)
         } else if mv == crate::data_bank::ALPHA_COUNTER_SLOT {
             self.alpha_counter_header(ps)
@@ -903,15 +936,22 @@ impl Bus<'_> {
         let Some(src) = src else {
             return;
         };
-        if self.st_ryu_forward_walk(ps, mv) {
-            // Preserve the walk cadence when held Forward restarts the pose cycle.
-            let age = if self.eb(e, 0xa) == 2 { self.eb(e, 0x30).wrapping_add(1) } else { 0 };
+        if self.st_ground_walk(ps, mv).is_some() && self.eb(e, 0xa) != mv {
+            self.set_eb(e, 0x31, 0);
+        }
+        if self.ryu_forward_walk(ps, mv).is_some() {
+            // Held walk can restart its pose cycle without resetting the cadence.
+            let age = if self.eb(e, 0xa) == mv { self.eb(e, 0x30).wrapping_add(1) } else { 0 };
             self.set_eb(e, 0x30, age);
         }
         self.control_move_started(ps, mv);
         for i in 0..0x30u32 {
             let b = self.rb(src + i);
             self.set_eb(e, i, b);
+        }
+        if st_crouching == Some(src) || sagat_normal == Some(src) {
+            // Keep the native input dispatch's directional move identity.
+            self.set_eb(e, 0xa, mv);
         }
         self.toggle_state.dp_connected[self.player_slot_index(ps).unwrap_or(1)] = false;
         if let Some(slot) = self.player_slot_index(ps) {
@@ -952,12 +992,14 @@ impl Bus<'_> {
         if self.toggles.balanced_roster {
             self.apply_balanced_move_start(e, table, mv);
         }
-        self.era_move_started(e, ps, mv);
+        let authored_startup = [paced_jab, st_crouching, ken_crouching, shinku, shoryureppa, sagat_special, sagat_normal, ken_kick, ken_tatsu].contains(&Some(src));
+        self.era_move_started(e, ps, mv, authored_startup);
         if self.toggles.anytime_jump_attacks
             && self.toggles.fast_prejump_crouch
             && self.is_player_driven(ps)
             && Self::is_player_table(table)
             && matches!(mv, 9..=0x0b)
+            && ken_jump.is_none()
         {
             // Shorten pre-jump crouch startup from 9 frames (0..=8) to 4 frames (0..=3) (#95, O4).
             self.set_eb(e, 0xe, 3);
@@ -977,9 +1019,21 @@ impl Bus<'_> {
         // 0x4422e: the unflipped grid from the header's code/attr/position.
         let (sy, sx, code, attr) = (self.ew(e, 4), self.ew(e, 6), self.ew(e, 0), self.ew(e, 2));
         self.write_grid(e, code, attr, sx, sy);
-        if self.eb(e, 0x37) & 4 != 0 && self.is_native_super(ps, mv) {
-            // Super freeze presents this pose before the object runner.
+        if retreat_after_red {
+            let left = self.eb(e, 0x37) & 4 != 0;
+            let step = if left { 2i16 } else { -2i16 };
+            let target = retreat_origin.wrapping_add(step as u16);
+            self.shift_grid_x(e, target.wrapping_sub(self.fighter_axis_x(e)));
+            self.set_eb(e, 0x15, step as u8);
+        }
+        if self.eb(e, 0x37) & 4 != 0 && (sagat_special == Some(src) || sagat_normal == Some(src)
+            || ken_kick == Some(src) || ken_jump == Some(src) || self.is_native_super(ps, mv)) {
+            // These authored headers already show their first pose at entry.
             self.face_left(e);
+        }
+        if (sagat_special == Some(src) || sagat_normal == Some(src)
+            || ken_kick == Some(src) || ken_jump == Some(src)) && move_origin != 0 {
+            self.shift_grid_x(e, move_origin.wrapping_sub(self.fighter_axis_x(e)));
         }
     }
 
@@ -1038,13 +1092,16 @@ impl Bus<'_> {
     /// code, attr, dy, dx, rows-1, cols-1, boxes +0x16..+0x25, flags, x-offset,
     /// hit function) and redraw the grid around the kept centre.
     fn load_frame(&mut self, e: u16, a1: u32) {
+        let red_axis = self.st_ryu_red_move(self.el(e, 0x38), self.eb(e, 0xa))
+            .then(|| self.fighter_axis_x(e));
         let mut cx = self.center_x(e);
         let x26 = self.eb(e, 0x26);
         if x26 != 0 {
             cx = cx.wrapping_sub(sext8(x26));
         }
         self.set_ew(e, 6, cx);
-        let cy = self.bank_crouching_reaction_center(e, a1).unwrap_or_else(|| self.center_y(e));
+        let cy = self.st_ken_jump_pivot(e).or_else(|| self.bank_crouching_reaction_center(e, a1))
+            .unwrap_or_else(|| self.center_y(e));
         self.set_ew(e, 4, cy);
         self.set_ew(e, 2, self.rw(a1 + 4));
         self.set_eb(e, 0xb, self.rb(a1));
@@ -1085,9 +1142,13 @@ impl Bus<'_> {
             self.set_eb(e, 0x33, hold);
         }
         let move_id = self.eb(e, 0xa);
+        let sagat_melee = self.st_sagat_melee_loadout(self.el(e, 0x38), move_id).is_some();
+        let ken_tatsu = self.st_ken_ground_tatsumaki_entry(e).is_some();
         let alpha3_counter = move_id == crate::data_bank::ALPHA_COUNTER_SLOT
             && self.evil_ryu_alpha3(self.el(e, 0x38));
-        if self.toggles.balanced_roster && (matches!(move_id, 0x19 | 0x1b) || alpha3_counter) {
+        if self.toggles.balanced_roster && !sagat_melee && !ken_tatsu
+            && (matches!(move_id, 0x19 | 0x1b) || alpha3_counter)
+        {
             let slot = self.player_slot_index(self.el(e, 0x38)).unwrap_or(1);
             if self.toggle_state.dp_connected[slot] {
                 self.set_eb(e, 0xf, self.eb(e, 0xf) & 0x7f);
@@ -1099,6 +1160,13 @@ impl Bus<'_> {
             || alpha_move || self.combo_reacting(e) || self.guard_crush_reaction(e)
         {
             self.combo_load_frame(e, a1);
+        }
+        if (sagat_melee || ken_tatsu) && crate::data_bank::in_bank(self.el(e, 0x28)) {
+            let phase = self.rb(self.el(e, 0x28) + 8);
+            let mask = 1_u8.checked_shl(u32::from(phase.wrapping_sub(1))).unwrap_or(0);
+            if self.toggle_state.combo.st_melee_phases[self.combo_slot(e)] & mask != 0 {
+                self.set_eb(e, 0xf, self.eb(e, 0xf) & 0x7f);
+            }
         }
         self.era_move_recovery(e, a1);
         let code = self.rw(a1 + 2);
@@ -1118,11 +1186,26 @@ impl Bus<'_> {
             let attr = self.ew(e, 2);
             self.write_grid(e, code, attr, x, y);
         }
+        if let Some(axis) = red_axis {
+            self.shift_grid_x(e, axis.wrapping_sub(self.fighter_axis_x(e)));
+        }
     }
 
     /// 0x42ad0: one frame of a fighter's object runner. `ps` is the
     /// fighter's player structure (A3 = entity +0x38 in the original).
     pub fn run_fighter(&mut self, me: u16, other: u16) {
+        if self.run_st_red_launch(me) || self.run_st_ryu_sweep(me) {
+            return;
+        }
+        if self.contact_frozen(me) {
+            return;
+        }
+        if self.run_st_ryu_throw(me, other) {
+            return;
+        }
+        if self.run_st_sagat_jump(me, other) {
+            return;
+        }
         if let Some(slot) = self.player_slot_index(self.el(me, 0x38)) {
             if self.eb(me, 9) & 0x40 != 0 {
                 self.toggle_state.human_attack_frames[slot] =
@@ -1132,6 +1215,11 @@ impl Bus<'_> {
             }
         }
         let ps = self.el(me, 0x38);
+        let move_id = self.eb(me, 0xa);
+        let ground_walk = self.st_ground_walk(ps, move_id);
+        if let Some(timing) = ground_walk {
+            self.step_st_ground_walk(me, ps, move_id, timing);
+        }
         if self.evil_ryu_profile(ps).is_some() {
             let has_demon = self.evil_ryu_has_demon(ps);
             if has_demon && self.toggle_state.raging_demon.victory_pose {
@@ -1158,16 +1246,26 @@ impl Bus<'_> {
             // First frame of a move started by the input handler.
             self.set_eb(me, 0x33, self.eb(me, 0xe));
             self.set_eb(me, 8, 2);
-            let super_grid_mirrored = self.ew(me, 2) & 0x100 != 0
-                && self.is_native_super(self.el(me, 0x38), self.eb(me, 0xa));
-            if self.eb(me, 0x37) & 4 != 0 && !super_grid_mirrored {
+            let move_id = self.eb(me, 0xa);
+            let authored_grid_mirrored = self.ew(me, 2) & 0x100 != 0
+                && (self.is_native_super(ps, move_id) || self.st_sagat_shot_loadout(ps, move_id).is_some()
+                    || self.st_sagat_melee_loadout(ps, move_id).is_some()
+                    || self.st_sagat_authored_normal(ps, move_id, self.eb(me, 0x34))
+                    || self.st_ken_jump_header(ps, move_id).is_some());
+            if self.eb(me, 0x37) & 4 != 0 && !authored_grid_mirrored {
                 self.face_left(me);
             }
             let snd = self.eb(me, 0x10);
             if snd != 0 {
                 self.queue_sound(snd as u16);
             }
-            self.step_st_ryu_forward_walk(me);
+            if self.st_ryu_air_tatsumaki(self.el(me, 0x38), self.eb(me, 0xa)) {
+                // A connected cancel queues the launch pose during hitstop.
+                // Load the first live kick on the first advancing tick.
+                self.animate(me, other);
+                return;
+            }
+            self.step_measured_walk(me);
             self.push_apart(me, other);
             self.clamp_y(me);
             self.clamp_x(me);
@@ -1179,23 +1277,10 @@ impl Bus<'_> {
             self.buffer_air_strength(me);
         }
         self.animate(me, other);
-    }
-
-    fn step_st_ryu_forward_walk(&mut self, e: u16) -> bool {
-        let ps = self.el(e, 0x38);
-        if !self.st_ryu_forward_walk(ps, self.eb(e, 0xa)) {
-            return false;
+        if ground_walk.is_some() {
+            self.push_apart(me, other);
+            self.clamp_x(me);
         }
-        // World Turbo 2 advances 3 px per arcade game step. Spread five
-        // double steps across 16 port ticks to match the measured 63 px pace.
-        const STEPS: [i16; 16] = [3, 3, 6, 3, 3, 6, 3, 3, 6, 3, 3, 6, 3, 3, 6, 3];
-        let step = STEPS[usize::from(self.eb(e, 0x30)) % STEPS.len()];
-        let dx = if self.eb(e, 0x37) & 4 != 0 { -step } else { step };
-        let dx = self.world_tour_horizontal_step(ps, 2, dx);
-        // clamp_x forwards this step to the camera when the fighter reaches its screen edge.
-        self.set_eb(e, 0x15, dx as u8);
-        self.shift_grid_x(e, dx as u16);
-        true
     }
 
     fn is_ashura_move(&self, ps: u32, mv: u8) -> bool {
@@ -1402,7 +1487,8 @@ impl Bus<'_> {
         if hold != 0 {
             self.set_eb(me, 0x33, hold - 1);
             self.step_air_attack_trajectory(me);
-            if self.step_st_ryu_forward_walk(me) {
+            self.draw_st_ken_jump_attack(me);
+            if self.step_measured_walk(me) {
                 self.push_apart(me, other);
                 self.clamp_x(me);
             }
@@ -1424,7 +1510,8 @@ impl Bus<'_> {
                 self.set_ew(s, 6, x);
             }
             self.step_air_attack_trajectory(me);
-            self.step_st_ryu_forward_walk(me);
+            self.draw_st_ken_jump_attack(me);
+            self.step_measured_walk(me);
             self.push_apart(me, other);
             self.clamp_y(me);
             self.clamp_x(me);
@@ -1491,7 +1578,7 @@ impl Bus<'_> {
                 }
                 0xfe => a1 = self.rl(a1 + 2),
                 0xfd => {
-                    if self.step_st_ryu_forward_walk(me) {
+                    if self.step_measured_walk(me) {
                         self.push_apart(me, other);
                         self.clamp_x(me);
                     }
@@ -1503,7 +1590,8 @@ impl Bus<'_> {
         }
         self.load_frame(me, a1);
         self.step_air_attack_trajectory(me);
-        self.step_st_ryu_forward_walk(me);
+        self.draw_st_ken_jump_attack(me);
+        self.step_measured_walk(me);
         let (me, other) = self.effect_flag_spawn(me, other);
         self.push_apart(me, other);
         self.clamp_y(me);
@@ -1525,6 +1613,9 @@ impl Bus<'_> {
             0x45a96 => self.set_eb(me, 9, (st & 0xfc) | 4),
             // 0x454ee: the move's landing sound (header byte +0x12).
             0x454ee => {
+                if self.st_ryu_air_tatsumaki(self.el(me, 0x38), self.eb(me, 0xa)) {
+                    self.set_eb(me, 9, (st & 0xfc) | 4);
+                }
                 self.finish_knockdown_dust(me);
                 self.clear_air_attack_trajectory(self.el(me, 0x38));
                 let snd = self.eb(me, 0x12);
@@ -1696,6 +1787,36 @@ impl Bus<'_> {
     /// hard-codes taken from the record. `None` for a kind it does not know.
     fn bank_routine(&mut self, me: u16, other: u16, r: u32, st: u8) -> Option<Resume> {
         match self.rb(r) {
+            crate::data_bank::ROUTINE_ST_KEN_KICK_BRANCH => {
+                let player = self.el(me, 0x38);
+                if self.rb(r + 1) == 0 {
+                    self.era_sample_st_ken_heel(player);
+                    return Some(Resume::Control);
+                }
+                let held = self.sf2_state(player).is_some_and(|state| state.st_ken_heel_requested());
+                Some(if held { Resume::ControlAt(self.rl(r + 4)) } else { Resume::Control })
+            }
+            crate::data_bank::ROUTINE_ST_KEN_KICK_STEP => {
+                let step = i16::from(self.rb(r + 1));
+                let step = if self.eb(me, 0x37) & 4 != 0 { -step } else { step };
+                self.shift_grid_x(me, step as u16);
+                Some(Resume::Control)
+            }
+            crate::data_bank::ROUTINE_AIRBORNE_REACTION_LAND => {
+                let floor = self.rw(r + 2);
+                let center = self.center_y(me) as i16;
+                if center >= floor as i16 {
+                    self.shift_grid_y(me, floor.wrapping_sub(center as u16));
+                    self.set_eb(me, 9, 0x8a);
+                    Some(Resume::ControlAt(self.rl(r + 4)))
+                } else {
+                    Some(Resume::Control)
+                }
+            }
+            crate::data_bank::ROUTINE_ST_SHORYUREPPA_POSTURE => {
+                self.set_eb(me, 9, self.rb(r + 1));
+                Some(Resume::Control)
+            }
             crate::data_bank::ROUTINE_POSE_ORIGIN => {
                 let sound = self.rb(r + 1);
                 if sound != 0 {
@@ -1942,6 +2063,10 @@ impl Bus<'_> {
     /// puts on that tracker and button (validated to be at most one when the
     /// bank is built, [`crate::data_bank::validate_specials`]).
     fn tracker_special(&self, ps: u32, off: u32, kick: bool) -> Option<u8> {
+        // Super Turbo Sagat recognizes Tiger Knee through the era tracker.
+        if kick && off == 0x19 && self.sf2_state(ps).is_some_and(|era| era.st_sagat()) {
+            return None;
+        }
         crate::data_bank::SPECIAL_SLOTS.into_iter().find(|&slot| {
             let s = self.special_slot(ps, slot);
             (s.tracker, s.kick) == (off, kick) && self.move_in_table(ps, slot)
@@ -2236,14 +2361,17 @@ impl Bus<'_> {
     /// stream table's entry for the strength level; with nothing mapped the
     /// jump goes on (the entry is skipped).
     fn jump_attack(&mut self, me: u16, punch: u32, kick: u32) -> Resume {
-        let d5 = (self.eb(me, 0xa) as u16).wrapping_sub(9).wrapping_shl(3) as i16 as i32;
+        let jump = self.eb(me, 0xa);
+        let d5 = (jump as u16).wrapping_sub(9).wrapping_shl(3) as i16 as i32;
         let ps = self.el(me, 0x38);
         let entry = |t: u32| (t as i32 + d5) as u32;
         let p = self.eb(me, 0x34);
         if p != 0 {
             if let Some(mv) = self.pick_preloaded(p, self.rl(entry(punch)), me, ps) {
                 self.set_eb(me, 0xa, mv);
-                return Resume::LoadAt(self.attack_stream(me, entry(punch)));
+                let stream = self.st_ryu_jump_mp_stream(ps, me, jump)
+                    .unwrap_or_else(|| self.attack_stream(me, entry(punch)));
+                return Resume::LoadAt(stream);
             }
         }
         let k = self.eb(me, 0x35);
@@ -2366,6 +2494,52 @@ impl Bus<'_> {
         }) {
             return;
         }
+        if self.push_st_sagat_jump_apart(me, other) {
+            return;
+        }
+        if let Some((sagat, ken)) = [(me, other), (other, me)].into_iter().find(|&(sagat, ken)| {
+            self.st_sagat_genocide(self.el(sagat, 0x38), self.eb(sagat, 0xa)) && self.st_new_ken(ken)
+        }) {
+            let sagat_height = self.st_ryu_height_above_floor(sagat);
+            let ken_height = self.st_ryu_height_above_floor(ken);
+            let gap = self.fighter_axis_x(ken).wrapping_sub(self.fighter_axis_x(sagat)) as i16;
+            // The two grounded fighters split the source pushbox overlap.
+            // The rising knee can pass over a crouching defender.
+            let crouching = self.eb(ken, 9) & 7 == 4;
+            let facing_right = self.eb(sagat, 0x37) & 4 == 0;
+            let gap = if facing_right { gap } else { gap.wrapping_neg() };
+            let crossed_on_landing = crouching && gap < 0 && sagat_height == 0
+                && self.player_slot_index(self.el(sagat, 0x38))
+                    .is_some_and(|side| self.toggle_state.human_attack_frames[side] >= 32);
+            let body_gap = if crossed_on_landing { -gap } else { gap };
+            let overlaps = body_gap < 39 && if crouching { crossed_on_landing } else { sagat_height < 32 };
+            if me == sagat && ken_height == 0 && !self.airborne_reaction(ken) && overlaps {
+                let direction = if facing_right { 1 } else { -1 };
+                let direction = if crossed_on_landing { -direction } else { direction };
+                let overlap = 39 - body_gap;
+                self.shift_grid_x(sagat, (-direction * (overlap / 2)) as u16);
+                self.shift_grid_x(ken, (direction * ((overlap + 1) / 2)) as u16);
+                self.clamp_x(ken);
+            }
+            return;
+        }
+        if let Some((ken, ryu)) = [(me, other), (other, me)].into_iter().find(|&(ken, ryu)| {
+            self.st_ken_shoryureppa(self.el(ken, 0x38), self.eb(ken, 0xa))
+                && self.st_new_ryu(self.el(ryu, 0x38))
+                && matches!(self.eb(ryu, 0xa), 4 | 8)
+        }) {
+            // World uses the fighters' axes and splits low body overlaps between
+            // them, including when the guarding fighter is in contact freeze.
+            let gap = self.fighter_axis_x(ken).wrapping_sub(self.fighter_axis_x(ryu)) as i16;
+            if me == ken && self.st_ryu_height_above_floor(ken) <= 16 && gap.unsigned_abs() < 32 {
+                let overlap = 32 - gap.abs();
+                let direction = if gap < 0 { -1 } else { 1 };
+                self.shift_grid_x(ken, (direction * (overlap + 1) / 2) as u16);
+                self.shift_grid_x(ryu, (-direction * (overlap / 2)) as u16);
+                self.clamp_x(ryu);
+            }
+            return;
+        }
         let my_cy = self.center_y(me);
         let ot_cy = self.center_y(other);
         if ot_cy >= my_cy {
@@ -2378,6 +2552,13 @@ impl Bus<'_> {
             if my_cy.wrapping_sub(ot_cy) >= reach {
                 return;
             }
+        }
+        if let Some((gap, spacing)) = self.st_ryu_close_hk_separation(me, other) {
+            if let Some(overlap) = spacing.checked_sub(gap.unsigned_abs()) {
+                let shift = if gap > 0 { overlap } else { overlap.wrapping_neg() };
+                self.shift_grid_x(me, shift);
+            }
+            return;
         }
         let my_cx = self.center_x(me);
         let ot_cx = self.center_x(other);
@@ -2413,6 +2594,13 @@ impl Bus<'_> {
     /// 0x8a: keep the extents within y 0x10..=0xe8; a clamp also cancels the
     /// frame's steps (+0xb, +0x14, +0x15).
     fn clamp_y(&mut self, me: u16) {
+        let owner = self.el(me, 0x38);
+        let move_id = self.eb(me, 0xa);
+        if self.st_ken_shoryureppa(owner, move_id) || self.st_sagat_melee_loadout(owner, move_id).is_some() {
+            // The authored path reaches the mat and includes the source's
+            // full high arc. The native 1987 landing clamp truncates it.
+            return;
+        }
         let st = self.eb(me, 9);
         if st != 0x89 && st != 0x8a {
             return;
@@ -2478,7 +2666,8 @@ impl Bus<'_> {
         if self.sf3_wall_contact(me, right_wall) {
             self.set_eb(me, 0x15, 0);
         }
-        self.set_eb(me, 0x36, self.eb(me, 0x15));
+        let scroll_step = self.st_ryu_pushback_step(me).map_or(self.eb(me, 0x15), |step| step as u8);
+        self.set_eb(me, 0x36, scroll_step);
         self.shift_grid_x(me, d6.wrapping_neg());
     }
 
@@ -2603,8 +2792,49 @@ impl Bus<'_> {
             return;
         }
         let era = self.sf2_state(owner).or(alpha);
+        let st_jump_mp = self.st_ryu_directional_jump_mp(me);
+        let ken_air = self.st_ken_jump_attack(me).is_some();
+        let sagat_standing = self.st_sagat_standing_entry(me, move_id);
+        let sagat_air = self.st_sagat_air_entry(me);
+        let sagat_normal = sagat_standing.is_some() || sagat_air.is_some()
+            || self.st_sagat_crouching_normal(owner, move_id, self.eb(me, 0x34)).is_some();
+        let shoryureppa = self.st_ken_shoryureppa(owner, move_id);
+        let sagat_melee = self.st_sagat_melee_loadout(owner, move_id);
+        let ken_kick = self.st_ken_kick_header(owner, move_id).is_some();
+        let ken_tatsu = self.st_ken_ground_tatsumaki_entry(me);
+        let phase_entry = (shoryureppa || sagat_melee.is_some() || sagat_standing.is_some() || ken_kick || ken_tatsu.is_some())
+            && crate::data_bank::in_bank(self.el(me, 0x28));
+        let shoryureppa_hit = phase_entry && shoryureppa;
+        let sagat_melee_hit = phase_entry && sagat_melee.is_some();
+        let phase = sagat_standing.map_or_else(
+            || if phase_entry { self.rb(self.el(me, 0x28) + 8) } else { 0 },
+            |entry| self.rb(entry + 12),
+        );
+        let phase_mask = if (1..=6).contains(&phase) { 1 << (phase - 1) } else { 0 };
+        let combo_slot = self.combo_slot(me);
+        let spent_phases = self.toggle_state.combo.st_melee_phases[combo_slot];
+        // The two opening Knee boxes share a contact opportunity. The
+        // extended kick re-arms independently even if the opener hit.
+        let opportunity = if sagat_melee_hit && move_id == 0x19 && phase <= 2 { 0b11 } else { phase_mask };
+        if opportunity & spent_phases != 0 {
+            return;
+        }
         let hit_limit = era.map_or(1, |era| {
-            if matches!(move_id, NEXUS | OD_NEXUS) && era.what_if_sagat_slot(move_id) {
+            if shoryureppa {
+                5
+            } else if let Some(loadout) = sagat_melee {
+                if move_id == crate::data_bank::SF2_SUPER_SLOT { 6 }
+                else if move_id == 0x19 { 2 }
+                else if loadout == crate::era::Loadout::Standard && self.eb(me, 0x34) == 3 { 5 }
+                else { 1 }
+            } else if ken_tatsu.is_some() {
+                6
+            } else if ken_kick || (sagat_standing.is_some() && matches!(move_id, 0x14 | 0x15))
+                || self.st_ryu_command_normal(owner, move_id)
+                || self.st_ryu_close_hk(owner, move_id)
+                || st_jump_mp == Some(crate::era::Loadout::Standard)
+                || matches!(move_id, NEXUS | OD_NEXUS) && era.what_if_sagat_slot(move_id)
+            {
                 2
             } else {
                 era.move_hit_limit(move_id)
@@ -2617,14 +2847,20 @@ impl Bus<'_> {
         } else {
             hit_limit
         };
-        let juggle = self.era_can_juggle(other, juggle_limit);
+        let juggle = if st_jump_mp == Some(crate::era::Loadout::Standard) && self.st_new_ken(other) {
+            self.st_ryu_air_juggle_allowed(other, 3)
+        } else {
+            self.era_can_juggle(other, juggle_limit)
+        };
         let alpha_rehit = alpha.is_some_and(|era| era.move_hits != 0 && era.move_hits < hit_limit)
             && self.eb(other, 8) == 2
             && (0x30..=0x3f).contains(&self.eb(other, 0xa))
             && self.eb(other, 0xa) != crate::combo::throw::THROWN_MOVE
             && self.eb(other, 9) & 1 == 0;
         let custom = self.alpha_state(owner).is_some_and(|era| era.custom_combo_active());
-        let can_rehit = juggle || alpha_rehit || (custom && self.era_can_juggle(other, 8));
+        let close_hk_rehit = self.st_ryu_close_hk_can_rehit(me, other);
+        let can_rehit = juggle || alpha_rehit || close_hk_rehit
+            || (custom && self.era_can_juggle(other, 8));
         if self.eb(me, 0xf) & 0x80 == 0
             || ((self.eb(other, 0xf) & 0x08 != 0 || (era.is_some() && self.airborne_reaction(other)))
                 && !can_rehit)
@@ -2645,10 +2881,22 @@ impl Bus<'_> {
         let dx_loose = body.map_or_else(|| dcx.wrapping_add(sext8(self.eb(other, 0x20))), |_| dcx);
         let dy_loose = body.map_or_else(|| dcy.wrapping_sub(sext8(self.eb(other, 0x1e))), |_| dcy);
         let (loose_w, loose_h) = body.unwrap_or_else(|| (u16::from(self.eb(other, 0x21)), u16::from(self.eb(other, 0x1f))));
-        if apart(dx_loose, ax, aw.wrapping_add(loose_w)) {
-            return;
-        }
-        if apart(dy_loose, ay, ah.wrapping_add(loose_h)) {
+        let source_contact = if close_hk_rehit {
+            self.st_ryu_close_hk_reaches_reacting_ken(me, other)
+        } else {
+            self.st_ryu_normal_reaches_ken(me, other)
+                .or_else(|| self.st_ken_crouching_kick_reaches_ryu(me, other))
+                .or_else(|| if ken_air { self.st_ken_jump_reaches_ryu(me, other) } else { None })
+                .or_else(|| if shoryureppa_hit { self.st_ken_shoryureppa_reaches_ryu(me, other, phase) } else { None })
+                .or_else(|| sagat_air.and_then(|entry| self.st_sagat_air_reaches_ken(me, other, entry)))
+                .or_else(|| if sagat_normal { self.st_sagat_normal_reaches_ken(me, other, move_id) } else { None })
+                .or_else(|| if sagat_melee_hit { self.st_sagat_melee_reaches_ken(me, other, move_id, phase) } else { None })
+                .or_else(|| ken_tatsu.and_then(|entry| self.st_ken_tatsumaki_reaches_ryu(me, other, self.rb(entry + 10))))
+        };
+        if !source_contact.unwrap_or_else(|| {
+            !apart(dx_loose, ax, aw.wrapping_add(loose_w))
+                && !apart(dy_loose, ay, ah.wrapping_add(loose_h))
+        }) {
             return;
         }
         let dx_tight = body.map_or_else(|| dcx.wrapping_add(sext8(self.eb(other, 0x1c))), |_| dcx);
@@ -2665,22 +2913,30 @@ impl Bus<'_> {
             1
         };
         let air_move = alpha.is_some_and(|era| era.alpha_move_airborne(move_id) || era.sf4_airborne_move(move_id) || era.what_if_airborne(move_id));
-        let overhead = alpha.is_some_and(|era| era.alpha_move_overhead(move_id) || era.sf3_overhead(move_id)
+        let overhead = (ken_kick && phase_entry && self.rb(self.el(me, 0x28) + 10) != 0)
+            || self.st_ryu_collarbone_breaker(owner, move_id)
+            || alpha.is_some_and(|era| era.alpha_move_overhead(move_id) || era.sf3_overhead(move_id)
             || era.sf4_ex_axe_kick(move_id) || era.sf6_jinrai_overhead(move_id)
             || era.sf6_evil_ryu_od_axe_kick(move_id) || era.what_if_overhead(move_id)
             || move_id == MIGHTY_TIGER && era.what_if_sagat_slot(move_id));
         let f = self.el(me, 0x28);
         let hit_function = hit_function(f);
-        let low = matches!(hit_function, Some(
+        let close_lk = self.st_ryu_close_lk(owner, move_id);
+        let crouching_mid = self.st_ryu_crouching_punch(owner, move_id);
+        let sagat_low = sagat_normal && (matches!(move_id, 0x17 | 0x18) || (move_id == 0x14 && phase == 1));
+        let low = close_lk || sagat_low || (!crouching_mid && matches!(hit_function, Some(
             HitFn::Basic { low: true, .. } | HitFn::Strength { low: true, .. }
             | HitFn::Cpu { block_state: 0x24, .. }
-        ));
+        )));
         let defender = self.el(other, 0x38);
         let parried = self.what_if_eagle_riposte(other, self.center_x(me))
             || self.sf3_parry(other, self.center_x(me), (ax, ay), low, false, self.era_airborne(other));
         if parried || self.sf5_defend(defender, other, false) || self.sf6_defend(defender) {
             self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
             let attacker_slot = self.combo_slot(me);
+            if phase_entry {
+                self.toggle_state.combo.st_melee_phases[attacker_slot] |= phase_mask;
+            }
             if hit_limit <= 1 {
                 self.toggle_state.combo.connected[attacker_slot] = true;
                 if parried {
@@ -2762,7 +3018,7 @@ impl Bus<'_> {
                 }
                 self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
             }
-            Some(HitFn::Strength { spark, table, low }) => {
+            Some(HitFn::Strength { spark, table, .. }) => {
                 let template = match spark {
                     Spark::Fixed(t) => t,
                     Spark::ByLevel(t, above) => {
@@ -2787,31 +3043,92 @@ impl Bus<'_> {
                 table,
                 blocked,
             }) => self.hit_redirect(me, other, depth, template, table, blocked),
-            None if (move_id == crate::data_bank::ALPHA_COUNTER_SLOT || alpha_move)
+            None if (move_id == crate::data_bank::ALPHA_COUNTER_SLOT || alpha_move || st_jump_mp.is_some() || ken_air
+                || phase_entry || sagat_normal || self.st_ryu_banked_standing_hit(owner, move_id))
                 && crate::data_bank::in_bank(f) =>
             {
                 let airborne = self.eb(me, 9) & 1 != 0
                     || air_move
                     || (alpha_move && self.eb(me, 9) == 0xc2 && self.eb(me, 0x14) != 0);
                 let air_block = airborne && self.alpha_air_blocks(other, self.center_x(me));
-                let guard = if overhead {
+                let guard = if sagat_standing.is_some() && self.combo_reacting(other) {
+                    false
+                } else if overhead || st_jump_mp.is_some() || sagat_air.is_some() || ken_air {
                     self.eb(other, 9) == 0x22 || self.eb(other, 0xa) == 4
+                } else if close_lk || (sagat_normal && low) {
+                    self.eb(other, 9) == 0x24 || self.eb(other, 0xa) == 8
                 } else {
                     self.eb(other, 9) & 0x20 != 0 || matches!(self.eb(other, 0xa), 4 | 8)
                 };
                 if (air_block || guard) && !self.era_sf4_focus_unblockable(owner, move_id) {
-                    if self.era_state(defender).is_some_and(|state| state.sf6_burnout()) {
+                    if shoryureppa_hit || sagat_melee_hit {
+                        self.damage_with_chip(me, 1, true);
+                    } else if ken_kick || ken_tatsu.is_some() {
+                        self.damage_with_chip(me, self.rb(f + 9), true);
+                    } else if self.era_state(defender).is_some_and(|state| state.sf6_burnout()) {
                         let chip = self.rb(f + 1).div_ceil(4);
                         self.damage_with_chip(me, chip, true);
                     }
                     self.block_contact(other);
                     self.combo_blocked(me, other);
+                    if shoryureppa_hit && !air_block && self.st_new_ryu(defender)
+                        && self.defender_alive(defender)
+                    {
+                        self.start_st_ken_shoryureppa_guard(me, other);
+                    }
+                    if sagat_melee_hit && !air_block && self.st_new_ken(other)
+                        && self.defender_alive(defender)
+                    {
+                        self.start_st_sagat_melee_guard(me, other, phase);
+                    }
+                    if ken_tatsu.is_some() && !air_block && self.st_new_ryu(defender)
+                        && self.defender_alive(defender)
+                    {
+                        let pushback = self.st_ken_tatsumaki_recoil(me, other);
+                        self.toggle_state.combo.blockstun[self.combo_slot(other)] = pushback.stun();
+                        self.start_st_ryu_reaction(other, Some(pushback));
+                        if phase == 1 && self.eb(other, 0xa) == 8 && self.eb(me, 0x34) > 1 {
+                            self.toggle_state.combo.st_melee_phases[combo_slot] |=
+                                crate::data_bank::st_ken_tatsumaki::CROUCH_GUARDED_OPENER;
+                        }
+                    }
+                    if sagat_normal && !air_block && self.st_new_ken(other) {
+                        let pushback = if sagat_air.is_some() {
+                            self.st_sagat_air_recoil(me, other, true)
+                        } else {
+                            self.st_sagat_normal_recoil(me, other)
+                        };
+                        let slot = self.combo_slot(other);
+                        self.toggle_state.combo.blockstun[slot] = pushback.stun();
+                        self.start_st_ryu_contact(me, other, pushback);
+                    }
+                    if ken_air && !air_block && self.defender_alive(defender) {
+                        if let Some(pushback) = self.st_ken_jump_recoil(me, other, true) {
+                            self.toggle_state.combo.blockstun[self.combo_slot(other)] = pushback.stun();
+                            self.start_st_ryu_contact(me, other, pushback);
+                        }
+                    }
                 } else {
                     self.land_hit_entry(me, other, 0x1853c, f);
                 }
                 self.set_eb(me, 0xf, self.eb(me, 0xf) & 0x7f);
             }
             None => self.note_unrecovered(f),
+        }
+        if phase_entry && self.eb(me, 0xf) & 0x80 == 0 {
+            self.toggle_state.combo.st_melee_phases[combo_slot] |= phase_mask;
+            if shoryureppa_hit {
+                self.toggle_state.combo.contact_freeze[combo_slot] = 8;
+            } else if self.st_sagat_genocide(owner, move_id) {
+                self.toggle_state.combo.contact_freeze[combo_slot] = 6;
+            } else if sagat_melee_hit && self.st_new_ken(other) {
+                self.toggle_state.combo.contact_freeze[combo_slot] = 14;
+            } else if ken_kick || ken_tatsu.is_some() {
+                self.toggle_state.combo.contact_freeze[combo_slot] = 14;
+                if ken_kick {
+                    self.toggle_state.combo.contact_freeze[self.combo_slot(other)] = 14;
+                }
+            }
         }
         // True combos (SP17): every hit function clears the attacker's
         // active bit, hit or guarded; the move has connected, so its later
@@ -2828,7 +3145,8 @@ impl Bus<'_> {
         // Cancels (SP18): a cancelable normal that connected, hit or
         // guarded, opens its cancel window.
         if self.era_offense_flag(owner, self.toggles.cancels) && self.eb(me, 0xf) & 0x80 == 0 {
-            self.cancel_open(me);
+            let guarded = self.era_side(owner).is_some_and(|side| self.toggle_state.era.guard_contacts[side]);
+            self.cancel_open(me, guarded);
         }
     }
 
@@ -2868,7 +3186,10 @@ impl Bus<'_> {
         table: u32,
         block: u8,
     ) {
-        if self.eb(other, 0xa) == block {
+        let guarded = self.eb(other, 0xa) == block
+            || (self.st_ryu_crouching_punch(self.el(me, 0x38), self.eb(me, 0xa))
+                && self.eb(other, 0xa) == 8);
+        if guarded {
             self.queue_sound(8);
             self.training_contact(other);
             self.combo_blocked(me, other);
@@ -3133,9 +3454,13 @@ impl Bus<'_> {
         let move_id = projectile.map_or_else(|| self.eb(me, 0xa), |source| source.move_id);
         if !demon_slam && self.era_true_combos(owner) && !is_chip {
             // Airborne reactions use their own clock instead of ground hitstun.
-            let air_juggle = projectile.is_none() && move_id == KAGE_MISOGI
+            let defender = self.rw(ps + 0x10);
+            let st_juggle = self.st_ryu_air_reaction(defender)
+                && (projectile.is_some_and(|source| source.st_ryu_shinku_age.is_some())
+                    || (projectile.is_none() && self.st_ryu_directional_jump_mp(me) == Some(crate::era::Loadout::Standard)));
+            let air_juggle = st_juggle || (projectile.is_none() && move_id == KAGE_MISOGI
                 && alpha.is_some_and(|state| state.is_kage() && state.alpha_move_active(move_id))
-                && self.airborne_reaction(self.rw(ps + 0x10));
+                && self.airborne_reaction(defender));
             dmg = self.combo_scale(ps, dmg, air_juggle);
         }
         let sf2 = self.sf2_state(owner).copied();
@@ -3156,6 +3481,51 @@ impl Bus<'_> {
             }
             if let Some(delta) = delta {
                 damage = (u32::from(damage) * u32::from(delta.damage_percent) / 100) as u16;
+            }
+        }
+        if let Some(red) = projectile.and_then(|source| source.st_ryu_red).filter(|_| !is_chip) {
+            damage = red.damage();
+        }
+        if let Some(shot) = projectile.and_then(|source| source.st_tiger_shot) {
+            damage = shot.damage(is_chip);
+        }
+        if let Some(measured) = projectile.and_then(|source| source.st_standard_hadoken)
+            .and_then(|shot| shot.ken_damage(is_chip))
+        {
+            damage = measured;
+        }
+        if projectile.is_some_and(|source| source.st_ryu_shinku_age.is_some()) {
+            // The repeated 32 px clean fixture deals 14 HP per hit on the
+            // 144 HP source bar. The source randomizes damage around this value.
+            let hp = if is_chip { 3 } else { 14 };
+            damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+        }
+        if projectile.is_none() && self.st_ken_shoryureppa(owner, move_id) {
+            let frame = self.el(me, 0x28);
+            if crate::data_bank::in_bank(frame) {
+                let phase = self.rb(frame + 8);
+                // The arcade varies its damage rolls. Use the five measured
+                // close-hit values and the common standing-guard chip.
+                if let Some(&clean_hp) = [15, 16, 16, 17, 16].get(usize::from(phase.wrapping_sub(1))) {
+                    let hp = if is_chip { 4 } else { clean_hp };
+                    damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+                }
+            }
+        }
+        if projectile.is_none() {
+            let entry = self.el(me, 0x28);
+            if let Some(entry) = self.st_ken_ground_tatsumaki_entry(me) {
+                let hp = if is_chip { u16::from(self.rb(entry + 9)) } else { 11 };
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+            } else if self.st_ken_kick_header(owner, move_id).is_some() && crate::data_bank::in_bank(entry) {
+                let hp = u16::from(self.rb(entry + if is_chip { 9 } else { 1 }));
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+            } else if let Some(hp) = self.st_sagat_melee_damage(me, owner, move_id, is_chip) {
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+            } else if let Some(hp) = self.st_sagat_normal_damage(me, owner, move_id).filter(|_| !is_chip) {
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+            } else if let Some(hp) = self.st_ken_air_normal_damage(me, self.rw(ps + 0x10)).filter(|_| !is_chip) {
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
             }
         }
         if !is_chip && projectile.is_some_and(|source| source.family_hits != 0) {
@@ -3447,25 +3817,124 @@ impl Bus<'_> {
 
     fn react_one(&mut self, me: u16, other: u16, entry: u32, src: HitSource) {
         self.training_contact(other);
+        let sagat_air = src == HitSource::Melee && self.st_sagat_air_entry(me).is_some();
+        let sagat_normal = src == HitSource::Melee
+            && self.st_sagat_authored_normal(self.el(me, 0x38), self.eb(me, 0xa), self.eb(me, 0x34));
+        let sagat_sweep = sagat_normal && self.eb(me, 0xa) == 0x18 && !self.era_airborne(other);
+        let grounded_contact = (src == HitSource::Melee)
+            .then(|| {
+                self.st_ryu_pushback(me, other, false)
+                    .or_else(|| self.st_ken_jump_recoil(me, other, false))
+                    .or_else(|| {
+                        if self.era_airborne(other) {
+                            None
+                        } else if self.st_new_ryu(self.el(other, 0x38)) && self.st_ken_ground_tatsumaki_entry(me).is_some() {
+                            let mut recoil = self.st_ken_tatsumaki_recoil(me, other);
+                            // A spin that hits during the previous grounded
+                            // reaction reloads the recoil one tick earlier.
+                            recoil.elapsed = u8::from(self.combo_reacting(other));
+                            Some(recoil)
+                        } else if !self.st_new_ken(other) {
+                            None
+                        } else if sagat_air {
+                            Some(self.st_sagat_air_recoil(me, other, false))
+                        } else {
+                            (sagat_normal && !sagat_sweep).then(|| self.st_sagat_normal_recoil(me, other))
+                        }
+                    })
+            }).flatten();
+        let sweep_contact = sagat_sweep || (src == HitSource::Melee && self.st_ryu_sweep_contact(me, other));
+        let ken_super = (src == HitSource::Melee && self.st_ken_shoryureppa(self.el(me, 0x38), self.eb(me, 0xa))
+            && crate::data_bank::in_bank(entry)).then(|| self.rb(entry + 8));
+        let sagat_contact = (src == HitSource::Melee && self.st_new_ken(other) && crate::data_bank::in_bank(entry))
+            .then(|| self.st_sagat_melee_loadout(self.el(me, 0x38), self.eb(me, 0xa))).flatten()
+            .map(|loadout| (loadout, self.rb(entry + 8)));
+        let sagat_super = self.st_sagat_genocide(self.el(me, 0x38), self.eb(me, 0xa));
+        let sagat_new_hp_air = sagat_contact.is_some_and(|(loadout, phase)| {
+            loadout == crate::era::Loadout::Standard
+                && self.eb(me, 0xa) == crate::data_bank::SF2_SPECIAL_SLOT
+                && self.eb(me, 0x34) == 3
+                && (phase >= 2 || self.era_airborne(other))
+        });
+        let sagat_super_air = sagat_contact.is_some_and(|(_, phase)| sagat_super && (phase >= 3 || self.era_airborne(other)));
+        let sagat_super_direction = sagat_super_air.then(|| if self.eb(me, 0x37) & 4 == 0 { 1 } else { -1 });
+        let jump_punch = src == HitSource::Melee && self.st_ryu_forward_jump_punch(me);
+        let jump_mp_reaction = (src == HitSource::Melee
+            && self.st_ryu_directional_jump_mp(me) == Some(crate::era::Loadout::Standard)
+            && self.st_new_ken(other) && self.era_airborne(other))
+            .then(|| self.data_bank?.st_ryu_jump_mp_reaction()).flatten();
+        let shinku_air = matches!(src, HitSource::StRyuShinku { .. })
+            && self.st_new_ken(other) && self.era_airborne(other);
+        let shinku_air_reaction = (shinku_air || sagat_new_hp_air || sagat_super_air)
+            .then(|| self.data_bank?.st_ryu_shinku_air_reaction()).flatten();
+        let sagat_launch = (sagat_new_hp_air || sagat_super_air).then(|| {
+            let height = self.st_ryu_height_above_floor(other).max(0) as u16;
+            let already_launched = self.airborne_reaction(other);
+            let rise = if !already_launched { 16 } else if sagat_super_air { 15 } else { 21 };
+            (height + rise, already_launched)
+        });
+        let projectile_direction = match src {
+            HitSource::StRyuRed { direction, .. } | HitSource::StRyuShinku { direction, .. }
+            | HitSource::StGroundedProjectile { direction, .. } => Some(direction),
+            _ => sagat_super_direction,
+        };
+        let st_projectile_ground = match src {
+            HitSource::StRyuRed { launches, direction } | HitSource::StRyuShinku { launches, direction }
+                if !self.era_airborne(other) => Some((launches, direction)),
+            HitSource::StGroundedProjectile { direction, .. } => Some((false, direction)),
+            _ => None,
+        };
+        let slot = self.combo_slot(other);
+        self.toggle_state.combo.st_ryu_pushback[slot] = None;
+        self.toggle_state.combo.st_red_launch[slot] = None;
+        self.toggle_state.combo.st_ryu_sweep[slot] = None;
+        self.toggle_state.combo.st_sagat_jump[slot] = None;
+        self.toggle_state.combo.st_ken_jump_attack[slot] = None;
+        self.toggle_state.combo.st_grounded_super_cancel[slot] = 0;
+        self.toggle_state.combo.frozen_cancel[slot] = None;
         let acx = self.center_x(me);
         let dcx = self.center_x(other);
-        if acx > dcx {
+        let faces_right = projectile_direction.map_or_else(
+            || if acx != dcx { acx > dcx } else { self.eb(other, 0x37) == 2 },
+            |direction| direction < 0,
+        );
+        if faces_right {
             if self.eb(other, 0x37) != 2 {
                 self.set_eb(other, 0x37, 2);
                 self.face_right(other);
             }
-        } else if acx != dcx && self.eb(other, 0x37) != 4 {
+        } else if (projectile_direction.is_some() || acx != dcx) && self.eb(other, 0x37) != 4 {
             self.set_eb(other, 0x37, 4);
             self.face_left(other);
         }
         self.ww(0xff8d12, self.ew(other, 0));
         self.wb(0xff8d14, self.eb(other, 0xa));
         self.wb(0xff8d15, self.eb(other, 9));
-        let (lo, hi) = match self.eb(other, 9) & 7 {
+        let (mut lo, hi) = match self.eb(other, 9) & 7 {
             4 => (self.rb(entry + 3), self.rb(entry + 6)),
             1 => (self.rb(entry + 4), self.rb(entry + 7)),
             _ => (self.rb(entry + 2), self.rb(entry + 5)),
         };
+        if let Some(phase) = ken_super {
+            lo = if phase >= 4 || self.era_airborne(other) { 0x33 } else { 0x31 };
+        } else if let Some((loadout, phase)) = sagat_contact {
+            let first_grounds = self.eb(me, 0xa) == 0x19
+                || (loadout == crate::era::Loadout::Standard && self.eb(me, 0x34) == 3);
+            let grounded = if self.st_sagat_genocide(self.el(me, 0x38), self.eb(me, 0xa)) {
+                phase <= 2
+            } else {
+                first_grounds && phase == 1
+            };
+            lo = if grounded && !self.era_airborne(other) { 0x31 } else { 0x33 };
+        } else if shinku_air {
+            lo = 0x33;
+        } else if let Some((launches, _)) = st_projectile_ground {
+            lo = if launches { 0x35 } else { 0x31 };
+        } else if grounded_contact.is_some() {
+            lo = 0x31;
+        } else if sweep_contact {
+            lo = 0x35;
+        }
         let ps = self.el(other, 0x38);
         self.clear_air_attack_trajectory(ps);
         self.world_tour_guard_reaction(ps, src == HitSource::Chip);
@@ -3557,10 +4026,75 @@ impl Bus<'_> {
         } else if self.eb(other, 0xb) >= 2 {
             self.set_eb(other, 0xb, 2);
         }
+        if alive {
+            if let Some(stream) = jump_mp_reaction.or(shinku_air_reaction) {
+                self.load_frame(other, stream);
+            }
+            if let Some((height, already_launched)) = sagat_launch.filter(|_| shinku_air_reaction.is_some()) {
+                self.set_st_ryu_knockdown_height(other, height);
+                if already_launched {
+                    // Ken takes one advancing airborne step before the
+                    // arcade resets the launch at the next hit.
+                    let step = if faces_right { -2_i16 } else { 2 };
+                    self.shift_grid_x(other, step as u16);
+                }
+            } else if shinku_air_reaction.is_some() {
+                self.shift_grid_y(other, (-16i16) as u16);
+            }
+            if let Some(side) = self.era_side(ps) {
+                self.toggle_state.era.fighters[side].st_ryu_air_reaction =
+                    jump_mp_reaction.is_some() || shinku_air;
+            }
+        }
         if self.era_true_combos(self.el(me, 0x38)) {
             self.combo_react(me, other, te, src);
+            if alive {
+                if let Some(pushback) = grounded_contact {
+                    self.toggle_state.combo.hitstun[slot] = pushback.stun();
+                    self.start_st_ryu_contact(me, other, pushback);
+                } else if sweep_contact {
+                    self.start_st_ryu_sweep(me, other);
+                } else if jump_punch || jump_mp_reaction.is_some() {
+                    self.start_st_ryu_melee_freeze(me, other, None);
+                    if jump_punch {
+                        let attacker = self.combo_slot(me);
+                        self.toggle_state.combo.st_ryu_air_cancel[attacker] = 16;
+                    }
+                } else if ken_super.is_some() || shinku_air {
+                    self.start_st_ryu_reaction(other, None);
+                } else if let Some((_, phase)) = sagat_contact {
+                    let pushback = (lo == 0x31).then(|| self.st_sagat_melee_recoil(me, other, phase, false));
+                    if let Some(pushback) = pushback {
+                        self.toggle_state.combo.hitstun[slot] = pushback.stun();
+                    }
+                    self.start_st_ryu_reaction(other, pushback);
+                    if self.st_sagat_genocide(self.el(me, 0x38), self.eb(me, 0xa)) {
+                        self.toggle_state.combo.contact_freeze[slot] = 8;
+                    }
+                } else if let Some((launches, direction)) = st_projectile_ground {
+                    let shinku = matches!(src, HitSource::StRyuShinku { .. });
+                    let pushback = (!launches).then(|| {
+                        if shinku {
+                            crate::combo::StRyuPushback {
+                                elapsed: 1, direction, kind: crate::combo::StRyuRecoil::Light,
+                            }
+                        } else {
+                            let mut recoil = crate::era_fight::StRyuRedHadoken::recoil(direction);
+                            if let HitSource::StGroundedProjectile { recoil_on_thaw, .. } = src {
+                                recoil.elapsed = u8::from(recoil_on_thaw);
+                            }
+                            recoil
+                        }
+                    });
+                    self.start_st_ryu_reaction(other, pushback);
+                    if launches && self.st_new_ken(other) {
+                        self.toggle_state.combo.st_red_launch[slot] = Some(crate::combo::StRedLaunch {
+                            tick: 0, direction, shinku,
+                        });
+                    }
+                }
+            }
         } else {
-            let slot = self.combo_slot(other);
             self.toggle_state.combo.blockstun[slot] = 0;
         }
         if self.toggles.cancels {
@@ -3734,6 +4268,17 @@ impl Bus<'_> {
         let half = if self.ew(s, 2) & 0x400 != 0 { 0x10 } else { 8 };
         self.set_ew(s, 4, self.ew(s, 4).wrapping_add(y).wrapping_sub(half));
         self.set_ew(s, 6, self.ew(s, 6).wrapping_add(x).wrapping_sub(half));
+        let projectile = self.era_projectile(s);
+        if let Some(red) = projectile.st_ryu_red {
+            self.place_st_ryu_hadoken(s, me, half, red.speed());
+        } else if let Some(shot) = projectile.st_tiger_shot {
+            self.place_st_hadoken(s, me, half, shot.speed(), (104, shot.height()));
+        } else if projectile.st_ryu_shinku_age.is_some() {
+            self.place_st_ryu_hadoken(s, me, half, 5);
+        } else if let Some(shot) = projectile.st_standard_hadoken {
+            let offsets = if shot.fighter == crate::roster::TournamentFighter::Ken { (80, 56) } else { (93, 54) };
+            self.place_st_hadoken(s, me, half, shot.speed(), offsets);
+        }
         Some(s)
     }
 
@@ -3815,10 +4360,16 @@ impl Bus<'_> {
             self.effect_collisions(s);
             return;
         }
+        if !self.advance_st_ryu_shinku(s) {
+            return;
+        }
+        let red = self.advance_st_ryu_red(s);
+        self.advance_st_standard_projectile(s);
         if self.eb(s, 9) != 0 {
             self.set_eb(s, 9, self.eb(s, 9) - 1);
             self.set_ew(s, 4, self.ew(s, 4).wrapping_add(sext8(self.eb(s, 0xa))));
-            self.set_ew(s, 6, self.ew(s, 6).wrapping_add(sext8(self.eb(s, 0xb))));
+            let dx = self.effect_horizontal_step(s, red);
+            self.set_ew(s, 6, self.ew(s, 6).wrapping_add(dx));
             self.effect_offscreen(s);
             self.effect_collisions(s);
             return;
@@ -3865,9 +4416,9 @@ impl Bus<'_> {
         if dy != 0 {
             self.set_ew(s, 4, self.ew(s, 4).wrapping_add(sext8(dy)));
         }
-        let dx = self.eb(s, 0xb);
+        let dx = self.effect_horizontal_step(s, red);
         if dx != 0 {
-            self.set_ew(s, 6, self.ew(s, 6).wrapping_add(sext8(dx)));
+            self.set_ew(s, 6, self.ew(s, 6).wrapping_add(dx));
         }
         self.set_eb(s, 9, self.eb(s, 9).wrapping_sub(1));
         self.effect_offscreen(s);
@@ -4163,9 +4714,11 @@ impl Bus<'_> {
         if !self.effect_overlaps_fighter(s, defender) {
             return;
         }
-        let contact = self.effect_centre(s);
+        let (x, y, _, _) = self.projectile_attack_box(s);
+        let contact = (x, y);
+        let low = self.era_projectile(s).st_tiger_shot.is_some_and(|shot| shot.low);
         let parried = self.what_if_eagle_riposte(defender, contact.0)
-            || self.sf3_parry(defender, contact.0, contact, false, true, self.era_airborne(defender));
+            || self.sf3_parry(defender, contact.0, contact, low, true, self.era_airborne(defender));
         if parried || self.sf5_defend(self.el(defender, 0x38), defender, false)
             || self.sf6_defend(self.el(defender, 0x38))
         {
@@ -4187,11 +4740,32 @@ impl Bus<'_> {
         }
         let era = self.era_projectile(s);
         let limit = era.hit_limit();
-        let juggle = self.era_can_juggle(t, limit);
+        let juggle = if era.st_ryu_shinku_age.is_some() && self.st_new_ken(t) {
+            self.st_ryu_air_juggle_allowed(t, 5)
+        } else {
+            self.era_can_juggle(t, limit)
+        };
         if (self.eb(t, 0xf) & 8 != 0 || (era.hits_remaining != 0 && self.airborne_reaction(t))) && !juggle {
             return false;
         }
-        let (cx, cy) = self.effect_centre(s);
+        if era.st_ryu_red.is_some() {
+            return self.st_ryu_red_overlaps_fighter(s, t);
+        }
+        let (cx, cy, width, height) = self.projectile_attack_box(s);
+        if era.st_tiger_shot.is_some() {
+            if let Some(overlap) = self.st_tiger_shot_reaches_ken(s, t, (cx, cy, width, height)) {
+                return overlap;
+            }
+        }
+        if era.st_ryu_shinku_age.is_some() {
+            if let Some(overlap) = self.st_ryu_shinku_reaches_ken(t, era, (cx, cy, width, height)) {
+                return overlap;
+            }
+        } else if let Some(shot) = era.st_standard_hadoken {
+            if let Some(overlap) = self.st_standard_hadoken_reaches_shoto(s, t, shot.fighter, (cx, cy, width, height)) {
+                return overlap;
+            }
+        }
         let (tx, ty, w, h) = if let Some((w, h)) = self.era_juggle_body(t, juggle) {
             (self.center_x(t), self.center_y(t), w, h)
         } else {
@@ -4202,8 +4776,7 @@ impl Bus<'_> {
                 u16::from(self.eb(t, 0x1f)),
             )
         };
-        w + u16::from(self.eb(s, 0xd)) > Self::borrow_abs(tx, cx)
-            && h + u16::from(self.eb(s, 0xc)) > Self::borrow_abs(ty, cy)
+        w + width > Self::borrow_abs(tx, cx) && h + height > Self::borrow_abs(ty, cy)
     }
 
     /// 0x43144: the effect's box against the target's attack box (+0x22 /
@@ -4213,16 +4786,16 @@ impl Bus<'_> {
         if self.eb(s, 0xe) & 0x40 == 0 {
             return;
         }
-        let (cx, cy) = self.effect_centre(s);
+        let (cx, cy, width, height) = self.projectile_attack_box(s);
         let t = self.effect_target(s);
         let ty = self
             .center_y(t)
             .wrapping_add(sext8(self.eb(t, 0x22)).wrapping_neg());
-        if (self.eb(t, 0x23) as u16) + (self.eb(s, 0xc) as u16) <= Self::borrow_abs(ty, cy) {
+        if u16::from(self.eb(t, 0x23)) + height <= Self::borrow_abs(ty, cy) {
             return;
         }
         let tx = self.center_x(t).wrapping_add(sext8(self.eb(t, 0x24)));
-        if (self.eb(t, 0x25) as u16) + (self.eb(s, 0xd) as u16) <= Self::borrow_abs(tx, cx) {
+        if u16::from(self.eb(t, 0x25)) + width <= Self::borrow_abs(tx, cx) {
             return;
         }
         let handler = self.el(s, 0x18);
@@ -4261,12 +4834,12 @@ impl Bus<'_> {
         let Some(o) = other else {
             return;
         };
-        let (x2, y2) = self.effect_centre(s);
-        let (x3, y3) = self.effect_centre(o);
-        if Self::borrow_abs(x3, x2) >= self.eb(s, 0xd).wrapping_add(self.eb(o, 0xd)) as u16 {
+        let (x2, y2, w2, h2) = self.projectile_attack_box(s);
+        let (x3, y3, w3, h3) = self.projectile_attack_box(o);
+        if Self::borrow_abs(x3, x2) >= (w2 + w3) & 0xff {
             return;
         }
-        if Self::borrow_abs(y3, y2) >= self.eb(s, 0xc).wrapping_add(self.eb(o, 0xc)) as u16 {
+        if Self::borrow_abs(y3, y2) >= (h2 + h3) & 0xff {
             return;
         }
         let handler = self.el(s, 0x1c);
@@ -4431,7 +5004,8 @@ impl Bus<'_> {
             // 0x436a8 (30 damage), applying damage (0x3c034) and reaction
             // (0x4451a).
             (0x43652, None) => {
-                let attack_x = self.effect_centre(s).0;
+                let attack_x = self.projectile_attack_box(s).0;
+                let direction = if self.ew(s, 2) & 0x100 == 0 { 1 } else { -1 };
                 let era = self.era_projectile(s);
                 let spark = self.projectile_spark(s);
                 let ends = self.era_projectile_hit(s);
@@ -4440,7 +5014,9 @@ impl Bus<'_> {
                 }
                 let (me, other) = self.player_entities(self.el(s, 0x20));
                 let air_block = !era.unblockable && self.alpha_air_blocks(other, attack_x);
-                let is_blocked = !era.unblockable && (air_block || self.eb(other, 9) & 0x20 != 0);
+                let low = era.st_tiger_shot.is_some_and(|shot| shot.low);
+                let guard = if low { self.eb(other, 0xa) == 8 } else { self.eb(other, 9) & 0x20 != 0 };
+                let is_blocked = !era.unblockable && (air_block || guard);
                 let entry = if is_blocked { 0x436b0 } else { 0x436a8 };
                 let dmg = if is_blocked && self.era_state(self.el(other, 0x38)).is_some_and(|state| state.sf6_burnout()) {
                     self.effective_entry_damage(me, 0x436a8, false).div_ceil(4)
@@ -4456,7 +5032,20 @@ impl Bus<'_> {
                         self.wb(0xff8e36, 9);
                     }
                 }
-                if self.react_projectile(me, other, entry, HitSource::projectile(is_blocked), air_block) {
+                let world_ground_contact = era.st_tiger_shot.is_some() && self.st_new_ken(other)
+                    && !self.era_airborne(other) && self.defender_alive(self.el(other, 0x38));
+                let src = if world_ground_contact && !is_blocked {
+                    HitSource::StGroundedProjectile { direction, recoil_on_thaw: false }
+                } else {
+                    HitSource::projectile(is_blocked)
+                };
+                if world_ground_contact && is_blocked {
+                    self.record_guard_contact(other);
+                    self.block_contact(other);
+                    let recoil = crate::era_fight::StRyuRedHadoken::recoil(direction);
+                    self.toggle_state.combo.blockstun[self.combo_slot(other)] = recoil.stun();
+                    self.start_st_ryu_reaction(other, Some(recoil));
+                } else if self.react_projectile(me, other, entry, src, air_block) {
                     self.record_projectile_hit_spark(s, spark, ends);
                 }
             }
@@ -4485,8 +5074,9 @@ impl Bus<'_> {
     /// event 9) and takes entry 0x4345e. Score, its redraw, the top-score
     /// check, damage and the reaction follow as for any landed hit.
     fn fireball_hits_fighter(&mut self, s: u16) {
-        let attack_x = self.effect_centre(s).0;
+        let attack_x = self.projectile_attack_box(s).0;
         let era = self.era_projectile(s);
+        let red_direction = if self.ew(s, 2) & 0x100 == 0 { 1 } else { -1 };
         let spark = self.projectile_spark(s);
         let ends = self.era_projectile_hit(s);
         if ends {
@@ -4515,8 +5105,15 @@ impl Bus<'_> {
         } else {
             0x4345e
         };
-        self.set_eb(me, 0x33, 0);
-        self.set_eb(me, 0xe, 0);
+        let ken_hadoken = era.st_standard_hadoken.is_some_and(|shot| {
+            shot.fighter == crate::roster::TournamentFighter::Ken
+        });
+        let world_ken_contact = ken_hadoken && self.st_new_ryu(self.el(other, 0x38))
+            && !self.era_airborne(other) && self.defender_alive(self.el(other, 0x38));
+        if !ken_hadoken && era.st_ryu_red.is_none() && era.st_ryu_shinku_age.is_none() {
+            self.set_eb(me, 0x33, 0);
+            self.set_eb(me, 0xe, 0);
+        }
         self.add_score(me, self.rb(entry));
         self.show_score(owner_ps);
         self.check_hiscore(me);
@@ -4534,7 +5131,30 @@ impl Bus<'_> {
                 self.wb(0xff8e36, 9);
             }
         }
-        if self.react_projectile(me, other, entry, HitSource::projectile(is_blocked), air_block) {
+        let src = if let Some(red) = era.st_ryu_red.filter(|_| !is_blocked) {
+            HitSource::StRyuRed { launches: red.launches(), direction: red_direction }
+        } else if era.st_ryu_shinku_age.is_some() && !is_blocked {
+            HitSource::StRyuShinku { launches: ends, direction: red_direction }
+        } else if world_ken_contact && !is_blocked {
+            HitSource::StGroundedProjectile { direction: red_direction, recoil_on_thaw: true }
+        } else {
+            HitSource::projectile(is_blocked)
+        };
+        if (era.st_ryu_red.is_some() || era.st_ryu_shinku_age.is_some() || world_ken_contact)
+            && is_blocked && !air_block
+            && self.sf2_state(self.el(other, 0x38)).is_some()
+            && self.defender_alive(self.el(other, 0x38))
+        {
+            self.record_guard_contact(other);
+            self.block_contact(other);
+            let mut pushback = crate::era_fight::StRyuRedHadoken::recoil(red_direction);
+            if world_ken_contact || (era.st_ryu_shinku_age.is_some() && era.hits_remaining < era.hit_limit()) {
+                pushback.elapsed = 1;
+            }
+            let slot = self.combo_slot(other);
+            self.toggle_state.combo.blockstun[slot] = pushback.stun();
+            self.start_st_ryu_reaction(other, Some(pushback));
+        } else if self.react_projectile(me, other, entry, src, air_block) {
             self.record_projectile_hit_spark(s, spark, ends);
         }
     }
@@ -5159,7 +5779,7 @@ impl Bus<'_> {
     pub fn cpu_decide(&mut self) {
         let a1 = CPU_STRUCT;
         let (me, other) = self.player_entities(a1);
-        if self.eb(me, 9) & 0x80 != 0 || self.era_guard_crushed(a1) {
+        if self.contact_frozen(me) || self.eb(me, 9) & 0x80 != 0 || self.era_guard_crushed(a1) {
             return;
         }
         let wait = self.eb(me, 0x1a);
@@ -5631,8 +6251,13 @@ impl Bus<'_> {
                 }
             }
             _ => {
-                self.drive_roster_side(P1_STRUCT, self.roster.p1);
-                self.drive_roster_side(P2_STRUCT, self.roster.p2);
+                if self.st_throw_p2_input_first() {
+                    self.drive_roster_side(P2_STRUCT, self.roster.p2);
+                    self.drive_roster_side(P1_STRUCT, self.roster.p1);
+                } else {
+                    self.drive_roster_side(P1_STRUCT, self.roster.p1);
+                    self.drive_roster_side(P2_STRUCT, self.roster.p2);
+                }
             }
         }
     }
@@ -5680,6 +6305,35 @@ impl Bus<'_> {
             self.ww(0xff8f2a, d0);
         }
         let d0 = self.pad_directions(ps);
+        if self.st_ryu_throw_input(ps, me, d0) {
+            self.input_tail(me, ps);
+            return;
+        }
+        if self.contact_frozen(me) {
+            self.track_commands(ps, me, d0);
+            let relative = self.relative_directions(me, d0);
+            self.era_track_motion(ps, relative);
+            if self.st_ryu_air_tatsumaki_cancel(ps, me) {
+                self.sf3_track_input(ps, relative, true, false, false);
+                if self.try_sf3_move(ps, me, true) {
+                    self.clear_neg_edge_latches_for_player(ps);
+                    self.input_tail(me, ps);
+                    return;
+                }
+            }
+            if self.era_offense_flag(ps, self.toggles.positive_edge_attacks) {
+                self.filter_neg_edge_latches(ps, me, d0);
+            }
+            if !self.try_st_grounded_super_cancel(ps, me)
+                && !self.try_st_sagat_late_super_as_uppercut(ps, me, relative)
+            {
+                self.capture_frozen_cancel(ps, me, d0);
+            }
+            self.ww(ps, 0);
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
         if self.eb(me, 8) == 8 {
             self.clear_recovery_buffer(ps);
             self.input_tail(me, ps);
@@ -5743,6 +6397,16 @@ impl Bus<'_> {
         // Cancels (SP18): in a cancelable normal's window, a special's
         // command cancels the normal into the special.
         let cancel_slot = self.combo_slot(me);
+        if !scripted_turn && self.try_st_grounded_super_cancel(ps, me) {
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
+        if self.release_frozen_cancel(ps, me, other) {
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
         if !scripted_turn && era_cancels && self.toggle_state.cancel.window[cancel_slot] != 0
             && self.toggle_state.cancel.move_id[cancel_slot] == self.eb(me, 0xa)
             && self.eb(me, 9) & 0x80 != 0
@@ -5764,6 +6428,11 @@ impl Bus<'_> {
             *count = count.wrapping_add(1);
         }
         if era_cancel || (era_cancels && self.cancel_gate(ps, me, other, d0)) {
+            self.clear_neg_edge_latches_for_player(ps);
+            self.input_tail(me, ps);
+            return;
+        }
+        if !scripted_turn && self.st_ken_late_light_hadoken(ps, me, d0) {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
@@ -5803,7 +6472,8 @@ impl Bus<'_> {
         let normal = matches!(mv, 0xd..=0x18) && state & 0x80 != 0;
         use crate::era_fight::SpecialContext::{Airborne, MashCancel};
         if !scripted_turn && !pure_footsies
-            && ((airborne && era_throws && self.try_air_shoulder_throw(ps, me, other, d0))
+            && ((jumping && era_throws && self.is_jump_airborne(me) && self.try_st_ken_air_throw(ps, me, other, d0))
+                || (airborne && era_throws && self.try_air_shoulder_throw(ps, me, other, d0))
                 || (airborne && self.era_sf4_command(ps, me, Airborne))
                 || (airborne && self.try_what_if_move(ps, me, Airborne))
                 || (jumping && (airborne || state & 3 == 1) && self.try_alpha_move(ps, me, airborne, false))
@@ -5816,11 +6486,30 @@ impl Bus<'_> {
             return;
         }
         if self.is_player_driven(ps) && busy_banked_jump(state, mv, self.rl(ps + 0x12)) {
+            if !scripted_turn && grounded
+                && self.sf2_state(ps).is_some_and(|era| era.st_sagat())
+                && self.era_special_command(ps, true) == Some(0x19)
+                && self.start_sf2_special(ps, me, 0x19, true)
+            {
+                self.clear_neg_edge_latches_for_player(ps);
+                self.input_tail(me, ps);
+                return;
+            }
+            if self.capture_st_sagat_jump_attack(ps, me) {
+                self.input_tail(me, ps);
+                return;
+            }
             self.record_recovery_buffer_frame(ps, me, d0);
             self.input_tail(me, ps);
             return;
         }
-        let interruptible_walk = (self.toggles.interruptible_walk_cycle
+        if !scripted_turn && !pure_footsies && self.is_player_driven(ps)
+            && self.capture_st_ken_jump_attack(ps, me)
+        {
+            self.input_tail(me, ps);
+            return;
+        }
+        let interruptible_walk = (self.toggles.interruptible_walk_cycle || self.st_ground_walk(ps, mv).is_some()
             || (self.toggles.standard_high_low_block && self.is_guard_interrupt(me, other, d0)))
             && (self.eb(me, 9) & 0x80) != 0
             && matches!(mv, 2 | 3);
@@ -5873,7 +6562,10 @@ impl Bus<'_> {
             self.input_tail(me, ps);
             return;
         }
-        if era_throws && self.try_throw(ps, me, other, dispatch_d0) {
+        if (era_throws && self.try_throw(ps, me, other, dispatch_d0))
+            || (!scripted_turn && (self.try_st_ryu_close_kick(ps, me, other, dispatch_d0)
+                || (!pure_footsies && self.try_st_ryu_command_normal(ps, me, dispatch_d0))))
+        {
             self.clear_neg_edge_latches_for_player(ps);
             self.input_tail(me, ps);
             return;
@@ -5897,10 +6589,17 @@ impl Bus<'_> {
     fn try_modern_assist_normal(&mut self, ps: u32, entity: u16, canceling: bool) -> bool {
         let Some(side) = self.player_slot_index(ps) else { return false };
         let state = self.toggle_state.schemes[side];
-        let Some((strength, kick, crouch)) = state.assist_normal else { return false };
-        if (canceling && !state.assist_can_chain_normal()) || self.era_airborne(entity)
-            || self.toggle_state.combo.blockstun[self.combo_slot(entity)] != 0
-        {
+        let Some(normal) = state.assist_normal else { return false };
+        if canceling && !state.assist_can_chain_normal() {
+            return false;
+        }
+        self.start_modern_assist_normal(ps, entity, side, normal)
+    }
+
+    fn start_modern_assist_normal(
+        &mut self, ps: u32, entity: u16, side: usize, (strength, kick, crouch): (u8, bool, bool),
+    ) -> bool {
+        if self.era_airborne(entity) || self.toggle_state.combo.blockstun[self.combo_slot(entity)] != 0 {
             return false;
         }
         // Use the same strength and move tables as neutral/down dispatch.
@@ -5982,8 +6681,8 @@ impl Bus<'_> {
         self.toggle_state.schemes[side].executing = Some(entry.produces);
         let started = if matches!(entry.recognizer, Recognizer::Tracker(_)) && entry.produces <= 0x1b {
             if self.move_in_table(ps, entry.produces) {
-                self.start_walk_attack(entity, ps, entry.produces);
                 self.set_eb(entity, 0x34, strength);
+                self.start_walk_attack(entity, ps, entry.produces);
                 true
             } else {
                 false
@@ -6063,7 +6762,10 @@ impl Bus<'_> {
         let in_jump = self.is_jump_airborne(entity);
         self.what_if_track(ps, relative);
         self.sf3_track_input(ps, relative, airborne, actionable || in_jump, blockstun);
-        if in_jump && self.frames_until_landing(entity) >= 4 && self.try_sf3_move(ps, entity, true) {
+        let st_air_cancel = self.st_ryu_air_tatsumaki_cancel(ps, entity);
+        if (st_air_cancel || (in_jump && self.frames_until_landing(entity) >= 4))
+            && self.try_sf3_move(ps, entity, true)
+        {
             self.clear_neg_edge_latches_for_player(ps);
             return true;
         }
@@ -6113,12 +6815,34 @@ impl Bus<'_> {
         if self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::UltraSf2) {
             return None;
         }
-        let super_button = kick == (fighter == Sagat);
-        let uppercut = fighter == Sagat && !kick && self.rb(self.tracker_base(ps) + 0x1b) != 0;
+        let super_ready = if era.st_sagat() {
+            era.st_sagat_genocide_strength(kick).is_some()
+        } else {
+            era.super_ready() && !kick
+        };
+        let uppercut = fighter == Sagat && !kick
+            && (self.rb(self.tracker_base(ps) + 0x1b) != 0 || era.st_sagat_genocide_fallback());
         let red_fireball = fighter == Ryu && !kick && era.extra_ready();
-        let knee = fighter == Sagat && kick && era.extra_ready();
-        let move_id = if era.super_ready() && super_button {
+        let knee = fighter == Sagat && kick
+            && self.latched_strength(ps + 1, 0x405be).is_some_and(|strength| era.tiger_knee_ready(strength));
+        let (entity, _) = self.player_entities(ps);
+        let shinku = self.st_new_ryu(ps);
+        let shinku_ready = !shinku || (!self.has_incoming_projectile(entity)
+            && (self.eb(entity, 9) & 0xc0 != 0xc0 || self.st_grounded_super_cancelable(entity)));
+        let shoryureppa_ready = !self.st_ken_shoryureppa(ps, SF2_SUPER)
+            || self.eb(entity, 9) & 0xc0 != 0xc0 || self.st_grounded_super_cancelable(entity);
+        let genocide_ready = !self.st_sagat_genocide(ps, SF2_SUPER)
+            || self.eb(entity, 9) & 0xc0 != 0xc0 || self.st_grounded_super_cancelable(entity);
+        let move_id = if super_ready && shinku_ready && shoryureppa_ready && genocide_ready {
             SF2_SUPER
+        } else if let Some(slot) = kick.then(|| era.st_ken_kick_command()).flatten().map(|(slot, _)| slot)
+            .filter(|slot| *slot == crate::era_fight::st_ken_kicks::OSOTO_MAWASHI
+                || self.command_done(ps, 0x16, true).is_none())
+        {
+            self.st_ken_kick_header(ps, slot)?;
+            return Some(slot);
+        } else if !kick && era.st_ken_shoryureppa_fallback() {
+            0x19
         } else if uppercut || red_fireball {
             SF2_EXTRA_SPECIAL
         } else if knee {
@@ -6151,32 +6875,229 @@ impl Bus<'_> {
         if self.try_sf3_move(ps, entity, false) || self.era_sf4_command(ps, entity, context) {
             return true;
         }
-        let punch = self.latch_fires(ps, false).then(|| self.era_special_command(ps, false)).flatten();
-        let kick = self.latch_fires(ps + 1, true).then(|| self.era_special_command(ps, true)).flatten();
-        let (move_id, latch, strength_table) = if let Some(mv) = kick.filter(|mv| *mv == SF2_SUPER || punch.is_none()) {
-            (mv, ps + 1, 0x405be)
+        let command = |kick| {
+            let slot = self.era_special_command(ps, kick)?;
+            (self.latch_fires(ps + u32::from(kick), kick) || self.st_sagat_genocide(ps, slot)
+                || self.st_ken_kick_header(ps, slot).is_some()).then_some(slot)
+        };
+        let punch = command(false);
+        let kick = command(true);
+        let (move_id, kick) = if let Some(mv) = kick.filter(|mv| *mv == SF2_SUPER || punch.is_none()) {
+            (mv, true)
         } else if let Some(mv) = punch {
-            (mv, ps, 0x405b6)
+            (mv, false)
         } else {
             return false;
         };
-        if self.pick_by_strength(latch, strength_table, entity).is_none() {
+        self.start_sf2_special(ps, entity, move_id, kick)
+    }
+
+    fn start_sf2_special(&mut self, ps: u32, entity: u16, move_id: u8, kick: bool) -> bool {
+        let latch = ps + u32::from(kick);
+        let table = if kick { 0x405be } else { 0x405b6 };
+        let genocide = self.st_sagat_genocide(ps, move_id);
+        if self.st_ken_kick_header(ps, move_id).is_some() {
+            let Some((slot, strength)) = self.sf2_state(ps).and_then(|era| era.st_ken_kick_command())
+                .filter(|(slot, _)| *slot == move_id && kick) else { return false };
+            self.set_eb(entity, 0x34, strength);
+            self.era_consume_st_ken_kick(ps, slot);
+        } else if genocide {
+            let Some(strength) = self.sf2_state(ps).and_then(|era| era.st_sagat_genocide_strength(kick)) else {
+                return false;
+            };
+            self.set_eb(entity, 0x34, strength);
+        } else if self.pick_by_strength(latch, table, entity).is_none() {
             return false;
         }
         self.ww(ps, 0);
         self.clear_all_trackers(ps);
         self.clear_recovery_buffer(ps);
         self.start_move(entity, ps, move_id);
-        if move_id == SF2_SUPER {
-            self.era_spend_super(ps);
+        if move_id == crate::era_fight::SF2_SUPER {
+            if self.st_ryu_shinku(ps, move_id) {
+                self.era_consume_super_motion(ps);
+            } else if self.st_ken_shoryureppa(ps, move_id) || genocide {
+                if self.contact_frozen(entity) {
+                    self.era_consume_super_motion(ps);
+                } else {
+                    let freeze = if genocide {
+                        crate::era_fight::ST_SAGAT_GENOCIDE_FREEZE
+                    } else {
+                        crate::era_fight::ST_KEN_SHORYUREPPA_FREEZE
+                    };
+                    self.era_spend_super_with_freeze(ps, freeze);
+                }
+            } else {
+                self.era_spend_super(ps);
+            }
         } else {
+            if self.sf2_state(ps).is_some_and(|era| era.st_ken_shoryureppa_fallback()) {
+                self.era_consume_super_motion(ps);
+            }
             self.era_use_extra_motion(ps);
         }
         true
     }
 
+    fn st_ryu_air_tatsumaki(&self, ps: u32, move_id: u8) -> bool {
+        move_id == crate::era_fight::sf3::AIR_TATSU
+            && self.st_ryu_loadout(ps).is_some()
+            && self.era_state(ps).is_some_and(|state| state.alpha_move_active(move_id))
+    }
+
+    fn st_sagat_shot_loadout(&self, ps: u32, move_id: u8) -> Option<crate::era::Loadout> {
+        let era = self.sf2_state(ps)?;
+        (era.st_sagat() && matches!(move_id, 0x1a | 0x1b))
+            .then_some(era.style.loadout)
+    }
+
+    fn st_sagat_melee_loadout(&self, ps: u32, move_id: u8) -> Option<crate::era::Loadout> {
+        let era = self.sf2_state(ps)?;
+        (era.st_sagat() && (matches!(move_id, 0x19 | crate::data_bank::SF2_SPECIAL_SLOT)
+            || (move_id == crate::data_bank::SF2_SUPER_SLOT && era.style.loadout == crate::era::Loadout::Standard)))
+            .then_some(era.style.loadout)
+    }
+
+    fn st_sagat_genocide(&self, ps: u32, move_id: u8) -> bool {
+        move_id == crate::data_bank::SF2_SUPER_SLOT && self.st_sagat_melee_loadout(ps, move_id).is_some()
+    }
+
+    fn st_ken_kick_header(&self, ps: u32, move_id: u8) -> Option<u32> {
+        if !crate::era_fight::st_ken_kicks::slot(move_id) || !self.sf2_state(ps)?.st_new_ken_kicks() {
+            return None;
+        }
+        self.data_bank?.era_move_header(crate::roster::TournamentFighter::Ken, crate::era::EraFamily::Sf2, move_id)
+    }
+
+    fn st_ken_ground_tatsumaki_header(&self, ps: u32, move_id: u8, strength: u8) -> Option<u32> {
+        use crate::data_bank::st_ken_tatsumaki;
+        use crate::roster::TournamentFighter::Ken;
+
+        let era = self.sf2_state(ps)?;
+        if move_id != st_ken_tatsumaki::MOVE || era.fighter != Some(Ken)
+            || era.style.revision != crate::era::Revision::St
+        {
+            return None;
+        }
+        let slot = st_ken_tatsumaki::slot(crate::combo::level(strength))?;
+        self.data_bank?.era_move_header(Ken, crate::era::EraFamily::Sf2, slot)
+    }
+
+    fn st_ken_ground_tatsumaki_entry(&self, entity: u16) -> Option<u32> {
+        let entry = self.el(entity, 0x28);
+        if !crate::data_bank::in_bank(entry) {
+            return None;
+        }
+        self.st_ken_ground_tatsumaki_header(self.el(entity, 0x38), self.eb(entity, 0xa), 1)?;
+        Some(entry)
+    }
+
+    fn st_sagat_special_header(&self, ps: u32, move_id: u8, strength: u8) -> Option<u32> {
+        let slot = if self.st_sagat_shot_loadout(ps, move_id).is_some() {
+            move_id
+        } else {
+            let old = self.st_sagat_melee_loadout(ps, move_id)? == crate::era::Loadout::Old;
+            crate::data_bank::st_sagat_melee::slot(move_id, strength, old)?
+        };
+        self.data_bank?.era_move_header(crate::roster::TournamentFighter::Sagat, crate::era::EraFamily::Sf2, slot)
+    }
+
+    fn st_sagat_crouching_normal(&self, ps: u32, move_id: u8, strength: u8) -> Option<u8> {
+        self.sf2_state(ps).filter(|era| era.st_sagat())?;
+        crate::data_bank::st_sagat_normals::slot(move_id, strength)
+    }
+
+    fn st_sagat_normal_header(&self, ps: u32, fighter: u16, move_id: u8) -> Option<u32> {
+        let era = self.sf2_state(ps).filter(|era| era.st_sagat())?;
+        let slot = crate::data_bank::st_sagat_normals::slot(move_id, self.eb(fighter, 0x34)).or_else(|| {
+            let (_, opponent) = self.player_entities(ps);
+            let gap = if opponent == 0 {
+                u16::MAX
+            } else {
+                let axis_gap = self.st_ryu_standing_gap(fighter, opponent);
+                // World 940223 subtracts the target's standing size from the axis gap.
+                let opponent_is_st_sagat = self.sf2_state(self.el(opponent, 0x38)).is_some_and(|era| era.st_sagat());
+                axis_gap.saturating_sub(if opponent_is_st_sagat { 44 } else { 40 })
+            };
+            crate::data_bank::st_sagat_standing::slot(move_id, era.style.loadout == crate::era::Loadout::Old, gap)
+        })?;
+        self.data_bank?.era_move_header(crate::roster::TournamentFighter::Sagat, crate::era::EraFamily::Sf2, slot)
+    }
+
+    fn st_sagat_authored_normal(&self, ps: u32, move_id: u8, strength: u8) -> bool {
+        self.sf2_state(ps).is_some_and(|era| era.st_sagat())
+            && (crate::data_bank::st_sagat_normals::slot(move_id, strength).is_some()
+                || crate::data_bank::st_sagat_standing::slot(move_id, false, u16::MAX).is_some())
+    }
+
+    fn st_sagat_standing_entry(&self, entity: u16, move_id: u8) -> Option<u32> {
+        self.sf2_state(self.el(entity, 0x38)).filter(|era| era.st_sagat())?;
+        crate::data_bank::st_sagat_standing::slot(move_id, false, u16::MAX)?;
+        let entry = self.el(entity, 0x28);
+        crate::data_bank::in_bank(entry).then_some(entry)
+    }
+
+    fn st_sagat_normal_damage(&self, me: u16, ps: u32, move_id: u8) -> Option<u16> {
+        let era = self.sf2_state(ps).filter(|era| era.st_sagat())?;
+        let old = era.style.loadout == crate::era::Loadout::Old;
+        if let Some(entry) = self.st_sagat_air_entry(me) {
+            return Some(self.st_sagat_air_damage(me, self.rw(self.el(me, 0x3c) + 0x10), entry, old));
+        }
+        if let Some(entry) = self.st_sagat_standing_entry(me, move_id) {
+            if old && move_id == 0x15 && self.rb(entry + 12) == 2
+                && self.toggle_state.combo.st_melee_phases[self.combo_slot(me)] & 1 != 0
+            {
+                return Some(15);
+            }
+            return Some(u16::from(self.rb(entry + 1)));
+        }
+        crate::data_bank::st_sagat_normals::clean_hp(move_id, self.eb(me, 0x34), old)
+    }
+
+    fn st_sagat_melee_damage(&self, attacker: u16, owner: u32, move_id: u8, blocked: bool) -> Option<u16> {
+        let loadout = self.st_sagat_melee_loadout(owner, move_id)?;
+        let frame = self.el(attacker, 0x28);
+        if !crate::data_bank::in_bank(frame) {
+            return None;
+        }
+        let phase = self.rb(frame + 8);
+        if move_id == crate::data_bank::SF2_SUPER_SLOT {
+            let index = usize::from(phase.checked_sub(1)?);
+            return if blocked { [3, 3, 4, 4, 3, 3].get(index).copied() }
+                else { [14, 16, 14, 14, 14, 14].get(index).copied() };
+        }
+        let strength = usize::from(self.eb(attacker, 0x34).checked_sub(1)?);
+        let first = phase == 1;
+        // Representative full-health standing contacts in the 40 px arcade run.
+        if move_id == 0x19 {
+            return if blocked {
+                Some(if first { *[4, 5, 5].get(strength)? } else { 4 })
+            } else {
+                Some(if first { *[19, 21, 22].get(strength)? } else { 16 })
+            };
+        }
+        if loadout == crate::era::Loadout::Standard && strength == 2 {
+            let index = usize::from(phase.checked_sub(1)?);
+            return if blocked { [4, 3, 1, 1, 1].get(index).copied() } else { [13, 12, 4, 4, 4].get(index).copied() };
+        }
+        if blocked {
+            [7, 8, 8].get(strength).copied()
+        } else if loadout == crate::era::Loadout::Old {
+            [29, 33, 36].get(strength).copied()
+        } else {
+            [27, 30, 13].get(strength).copied()
+        }
+    }
+
     fn family_move_header(&self, state: &crate::era_fight::EraFighterState, entity: u16, slot: u8) -> Option<u32> {
         let bank = self.data_bank?;
+        if slot == crate::era_fight::sf3::AIR_TATSU {
+            let ps = self.el(entity, 0x38);
+            if let Some(loadout) = self.st_ryu_loadout(ps) {
+                let (_, fresh) = self.era_buttons(ps);
+                return bank.st_ryu_air_tatsumaki_header(loadout == crate::era::Loadout::Old, self.eb(entity, 0xa), (fresh >> 3) & 7);
+            }
+        }
         if state.is_evil_ryu_sf6() {
             if let Some(header) = bank.sf6_evil_ryu_move_header(slot) {
                 return Some(header);
@@ -6372,7 +7293,7 @@ impl Bus<'_> {
         true
     }
 
-    fn era_move_started(&mut self, entity: u16, ps: u32, move_id: u8) {
+    fn era_move_started(&mut self, entity: u16, ps: u32, move_id: u8, authored_startup: bool) {
         use crate::era_fight::SF2_EXTRA_SPECIAL;
         use crate::roster::TournamentFighter::{Ken, Ryu, Sagat};
 
@@ -6395,6 +7316,9 @@ impl Bus<'_> {
         }
         let Some(era) = self.sf2_state(ps) else { return };
         let Some(delta) = crate::era_fight::RevisionDelta::of(era.style) else { return };
+        let ken_hadoken_startup = (move_id == 0x1a && era.fighter == Some(Ken)
+            && era.style.revision == crate::era::Revision::St)
+            .then_some(if era.style.loadout == crate::era::Loadout::Old { 1 } else { 2 });
         // Super Turbo awards special meter once when the move starts, even on a whiff.
         let meter = match (era.fighter, move_id) {
             (Some(Ryu), 0x19) | (Some(Sagat), SF2_EXTRA_SPECIAL) => 7,
@@ -6408,29 +7332,68 @@ impl Bus<'_> {
         if let Some(side) = self.era_side(ps) {
             self.toggle_state.era.fighters[side].move_hits = 0;
         }
-        if matches!(move_id, 0x0d..=SF2_EXTRA_SPECIAL | 0x20..=0x26) {
+        if !authored_startup && matches!(move_id, 0x0d..=SF2_EXTRA_SPECIAL | 0x20..=0x26) {
             self.set_eb(entity, 0xe, self.eb(entity, 0xe).saturating_add_signed(delta.startup));
+        }
+        if move_id == 0x17 && self.st_new_ryu(ps) {
+            // Both light and medium crouching kicks first hit at action +4.
+            self.set_eb(entity, 0xe, 3);
+        }
+        if self.st_ryu_red_move(ps, move_id) {
+            // Header, gather and thrust together occupy eleven ticks before launch.
+            self.set_eb(entity, 0xe, 6);
+        }
+        if move_id == 0x1b && self.st_sagat_shot_loadout(ps, move_id) == Some(crate::era::Loadout::Old) {
+            self.set_eb(entity, 0xe, self.eb(entity, 0xe).saturating_sub(2));
+        }
+        if let Some(startup_adjustment) = ken_hadoken_startup {
+            // Ken's shot spawns 13 (New) or 12 (Old) advancing
+            // ticks after his first Hadoken pose.
+            self.set_eb(entity, 0xe, self.eb(entity, 0xe).saturating_add(startup_adjustment));
+        }
+        if move_id == 0x1a && self.eb(entity, 0x34) == 1
+            && self.ryu_pacing_style(ps).is_some_and(|style| {
+                style.revision == crate::era::Revision::St && style.loadout == crate::era::Loadout::Old
+            })
+        {
+            // The World arcade write trace puts Old Ryu's light release
+            // ten ticks after the command in the late crouching LK cancel.
+            self.set_eb(entity, 0xe, self.eb(entity, 0xe).saturating_sub(1));
         }
         if meter != 0 {
             self.era_meter_gain(ps, meter);
         }
     }
 
-    fn st_ryu_far_jab_header(&self, ps: u32, entity: u16, move_id: u8) -> Option<u32> {
-        use crate::era::EraFamily::Sf2;
-        use crate::roster::TournamentFighter::Ryu;
+    fn ryu_jab_header(&self, ps: u32, entity: u16, move_id: u8) -> Option<u32> {
+        use crate::era::{Loadout, Revision};
 
         if move_id != 0x0d {
             return None;
         }
-        self.st_ryu_loadout(ps)?;
-        // Both World ST loadouts switch to far LP above 64 px between axes.
-        let (_, opponent) = self.player_entities(ps);
-        let axis = |e| self.center_x(e).wrapping_sub(sext8(self.eb(e, 0x26))) as i16;
-        if opponent == 0 || axis(entity).abs_diff(axis(opponent)) <= 64 {
+        let style = self.ryu_pacing_style(ps)?;
+        if style.revision == Revision::St
+            && !matches!(style.loadout, Loadout::Standard | Loadout::Old)
+        {
             return None;
         }
-        self.data_bank?.era_move_header(Ryu, Sf2, move_id)
+        let header = self.data_bank?.ryu_jab_header(style.revision)?;
+        if !matches!(
+            style.revision,
+            Revision::Sfz1 | Revision::Sfz2 | Revision::Sfz2A
+                | Revision::Sf5 | Revision::Sf5Ae | Revision::Sf5Ce | Revision::Sf6
+        ) {
+            // Keep the existing close jab where the source has proximity normals.
+            // World ST and the other proximity-normal styles use this 64 px cutoff.
+            let (_, opponent) = self.player_entities(ps);
+            if opponent == 0 {
+                return None;
+            }
+            if self.st_ryu_standing_gap(entity, opponent) <= 64 {
+                return self.st_ryu_close_lp_header(ps);
+            }
+        }
+        Some(header)
     }
 
     fn era_normal_contact(&mut self, entity: u16, guarded: bool) {
@@ -6449,14 +7412,15 @@ impl Bus<'_> {
             self.era_meter_gain(owner, if guarded { 2 } else { 4 });
             return;
         }
+        let st_class = self.st_ryu_standing_class(owner, move_id);
         if (self.sf2_state(owner).is_none() && self.alpha_state(owner).is_none())
             || !Self::is_player_table(self.rl(owner + 0x12))
-            || !matches!(move_id, 0x0d..=0x18 | 0x1c..=0x1e | 0x20..=0x26)
+            || (st_class.is_none() && !matches!(move_id, 0x0d..=0x18 | 0x1c..=0x1e | 0x20..=0x26))
         {
             return;
         }
         // Arcade ST's contact awards by button strength (hit, guard).
-        let (hit, guard) = match class_of(move_id, level(self.eb(entity, 0x34))) {
+        let (hit, guard) = match st_class.unwrap_or_else(|| class_of(move_id, level(self.eb(entity, 0x34)))) {
             Class::Light | Class::Jump(1) => (2, 1),
             Class::Medium | Class::Jump(2) => (4, 3),
             Class::Heavy | Class::Sweep | Class::Jump(_) => (5, 4),
@@ -6465,47 +7429,119 @@ impl Bus<'_> {
         self.era_meter_gain(owner, if guarded { guard } else { hit });
     }
 
-    fn st_ryu_loadout(&self, ps: u32) -> Option<crate::era::Loadout> {
-        use crate::era::{Loadout, Revision};
-        use crate::roster::TournamentFighter::Ryu;
-
-        let era = self.sf2_state(ps)?;
-        (era.style.revision == Revision::St
-            && matches!(era.style.loadout, Loadout::Standard | Loadout::Old)
-            && era.fighter == Some(Ryu)
+    fn ryu_pacing_style(&self, ps: u32) -> Option<crate::era::StylePick> {
+        let era = self.era_state(ps)?;
+        (era.fighter == Some(crate::roster::TournamentFighter::Ryu)
             && self.evil_ryu_profile(ps).is_none())
-        .then_some(era.style.loadout)
+        .then_some(era.style)
+    }
+
+    fn ryu_light_hadoken_hold(&self, owner: u32) -> Option<u8> {
+        use crate::era::{Loadout, Revision};
+
+        let style = self.ryu_pacing_style(owner)?;
+        let state = self.era_state(owner)?;
+        if state.custom_combo_active()
+            || state.sf5_powered_special(0x1a)
+            || state.sf6_denjin_charged_move(0x1a)
+        {
+            return None;
+        }
+        // Spec #138. Whole 60 Hz ticks from the live projectile to the first
+        // held retreat. Use the modal result when arcade cadence gives a range.
+        let recovery: u8 = match style.revision {
+            Revision::Ww | Revision::Ce | Revision::Super => 40,
+            Revision::Hf => 29,
+            Revision::St if style.loadout == Loadout::Old => 31,
+            Revision::St if style.loadout == Loadout::Standard => 32,
+            Revision::Sfz1 | Revision::Sf5Ae => 34,
+            Revision::Sfz2 => 31,
+            Revision::Sfz2A | Revision::Sf5Ce | Revision::Sf6 => 32,
+            Revision::Sfz3 | Revision::Sf3ThreeS => 37,
+            Revision::Sf3Ng | Revision::Sf3TwoI => 43,
+            Revision::Sf4 | Revision::Ssf4 | Revision::Ae2012 | Revision::Usf4 | Revision::Sf5 => 33,
+            Revision::Arcade1987 | Revision::Sf1Plus | Revision::St => return None,
+        };
+        // The release pose loads on the spawn tick. After its hold, the
+        // native settle pose, stream end, and next input take three ticks
+        // plus the settle pose's zero-based hold (including the SFII delta).
+        let delta = crate::era_fight::RevisionDelta::of(style).map_or(0, |d| d.recovery);
+        let settle = self.rb(0x13c9).saturating_add_signed(delta);
+        recovery.checked_sub(settle.saturating_add(3))
     }
 
     fn era_move_recovery(&mut self, entity: u16, frame: u32) {
         let owner = self.el(entity, 0x38);
         let move_id = self.eb(entity, 0xa);
+        let sf2 = self.sf2_state(owner);
+        let ken_tatsumaki = crate::data_bank::in_bank(frame)
+            && self.st_ken_ground_tatsumaki_header(owner, move_id, self.eb(entity, 0x34)).is_some();
+        if ken_tatsumaki {
+            let opener_guarded = self.toggle_state.combo.st_melee_phases[self.combo_slot(entity)]
+                & crate::data_bank::st_ken_tatsumaki::CROUCH_GUARDED_OPENER != 0;
+            if opener_guarded && self.rb(frame + 0x20) == 0xfd {
+                // World writes the usual floor position, then spends two
+                // more grounded ticks after an MK or HK crouch-block opener.
+                self.set_eb(entity, 0xe, 2);
+                self.set_eb(entity, 0x33, 2);
+            }
+            return;
+        }
+        if matches!(frame, 0x3486 | 0x34a6) && move_id == 0x1a && sf2.is_some_and(|era| {
+            era.style.revision == crate::era::Revision::St
+                && era.fighter == Some(crate::roster::TournamentFighter::Ken)
+        }) {
+            // Allow 35 ticks at release, four at settle, then one tick
+            // for the stream end and stance write.
+            let hold = if frame == 0x3486 { 34 } else { 3 };
+            self.set_eb(entity, 0xe, hold);
+            self.set_eb(entity, 0x33, hold);
+            return;
+        }
+        if self.st_ryu_red_move(owner, move_id) && crate::data_bank::in_bank(frame) {
+            // Keep the source's 41 ticks from release to the first action.
+            // The native stream uses a 36-tick release, a four-tick settle,
+            // then one tick to pass the stream-end gate.
+            let hold = if self.rb(frame + 0x20) == 0xfd {
+                3
+            } else if self.rb(frame + 0x40) == 0xfd {
+                35
+            } else {
+                return;
+            };
+            self.set_eb(entity, 0xe, hold);
+            self.set_eb(entity, 0x33, hold);
+            return;
+        }
         if frame == 0x13a8 && move_id == 0x1a && self.eb(entity, 0x34) == 1 {
-            if let Some(loadout) = self.st_ryu_loadout(owner) {
-                // This pose loads on the projectile spawn tick. With the settle
-                // pose and return to input, these holds give 32 (New) and 31 (Old)
-                // ticks of recovery at 60 Hz, matching the most common timings
-                // measured in World Super Turbo 940223 at Turbo 2.
-                let hold = if loadout == crate::era::Loadout::Old { 23 } else { 26 };
+            if let Some(hold) = self.ryu_light_hadoken_hold(owner) {
                 self.set_eb(entity, 0xe, hold);
                 self.set_eb(entity, 0x33, hold);
                 return;
             }
         }
-        let Some(delta) = self.sf2_state(owner).and_then(|era| crate::era_fight::RevisionDelta::of(era.style)) else {
+        let Some(delta) = sf2.and_then(|era| crate::era_fight::RevisionDelta::of(era.style)) else {
             return;
         };
         if !matches!(move_id, 0x0d..=crate::era_fight::SF2_EXTRA_SPECIAL | 0x20..=0x26)
             || self.eb(entity, 0xf) & 0x80 != 0
+            || (crate::data_bank::in_bank(frame)
+                && (self.st_ryu_standing_header(owner, entity, move_id).is_some()
+                    || self.st_ryu_crouching_header(owner, entity, move_id).is_some()
+                    || self.st_ken_grounded_kick(entity).is_some()
+                    || self.st_sagat_shot_loadout(owner, move_id).is_some()
+                    || self.st_sagat_melee_loadout(owner, move_id).is_some()
+                    || self.st_sagat_authored_normal(owner, move_id, self.eb(entity, 0x34))
+                    || self.st_ryu_air_tatsumaki(owner, move_id)))
         {
             return;
         }
         let next = frame + 0x20;
         if self.rb(next) == 0xfd || (self.rb(next) == 0xff && self.rl(next + 2) == 0x45630) {
-            // The ST Ryu far jab's banked stream already has the arcade timing.
+            // The banked Ryu jab already has its revision's timing.
             if move_id == 0x0d
                 && crate::data_bank::in_bank(frame)
-                && self.st_ryu_loadout(owner).is_some()
+                && self.ryu_pacing_style(owner).is_some()
             {
                 return;
             }
@@ -6919,7 +7955,10 @@ impl Bus<'_> {
             self.start_move(me, ps, mv);
         } else {
             let move_id = self.eb(me, 0xa);
-            if self.eb(me, 9) & 0x80 != 0 && move_id & 3 != 0 && !self.st_ryu_forward_walk(ps, move_id) {
+            if self.eb(me, 9) & 0x80 != 0
+                && move_id & 3 != 0
+                && !self.measured_walk(ps, move_id)
+            {
                 return;
             }
             if move_id == 1 {
@@ -7262,19 +8301,23 @@ impl Bus<'_> {
     /// last threshold not above it; +0x34 gets the strength level (1..).
     /// Consumes the latch on success.
     pub(crate) fn pick_by_strength(&mut self, latch: u32, table: u32, me: u16) -> Option<u8> {
-        let d2 = (self.rb(latch) & 0xfe) as u16;
-        if d2 <= self.rb(table) as u16 {
-            return None;
-        }
-        let mut d3: u32 = 2;
-        while d2 >= self.rb(table + d3) as u16 {
-            d3 += 2;
-        }
-        d3 -= 2;
-        let mv = self.rb(table + d3 + 1);
-        self.set_eb(me, 0x34, (d3 / 2 + 1) as u8);
+        let strength = self.latched_strength(latch, table)?;
+        let mv = self.rb(table + u32::from(strength) * 2 - 1);
+        self.set_eb(me, 0x34, strength);
         self.wb(latch, 0);
         Some(mv)
+    }
+
+    fn latched_strength(&self, latch: u32, table: u32) -> Option<u8> {
+        let value = self.rb(latch) & 0xfe;
+        if value <= self.rb(table) {
+            return None;
+        }
+        let mut strength = 1;
+        while value >= self.rb(table + u32::from(strength) * 2) {
+            strength += 1;
+        }
+        Some(strength)
     }
 
     // ---- Tier 1 input overhaul helpers (#94, O3) --------------------------
@@ -7671,16 +8714,35 @@ impl Bus<'_> {
 
     fn is_jump_airborne(&self, me: u16) -> bool {
         let mv = self.eb(me, 0xa);
+        if self.toggle_state.combo.st_sagat_jump[self.combo_slot(me)].is_some() {
+            return self.eb(me, 9) & 3 == 1;
+        }
         if !matches!(mv, 9..=0x0b) || self.eb(me, 8) == 1 {
             return false;
         }
         let ps = self.el(me, 0x38);
+        if self.st_ken_jump_header(ps, mv).is_some() {
+            return self.eb(me, 9) & 3 == 1;
+        }
         let table = self.rl(ps + 0x12);
         let Some(header) = crate::data_bank::move_header(|addr| self.rl(addr), table, mv) else {
             return false;
         };
         let init_stream = self.rl(header + 0x2c);
         self.el(me, 0x2c) != init_stream
+    }
+
+    fn st_ken_jump_header(&self, ps: u32, move_id: u8) -> Option<u32> {
+        if !matches!(move_id, 9..=0x0b) {
+            return None;
+        }
+        let state = self.sf2_state(ps)?;
+        let fighter = crate::roster::TournamentFighter::Ken;
+        if state.fighter != Some(fighter) || state.style.revision != crate::era::Revision::St {
+            return None;
+        }
+        let slot = crate::data_bank::st_ken_jump::slot(move_id, state.style.loadout)?;
+        self.data_bank?.era_move_header(fighter, crate::era::EraFamily::Sf2, slot)
     }
 
     fn frames_until_landing(&self, me: u16) -> u16 {
@@ -7698,6 +8760,9 @@ impl Bus<'_> {
                 0xff => {
                     let routine = self.rl(a1 + 2);
                     if routine == 0x454ee {
+                        if self.st_ken_jump_header(self.el(me, 0x38), mv).is_some() {
+                            total = total.saturating_add(1);
+                        }
                         found_landing = true;
                         break;
                     }
@@ -7996,6 +9061,9 @@ impl Bus<'_> {
 
     /// The stun of the move `me` is in.
     fn move_stun_of(&self, me: u16) -> crate::combo::Stun {
+        if self.st_ken_ground_tatsumaki_entry(me).is_some() {
+            return crate::combo::Stun { hit: 20, block: 20 };
+        }
         let level = crate::combo::level(self.eb(me, 0x34));
         let fighter = self.fighter_of_entity(me);
         let mv = self.eb(me, 0xa);
@@ -8004,7 +9072,8 @@ impl Bus<'_> {
                 return s;
             }
         }
-        let mut stun = crate::combo::move_stun(fighter, mv, level);
+        let mut stun = self.st_ryu_standing_class(self.el(me, 0x38), mv)
+            .map_or_else(|| crate::combo::move_stun(fighter, mv, level), crate::combo::class_default);
         if let Some(delta) = self.sf2_state(self.el(me, 0x38))
             .and_then(|era| crate::era_fight::RevisionDelta::of(era.style))
         {
@@ -8032,6 +9101,17 @@ impl Bus<'_> {
         let count = if self.dramatic_rules().is_some() { 3 } else { 2 };
         for e in crate::fight_reader::FIGHTER_SLOTS.into_iter().take(count) {
             let s = self.combo_slot(e);
+            self.release_st_red_launch(e, s);
+            let air_cancel = &mut self.toggle_state.combo.st_ryu_air_cancel[s];
+            *air_cancel = air_cancel.saturating_sub(1);
+            let shinku_cancel = &mut self.toggle_state.combo.st_grounded_super_cancel[s];
+            *shinku_cancel = shinku_cancel.saturating_sub(1);
+            if let Some(sweep) = &mut self.toggle_state.combo.st_ryu_sweep[s] {
+                sweep.tick += 1;
+            }
+            if self.contact_frozen(e) || self.step_st_ryu_pushback(e, s) {
+                continue;
+            }
             let c = &mut self.toggle_state.combo;
             c.blockstun[s] = c.blockstun[s].saturating_sub(1);
             if c.hitstun[s] == 0 {
@@ -8143,12 +9223,21 @@ impl Bus<'_> {
     /// blockstun).
     fn combo_new_move(&mut self, e: u16, mv: u8) {
         let s = self.combo_slot(e);
+        let shinku_cancel = self.st_grounded_super_cancel_clock(e, mv);
         let c = &mut self.toggle_state.combo;
         c.connected[s] = false;
+        c.st_ryu_air_cancel[s] = 0;
+        c.st_sagat_jump[s] = None;
+        c.st_ken_jump_attack[s] = None;
+        c.st_grounded_super_cancel[s] = shinku_cancel;
+        c.st_melee_phases[s] = 0;
         c.hitstun[s] = 0;
         c.fresh[s] = false;
         if !matches!(mv, 4 | 8) {
             c.blockstun[s] = 0;
+            c.st_ryu_pushback[s] = None;
+            c.st_red_launch[s] = None;
+            c.st_ryu_sweep[s] = None;
         }
     }
 
@@ -8168,6 +9257,8 @@ impl Bus<'_> {
                     .map_or(0, |delta| delta.hitstun);
                 crate::combo::PROJECTILE.hit.saturating_add_signed(delta)
             }
+            HitSource::StRyuRed { .. } | HitSource::StGroundedProjectile { .. } => crate::combo::StRyuRecoil::Heavy.stun(),
+            HitSource::StRyuShinku { .. } => crate::combo::StRyuRecoil::Light.stun(),
             HitSource::Chip => 0,
         };
         let alive = self.eb(other, 8) == 2;
@@ -8191,18 +9282,25 @@ impl Bus<'_> {
         self.sf5_block(me, other);
         let strength = crate::combo::level(self.eb(me, 0x34));
         use crate::combo::Class;
-        let pressure = match self.eb(me, 0xa) {
+        let normal_pressure = |class| match class {
+            Class::Light | Class::Jump(1) => 4,
+            Class::Medium | Class::Jump(2) => 7,
+            Class::Heavy | Class::Sweep | Class::Jump(_) => 10,
+            Class::Special => GUARD_SPECIAL_PRESSURE,
+        };
+        let move_id = self.eb(me, 0xa);
+        let pressure = if let Some(class) = self.st_ryu_standing_class(self.el(me, 0x38), move_id) {
+            normal_pressure(class)
+        } else if matches!(move_id,
             crate::data_bank::ALPHA_COUNTER_SLOT
             | crate::data_bank::SF2_SPECIAL_SLOT
             | crate::data_bank::SF2_SUPER_SLOT
             | crate::data_bank::ALPHA_SUPER_SECOND_SLOT
-            | crate::data_bank::ALPHA_SUPER_THIRD_SLOT => GUARD_SPECIAL_PRESSURE,
-            mv => match crate::combo::class_of(mv, strength) {
-                Class::Light | Class::Jump(1) => 4,
-                Class::Medium | Class::Jump(2) => 7,
-                Class::Heavy | Class::Sweep | Class::Jump(_) => 10,
-                Class::Special => GUARD_SPECIAL_PRESSURE,
-            },
+            | crate::data_bank::ALPHA_SUPER_THIRD_SLOT)
+        {
+            GUARD_SPECIAL_PRESSURE
+        } else {
+            normal_pressure(crate::combo::class_of(move_id, strength))
         };
         if self.guard_power_contact(me, other, pressure) {
             return;
@@ -8219,7 +9317,9 @@ impl Bus<'_> {
             self.react_one(me, other, 0x45b6e, HitSource::Chip);
             return;
         }
-        let block = self.move_stun_of(me).block.saturating_add(self.sf6_take_rush_bonus(owner))
+        let pushback = self.st_ryu_pushback(me, other, true);
+        let base = pushback.map_or_else(|| self.move_stun_of(me).block, |pushback| pushback.stun());
+        let block = base.saturating_add(self.sf6_take_rush_bonus(owner))
             .saturating_add(if burnout { 4 } else { 0 });
         if block > 0 && matches!(self.eb(other, 0xa), 4 | 8) && self.can_alpha_counter(defender) {
             self.alpha_guard_contact(other, block);
@@ -8228,6 +9328,13 @@ impl Bus<'_> {
         {
             let slot = self.combo_slot(other);
             self.toggle_state.combo.blockstun[slot] = block;
+        }
+        if let Some(pushback) = pushback {
+            self.start_st_ryu_contact(me, other, pushback);
+        } else if move_id == 0x17 && strength == 2 && self.st_new_ryu(owner)
+            && self.st_new_ken(other)
+        {
+            self.start_st_ryu_melee_freeze(me, other, None);
         }
     }
 
@@ -8337,6 +9444,7 @@ impl Bus<'_> {
     fn cancel_close(&mut self, e: u16) {
         let s = self.combo_slot(e);
         self.toggle_state.cancel.window[s] = 0;
+        self.toggle_state.combo.frozen_cancel[s] = None;
     }
 
     /// `me`'s move connected (hit or guarded; the judge's hit function
@@ -8344,14 +9452,21 @@ impl Bus<'_> {
     /// ([`crate::combo::cancel::window`]), on a player's table, opens its
     /// window. The 1987 CPU's attacks (on its own structure) and a boss on
     /// the boss-only controls (on his CPU table) never cancel.
-    fn cancel_open(&mut self, me: u16) {
+    fn cancel_open(&mut self, me: u16, guarded: bool) {
         let ps = self.el(me, 0x38);
         if !self.is_player_driven(ps) || !Self::is_player_table(self.rl(ps + 0x12)) {
             return;
         }
         let mv = self.eb(me, 0xa);
         let level = crate::combo::level(self.eb(me, 0x34));
-        let window = crate::combo::cancel::window(self.fighter_of_entity(me), mv, level);
+        let base = crate::combo::cancel::window(self.fighter_of_entity(me), mv, level);
+        let window = if self.contact_frozen(me) {
+            self.st_ryu_crouching_cancel_window(me, guarded).unwrap_or_else(|| {
+                if base == 0 { 0 } else { base + self.toggle_state.combo.contact_freeze[self.combo_slot(me)] }
+            })
+        } else {
+            base
+        };
         if window == 0 {
             return;
         }
@@ -8479,6 +9594,7 @@ impl Bus<'_> {
             t.tech_window[s] = t.tech_window[s].saturating_sub(1);
             t.wakeup_invuln[s] = t.wakeup_invuln[s].saturating_sub(1);
         }
+        self.advance_st_ryu_throws();
     }
 
     /// Start the `0x30`-byte move header at `src` (in the extended data bank)
@@ -8524,6 +9640,9 @@ impl Bus<'_> {
     /// direction and button, and `other` is throwable and within
     /// [`crate::combo::throw::RANGE`].
     pub(crate) fn try_throw(&mut self, ps: u32, me: u16, other: u16, dir: u8) -> bool {
+        if let Some(started) = self.try_st_ryu_throw(ps, me, other, dir) {
+            return started;
+        }
         if self.evil_ryu_sf4(ps) {
             return self.try_evil_sf4_throw(ps, me, other, dir);
         }
@@ -8540,7 +9659,7 @@ impl Bus<'_> {
         } else if alpha3 {
             self.alpha3_throw_buttons(ps)
         } else {
-            (self.rb(ps) == 0xfe, self.rb(ps + 1) == 0xfe)
+            (self.rb(ps) == 0xfe || self.st_ryu_forward_mp(ps, me, dir), self.rb(ps + 1) == 0xfe)
         };
         let kick_throw = !hp && (alpha3 && hk
             || (self.evil_ryu_profile(ps) == Some(EvilRyuPlaytest::Alpha2)
@@ -8667,7 +9786,8 @@ impl Bus<'_> {
             }
         }
         let ps = self.el(me, 0x38);
-        let can_throw_from_walk = (self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps))
+        let can_throw_from_walk = (self.evil_ryu_alpha3(ps) || self.evil_ryu_sf4(ps)
+            || self.st_ryu_forward_punch(ps, me, self.pad_directions(ps)).is_some())
             && matches!(self.eb(me, 0xa), 2 | 3);
         if (self.eb(me, 9) & 3 != 2 && !can_throw_from_walk)
             || self.eb(other, 9) & 3 == 1 || !self.throw_target_is_vulnerable(other)
@@ -9630,6 +10750,161 @@ mod tests {
         b.set_eb(0x400, 0x34, 2);
         assert_eq!(b.lenient_kick_special(0x400, P1_STRUCT), Some(0x19));
         assert_eq!(b.lenient_punch_special(0x400, P1_STRUCT), None);
+    }
+
+    #[test]
+    fn st_tiger_knee_dispatch_requires_its_era_motion() {
+        use crate::era::{Loadout, Revision, StylePick};
+        use crate::era_fight::{FULL_SUB_HP, ST_TIGER_KNEE};
+        use crate::roster::TournamentFighter::Sagat;
+
+        let mut ram = special_commands_setup();
+        ram.rom[0x405be..0x405c6].copy_from_slice(&[0x10, 0x14, 0x80, 0x15, 0xf0, 0x16, 0xff, 0]);
+        let mut bus = ram.bus();
+        bus.era_rules.enabled = true;
+        bus.wb(GAME_MODE, 2);
+        for loadout in [Loadout::Standard, Loadout::Old] {
+            let state = &mut bus.toggle_state.era.fighters[0];
+            *state = crate::era_fight::EraFighterState::default();
+            state.style = StylePick::for_revision(Revision::St, loadout);
+            state.fighter = Some(Sagat);
+            state.max_sub_hp = FULL_SUB_HP;
+
+            bus.wb(P1_STRUCT + 0x19 + 2, 0xff);
+            bus.wb(P1_STRUCT + 1, 0xfe);
+            assert_eq!(bus.command_done(P1_STRUCT, 0x19, true), None);
+            assert_eq!(bus.era_special_command(P1_STRUCT, true), None);
+
+            for direction in ST_TIGER_KNEE {
+                bus.era_track_motion(P1_STRUCT, direction.bits());
+            }
+            assert_eq!(bus.era_special_command(P1_STRUCT, true), Some(0x19));
+            for _ in 0..9 {
+                bus.era_track_motion(P1_STRUCT, 0);
+            }
+            assert_eq!(bus.era_special_command(P1_STRUCT, true), None);
+            bus.wb(P1_STRUCT + 1, 0xe0);
+            assert_eq!(bus.era_special_command(P1_STRUCT, true), Some(0x19));
+        }
+    }
+
+    #[test]
+    fn st_tiger_knee_can_start_during_prejump() {
+        use crate::data_bank::{SpecialSlot, DATA_BANK_BASE};
+        use crate::era::{Loadout, Revision, StylePick};
+        use crate::era_fight::{FULL_SUB_HP, ST_TIGER_KNEE};
+        use crate::roster::TournamentFighter::Sagat;
+
+        let mut ram = Ram::new();
+        let mut bank = bank_table(&[(0x19, SpecialSlot {
+            tracker: 0x19, kick: true, melee: true, low_in_air: true, score: 0,
+        })]);
+        let read = |at: u32| {
+            let at = (at - DATA_BANK_BASE) as usize;
+            u32::from_be_bytes(bank[at..at + 4].try_into().unwrap())
+        };
+        let knee = crate::data_bank::move_header(read, DATA_BANK_BASE, 0x19).unwrap();
+        bank[(knee - DATA_BANK_BASE + 0xa) as usize] = 0x19;
+        // A zero stream pointer marks the jump's initial pose in this fixture.
+        bank[9 * 4..10 * 4].copy_from_slice(&knee.to_be_bytes());
+        ram.bank = Some(crate::data_bank::DataBank::from_bytes(bank));
+        ram.rom[0x405be..0x405c6].copy_from_slice(&[0x10, 0x14, 0x80, 0x15, 0xf0, 0x16, 0xff, 0]);
+
+        let mut bus = ram.bus();
+        let fighter = 0x400;
+        bus.era_rules.enabled = true;
+        bus.wb(GAME_MODE, 2);
+        bus.wb(MODE_DEMO, 1);
+        bus.wb(SCENE_MODE, 0x80);
+        bus.wl(P1_STRUCT + 2, RNG_STATE + 7);
+        bus.wb(RNG_STATE + 7, !ST_TIGER_KNEE[2].bits());
+        bus.wl(P1_STRUCT + 0x12, DATA_BANK_BASE);
+        bus.ww(P1_STRUCT + 0x10, fighter);
+        bus.set_el(fighter, 0x38, P1_STRUCT);
+        bus.set_eb(fighter, 8, 2);
+        bus.set_eb(fighter, 9, 0x80);
+        bus.set_eb(fighter, 0xa, 9);
+
+        let state = &mut bus.toggle_state.era.fighters[0];
+        state.style = StylePick::for_revision(Revision::St, Loadout::Standard);
+        state.fighter = Some(Sagat);
+        state.max_sub_hp = FULL_SUB_HP;
+        for direction in ST_TIGER_KNEE {
+            bus.era_track_motion(P1_STRUCT, direction.bits());
+        }
+
+        bus.wb(P1_STRUCT + 1, 0x40);
+        bus.input_handler(P1_STRUCT);
+        assert_eq!(bus.eb(fighter, 0xa), 0x19);
+    }
+
+    #[test]
+    fn st_sagat_genocide_dispatch_consumes_stock_for_both_command_paths() {
+        use crate::data_bank::{DataBank, SpecialSlot, DATA_BANK_BASE, SF2_SPECIAL_SLOT, SF2_SUPER_SLOT};
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
+        use crate::era_fight::{EraFighterState, FULL_SUB_HP, SHORT_DOUBLE_QUARTER_CIRCLE};
+        use crate::moves::Dir;
+        use crate::roster::TournamentFighter::Sagat;
+
+        let mut ram = Ram::new();
+        let table = crate::data_bank::table_address(Sagat);
+        let mut entries = bank_table(&[
+            (SF2_SPECIAL_SLOT, SpecialSlot { tracker: 0, kick: false, melee: true, low_in_air: false, score: 0 }),
+            (SF2_SUPER_SLOT, SpecialSlot { tracker: 0, kick: false, melee: true, low_in_air: false, score: 0 }),
+        ]);
+        for slot in [SF2_SPECIAL_SLOT, SF2_SUPER_SLOT] {
+            let at = usize::from(slot) * 4;
+            let header = u32::from_be_bytes(entries[at..at + 4].try_into().unwrap());
+            entries[(header - DATA_BANK_BASE + 0xa) as usize] = slot;
+            entries[at..at + 4].copy_from_slice(&(header + table - DATA_BANK_BASE).to_be_bytes());
+        }
+        let mut bank = vec![0; (table - DATA_BANK_BASE) as usize];
+        bank.extend(entries);
+        ram.bank = Some(DataBank::from_bytes(bank));
+
+        let mut bus = ram.bus();
+        let fighter = 0x400;
+        bus.era_rules.enabled = true;
+        bus.era_rules.gauge_mode = GaugeMode::EraDefault;
+        bus.wb(GAME_MODE, 2);
+        bus.wl(P1_STRUCT + 0x12, table);
+        bus.ww(P1_STRUCT + 0x10, fighter);
+        bus.set_el(fighter, 0x38, P1_STRUCT);
+        let track = |bus: &mut Bus, loadout, meter| {
+            let state = &mut bus.toggle_state.era.fighters[0];
+            *state = EraFighterState::default();
+            state.style = StylePick::for_revision(Revision::St, loadout);
+            state.fighter = Some(Sagat);
+            state.sub_hp = FULL_SUB_HP;
+            state.max_sub_hp = FULL_SUB_HP;
+            bus.era_reconfigure(true);
+            bus.toggle_state.era.fighters[0].super_meter = meter;
+            for direction in SHORT_DOUBLE_QUARTER_CIRCLE {
+                bus.era_track_motion(P1_STRUCT, direction.bits());
+            }
+        };
+
+        for kick in [false, true] {
+            track(&mut bus, Loadout::Standard, STOCK_AT);
+            if !kick {
+                bus.era_track_motion(P1_STRUCT, Dir::Forward.bits());
+            }
+            let buttons = if kick { 0b100000 } else { 0b000010 };
+            bus.era_read_buttons(P1_STRUCT, buttons);
+            assert!(bus.try_era_special(P1_STRUCT, fighter));
+            assert_eq!(bus.eb(fighter, 0xa), SF2_SUPER_SLOT);
+            assert_eq!(bus.eb(fighter, 0x34), if kick { 3 } else { 2 });
+            assert_eq!(bus.toggle_state.era.fighters[0].super_meter, 0);
+            assert_eq!(bus.toggle_state.era.freeze, crate::era_fight::ST_SAGAT_GENOCIDE_FREEZE);
+            bus.set_eb(fighter, 9, 0);
+        }
+
+        track(&mut bus, Loadout::Old, STOCK_AT);
+        bus.era_track_motion(P1_STRUCT, Dir::Forward.bits());
+        bus.era_read_buttons(P1_STRUCT, 1);
+        assert_eq!(bus.era_special_command(P1_STRUCT, false), Some(SF2_SPECIAL_SLOT));
+        assert_eq!(bus.era_special_command(P1_STRUCT, true), None);
+        assert_eq!(bus.toggle_state.era.fighters[0].super_meter, STOCK_AT);
     }
 
     #[test]

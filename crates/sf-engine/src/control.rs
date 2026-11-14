@@ -233,7 +233,7 @@ pub(crate) fn shortcut_buttons(button: ButtonClass, strength: u8) -> u8 {
     let punch = 1 << strength.clamp(1, 3).saturating_sub(1);
     match button {
         ButtonClass::Punch | ButtonClass::Either | ButtonClass::MashPunch => punch,
-        ButtonClass::Kick => punch << 3,
+        ButtonClass::Kick | ButtonClass::KickOnLastDirection => punch << 3,
         ButtonClass::TriplePunch => 0b000111,
         ButtonClass::TripleKick => 0b111000,
         ButtonClass::PairPunch => 0b000011,

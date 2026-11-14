@@ -97,10 +97,22 @@
 
 use sf_video::art::Catalogue;
 
-use crate::era::EraFamily;
+use crate::era::{EraFamily, Revision};
 use crate::roster::TournamentFighter;
 
 pub(crate) mod arcade_text;
+mod st_ryu_air;
+pub(crate) mod st_ken_normals;
+pub(crate) mod st_ryu_normals;
+pub(crate) mod st_sagat_melee;
+pub(crate) mod st_sagat_air;
+pub(crate) mod st_sagat_normals;
+pub(crate) mod st_sagat_standing;
+pub(crate) mod st_ken_kicks;
+pub(crate) mod st_ken_jump;
+pub(crate) mod st_ken_air_normals;
+pub(crate) mod st_ken_tatsumaki;
+mod st_ken_throws;
 
 /// The first address of the bank.
 pub const DATA_BANK_BASE: u32 = 0x10_0000;
@@ -140,6 +152,31 @@ pub const SPECIAL_SLOTS: [u8; 3] = [0x19, 0x1a, 0x1b];
 const MOVE_HEADERS: u32 = SPECIALS + SPECIAL_SLOTS.len() as u32 * SPECIAL_SLOT_SIZE;
 const ERA_HEADERS: u32 = MOVE_HEADERS + PLAYER_MOVES as u32 * MOVE_HEADER_SIZE;
 const ERA_HEADER_TABLES: u32 = 6;
+const ERA_HEADER_END: u32 = ERA_HEADERS + ERA_HEADER_TABLES * PLAYER_MOVES as u32 * 4;
+const RYU_JAB_HEADERS: u32 = ERA_HEADER_END;
+const ST_RYU_AIR_HEADERS: u32 = RYU_JAB_HEADERS + RYU_JAB_TIMINGS.len() as u32 * 4;
+const ST_RYU_JUMP_MP_STREAMS: u32 = ST_RYU_AIR_HEADERS + st_ryu_air::HEADERS as u32 * 4;
+const ST_RYU_JUMP_MP_REACTION: u32 = ST_RYU_JUMP_MP_STREAMS + st_ryu_air::JUMP_MP_STREAMS as u32 * 4;
+const ST_RYU_SHINKU_AIR_REACTION: u32 = ST_RYU_JUMP_MP_REACTION + 4;
+
+const RYU_JAB_TIMINGS: &[(&[Revision], [u8; 3])] = &{
+    use Revision::*;
+
+    // First active tick, active ticks, first accepted retreat at 60 Hz (#138).
+    [
+        (&[Ww, Ce, Super], [3, 4, 12]),
+        (&[Hf], [2, 3, 8]),
+        (&[St, Sfz2, Sfz2A], [2, 3, 9]),
+        (&[Sfz1], [2, 3, 10]),
+        (&[Sfz3], [2, 3, 11]),
+        (&[Sf3Ng], [3, 3, 11]),
+        (&[Sf3TwoI], [4, 2, 11]),
+        (&[Sf3ThreeS], [4, 3, 11]),
+        (&[Sf4, Ssf4, Ae2012, Usf4], [3, 3, 12]),
+        (&[Sf5, Sf5Ae, Sf5Ce], [2, 2, 11]),
+        (&[Sf6], [3, 3, 13]),
+    ]
+};
 
 fn era_header_offset(family: EraFamily, slot: u8) -> Option<u32> {
     let family_index = match family {
@@ -225,6 +262,12 @@ pub const ROUTINE_RYUSOKYAKU_VARIANT: u8 = 19;
 pub const ROUTINE_KAGE_SENHA: u8 = 20;
 /// Align Kage's dive from a bounded horizontal approach at the apex.
 pub const ROUTINE_KAGE_MISOGI_ALIGN: u8 = 21;
+/// Branch an airborne reaction to its landing stream at the supplied center Y.
+pub const ROUTINE_AIRBORNE_REACTION_LAND: u8 = 22;
+/// Apply the authored Super Turbo Shoryureppa posture before loading a pose.
+pub const ROUTINE_ST_SHORYUREPPA_POSTURE: u8 = 23;
+pub const ROUTINE_ST_KEN_KICK_BRANCH: u8 = 24;
+pub const ROUTINE_ST_KEN_KICK_STEP: u8 = 25;
 
 /// Private SF6 Ashura travel frame. This leaves the ordinary hurtbox active.
 pub(crate) const SF6_ASHURA_GLIDE: u8 = 0x04;
@@ -458,7 +501,44 @@ impl DataBank {
     /// Resolve a family-specific header without replacing the SF1+ or Alpha slot.
     pub fn era_move_header(&self, fighter: TournamentFighter, family: EraFamily, slot: u8) -> Option<u32> {
         let table = table_address(fighter);
-        let pointer = table + era_header_offset(family, slot)?;
+        self.authored_header(table, era_header_offset(family, slot)?)
+    }
+
+    pub(crate) fn ryu_jab_header(&self, revision: Revision) -> Option<u32> {
+        let index = RYU_JAB_TIMINGS.iter().position(|(revisions, _)| revisions.contains(&revision))?;
+        self.authored_header(table_address(TournamentFighter::Ryu), RYU_JAB_HEADERS + index as u32 * 4)
+    }
+
+    pub(crate) fn st_ryu_air_tatsumaki_header(&self, old: bool, jump_move: u8, kicks: u8) -> Option<u32> {
+        let strength = kicks.checked_ilog2()?;
+        self.authored_header(table_address(TournamentFighter::Ryu), st_ryu_air::header_offset(old, jump_move, strength))
+    }
+
+    pub(crate) fn st_ryu_jump_mp_stream(&self, old: bool, backward: bool) -> Option<u32> {
+        self.authored_header(table_address(TournamentFighter::Ryu), st_ryu_air::jump_mp_pointer(old, backward))
+    }
+
+    pub(crate) fn st_ryu_jump_mp_reaction(&self) -> Option<u32> {
+        self.authored_header(table_address(TournamentFighter::Ryu), ST_RYU_JUMP_MP_REACTION)
+    }
+
+    pub(crate) fn st_ryu_shinku_air_reaction(&self) -> Option<u32> {
+        self.authored_header(table_address(TournamentFighter::Ryu), ST_RYU_SHINKU_AIR_REACTION)
+    }
+
+    pub(crate) fn st_ken_throw(&self, family: crate::combo::throw::StRyuThrowFamily) -> Option<u32> {
+        self.authored_header(table_address(TournamentFighter::Ken), st_ken_throws::header_offset(family)?)
+    }
+
+    pub(crate) fn st_ken_air_normal(&self, old: bool, directional: bool, button: u8) -> Option<u32> {
+        self.authored_header(
+            table_address(TournamentFighter::Ken),
+            st_ken_air_normals::header_offset(old, directional, button),
+        )
+    }
+
+    fn authored_header(&self, table: u32, offset: u32) -> Option<u32> {
+        let pointer = table + offset;
         let header = u32::from_be_bytes(std::array::from_fn(|byte| self.rb(pointer + byte as u32)));
         let offset = header.checked_sub(table)?;
         (ERA_HEADERS..=FIGHTER_SPAN - MOVE_HEADER_SIZE).contains(&offset).then_some(header)
@@ -559,6 +639,11 @@ impl DataBank {
                     None => None,
                 };
                 if fighter == TournamentFighter::Ryu && rom.len() >= 0x40000 {
+                    write_ryu_jabs(rom, &mut region);
+                    st_ryu_normals::build(rom, &mut region);
+                    st_ryu_air::build(rom, &mut region);
+                    write_st_ryu_shinku(rom, &mut region);
+                    write_st_ryu_shinku_air_reaction(rom, &mut region);
                     evil_ryu_alpha2::build(rom, &mut region);
                     let sagat = catalogues.iter().find(|catalogue| catalogue.fighter == "sagat");
                     evil_ryu_alpha3::write_air_shoulder_throw(rom, &mut region, sagat);
@@ -570,6 +655,15 @@ impl DataBank {
                         counter[0xf] |= 0x08;
                         put_era_header(&mut region, EraFamily::SfZ, slot, &counter);
                     }
+                }
+                if fighter == TournamentFighter::Ken && rom.len() >= 0x40000 {
+                    st_ken_normals::build(rom, &mut region);
+                    write_st_ken_shoryureppa(rom, &mut region);
+                    st_ken_kicks::build(rom, &mut region);
+                    st_ken_jump::build(rom, &mut region);
+                    st_ken_air_normals::build(rom, &mut region);
+                    st_ken_tatsumaki::build(rom, &mut region);
+                    st_ken_throws::build(rom, &mut region);
                 }
                 if rom.len() >= 0x40000 || entry.is_some() {
                     match fits(region) {
@@ -597,7 +691,13 @@ impl DataBank {
                         TournamentFighter::Birdie => alpha_england::build_birdie(rom, &mut region),
                         TournamentFighter::Eagle => alpha_england::build_eagle(rom, &mut region, catalogue)?,
                         TournamentFighter::Gen => alpha_gen::build(rom, &mut region),
-                        TournamentFighter::Sagat => alpha_thailand::write_sagat(rom, &mut region),
+                        TournamentFighter::Sagat => {
+                            st_sagat_melee::build(rom, &mut region);
+                            st_sagat_normals::build(rom, &mut region, catalogue)?;
+                            st_sagat_standing::build(rom, &mut region);
+                            st_sagat_air::build(rom, &mut region, catalogue)?;
+                            alpha_thailand::write_sagat(rom, &mut region);
+                        }
                         _ => {}
                     }
                     sf4::build(rom, &mut region, fighter);
@@ -1595,7 +1695,6 @@ fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFig
     }
     match fighter {
         TournamentFighter::Ryu => {
-            write_st_ryu_far_jab(rom, region, rom_table);
             // The wind-up, thrust and settle in Ryu's Hadoken (0x1362).
             // Keep the original spawn routine so the engine attributes
             // projectile durability, tint and hits to the active move.
@@ -1624,23 +1723,104 @@ fn build_shoto_sf2_moves(rom: &[u8], region: &mut Region, fighter: TournamentFig
     }
 }
 
-fn write_st_ryu_far_jab(rom: &[u8], region: &mut Region, rom_table: u32) {
-    const STANDING_LP: u8 = 0x0d;
-    let source = rom_table + u32::from(STANDING_LP) * MOVE_HEADER_SIZE;
-    let mut header = std::array::from_fn(|offset| rom_b(rom, source + offset as u32));
-    let mut active = rom_record(rom, 0x09ca);
-    let mut recovery = rom_record(rom, 0x09ea);
-    // World 940223 at Turbo 2. The translated durations count from zero.
-    // From the first LP sample, the box goes live at tick 2 for three ticks,
-    // and the first accepted walk input is at tick 9.
-    header[0xe] = 1;
-    active[1] = 2;
-    recovery[1] = 2;
-    let stream = region.put(&active);
+fn write_st_ryu_shinku(rom: &[u8], region: &mut Region) {
+    let source = TournamentFighter::Ryu.move_table() + 0x1a * MOVE_HEADER_SIZE;
+    let mut h: [u8; MOVE_HEADER_SIZE as usize] =
+        std::array::from_fn(|i| rom_b(rom, source + i as u32));
+    // Nine advancing startup ticks, an eighteen-tick flash, then the shot.
+    let mut gather = rom_record(rom, 0x1362);
+    gather[1] = 4;
+    let stream = region.put(&gather);
+    let mut thrust = rom_record(rom, 0x1382);
+    thrust[1] = 0;
+    region.put(&thrust);
+    region.call(0x4548c, 0);
+    let mut release = rom_record(rom, 0x13a8);
+    release[1] = 3;
+    region.put(&release);
+    let mut recovery = rom_record(rom, 0x13c8);
+    recovery[1] = 35;
     region.put(&recovery);
     region.end();
-    header[0x2c..0x30].copy_from_slice(&stream.to_be_bytes());
-    put_era_header(region, EraFamily::Sf2, STANDING_LP, &header);
+    h[0xa] = SF2_SUPER_SLOT;
+    h[0xe] = 3;
+    h[0x2c..0x30].copy_from_slice(&stream.to_be_bytes());
+    put_era_header(region, EraFamily::Sf2, SF2_SUPER_SLOT, &h);
+}
+
+fn write_st_ryu_shinku_air_reaction(rom: &[u8], region: &mut Region) {
+    const KEN_AIR_RECOIL: u32 = 0x3fe6;
+    let mut pose = rom_record(rom, KEN_AIR_RECOIL);
+    let geom = rom_pose(rom, KEN_AIR_RECOIL);
+    let landing = region.here();
+    region.call(routine::LANDING, 0);
+    for frame in [0x400c, 0x402c, 0x404c] {
+        region.put(&rom_record(rom, frame));
+    }
+    region.end();
+    let mut check = vec![ROUTINE_AIRBORNE_REACTION_LAND, 0];
+    check.extend_from_slice(&((GROUND - geom.half().1) as u16).to_be_bytes());
+    check.extend_from_slice(&landing.to_be_bytes());
+    let land_at_floor = region.put(&check);
+    let origin = region.here();
+    // The second projectile can arrive while the defender is frozen.
+    // Preserve the initial air reaction box through that pause.
+    pose[0] = 0;
+    pose[1] = 0;
+    pose[6] = 0;
+    pose[7] = 0;
+    pose[0x12..0x16].copy_from_slice(&[
+        (39 - geom.half().1) as u8, 26, (-19 - geom.x_offset()) as u8, 23,
+    ]);
+    region.put(&pose);
+    // World ROM sampled velocities are in 8.8 units. The translated
+    // stream writes integral deltas, preserving the subpixel accumulator
+    // across the advancing ticks of each fresh launch.
+    let mut y = 0xc0i32;
+    let mut velocity = 0x600;
+    for tick in 0..80 {
+        if velocity < 0 {
+            region.call(land_at_floor, 0);
+        }
+        let next = y + velocity;
+        pose[6] = ((y >> 8) - (next >> 8)) as u8;
+        pose[7] = (-2i8) as u8;
+        if tick == 7 {
+            pose[0x12..0x16].copy_from_slice(&[
+                (16 - geom.half().1) as u8, 15, (8 - geom.x_offset()) as u8, 50,
+            ]);
+        }
+        region.put(&pose);
+        y = next;
+        velocity -= 0x48;
+    }
+    region.put(&[0xfe, 0]);
+    region.put(&landing.to_be_bytes());
+    region.patch(region.base + ST_RYU_SHINKU_AIR_REACTION, &origin.to_be_bytes());
+}
+
+fn write_ryu_jabs(rom: &[u8], region: &mut Region) {
+    const STANDING_LP: u8 = 0x0d;
+    let source = TournamentFighter::Ryu.move_table() + u32::from(STANDING_LP) * MOVE_HEADER_SIZE;
+    let mut header: [u8; MOVE_HEADER_SIZE as usize] =
+        std::array::from_fn(|offset| rom_b(rom, source + offset as u32));
+    let mut active = rom_record(rom, 0x09ca);
+    let mut recovery = rom_record(rom, 0x09ea);
+    for (index, &(revisions, [first, live, retreat])) in RYU_JAB_TIMINGS.iter().enumerate() {
+        // The stream counts from zero. Retreat is accepted one tick after its end.
+        header[0xe] = first - 1;
+        active[1] = live - 1;
+        recovery[1] = retreat - first - live - 2;
+        let stream = region.put(&active);
+        region.put(&recovery);
+        region.end();
+        header[0x2c..0x30].copy_from_slice(&stream.to_be_bytes());
+        let address = region.put(&header);
+        region.patch(region.base + RYU_JAB_HEADERS + index as u32 * 4, &address.to_be_bytes());
+        if revisions.contains(&Revision::St) {
+            bind_era_header(region, EraFamily::Sf2, STANDING_LP, address);
+        }
+    }
 }
 
 fn build_shoto_alpha_supers(rom: &[u8], region: &mut Region, fighter: TournamentFighter) {
@@ -1894,6 +2074,80 @@ fn write_alpha_counter(rom: &[u8], region: &mut Region, fighter: TournamentFight
     put_header(region, region.base, ALPHA_COUNTER_SLOT, &h);
 }
 
+fn write_st_ken_shoryureppa(rom: &[u8], region: &mut Region) {
+    let source = TournamentFighter::Ken.move_table() + 0x19 * MOVE_HEADER_SIZE;
+    let (crouch, crouch_boxes) = header_pose(rom, source);
+    let sounds = std::array::from_fn(|i| rom_b(rom, source + 0x10 + i as u32));
+    let forward = [
+        0, 8, 8, 7, 6, 6, 6, 5, 4, 4, 4, 3, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 12, 12, 11, 11, 10, 9, 10, 8, 9, 7, 8, 7, 6, 6, 5, 5, 5, 4, 3, 3, 3, 2, 2, 1,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -14, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+    ];
+    let heights = [
+        0, 4, 7, 10, 12, 13, 14, 14, 14, 13, 11, 9, 6, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 10, 20, 29, 38, 46, 54, 62, 69, 76, 83, 89, 95, 101, 106, 111, 115, 119, 123,
+        126, 129, 131, 133, 135, 136, 137, 138, 138, 138, 138, 138, 137, 136, 134, 132, 130,
+        127, 124, 120, 116, 112, 107, 102, 97, 91, 85, 79, 72, 65, 57, 49, 41, 32, 23, 13, 3,
+        0, 0,
+    ];
+    let mut entries = [0; 5];
+    for (index, address) in entries.iter_mut().enumerate() {
+        let mut entry: [u8; 9] = std::array::from_fn(|offset| rom_b(rom, 0x45c16 + offset as u32));
+        entry[8] = index as u8 + 1;
+        *address = region.put(&entry);
+    }
+    let rising = region.put(&[ROUTINE_ST_SHORYUREPPA_POSTURE, 0xc1]);
+    let falling = region.put(&[ROUTINE_ST_SHORYUREPPA_POSTURE, 0xc2]);
+    let grounded = region.put(&[ROUTINE_ST_SHORYUREPPA_POSTURE, 0xc4]);
+    let stream = region.here();
+    let mut pose = crouch;
+    let mut previous_top = crouch.top_on_ground();
+    // The native stream's terminal entry consumes the last actionable tick.
+    for (index, (height, dx)) in heights.into_iter().zip(forward).take(83).enumerate() {
+        let tick = index + 1;
+        match tick {
+            2 | 26 => { region.call(rising, 0); }
+            10 | 55 => { region.call(falling, 0); }
+            15 | 83 => { region.call(grounded, 0); }
+            _ => {}
+        }
+        let (frame, phase) = match tick {
+            1..=2 => (0x32de, 1),
+            3..=8 => (0x331e, 2),
+            22..=23 => (0x32de, 3),
+            24..=25 => (0x32de, 4),
+            26..=51 => (0x331e, 5),
+            _ => (0x339e, 0),
+        };
+        let next_pose = rom_pose(rom, frame);
+        let top = next_pose.top_on_ground() - height;
+        let dy = top - (previous_top + pose.half().1 - next_pose.half().1);
+        let mut boxes = rom_boxes(rom, frame);
+        if phase != 0 {
+            let (x, y, rx, ry) = match phase {
+                1 | 4 => (30, 45, 28, 22),
+                2 | 5 => (27, 79, 26, 44),
+                _ => (24, 49, 25, 13),
+            };
+            boxes[12..16].copy_from_slice(&[
+                (y - next_pose.half().1) as u8, ry, (x - next_pose.x_offset()) as u8, rx,
+            ]);
+        }
+        region.put(&Rec {
+            hold: 0, dur: 0, pose: next_pose, dy: dy as i8, dx,
+            boxes, flags: if phase == 0 { 0 } else { 0x80 },
+            x_offset: next_pose.x_offset(), hit: if phase == 0 { 0 } else { entries[phase - 1] },
+        }.bytes());
+        pose = next_pose;
+        previous_top = top;
+    }
+    region.end();
+    let first = still(crouch, 1, crouch_boxes);
+    let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, SF2_SUPER_SLOT, sounds, stream);
+    put_era_header(region, EraFamily::Sf2, SF2_SUPER_SLOT, &h);
+}
+
 fn write_shoryureppa(rom: &[u8], rom_table: u32, region: &mut Region) {
     let source = rom_table + 0x19 * MOVE_HEADER_SIZE;
     let (crouch, crouch_boxes) = header_pose(rom, source);
@@ -1999,7 +2253,12 @@ fn write_rising_special(
 /// special slots' records (patched by [`set_special`]).
 fn new_slot(fighter: TournamentFighter) -> Region {
     let mut region = Region::new(table_address(fighter));
-    region.put(&[0; (ERA_HEADERS + ERA_HEADER_TABLES * PLAYER_MOVES as u32 * 4) as usize]);
+    region.put(&[0; ERA_HEADER_END as usize]);
+    if fighter == TournamentFighter::Ryu {
+        region.put(&[0; (RYU_JAB_TIMINGS.len() + st_ryu_air::HEADERS + st_ryu_air::JUMP_MP_STREAMS + 2) * 4]);
+    } else if fighter == TournamentFighter::Ken {
+        region.put(&[0; st_ken_throws::POINTER_BYTES + st_ken_air_normals::POINTER_BYTES]);
+    }
     region
 }
 
@@ -5879,6 +6138,16 @@ mod sagat {
         high_stream_region.bytes[HIGH_SHOT_HOLD_OFFSET] = high_tiger_shot::HOLD - 1;
         let high_shot_stream = region.put(&high_stream_region.bytes);
         rom_attack(&mut region, 0x1a, HIGH_TIGER_SHOT, high_shot_stream);
+        // World Turbo 2 releases at +10 and takes another 38 ticks to walk.
+        high_stream_region.bytes[7] += 2;
+        high_stream_region.bytes[HIGH_SHOT_HOLD_OFFSET] += 9;
+        let st_high_stream = region.put(&high_stream_region.bytes);
+        let h = header(&rom_record(rom, HIGH_TIGER_SHOT), {
+            let pose = rom_pose(rom, HIGH_TIGER_SHOT);
+            stance.top_on_ground() + stance.half().1 - pose.half().1
+                + i32::from(rom_b(rom, HIGH_TIGER_SHOT + 6) as i8)
+        }, 0xc2, 0x1a, [0; 3], st_high_stream);
+        put_era_header(&mut region, EraFamily::Sf2, 0x1a, &h);
 
         // Low Tiger Shot (`0x1b`, quarter-circle forward and kick; see
         // [`low_tiger_shot`]): from his crouch (`crouch`, `low_tiger_shot_1`,
@@ -5910,6 +6179,19 @@ mod sagat {
         low_first.flags = 0x20;
         let h = header(&low_first.bytes(), crouch.top_on_ground(), 0xc4, 0x1b, [0, 0, 0], low_shot_stream);
         put_header(&mut region, base, 0x1b, &h);
+        let st_low_stream = {
+            let mut s = Stream::new(&mut region, crouch, crouch.top_on_ground());
+            let at = s.hold(lts1, lts1.top_on_ground(), 7, lts1_boxes, 0x20, 0);
+            s.call(routine::SOUND, 0xb8);
+            s.hold(lts2, lts2.top_on_ground(), 1, lts2_boxes, 0, 0);
+            s.call(low_spawn, 0);
+            s.hold(lts2, lts2.top_on_ground(), low_tiger_shot::HOLD - 1, lts2_boxes, 0, 0);
+            s.hold(crouch, crouch.top_on_ground(), 25, crouch_boxes, 0, 0);
+            s.end();
+            at
+        };
+        let h = header(&low_first.bytes(), crouch.top_on_ground(), 0xc4, 0x1b, [0; 3], st_low_stream);
+        put_era_header(&mut region, EraFamily::Sf2, 0x1b, &h);
 
         // Tiger Uppercut uses Sagat's own lunging punch (0x2d00) on a
         // rising arc. Tiger Genocide leads with his forward-leaping knee.

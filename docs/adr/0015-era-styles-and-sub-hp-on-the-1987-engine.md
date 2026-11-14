@@ -21,3 +21,7 @@ The standalone `CombatSession` stepping wrappers are retired once real-fight era
 The SF1 era style uses its arcade move effects, including in Definitive Overhaul. A new move effect follows the style of the fighter who produces it. In mixed-era fights, an eligible opponent can still show their own move effects, including effects on contact with the SF1 fighter. SF1+ is a separate, eligible era style.
 
 Move Effects Preview uses original light, medium, and heavy hit sparks for eligible styles. Drive Impact has larger contact effects with a paint burst on a hit and a cool arc on guard. Throws and hard knockdowns use a wider dust burst when the defender hits the floor.
+
+## Match pacing
+
+Era Style fights share the port’s 60 Hz simulation. Tune movement and move timing per fighter, revision, and loadout against the recorded source build and cabinet speed. Match-wide Turbo is outside the design scope. The maintainer made this decision on 2026-11-13 after accepting the v1.5.3 playtest of New and Old Super Turbo Ryu’s forward walk, far jab, and light Hadoken recovery against World Turbo 2. [Spec #138](https://github.com/johnstreetfighter/sf1-port/issues/138)

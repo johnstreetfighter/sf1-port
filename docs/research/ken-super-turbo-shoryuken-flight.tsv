@@ -1,0 +1,645 @@
+position_control	loadout	strength	route	setup_gap	jump_lead_displays	display_phase	posture	tick	travel_toward_facing_16_16	height_above_floor	animation_change	floor	ready
+natural	new	hp	ground	171	0	0	forced	0	0	0	0x132ad8	0	0
+natural	new	hp	ground	171	0	0	forced	1	0	0	0x132af0	0	0
+natural	new	hp	ground	171	0	0	forced	2	0	0	0x132b08	0	0
+natural	new	hp	ground	171	0	0	forced	3	0	0	0x132b20	0	0
+natural	new	hp	ground	171	0	0	forced	4	0	0	0x132b38	0	0
+natural	new	hp	ground	171	0	0	forced	5	0	0	0x132b50	0	0
+natural	new	hp	ground	171	0	0	forced	6	720896	10	0x132b68	0	0
+natural	new	hp	ground	171	0	0	forced	7	1409024	19	0x132b80	0	0
+natural	new	hp	ground	171	0	0	forced	8	2064384	28	0x132b98	0	0
+natural	new	hp	ground	171	0	0	forced	9	2686976	37	0x132bb0	0	0
+natural	new	hp	ground	171	0	0	forced	10	3276800	46	0x132bc8	0	0
+natural	new	hp	ground	171	0	0	forced	11	3833856	54	0x132be0	0	0
+natural	new	hp	ground	171	0	0	forced	12	4358144	62	0x132bf8	0	0
+natural	new	hp	ground	171	0	0	forced	13	4849664	69	0x132c10	0	0
+natural	new	hp	ground	171	0	0	forced	14	5308416	76	0x132c28	0	0
+natural	new	hp	ground	171	0	0	forced	15	5734400	83	0x132c40	0	0
+natural	new	hp	ground	171	0	0	forced	16	6127616	89	0x132c58	0	0
+natural	new	hp	ground	171	0	0	forced	17	6488064	95	0x132c70	0	0
+natural	new	hp	ground	171	0	0	forced	18	6815744	100	0x132c88	0	0
+natural	new	hp	ground	171	0	0	forced	19	7110656	105	0x132ca0	0	0
+natural	new	hp	ground	171	0	0	forced	20	7372800	110	0x132cb8	0	0
+natural	new	hp	ground	171	0	0	forced	21	7602176	115	0x132cd0	0	0
+natural	new	hp	ground	171	0	0	forced	22	7798784	119	0x132ce8	0	0
+natural	new	hp	ground	171	0	0	forced	23	7962624	122	0x132d00	0	0
+natural	new	hp	ground	171	0	0	forced	24	8093696	125	0x132d18	0	0
+natural	new	hp	ground	171	0	0	forced	25	8192000	128	0x132d30	0	0
+natural	new	hp	ground	171	0	0	forced	26	8257536	131	0x132d48	0	0
+natural	new	hp	ground	171	0	0	forced	27	8290304	133	0x132d60	0	0
+natural	new	hp	ground	171	0	0	forced	28	8290304	135	0x132d78	0	0
+natural	new	hp	ground	171	0	0	forced	29	8290304	135	0x132d90	0	0
+natural	new	hp	ground	171	0	0	forced	30	8290304	136	0x132da8	0	0
+natural	new	hp	ground	171	0	0	forced	31	8290304	137	0x132dc0	0	0
+natural	new	hp	ground	171	0	0	forced	32	8290304	138	0x132dd8	0	0
+natural	new	hp	ground	171	0	0	forced	33	8290304	138	0x132df0	0	0
+natural	new	hp	ground	171	0	0	forced	34	8290304	138	0x132e08	0	0
+natural	new	hp	ground	171	0	0	forced	35	8290304	137	0x132e20	0	0
+natural	new	hp	ground	171	0	0	forced	36	8290304	136	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	37	8290304	135	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	38	8290304	134	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	39	8290304	132	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	40	8290304	129	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	41	8290304	126	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	42	8290304	123	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	43	8290304	120	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	44	8290304	116	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	45	8290304	112	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	46	8290304	107	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	47	8290304	102	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	48	8290304	97	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	49	8290304	91	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	50	8290304	85	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	51	8290304	78	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	52	8290304	71	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	53	8290304	64	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	54	8290304	57	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	55	8290304	49	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	56	8290304	40	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	57	8290304	31	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	58	8290304	22	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	59	8290304	13	0x132e50	0	0
+natural	new	hp	ground	171	0	0	forced	60	8290304	3	0x132e38	0	0
+natural	new	hp	ground	171	0	0	forced	61	8290304	0	0x132e6c	1	0
+natural	new	hp	ground	171	0	0	forced	62	8290304	0	0x132e84	0	0
+natural	new	hp	ground	171	0	0	forced	63	8290304	0		0	0
+natural	new	hp	ground	171	0	0	forced	64	8290304	0		0	1
+natural	new	hp	ground	171	0	1	forced	0	0	0	0x132ad8	0	0
+natural	new	hp	ground	171	0	1	forced	1	0	0	0x132af0	0	0
+natural	new	hp	ground	171	0	1	forced	2	0	0	0x132b08	0	0
+natural	new	hp	ground	171	0	1	forced	3	0	0	0x132b20	0	0
+natural	new	hp	ground	171	0	1	forced	4	0	0	0x132b38	0	0
+natural	new	hp	ground	171	0	1	forced	5	0	0	0x132b50	0	0
+natural	new	hp	ground	171	0	1	forced	6	720896	10	0x132b68	0	0
+natural	new	hp	ground	171	0	1	forced	7	1409024	19	0x132b80	0	0
+natural	new	hp	ground	171	0	1	forced	8	2064384	28	0x132b98	0	0
+natural	new	hp	ground	171	0	1	forced	9	2686976	37	0x132bb0	0	0
+natural	new	hp	ground	171	0	1	forced	10	3276800	46	0x132bc8	0	0
+natural	new	hp	ground	171	0	1	forced	11	3833856	54	0x132be0	0	0
+natural	new	hp	ground	171	0	1	forced	12	4358144	62	0x132bf8	0	0
+natural	new	hp	ground	171	0	1	forced	13	4849664	69	0x132c10	0	0
+natural	new	hp	ground	171	0	1	forced	14	5308416	76	0x132c28	0	0
+natural	new	hp	ground	171	0	1	forced	15	5734400	83	0x132c40	0	0
+natural	new	hp	ground	171	0	1	forced	16	6127616	89	0x132c58	0	0
+natural	new	hp	ground	171	0	1	forced	17	6488064	95	0x132c70	0	0
+natural	new	hp	ground	171	0	1	forced	18	6815744	100	0x132c88	0	0
+natural	new	hp	ground	171	0	1	forced	19	7110656	105	0x132ca0	0	0
+natural	new	hp	ground	171	0	1	forced	20	7372800	110	0x132cb8	0	0
+natural	new	hp	ground	171	0	1	forced	21	7602176	115	0x132cd0	0	0
+natural	new	hp	ground	171	0	1	forced	22	7798784	119	0x132ce8	0	0
+natural	new	hp	ground	171	0	1	forced	23	7962624	122	0x132d00	0	0
+natural	new	hp	ground	171	0	1	forced	24	8093696	125	0x132d18	0	0
+natural	new	hp	ground	171	0	1	forced	25	8192000	128	0x132d30	0	0
+natural	new	hp	ground	171	0	1	forced	26	8257536	131	0x132d48	0	0
+natural	new	hp	ground	171	0	1	forced	27	8290304	133	0x132d60	0	0
+natural	new	hp	ground	171	0	1	forced	28	8290304	135	0x132d78	0	0
+natural	new	hp	ground	171	0	1	forced	29	8290304	135	0x132d90	0	0
+natural	new	hp	ground	171	0	1	forced	30	8290304	136	0x132da8	0	0
+natural	new	hp	ground	171	0	1	forced	31	8290304	137	0x132dc0	0	0
+natural	new	hp	ground	171	0	1	forced	32	8290304	138	0x132dd8	0	0
+natural	new	hp	ground	171	0	1	forced	33	8290304	138	0x132df0	0	0
+natural	new	hp	ground	171	0	1	forced	34	8290304	138	0x132e08	0	0
+natural	new	hp	ground	171	0	1	forced	35	8290304	137	0x132e20	0	0
+natural	new	hp	ground	171	0	1	forced	36	8290304	136	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	37	8290304	135	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	38	8290304	134	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	39	8290304	132	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	40	8290304	129	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	41	8290304	126	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	42	8290304	123	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	43	8290304	120	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	44	8290304	116	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	45	8290304	112	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	46	8290304	107	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	47	8290304	102	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	48	8290304	97	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	49	8290304	91	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	50	8290304	85	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	51	8290304	78	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	52	8290304	71	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	53	8290304	64	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	54	8290304	57	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	55	8290304	49	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	56	8290304	40	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	57	8290304	31	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	58	8290304	22	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	59	8290304	13	0x132e50	0	0
+natural	new	hp	ground	171	0	1	forced	60	8290304	3	0x132e38	0	0
+natural	new	hp	ground	171	0	1	forced	61	8290304	0	0x132e6c	1	0
+natural	new	hp	ground	171	0	1	forced	62	8290304	0	0x132e84	0	0
+natural	new	hp	ground	171	0	1	forced	63	8290304	0		0	0
+natural	new	hp	ground	171	0	1	forced	64	8290304	0		0	1
+natural	new	lp	ground	171	0	0	forced	0	0	0	0x132978	0	0
+natural	new	lp	ground	171	0	0	forced	1	0	0		0	0
+natural	new	lp	ground	171	0	0	forced	2	0	0	0x132990	0	0
+natural	new	lp	ground	171	0	0	forced	3	0	0		0	0
+natural	new	lp	ground	171	0	0	forced	4	0	0		0	0
+natural	new	lp	ground	171	0	0	forced	5	0	0		0	0
+natural	new	lp	ground	171	0	0	forced	6	0	0	0x1329a8	0	0
+natural	new	lp	ground	171	0	0	forced	7	0	0		0	0
+natural	new	lp	ground	171	0	0	forced	8	262144	5		0	0
+natural	new	lp	ground	171	0	0	forced	9	491520	9		0	0
+natural	new	lp	ground	171	0	0	forced	10	688128	13		0	0
+natural	new	lp	ground	171	0	0	forced	11	851968	17		0	0
+natural	new	lp	ground	171	0	0	forced	12	983040	21		0	0
+natural	new	lp	ground	171	0	0	forced	13	1081344	24		0	0
+natural	new	lp	ground	171	0	0	forced	14	1146880	27		0	0
+natural	new	lp	ground	171	0	0	forced	15	1179648	29		0	0
+natural	new	lp	ground	171	0	0	forced	16	1179648	31		0	0
+natural	new	lp	ground	171	0	0	forced	17	1179648	31		0	0
+natural	new	lp	ground	171	0	0	forced	18	1179648	33		0	0
+natural	new	lp	ground	171	0	0	forced	19	1179648	34		0	0
+natural	new	lp	ground	171	0	0	forced	20	1179648	35	0x1329c0	0	0
+natural	new	lp	ground	171	0	0	forced	21	1179648	35		0	0
+natural	new	lp	ground	171	0	0	forced	22	1179648	35		0	0
+natural	new	lp	ground	171	0	0	forced	23	1179648	35		0	0
+natural	new	lp	ground	171	0	0	forced	24	1179648	35		0	0
+natural	new	lp	ground	171	0	0	forced	25	1179648	34		0	0
+natural	new	lp	ground	171	0	0	forced	26	1179648	32	0x1329d8	0	0
+natural	new	lp	ground	171	0	0	forced	27	1179648	30		0	0
+natural	new	lp	ground	171	0	0	forced	28	1179648	28	0x1329d8	0	0
+natural	new	lp	ground	171	0	0	forced	29	1179648	26		0	0
+natural	new	lp	ground	171	0	0	forced	30	1179648	23	0x1329d8	0	0
+natural	new	lp	ground	171	0	0	forced	31	1179648	20		0	0
+natural	new	lp	ground	171	0	0	forced	32	1179648	16	0x1329d8	0	0
+natural	new	lp	ground	171	0	0	forced	33	1179648	12		0	0
+natural	new	lp	ground	171	0	0	forced	34	1179648	8	0x1329d8	0	0
+natural	new	lp	ground	171	0	0	forced	35	1179648	3		0	0
+natural	new	lp	ground	171	0	0	forced	36	1179648	0	0x1329f4	1	0
+natural	new	lp	ground	171	0	0	forced	37	1179648	0	0x132a0c	0	0
+natural	new	lp	ground	171	0	0	forced	38	1179648	0		0	0
+natural	new	lp	ground	171	0	0	forced	39	1179648	0		0	1
+natural	new	lp	ground	171	0	1	forced	0	0	0	0x132978	0	0
+natural	new	lp	ground	171	0	1	forced	1	0	0		0	0
+natural	new	lp	ground	171	0	1	forced	2	0	0	0x132990	0	0
+natural	new	lp	ground	171	0	1	forced	3	0	0		0	0
+natural	new	lp	ground	171	0	1	forced	4	0	0		0	0
+natural	new	lp	ground	171	0	1	forced	5	0	0		0	0
+natural	new	lp	ground	171	0	1	forced	6	0	0	0x1329a8	0	0
+natural	new	lp	ground	171	0	1	forced	7	0	0		0	0
+natural	new	lp	ground	171	0	1	forced	8	262144	5		0	0
+natural	new	lp	ground	171	0	1	forced	9	491520	9		0	0
+natural	new	lp	ground	171	0	1	forced	10	688128	13		0	0
+natural	new	lp	ground	171	0	1	forced	11	851968	17		0	0
+natural	new	lp	ground	171	0	1	forced	12	983040	21		0	0
+natural	new	lp	ground	171	0	1	forced	13	1081344	24		0	0
+natural	new	lp	ground	171	0	1	forced	14	1146880	27		0	0
+natural	new	lp	ground	171	0	1	forced	15	1179648	29		0	0
+natural	new	lp	ground	171	0	1	forced	16	1179648	31		0	0
+natural	new	lp	ground	171	0	1	forced	17	1179648	31		0	0
+natural	new	lp	ground	171	0	1	forced	18	1179648	33		0	0
+natural	new	lp	ground	171	0	1	forced	19	1179648	34		0	0
+natural	new	lp	ground	171	0	1	forced	20	1179648	35	0x1329c0	0	0
+natural	new	lp	ground	171	0	1	forced	21	1179648	35		0	0
+natural	new	lp	ground	171	0	1	forced	22	1179648	35		0	0
+natural	new	lp	ground	171	0	1	forced	23	1179648	35		0	0
+natural	new	lp	ground	171	0	1	forced	24	1179648	35		0	0
+natural	new	lp	ground	171	0	1	forced	25	1179648	34		0	0
+natural	new	lp	ground	171	0	1	forced	26	1179648	32	0x1329d8	0	0
+natural	new	lp	ground	171	0	1	forced	27	1179648	30		0	0
+natural	new	lp	ground	171	0	1	forced	28	1179648	28	0x1329d8	0	0
+natural	new	lp	ground	171	0	1	forced	29	1179648	26		0	0
+natural	new	lp	ground	171	0	1	forced	30	1179648	23	0x1329d8	0	0
+natural	new	lp	ground	171	0	1	forced	31	1179648	20		0	0
+natural	new	lp	ground	171	0	1	forced	32	1179648	16	0x1329d8	0	0
+natural	new	lp	ground	171	0	1	forced	33	1179648	12		0	0
+natural	new	lp	ground	171	0	1	forced	34	1179648	8	0x1329d8	0	0
+natural	new	lp	ground	171	0	1	forced	35	1179648	3		0	0
+natural	new	lp	ground	171	0	1	forced	36	1179648	0	0x1329f4	1	0
+natural	new	lp	ground	171	0	1	forced	37	1179648	0	0x132a0c	0	0
+natural	new	lp	ground	171	0	1	forced	38	1179648	0		0	0
+natural	new	lp	ground	171	0	1	forced	39	1179648	0		0	1
+natural	new	mp	ground	171	0	0	forced	0	0	0	0x132a28	0	0
+natural	new	mp	ground	171	0	0	forced	1	0	0		0	0
+natural	new	mp	ground	171	0	0	forced	2	0	0	0x132a40	0	0
+natural	new	mp	ground	171	0	0	forced	3	0	0		0	0
+natural	new	mp	ground	171	0	0	forced	4	0	0		0	0
+natural	new	mp	ground	171	0	0	forced	5	0	0		0	0
+natural	new	mp	ground	171	0	0	forced	6	0	0	0x132a58	0	0
+natural	new	mp	ground	171	0	0	forced	7	0	0		0	0
+natural	new	mp	ground	171	0	0	forced	8	524288	8		0	0
+natural	new	mp	ground	171	0	0	forced	9	1015808	15		0	0
+natural	new	mp	ground	171	0	0	forced	10	1474560	22		0	0
+natural	new	mp	ground	171	0	0	forced	11	1900544	29		0	0
+natural	new	mp	ground	171	0	0	forced	12	2293760	36		0	0
+natural	new	mp	ground	171	0	0	forced	13	2654208	42		0	0
+natural	new	mp	ground	171	0	0	forced	14	2981888	48		0	0
+natural	new	mp	ground	171	0	0	forced	15	3276800	53		0	0
+natural	new	mp	ground	171	0	0	forced	16	3538944	58		0	0
+natural	new	mp	ground	171	0	0	forced	17	3768320	63		0	0
+natural	new	mp	ground	171	0	0	forced	18	3964928	67		0	0
+natural	new	mp	ground	171	0	0	forced	19	4128768	71		0	0
+natural	new	mp	ground	171	0	0	forced	20	4259840	74		0	0
+natural	new	mp	ground	171	0	0	forced	21	4358144	77		0	0
+natural	new	mp	ground	171	0	0	forced	22	4423680	80		0	0
+natural	new	mp	ground	171	0	0	forced	23	4456448	83		0	0
+natural	new	mp	ground	171	0	0	forced	24	4456448	85		0	0
+natural	new	mp	ground	171	0	0	forced	25	4456448	85		0	0
+natural	new	mp	ground	171	0	0	forced	26	4456448	86		0	0
+natural	new	mp	ground	171	0	0	forced	27	4456448	87		0	0
+natural	new	mp	ground	171	0	0	forced	28	4456448	88	0x132a70	0	0
+natural	new	mp	ground	171	0	0	forced	29	4456448	89		0	0
+natural	new	mp	ground	171	0	0	forced	30	4456448	89		0	0
+natural	new	mp	ground	171	0	0	forced	31	4456448	89		0	0
+natural	new	mp	ground	171	0	0	forced	32	4456448	88		0	0
+natural	new	mp	ground	171	0	0	forced	33	4456448	87		0	0
+natural	new	mp	ground	171	0	0	forced	34	4456448	86	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	35	4456448	84		0	0
+natural	new	mp	ground	171	0	0	forced	36	4456448	82	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	37	4456448	79		0	0
+natural	new	mp	ground	171	0	0	forced	38	4456448	76	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	39	4456448	73		0	0
+natural	new	mp	ground	171	0	0	forced	40	4456448	70	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	41	4456448	66		0	0
+natural	new	mp	ground	171	0	0	forced	42	4456448	61	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	43	4456448	56		0	0
+natural	new	mp	ground	171	0	0	forced	44	4456448	51	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	45	4456448	46		0	0
+natural	new	mp	ground	171	0	0	forced	46	4456448	40	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	47	4456448	34		0	0
+natural	new	mp	ground	171	0	0	forced	48	4456448	27	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	49	4456448	20		0	0
+natural	new	mp	ground	171	0	0	forced	50	4456448	13	0x132a88	0	0
+natural	new	mp	ground	171	0	0	forced	51	4456448	5		0	0
+natural	new	mp	ground	171	0	0	forced	52	4456448	0	0x132aa4	1	0
+natural	new	mp	ground	171	0	0	forced	53	4456448	0	0x132abc	0	0
+natural	new	mp	ground	171	0	0	forced	54	4456448	0		0	0
+natural	new	mp	ground	171	0	0	forced	55	4456448	0		0	1
+natural	new	mp	ground	171	0	1	forced	0	0	0	0x132a28	0	0
+natural	new	mp	ground	171	0	1	forced	1	0	0		0	0
+natural	new	mp	ground	171	0	1	forced	2	0	0	0x132a40	0	0
+natural	new	mp	ground	171	0	1	forced	3	0	0		0	0
+natural	new	mp	ground	171	0	1	forced	4	0	0		0	0
+natural	new	mp	ground	171	0	1	forced	5	0	0		0	0
+natural	new	mp	ground	171	0	1	forced	6	0	0	0x132a58	0	0
+natural	new	mp	ground	171	0	1	forced	7	0	0		0	0
+natural	new	mp	ground	171	0	1	forced	8	524288	8		0	0
+natural	new	mp	ground	171	0	1	forced	9	1015808	15		0	0
+natural	new	mp	ground	171	0	1	forced	10	1474560	22		0	0
+natural	new	mp	ground	171	0	1	forced	11	1900544	29		0	0
+natural	new	mp	ground	171	0	1	forced	12	2293760	36		0	0
+natural	new	mp	ground	171	0	1	forced	13	2654208	42		0	0
+natural	new	mp	ground	171	0	1	forced	14	2981888	48		0	0
+natural	new	mp	ground	171	0	1	forced	15	3276800	53		0	0
+natural	new	mp	ground	171	0	1	forced	16	3538944	58		0	0
+natural	new	mp	ground	171	0	1	forced	17	3768320	63		0	0
+natural	new	mp	ground	171	0	1	forced	18	3964928	67		0	0
+natural	new	mp	ground	171	0	1	forced	19	4128768	71		0	0
+natural	new	mp	ground	171	0	1	forced	20	4259840	74		0	0
+natural	new	mp	ground	171	0	1	forced	21	4358144	77		0	0
+natural	new	mp	ground	171	0	1	forced	22	4423680	80		0	0
+natural	new	mp	ground	171	0	1	forced	23	4456448	83		0	0
+natural	new	mp	ground	171	0	1	forced	24	4456448	85		0	0
+natural	new	mp	ground	171	0	1	forced	25	4456448	85		0	0
+natural	new	mp	ground	171	0	1	forced	26	4456448	86		0	0
+natural	new	mp	ground	171	0	1	forced	27	4456448	87		0	0
+natural	new	mp	ground	171	0	1	forced	28	4456448	88	0x132a70	0	0
+natural	new	mp	ground	171	0	1	forced	29	4456448	89		0	0
+natural	new	mp	ground	171	0	1	forced	30	4456448	89		0	0
+natural	new	mp	ground	171	0	1	forced	31	4456448	89		0	0
+natural	new	mp	ground	171	0	1	forced	32	4456448	88		0	0
+natural	new	mp	ground	171	0	1	forced	33	4456448	87		0	0
+natural	new	mp	ground	171	0	1	forced	34	4456448	86	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	35	4456448	84		0	0
+natural	new	mp	ground	171	0	1	forced	36	4456448	82	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	37	4456448	79		0	0
+natural	new	mp	ground	171	0	1	forced	38	4456448	76	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	39	4456448	73		0	0
+natural	new	mp	ground	171	0	1	forced	40	4456448	70	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	41	4456448	66		0	0
+natural	new	mp	ground	171	0	1	forced	42	4456448	61	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	43	4456448	56		0	0
+natural	new	mp	ground	171	0	1	forced	44	4456448	51	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	45	4456448	46		0	0
+natural	new	mp	ground	171	0	1	forced	46	4456448	40	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	47	4456448	34		0	0
+natural	new	mp	ground	171	0	1	forced	48	4456448	27	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	49	4456448	20		0	0
+natural	new	mp	ground	171	0	1	forced	50	4456448	13	0x132a88	0	0
+natural	new	mp	ground	171	0	1	forced	51	4456448	5		0	0
+natural	new	mp	ground	171	0	1	forced	52	4456448	0	0x132aa4	1	0
+natural	new	mp	ground	171	0	1	forced	53	4456448	0	0x132abc	0	0
+natural	new	mp	ground	171	0	1	forced	54	4456448	0		0	0
+natural	new	mp	ground	171	0	1	forced	55	4456448	0		0	1
+natural	old	hp	ground	171	0	0	forced	0	0	0	0x1c72a2	0	0
+natural	old	hp	ground	171	0	0	forced	1	0	0	0x1c72ba	0	0
+natural	old	hp	ground	171	0	0	forced	2	0	0	0x1c72d2	0	0
+natural	old	hp	ground	171	0	0	forced	3	0	0	0x1c72ea	0	0
+natural	old	hp	ground	171	0	0	forced	4	0	0	0x1c7302	0	0
+natural	old	hp	ground	171	0	0	forced	5	0	0	0x1c731a	0	0
+natural	old	hp	ground	171	0	0	forced	6	720896	10	0x1c7332	0	0
+natural	old	hp	ground	171	0	0	forced	7	1409024	19	0x1c734a	0	0
+natural	old	hp	ground	171	0	0	forced	8	2064384	28	0x1c7362	0	0
+natural	old	hp	ground	171	0	0	forced	9	2686976	37	0x1c737a	0	0
+natural	old	hp	ground	171	0	0	forced	10	3276800	46	0x1c7392	0	0
+natural	old	hp	ground	171	0	0	forced	11	3833856	54	0x1c73aa	0	0
+natural	old	hp	ground	171	0	0	forced	12	4358144	62	0x1c73c2	0	0
+natural	old	hp	ground	171	0	0	forced	13	4849664	69	0x1c73da	0	0
+natural	old	hp	ground	171	0	0	forced	14	5308416	76	0x1c73f2	0	0
+natural	old	hp	ground	171	0	0	forced	15	5734400	83	0x1c740a	0	0
+natural	old	hp	ground	171	0	0	forced	16	6127616	89	0x1c7422	0	0
+natural	old	hp	ground	171	0	0	forced	17	6488064	95	0x1c743a	0	0
+natural	old	hp	ground	171	0	0	forced	18	6815744	100	0x1c7452	0	0
+natural	old	hp	ground	171	0	0	forced	19	7110656	105	0x1c746a	0	0
+natural	old	hp	ground	171	0	0	forced	20	7372800	110	0x1c7482	0	0
+natural	old	hp	ground	171	0	0	forced	21	7602176	115	0x1c749a	0	0
+natural	old	hp	ground	171	0	0	forced	22	7798784	119	0x1c74b2	0	0
+natural	old	hp	ground	171	0	0	forced	23	7962624	122	0x1c74ca	0	0
+natural	old	hp	ground	171	0	0	forced	24	8093696	125	0x1c74e2	0	0
+natural	old	hp	ground	171	0	0	forced	25	8192000	128	0x1c74fa	0	0
+natural	old	hp	ground	171	0	0	forced	26	8257536	131	0x1c7512	0	0
+natural	old	hp	ground	171	0	0	forced	27	8290304	133	0x1c752a	0	0
+natural	old	hp	ground	171	0	0	forced	28	8290304	135	0x1c7542	0	0
+natural	old	hp	ground	171	0	0	forced	29	8290304	135	0x1c755a	0	0
+natural	old	hp	ground	171	0	0	forced	30	8290304	136	0x1c7572	0	0
+natural	old	hp	ground	171	0	0	forced	31	8290304	137	0x1c758a	0	0
+natural	old	hp	ground	171	0	0	forced	32	8290304	138	0x1c75a2	0	0
+natural	old	hp	ground	171	0	0	forced	33	8290304	138	0x1c75ba	0	0
+natural	old	hp	ground	171	0	0	forced	34	8290304	138	0x1c75d2	0	0
+natural	old	hp	ground	171	0	0	forced	35	8290304	137	0x1c75ea	0	0
+natural	old	hp	ground	171	0	0	forced	36	8290304	136	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	37	8290304	135	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	38	8290304	134	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	39	8290304	132	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	40	8290304	129	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	41	8290304	126	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	42	8290304	123	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	43	8290304	120	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	44	8290304	116	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	45	8290304	112	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	46	8290304	107	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	47	8290304	102	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	48	8290304	97	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	49	8290304	91	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	50	8290304	85	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	51	8290304	78	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	52	8290304	71	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	53	8290304	64	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	54	8290304	57	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	55	8290304	49	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	56	8290304	40	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	57	8290304	31	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	58	8290304	22	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	59	8290304	13	0x1c761a	0	0
+natural	old	hp	ground	171	0	0	forced	60	8290304	3	0x1c7602	0	0
+natural	old	hp	ground	171	0	0	forced	61	8290304	0	0x1c7636	1	0
+natural	old	hp	ground	171	0	0	forced	62	8290304	0	0x1c764e	0	0
+natural	old	hp	ground	171	0	0	forced	63	8290304	0		0	0
+natural	old	hp	ground	171	0	0	forced	64	8290304	0		0	1
+natural	old	hp	ground	171	0	1	forced	0	0	0	0x1c72a2	0	0
+natural	old	hp	ground	171	0	1	forced	1	0	0	0x1c72ba	0	0
+natural	old	hp	ground	171	0	1	forced	2	0	0	0x1c72d2	0	0
+natural	old	hp	ground	171	0	1	forced	3	0	0	0x1c72ea	0	0
+natural	old	hp	ground	171	0	1	forced	4	0	0	0x1c7302	0	0
+natural	old	hp	ground	171	0	1	forced	5	0	0	0x1c731a	0	0
+natural	old	hp	ground	171	0	1	forced	6	720896	10	0x1c7332	0	0
+natural	old	hp	ground	171	0	1	forced	7	1409024	19	0x1c734a	0	0
+natural	old	hp	ground	171	0	1	forced	8	2064384	28	0x1c7362	0	0
+natural	old	hp	ground	171	0	1	forced	9	2686976	37	0x1c737a	0	0
+natural	old	hp	ground	171	0	1	forced	10	3276800	46	0x1c7392	0	0
+natural	old	hp	ground	171	0	1	forced	11	3833856	54	0x1c73aa	0	0
+natural	old	hp	ground	171	0	1	forced	12	4358144	62	0x1c73c2	0	0
+natural	old	hp	ground	171	0	1	forced	13	4849664	69	0x1c73da	0	0
+natural	old	hp	ground	171	0	1	forced	14	5308416	76	0x1c73f2	0	0
+natural	old	hp	ground	171	0	1	forced	15	5734400	83	0x1c740a	0	0
+natural	old	hp	ground	171	0	1	forced	16	6127616	89	0x1c7422	0	0
+natural	old	hp	ground	171	0	1	forced	17	6488064	95	0x1c743a	0	0
+natural	old	hp	ground	171	0	1	forced	18	6815744	100	0x1c7452	0	0
+natural	old	hp	ground	171	0	1	forced	19	7110656	105	0x1c746a	0	0
+natural	old	hp	ground	171	0	1	forced	20	7372800	110	0x1c7482	0	0
+natural	old	hp	ground	171	0	1	forced	21	7602176	115	0x1c749a	0	0
+natural	old	hp	ground	171	0	1	forced	22	7798784	119	0x1c74b2	0	0
+natural	old	hp	ground	171	0	1	forced	23	7962624	122	0x1c74ca	0	0
+natural	old	hp	ground	171	0	1	forced	24	8093696	125	0x1c74e2	0	0
+natural	old	hp	ground	171	0	1	forced	25	8192000	128	0x1c74fa	0	0
+natural	old	hp	ground	171	0	1	forced	26	8257536	131	0x1c7512	0	0
+natural	old	hp	ground	171	0	1	forced	27	8290304	133	0x1c752a	0	0
+natural	old	hp	ground	171	0	1	forced	28	8290304	135	0x1c7542	0	0
+natural	old	hp	ground	171	0	1	forced	29	8290304	135	0x1c755a	0	0
+natural	old	hp	ground	171	0	1	forced	30	8290304	136	0x1c7572	0	0
+natural	old	hp	ground	171	0	1	forced	31	8290304	137	0x1c758a	0	0
+natural	old	hp	ground	171	0	1	forced	32	8290304	138	0x1c75a2	0	0
+natural	old	hp	ground	171	0	1	forced	33	8290304	138	0x1c75ba	0	0
+natural	old	hp	ground	171	0	1	forced	34	8290304	138	0x1c75d2	0	0
+natural	old	hp	ground	171	0	1	forced	35	8290304	137	0x1c75ea	0	0
+natural	old	hp	ground	171	0	1	forced	36	8290304	136	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	37	8290304	135	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	38	8290304	134	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	39	8290304	132	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	40	8290304	129	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	41	8290304	126	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	42	8290304	123	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	43	8290304	120	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	44	8290304	116	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	45	8290304	112	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	46	8290304	107	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	47	8290304	102	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	48	8290304	97	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	49	8290304	91	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	50	8290304	85	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	51	8290304	78	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	52	8290304	71	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	53	8290304	64	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	54	8290304	57	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	55	8290304	49	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	56	8290304	40	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	57	8290304	31	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	58	8290304	22	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	59	8290304	13	0x1c761a	0	0
+natural	old	hp	ground	171	0	1	forced	60	8290304	3	0x1c7602	0	0
+natural	old	hp	ground	171	0	1	forced	61	8290304	0	0x1c7636	1	0
+natural	old	hp	ground	171	0	1	forced	62	8290304	0	0x1c764e	0	0
+natural	old	hp	ground	171	0	1	forced	63	8290304	0		0	0
+natural	old	hp	ground	171	0	1	forced	64	8290304	0		0	1
+natural	old	lp	ground	171	0	0	forced	0	0	0	0x1c7142	0	0
+natural	old	lp	ground	171	0	0	forced	1	0	0		0	0
+natural	old	lp	ground	171	0	0	forced	2	0	0	0x1c715a	0	0
+natural	old	lp	ground	171	0	0	forced	3	0	0		0	0
+natural	old	lp	ground	171	0	0	forced	4	0	0		0	0
+natural	old	lp	ground	171	0	0	forced	5	0	0		0	0
+natural	old	lp	ground	171	0	0	forced	6	0	0	0x1c7172	0	0
+natural	old	lp	ground	171	0	0	forced	7	0	0		0	0
+natural	old	lp	ground	171	0	0	forced	8	262144	5		0	0
+natural	old	lp	ground	171	0	0	forced	9	491520	9		0	0
+natural	old	lp	ground	171	0	0	forced	10	688128	13		0	0
+natural	old	lp	ground	171	0	0	forced	11	851968	17		0	0
+natural	old	lp	ground	171	0	0	forced	12	983040	21		0	0
+natural	old	lp	ground	171	0	0	forced	13	1081344	24		0	0
+natural	old	lp	ground	171	0	0	forced	14	1146880	27		0	0
+natural	old	lp	ground	171	0	0	forced	15	1179648	29		0	0
+natural	old	lp	ground	171	0	0	forced	16	1179648	31		0	0
+natural	old	lp	ground	171	0	0	forced	17	1179648	31		0	0
+natural	old	lp	ground	171	0	0	forced	18	1179648	33		0	0
+natural	old	lp	ground	171	0	0	forced	19	1179648	34		0	0
+natural	old	lp	ground	171	0	0	forced	20	1179648	35	0x1c718a	0	0
+natural	old	lp	ground	171	0	0	forced	21	1179648	35		0	0
+natural	old	lp	ground	171	0	0	forced	22	1179648	35		0	0
+natural	old	lp	ground	171	0	0	forced	23	1179648	35		0	0
+natural	old	lp	ground	171	0	0	forced	24	1179648	35		0	0
+natural	old	lp	ground	171	0	0	forced	25	1179648	34		0	0
+natural	old	lp	ground	171	0	0	forced	26	1179648	32	0x1c71a2	0	0
+natural	old	lp	ground	171	0	0	forced	27	1179648	30		0	0
+natural	old	lp	ground	171	0	0	forced	28	1179648	28	0x1c71a2	0	0
+natural	old	lp	ground	171	0	0	forced	29	1179648	26		0	0
+natural	old	lp	ground	171	0	0	forced	30	1179648	23	0x1c71a2	0	0
+natural	old	lp	ground	171	0	0	forced	31	1179648	20		0	0
+natural	old	lp	ground	171	0	0	forced	32	1179648	16	0x1c71a2	0	0
+natural	old	lp	ground	171	0	0	forced	33	1179648	12		0	0
+natural	old	lp	ground	171	0	0	forced	34	1179648	8	0x1c71a2	0	0
+natural	old	lp	ground	171	0	0	forced	35	1179648	3		0	0
+natural	old	lp	ground	171	0	0	forced	36	1179648	0	0x1c71be	1	0
+natural	old	lp	ground	171	0	0	forced	37	1179648	0	0x1c71d6	0	0
+natural	old	lp	ground	171	0	0	forced	38	1179648	0		0	0
+natural	old	lp	ground	171	0	0	forced	39	1179648	0		0	1
+natural	old	lp	ground	171	0	1	forced	0	0	0	0x1c7142	0	0
+natural	old	lp	ground	171	0	1	forced	1	0	0		0	0
+natural	old	lp	ground	171	0	1	forced	2	0	0	0x1c715a	0	0
+natural	old	lp	ground	171	0	1	forced	3	0	0		0	0
+natural	old	lp	ground	171	0	1	forced	4	0	0		0	0
+natural	old	lp	ground	171	0	1	forced	5	0	0		0	0
+natural	old	lp	ground	171	0	1	forced	6	0	0	0x1c7172	0	0
+natural	old	lp	ground	171	0	1	forced	7	0	0		0	0
+natural	old	lp	ground	171	0	1	forced	8	262144	5		0	0
+natural	old	lp	ground	171	0	1	forced	9	491520	9		0	0
+natural	old	lp	ground	171	0	1	forced	10	688128	13		0	0
+natural	old	lp	ground	171	0	1	forced	11	851968	17		0	0
+natural	old	lp	ground	171	0	1	forced	12	983040	21		0	0
+natural	old	lp	ground	171	0	1	forced	13	1081344	24		0	0
+natural	old	lp	ground	171	0	1	forced	14	1146880	27		0	0
+natural	old	lp	ground	171	0	1	forced	15	1179648	29		0	0
+natural	old	lp	ground	171	0	1	forced	16	1179648	31		0	0
+natural	old	lp	ground	171	0	1	forced	17	1179648	31		0	0
+natural	old	lp	ground	171	0	1	forced	18	1179648	33		0	0
+natural	old	lp	ground	171	0	1	forced	19	1179648	34		0	0
+natural	old	lp	ground	171	0	1	forced	20	1179648	35	0x1c718a	0	0
+natural	old	lp	ground	171	0	1	forced	21	1179648	35		0	0
+natural	old	lp	ground	171	0	1	forced	22	1179648	35		0	0
+natural	old	lp	ground	171	0	1	forced	23	1179648	35		0	0
+natural	old	lp	ground	171	0	1	forced	24	1179648	35		0	0
+natural	old	lp	ground	171	0	1	forced	25	1179648	34		0	0
+natural	old	lp	ground	171	0	1	forced	26	1179648	32	0x1c71a2	0	0
+natural	old	lp	ground	171	0	1	forced	27	1179648	30		0	0
+natural	old	lp	ground	171	0	1	forced	28	1179648	28	0x1c71a2	0	0
+natural	old	lp	ground	171	0	1	forced	29	1179648	26		0	0
+natural	old	lp	ground	171	0	1	forced	30	1179648	23	0x1c71a2	0	0
+natural	old	lp	ground	171	0	1	forced	31	1179648	20		0	0
+natural	old	lp	ground	171	0	1	forced	32	1179648	16	0x1c71a2	0	0
+natural	old	lp	ground	171	0	1	forced	33	1179648	12		0	0
+natural	old	lp	ground	171	0	1	forced	34	1179648	8	0x1c71a2	0	0
+natural	old	lp	ground	171	0	1	forced	35	1179648	3		0	0
+natural	old	lp	ground	171	0	1	forced	36	1179648	0	0x1c71be	1	0
+natural	old	lp	ground	171	0	1	forced	37	1179648	0	0x1c71d6	0	0
+natural	old	lp	ground	171	0	1	forced	38	1179648	0		0	0
+natural	old	lp	ground	171	0	1	forced	39	1179648	0		0	1
+natural	old	mp	ground	171	0	0	forced	0	0	0	0x1c71f2	0	0
+natural	old	mp	ground	171	0	0	forced	1	0	0		0	0
+natural	old	mp	ground	171	0	0	forced	2	0	0	0x1c720a	0	0
+natural	old	mp	ground	171	0	0	forced	3	0	0		0	0
+natural	old	mp	ground	171	0	0	forced	4	0	0		0	0
+natural	old	mp	ground	171	0	0	forced	5	0	0		0	0
+natural	old	mp	ground	171	0	0	forced	6	0	0	0x1c7222	0	0
+natural	old	mp	ground	171	0	0	forced	7	0	0		0	0
+natural	old	mp	ground	171	0	0	forced	8	524288	8		0	0
+natural	old	mp	ground	171	0	0	forced	9	1015808	15		0	0
+natural	old	mp	ground	171	0	0	forced	10	1474560	22		0	0
+natural	old	mp	ground	171	0	0	forced	11	1900544	29		0	0
+natural	old	mp	ground	171	0	0	forced	12	2293760	36		0	0
+natural	old	mp	ground	171	0	0	forced	13	2654208	42		0	0
+natural	old	mp	ground	171	0	0	forced	14	2981888	48		0	0
+natural	old	mp	ground	171	0	0	forced	15	3276800	53		0	0
+natural	old	mp	ground	171	0	0	forced	16	3538944	58		0	0
+natural	old	mp	ground	171	0	0	forced	17	3768320	63		0	0
+natural	old	mp	ground	171	0	0	forced	18	3964928	67		0	0
+natural	old	mp	ground	171	0	0	forced	19	4128768	71		0	0
+natural	old	mp	ground	171	0	0	forced	20	4259840	74		0	0
+natural	old	mp	ground	171	0	0	forced	21	4358144	77		0	0
+natural	old	mp	ground	171	0	0	forced	22	4423680	80		0	0
+natural	old	mp	ground	171	0	0	forced	23	4456448	83		0	0
+natural	old	mp	ground	171	0	0	forced	24	4456448	85		0	0
+natural	old	mp	ground	171	0	0	forced	25	4456448	85		0	0
+natural	old	mp	ground	171	0	0	forced	26	4456448	86		0	0
+natural	old	mp	ground	171	0	0	forced	27	4456448	87		0	0
+natural	old	mp	ground	171	0	0	forced	28	4456448	88	0x1c723a	0	0
+natural	old	mp	ground	171	0	0	forced	29	4456448	89		0	0
+natural	old	mp	ground	171	0	0	forced	30	4456448	89		0	0
+natural	old	mp	ground	171	0	0	forced	31	4456448	89		0	0
+natural	old	mp	ground	171	0	0	forced	32	4456448	88		0	0
+natural	old	mp	ground	171	0	0	forced	33	4456448	87		0	0
+natural	old	mp	ground	171	0	0	forced	34	4456448	86	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	35	4456448	84		0	0
+natural	old	mp	ground	171	0	0	forced	36	4456448	82	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	37	4456448	79		0	0
+natural	old	mp	ground	171	0	0	forced	38	4456448	76	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	39	4456448	73		0	0
+natural	old	mp	ground	171	0	0	forced	40	4456448	70	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	41	4456448	66		0	0
+natural	old	mp	ground	171	0	0	forced	42	4456448	61	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	43	4456448	56		0	0
+natural	old	mp	ground	171	0	0	forced	44	4456448	51	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	45	4456448	46		0	0
+natural	old	mp	ground	171	0	0	forced	46	4456448	40	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	47	4456448	34		0	0
+natural	old	mp	ground	171	0	0	forced	48	4456448	27	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	49	4456448	20		0	0
+natural	old	mp	ground	171	0	0	forced	50	4456448	13	0x1c7252	0	0
+natural	old	mp	ground	171	0	0	forced	51	4456448	5		0	0
+natural	old	mp	ground	171	0	0	forced	52	4456448	0	0x1c726e	1	0
+natural	old	mp	ground	171	0	0	forced	53	4456448	0	0x1c7286	0	0
+natural	old	mp	ground	171	0	0	forced	54	4456448	0		0	0
+natural	old	mp	ground	171	0	0	forced	55	4456448	0		0	1
+natural	old	mp	ground	171	0	1	forced	0	0	0	0x1c71f2	0	0
+natural	old	mp	ground	171	0	1	forced	1	0	0		0	0
+natural	old	mp	ground	171	0	1	forced	2	0	0	0x1c720a	0	0
+natural	old	mp	ground	171	0	1	forced	3	0	0		0	0
+natural	old	mp	ground	171	0	1	forced	4	0	0		0	0
+natural	old	mp	ground	171	0	1	forced	5	0	0		0	0
+natural	old	mp	ground	171	0	1	forced	6	0	0	0x1c7222	0	0
+natural	old	mp	ground	171	0	1	forced	7	0	0		0	0
+natural	old	mp	ground	171	0	1	forced	8	524288	8		0	0
+natural	old	mp	ground	171	0	1	forced	9	1015808	15		0	0
+natural	old	mp	ground	171	0	1	forced	10	1474560	22		0	0
+natural	old	mp	ground	171	0	1	forced	11	1900544	29		0	0
+natural	old	mp	ground	171	0	1	forced	12	2293760	36		0	0
+natural	old	mp	ground	171	0	1	forced	13	2654208	42		0	0
+natural	old	mp	ground	171	0	1	forced	14	2981888	48		0	0
+natural	old	mp	ground	171	0	1	forced	15	3276800	53		0	0
+natural	old	mp	ground	171	0	1	forced	16	3538944	58		0	0
+natural	old	mp	ground	171	0	1	forced	17	3768320	63		0	0
+natural	old	mp	ground	171	0	1	forced	18	3964928	67		0	0
+natural	old	mp	ground	171	0	1	forced	19	4128768	71		0	0
+natural	old	mp	ground	171	0	1	forced	20	4259840	74		0	0
+natural	old	mp	ground	171	0	1	forced	21	4358144	77		0	0
+natural	old	mp	ground	171	0	1	forced	22	4423680	80		0	0
+natural	old	mp	ground	171	0	1	forced	23	4456448	83		0	0
+natural	old	mp	ground	171	0	1	forced	24	4456448	85		0	0
+natural	old	mp	ground	171	0	1	forced	25	4456448	85		0	0
+natural	old	mp	ground	171	0	1	forced	26	4456448	86		0	0
+natural	old	mp	ground	171	0	1	forced	27	4456448	87		0	0
+natural	old	mp	ground	171	0	1	forced	28	4456448	88	0x1c723a	0	0
+natural	old	mp	ground	171	0	1	forced	29	4456448	89		0	0
+natural	old	mp	ground	171	0	1	forced	30	4456448	89		0	0
+natural	old	mp	ground	171	0	1	forced	31	4456448	89		0	0
+natural	old	mp	ground	171	0	1	forced	32	4456448	88		0	0
+natural	old	mp	ground	171	0	1	forced	33	4456448	87		0	0
+natural	old	mp	ground	171	0	1	forced	34	4456448	86	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	35	4456448	84		0	0
+natural	old	mp	ground	171	0	1	forced	36	4456448	82	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	37	4456448	79		0	0
+natural	old	mp	ground	171	0	1	forced	38	4456448	76	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	39	4456448	73		0	0
+natural	old	mp	ground	171	0	1	forced	40	4456448	70	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	41	4456448	66		0	0
+natural	old	mp	ground	171	0	1	forced	42	4456448	61	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	43	4456448	56		0	0
+natural	old	mp	ground	171	0	1	forced	44	4456448	51	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	45	4456448	46		0	0
+natural	old	mp	ground	171	0	1	forced	46	4456448	40	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	47	4456448	34		0	0
+natural	old	mp	ground	171	0	1	forced	48	4456448	27	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	49	4456448	20		0	0
+natural	old	mp	ground	171	0	1	forced	50	4456448	13	0x1c7252	0	0
+natural	old	mp	ground	171	0	1	forced	51	4456448	5		0	0
+natural	old	mp	ground	171	0	1	forced	52	4456448	0	0x1c726e	1	0
+natural	old	mp	ground	171	0	1	forced	53	4456448	0	0x1c7286	0	0
+natural	old	mp	ground	171	0	1	forced	54	4456448	0		0	0
+natural	old	mp	ground	171	0	1	forced	55	4456448	0		0	1

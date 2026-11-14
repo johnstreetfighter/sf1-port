@@ -3602,6 +3602,7 @@ fn decimal_down(bus: &mut Bus, end: u32) {
 /// TIME label drawn (text block 0x14f1c).
 fn round_start(bus: &mut Bus) {
     bus.wb(SCENE_MODE, 0x80);
+    bus.toggle_state.throw.st_ryu.fill(None);
     reset_button_latches(bus);
     for a in [0xff86b0, 0xff86b1, 0xff86da, 0xff86db] {
         bus.wb(a, 0);
@@ -6708,6 +6709,7 @@ fn round_hud(bus: &mut Bus) -> bool {
     }
     bus.bind_roster_tables();
     bus.era_begin_round();
+    bus.clear_contact_freeze();
     for (ps, place) in [(layout.a, layout.a_place), (layout.b, layout.b_place)] {
         let (x, facing) = bus.roster_walk_in(ps).map_or(place, |(x, f)| (x, Some(f)));
         bus.wb(ps + 6, 4);
@@ -7571,10 +7573,12 @@ fn opponent_intro_start(bus: &mut Bus, io: &Io, at: &mut Screen) -> Yield {
 /// so it always sleeps (disclosed; modelling overruns needs the 68000's
 /// cycle timing).
 fn fight_frame(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
+    bus.st_pending_super_flash();
     if bus.era_freeze_tick() {
         return Yield::Sleep(1);
     }
     bus.wb(FRAME_PENDING, 0xff);
+    let contact_freeze = bus.contact_freeze();
     bus.drive_fight_inputs();
     if bus.era_freeze_tick() {
         return Yield::Sleep(1);
@@ -7592,6 +7596,7 @@ fn fight_frame(bus: &mut Bus, io: &Io, at: &mut Flow) -> Yield {
     bus.drift_stage();
     bus.dispatch_fighters();
     bus.run_effects();
+    bus.tick_contact_freeze(contact_freeze);
     bus.resolve_camera();
     // Training's refill (ticket #243), once a fight frame for both
     // fighters, after this frame's hits and blocks; nothing outside Training.

@@ -313,6 +313,7 @@ fn training_fills_and_coaches_each_canonical_sf6_fighter() {
 
     for (fighter, name, slot) in [
         (Ryu, "SHINKU HADOKEN", 0x29),
+        (Ken, "DRAGONLASH FLAME", 0x29),
         (Ken, "SHIPPU JINRAIKYAKU", 0x2a),
         (Retsu, "TENCHI SHORINJI DROP", 0x2b),
     ] {
@@ -548,8 +549,12 @@ fn ken_can_start_his_three_arts_and_jinrai_branches() {
     let forward = [DOWN, DOWN | RIGHT, RIGHT, DOWN, DOWN | RIGHT, RIGHT];
     let back = [DOWN, DOWN | LEFT, LEFT, DOWN, DOWN | LEFT, LEFT];
     for (slot, motion, button, spent) in [
-        (0x29, forward, 3, 48),
-        (0x2a, back, 3, 96),
+        (0x29, back, 3, 48),
+        (0x29, back, 4, 48),
+        (0x29, back, 5, 48),
+        (0x2a, forward, 3, 96),
+        (0x2a, forward, 4, 96),
+        (0x2a, forward, 5, 96),
         (0x2b, forward, 0, 144),
     ] {
         let mut fight = base.clone();
@@ -557,6 +562,13 @@ fn ken_can_start_his_three_arts_and_jinrai_branches() {
         attack(&mut fight, assets, &motion, button);
         assert_eq!(fight.fight_read().fighters[0].move_id, slot);
         assert_eq!(fight.machine().era_fighters()[0].super_meter, 144 - spent);
+    }
+    for (motion, button, starting_meter) in [(forward, 3, 48), (back, 0, 144)] {
+        let mut fight = base.clone();
+        meter(&mut fight, starting_meter);
+        attack(&mut fight, assets, &motion, button);
+        assert!(!matches!(fight.fight_read().fighters[0].move_id, 0x29..=0x2b));
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, starting_meter);
     }
     for (direction, slot) in [(DOWN, 0x23), (0, 0x1e), (RIGHT, 0x1d)] {
         let mut fight = base.clone();

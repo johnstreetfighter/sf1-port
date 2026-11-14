@@ -1,0 +1,49 @@
+fixture_gap	ken_loadout	strength	phase	setup	input_tick_mod256	release_at	ken_ready	lifeloss_at	hp_lost	target_pause	velocity_16_16	velocity_samples	position_first_x
+104	new	hp	0	standing	217	13	53	13	19	14		0	576
+104	new	hp	0	crouch_guard	217	13	53	13	4	14		0	576
+104	new	hp	0	jump	217	13	53				-327680	10	576
+104	new	hp	1	standing	218	13	53	13	19	14		0	576
+104	new	hp	1	crouch_guard	218	13	53	13	4	14		0	576
+104	new	hp	1	jump	218	13	53				-327680	9	576
+104	new	lp	0	standing	217	13	53	13	16	14		0	576
+104	new	lp	0	crouch_guard	217	13	53	13	4	14		0	576
+104	new	lp	0	jump	217	13	53				-196608	17	576
+104	new	lp	1	standing	218	13	53	13	16	14		0	576
+104	new	lp	1	crouch_guard	218	13	53	13	4	14		0	576
+104	new	lp	1	jump	218	13	53				-196608	15	576
+104	new	mp	0	standing	217	13	53	13	17	14		0	576
+104	new	mp	0	crouch_guard	217	13	53	13	4	14		0	576
+104	new	mp	0	jump	217	13	53				-262144	13	576
+104	new	mp	1	standing	218	13	53	13	17	14		0	576
+104	new	mp	1	crouch_guard	218	13	53	13	4	14		0	576
+104	new	mp	1	jump	218	13	53				-262144	11	576
+104	old	hp	0	standing	220	12	52	12	19	14		0	576
+104	old	hp	0	crouch_guard	220	12	52	12	4	14		0	576
+104	old	hp	0	jump	219	12	52				-327680	8	571
+104	old	hp	1	standing	220	12	52	12	19	14		0	576
+104	old	hp	1	crouch_guard	220	12	52	12	4	14		0	576
+104	old	hp	1	jump	221	12	52				-327680	8	576
+104	old	lp	0	standing	220	12	52	12	16	14		0	576
+104	old	lp	0	crouch_guard	220	12	52	12	4	14		0	576
+104	old	lp	0	jump	219	12	52				-196608	14	573
+104	old	lp	1	standing	220	12	52	12	16	14		0	576
+104	old	lp	1	crouch_guard	220	12	52	12	4	14		0	576
+104	old	lp	1	jump	221	12	52				-196608	14	576
+104	old	mp	0	standing	220	12	52	12	17	14		0	576
+104	old	mp	0	crouch_guard	220	12	52	12	4	14		0	576
+104	old	mp	0	jump	219	12	52				-262144	10	572
+104	old	mp	1	standing	220	12	52	12	17	14		0	576
+104	old	mp	1	crouch_guard	220	12	52	12	4	14		0	576
+104	old	mp	1	jump	221	12	52				-262144	10	576
+171	new	hp	0	whiff	217	13	53				-327680	14	638
+171	new	hp	1	whiff	218	13	53				-327680	12	643
+171	new	lp	0	whiff	217	13	53				-196608	23	640
+171	new	lp	1	whiff	218	13	53				-196608	20	643
+171	new	mp	0	whiff	217	13	53				-262144	16	639
+171	new	mp	1	whiff	218	13	53				-262144	15	643
+171	old	hp	0	whiff	219	12	52				-327680	12	643
+171	old	hp	1	whiff	220	12	52				-327680	13	643
+171	old	lp	0	whiff	219	12	52				-196608	20	643
+171	old	lp	1	whiff	220	12	52				-196608	22	643
+171	old	mp	0	whiff	219	12	52				-262144	14	643
+171	old	mp	1	whiff	220	12	52				-262144	17	643

@@ -22,7 +22,7 @@ use sf_engine::data_bank::{
     ALPHA_COUNTER_SLOT, ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT, SF2_SUPER_SLOT,
 };
 use sf_engine::era::{EraFamily, Loadout, Revision};
-use sf_engine::era_fight::SUPER_FREEZE_FRAMES;
+use sf_engine::era_fight::ST_RYU_SHINKU_FREEZE;
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::moves::Choice;
 use sf_engine::front::pause::PauseBox;
@@ -447,7 +447,7 @@ fn st_new_shows_and_coaches_the_native_super_and_old_hides_it() {
             break;
         }
     }
-    assert!(announced && moves.contains(&SF2_SUPER_SLOT) && freeze == SUPER_FREEZE_FRAMES - 1,
+    assert!(announced && moves.contains(&SF2_SUPER_SLOT) && freeze == ST_RYU_SHINKU_FREEZE - 1,
         "Show ran and announced the native Super: moves={moves:x?}, freeze={freeze}, announced={announced}");
     let entry = *session.coach().expect("completed Show enters Try").entry();
     assert_eq!(entry.produces, SF2_SUPER_SLOT);
