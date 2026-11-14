@@ -2,10 +2,10 @@
 //! machine before and after a step, after any external Training refill.
 
 use sf_video::era_hud::{
-    Fill, GaugeKind, GaugePresentation, GaugeRow, GaugeState, RowPresentation,
+    Fill, GaugeCharge, GaugeKind, GaugePresentation, GaugeRow, GaugeState, RowPresentation,
 };
 
-const DRAIN_FRAMES: u8 = 27;
+const DRAIN_FRAMES: u8 = 12;
 const FLASH_CYCLE: u8 = 33;
 const FLASH_ON: u8 = 11;
 const PULSE_CYCLE: u8 = 84;
@@ -83,6 +83,21 @@ impl Row {
             GaugeRow::Level { level, .. } => Some(level),
             _ => None,
         }
+    }
+
+    fn newly_ready(self, before: Self) -> Option<GaugeCharge> {
+        let (from, to) = match self.gauge {
+            GaugeRow::Level { .. } if self.count() > before.count() => (Fill::EMPTY, Fill::FULL),
+            // A continuous gauge's ready span can grow every frame after
+            // crossing the threshold. Only its first usable frame is a cue.
+            GaugeRow::Bar { .. } if before.presentation.ready.num != 0 => return None,
+            _ => (before.presentation.ready, self.presentation.ready),
+        };
+        (self.presentation.ready.num != 0 && more(to, from)).then_some(GaugeCharge {
+            from,
+            to,
+            age: 0,
+        })
     }
 
     fn can_animate(self) -> bool {
@@ -166,6 +181,7 @@ impl GaugeEffects {
 struct RowEffects {
     flash_phase: u8,
     pulse_phase: u8,
+    charge: Option<GaugeCharge>,
     drain: Option<Drain>,
 }
 
@@ -177,6 +193,12 @@ struct Drain {
 }
 
 impl Drain {
+    const DIGIT_ONLY: Fill = Fill::of(1, 4096);
+
+    fn new(from: Fill, to: Fill) -> Self {
+        Self { from, to, age: 0 }
+    }
+
     fn edge(self) -> Fill {
         if self.age == 0 {
             return self.from;
@@ -188,7 +210,12 @@ impl Drain {
         let duration = usize::from(DRAIN_FRAMES);
         // A fast retreat at the start, easing onto the real value.
         let distance = from.saturating_sub(to) * left * left / (duration * duration);
-        Fill::of((to + distance) as u16, SCALE as u16)
+        let edge = to + distance;
+        if edge == 0 {
+            Fill::EMPTY
+        } else {
+            Fill::of(edge as u16, SCALE as u16)
+        }
     }
 }
 
@@ -201,8 +228,14 @@ impl RowEffects {
         use GaugeKind::*;
         let kind = after.presentation.kind;
         let finished_trigger = v_trigger && before.presentation.kind == Sf5VTrigger && kind == Sf5V;
+        let started_trigger = before.presentation.kind == Sf5V && kind == Sf5VTrigger;
         if !before.same_shape(after) || (before.presentation.kind != kind && !finished_trigger) {
             *self = Self::default();
+            if started_trigger {
+                // Activation has spent the V-Gauge, but its replacement
+                // is a timer with a different scale. Accent its label only.
+                self.drain = Some(Drain::new(Fill::EMPTY, Fill::EMPTY));
+            }
             return;
         }
         if after.presentation.ready.num != 0
@@ -215,6 +248,13 @@ impl RowEffects {
             self.flash_phase = 0;
         }
         self.pulse_phase = (self.pulse_phase + 1) % PULSE_CYCLE;
+        self.charge = self.charge.and_then(|mut cue| {
+            cue.age += 1;
+            (cue.age < GaugeCharge::FRAMES
+                && after.presentation.ready.num != 0
+                && (after.count().is_some() || !more(cue.to, after.presentation.ready)))
+            .then_some(cue)
+        });
         if let Some(drain) = &mut self.drain {
             drain.age += 1;
             if drain.age == DRAIN_FRAMES {
@@ -225,8 +265,17 @@ impl RowEffects {
             && !finished_trigger
             && (!before.can_animate() || !after.can_animate())
         {
+            self.charge = None;
             self.drain = None;
             return;
+        }
+        if let Some(charge) = after.newly_ready(before) {
+            self.charge = Some(charge);
+            if after.count() > before.count() || !more(before.amount(), after.amount()) {
+                // A new stock can arrive while the old payment is still
+                // visible. Give the earned cue the row.
+                self.drain = None;
+            }
         }
         match kind {
             AlphaCustom | Alpha3GuardA | Alpha3GuardV | Alpha3GuardX => return,
@@ -239,15 +288,11 @@ impl RowEffects {
         let fewer_stocks = after.count() < before.count();
         let fell = after.count() == before.count() && more(previous, current);
         if fewer_stocks || fell {
+            self.charge = None;
             // A stock can be spent without changing SFIII's visible
             // remainder. A nonzero subpixel value cues only the numeral.
             if fewer_stocks && !more(previous, current) {
-                let marker = Fill::of(1, 4096);
-                self.drain = Some(Drain {
-                    from: marker,
-                    to: marker,
-                    age: 0,
-                });
+                self.drain = Some(Drain::new(Drain::DIGIT_ONLY, Drain::DIGIT_ONLY));
                 return;
             }
             let start = previous;
@@ -256,11 +301,7 @@ impl RowEffects {
                 .map(Drain::edge)
                 .filter(|&old| more(old, start))
                 .unwrap_or(start);
-            self.drain = Some(Drain {
-                from,
-                to: current,
-                age: 0,
-            });
+            self.drain = Some(Drain::new(from, current));
         }
     }
 
@@ -274,7 +315,9 @@ impl RowEffects {
                 std::f32::consts::TAU * f32::from(self.pulse_phase) / f32::from(PULSE_CYCLE);
             info.pulse = (54.0 + 150.0 * (1.0 - angle.cos()) * 0.5).round() as u8;
         }
+        info.charge = self.charge;
         info.drain = self.drain.map_or(Fill::EMPTY, Drain::edge);
+        info.spend_age = self.drain.map(|drain| drain.age);
         info
     }
 }
@@ -283,6 +326,123 @@ impl RowEffects {
 mod tests {
     use super::*;
 
+    fn stock(cells: u8, amount: u16, kind: GaugeKind) -> Row {
+        let full = (amount / 48) as u8;
+        Row {
+            gauge: GaugeRow::stock(cells, full, Fill::of(amount % 48, 48)),
+            presentation: RowPresentation::new(kind)
+                .with_ready(Fill::of(u16::from(full), u16::from(cells))),
+        }
+    }
+
+    #[test]
+    fn readiness_marks_only_new_stocks_and_expires_while_the_gauge_stays_ready() {
+        let stock = |amount| stock(3, amount, GaugeKind::Sf5Critical);
+        let mut effects = RowEffects::default();
+        effects.step(None, Some(stock(47)), false, false);
+        effects.step(Some(stock(47)), Some(stock(48)), false, false);
+        let first = effects.present(stock(48));
+        assert_eq!(
+            first.charge,
+            Some(GaugeCharge {
+                from: Fill::of(0, 3),
+                to: Fill::of(1, 3),
+                age: 0
+            })
+        );
+        for age in 1..=GaugeCharge::FRAMES {
+            effects.step(Some(stock(48)), Some(stock(48)), false, false);
+            assert_eq!(
+                effects.present(stock(48)).charge.map(|cue| cue.age),
+                (age < GaugeCharge::FRAMES).then_some(age)
+            );
+        }
+        assert_ne!(effects.present(stock(48)).pulse, 0);
+
+        effects.step(Some(stock(95)), Some(stock(96)), false, false);
+        assert_eq!(
+            effects.present(stock(96)).charge,
+            Some(GaugeCharge {
+                from: Fill::of(1, 3),
+                to: Fill::of(2, 3),
+                age: 0,
+            })
+        );
+        effects.step(Some(stock(96)), Some(stock(48)), false, false);
+        let spent = effects.present(stock(48));
+        assert_eq!(spent.charge, None);
+        assert_eq!(spent.spend_age, Some(0));
+        assert_eq!(spent.drain.px(96), 64);
+        for age in 1..12 {
+            effects.step(Some(stock(48)), Some(stock(48)), false, false);
+            assert_eq!(effects.present(stock(48)).spend_age, Some(age));
+        }
+        effects.step(Some(stock(48)), Some(stock(48)), false, false);
+        let quiet = effects.present(stock(48));
+        assert_eq!(quiet.spend_age, None);
+        assert_eq!(quiet.drain, Fill::EMPTY);
+
+        effects.step(Some(stock(96)), Some(stock(47)), false, false);
+        effects.step(Some(stock(47)), Some(stock(48)), false, false);
+        let recharged = effects.present(stock(48));
+        assert_eq!(recharged.charge.unwrap().age, 0);
+        assert_eq!(recharged.spend_age, None);
+    }
+
+    #[test]
+    fn earned_drive_readiness_and_paid_drain_ignore_ordinary_regeneration_and_loss() {
+        let drive = |amount| stock(6, amount, GaugeKind::Sf6Drive);
+        let mut effects = RowEffects::default();
+        effects.step(Some(drive(47)), Some(drive(48)), false, false);
+        assert_eq!(effects.present(drive(48)).charge.unwrap().age, 0);
+        effects.step(Some(drive(48)), Some(drive(49)), false, false);
+        assert_eq!(effects.present(drive(49)).charge.unwrap().age, 1);
+        effects.step(Some(drive(49)), Some(drive(48)), false, false);
+        assert!(effects.present(drive(48)).spend_age.is_none());
+        effects.step(Some(drive(48)), Some(drive(10)), true, false);
+        assert_eq!(effects.present(drive(10)).spend_age, Some(0));
+        assert!(effects.present(drive(10)).charge.is_none());
+
+        let bar = |points, ready| Row {
+            gauge: GaugeRow::bar(Fill::of(points, 100), Fill::FULL),
+            presentation: RowPresentation::new(GaugeKind::Sf4Revenge).with_ready(ready),
+        };
+        let half = Fill::of(50, 100);
+        let growing = Fill::of(51, 100);
+        effects.step(
+            Some(bar(49, Fill::EMPTY)),
+            Some(bar(50, half)),
+            false,
+            false,
+        );
+        effects.step(Some(bar(50, half)), Some(bar(51, growing)), false, false);
+        assert_eq!(effects.present(bar(51, growing)).charge.unwrap().age, 1);
+    }
+
+    #[test]
+    fn third_strike_level_up_survives_a_wrapped_remainder_and_loses_to_a_spend() {
+        let row = |level, points| Row {
+            gauge: GaugeRow::level(level, 3, Fill::of(points, 48)),
+            presentation: RowPresentation::new(GaugeKind::Sf3ThirdStrike)
+                .with_ready(if level == 0 { Fill::EMPTY } else { Fill::FULL }),
+        };
+        let mut effects = RowEffects::default();
+        effects.step(Some(row(1, 47)), Some(row(2, 0)), false, false);
+        assert_eq!(
+            effects.present(row(2, 0)).charge,
+            Some(GaugeCharge {
+                from: Fill::EMPTY,
+                to: Fill::FULL,
+                age: 0,
+            })
+        );
+        effects.step(Some(row(2, 0)), Some(row(1, 2)), false, false);
+        let paid = effects.present(row(1, 2));
+        assert_eq!(paid.charge, None);
+        assert_eq!(paid.spend_age, Some(0));
+        assert_eq!(paid.drain.px(96), 0);
+    }
+
     #[test]
     fn v_trigger_tail_comes_from_paid_energy_and_survives_a_paid_expiration() {
         let timed = |amount| Row {
@@ -290,6 +450,9 @@ mod tests {
             presentation: RowPresentation::new(GaugeKind::Sf5VTrigger),
         };
         let mut effects = RowEffects::default();
+        let ready = stock(2, 96, GaugeKind::Sf5V);
+        effects.step(Some(ready), Some(timed(45)), false, false);
+        assert_eq!(effects.present(timed(45)).spend_age, Some(0));
         effects.step(Some(timed(45)), Some(timed(44)), false, false);
         assert_eq!(effects.present(timed(44)).drain, Fill::EMPTY);
 

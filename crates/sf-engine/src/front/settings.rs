@@ -14,6 +14,7 @@ use sf_video::era_hud::GaugeArt;
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 use super::tune::TypedKey;
+use super::value_motion::{ValueDirection, ValueMotion};
 use super::{MenuItem, Transition};
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::jukebox::{Jukebox, Section as JukeboxSection};
@@ -884,6 +885,15 @@ impl Row {
     fn live(self) -> bool {
         !matches!(self, Row::Greyed(_) | Row::Heading(_))
     }
+
+    fn is_toggle(self) -> bool {
+        match self {
+            Row::Toggle(i) => TOGGLES[i].frames.is_none(),
+            Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen
+            | Row::Vsync | Row::ScreenShake | Row::WiredOnly => true,
+            _ => false,
+        }
+    }
 }
 
 /// The rows of `tab`, top to bottom.
@@ -982,6 +992,7 @@ pub struct SettingsScreen {
     /// and uses `OFF`, while the settings keep the look ([`look_in_use`]).
     failed_look: Option<String>,
     entry: Option<NetplayEntry>,
+    value_motion: Vec<(Row, ValueMotion)>,
 }
 
 /// The look drawn this run: `chosen` (the settings' `crt_look`), or `OFF`
@@ -1005,6 +1016,7 @@ impl SettingsScreen {
             display: DisplayInfo::default(),
             failed_look: None,
             entry: None,
+            value_motion: Vec::new(),
         }
     }
 
@@ -1050,6 +1062,7 @@ impl SettingsScreen {
     pub fn look_failed(&mut self, id: &str, notice: &str) {
         if self.settings.crt_look == id {
             self.failed_look = Some(id.to_owned());
+            self.value_motion.retain(|(row, _)| !matches!(row, Row::CrtLook | Row::FrameDelay));
         }
         self.notice = Some(notice.to_owned());
     }
@@ -1165,14 +1178,13 @@ impl SettingsScreen {
     /// The row's value as drawn: cut with `..` past [`Self::value_cells`]
     /// (a long drop-in's name, or an id the look list does not hold).
     pub fn value(&self, row: Row) -> String {
-        super::draw::fit(&self.full_value(row), self.value_cells(row))
+        let text = self.entry.as_ref().filter(|entry| entry.row == row)
+            .map_or_else(|| self.full_value(row), |entry| entry.text.iter().collect());
+        super::draw::fit(&text, self.value_cells(row))
     }
 
-    /// The row's value in full.
+    /// The stored row value, before clipping or inline edits.
     fn full_value(&self, row: Row) -> String {
-        if let Some(entry) = self.entry.as_ref().filter(|entry| entry.row == row) {
-            return entry.text.iter().collect();
-        }
         let on = |b: bool| if b { "ON" } else { "OFF" }.to_string();
         match row {
             Row::Preset => self.config.preset.display_name().to_ascii_uppercase(),
@@ -1469,6 +1481,13 @@ impl SettingsScreen {
         self.apply_entry(input)
     }
 
+    pub(super) fn type_key_at(&mut self, key: TypedKey, frame: u32) -> Option<Transition> {
+        match key {
+            TypedKey::Enter if self.typing() => self.apply_at(MenuInput::Confirm, frame),
+            _ => self.type_key(key),
+        }
+    }
+
     fn apply_entry(&mut self, input: MenuInput) -> Option<Transition> {
         if input == MenuInput::Back {
             self.entry = None;
@@ -1577,12 +1596,50 @@ impl SettingsScreen {
         }
     }
 
+    pub(super) fn apply_at(&mut self, input: MenuInput, frame: u32) -> Option<Transition> {
+        let row = self.row();
+        let before = match (self.typing(), input) {
+            (_, MenuInput::Confirm) | (false, MenuInput::Left | MenuInput::Right) => {
+                rows(self.tab()).into_iter()
+                    .map(|row| (row, super::draw::fit(&self.full_value(row), self.value_cells(row))))
+                    .collect::<Vec<_>>()
+            }
+            _ => Vec::new(),
+        };
+        let transition = self.apply(input)?;
+        match transition {
+            Transition::ValueChanged => {
+                let direction = ValueDirection::from_input(input).filter(|_| !row.is_toggle());
+                let changed: Vec<_> = before.into_iter().filter_map(|(target, previous)| {
+                    let value = self.value(target);
+                    (!value.is_empty() && value != previous).then(|| {
+                        (target, ValueMotion::new(frame, direction.filter(|_| target == row)))
+                    })
+                }).collect();
+                if !changed.is_empty() {
+                    self.value_motion = changed;
+                }
+            }
+            Transition::CursorMoved | Transition::Back | Transition::Choose(_) => self.value_motion.clear(),
+            _ => {}
+        }
+        Some(transition)
+    }
+
     /// The framed screen: the tabs across the top (the current one yellow
     /// and underlined), the current tab's rows as `NAME ....
     /// VALUE` (scrolling with the cursor), and per-tab notices or inline
     /// Netplay text entry.
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = super::draw::framed_wide(font, "SETTINGS", "");
+        self.render_screen(font, 0, None)
+    }
+
+    pub(super) fn render_with_title_at(&self, font: &RomFont<'_>, title_offset: usize, frame: u32) -> Frame {
+        self.render_screen(font, title_offset, Some(frame))
+    }
+
+    fn render_screen(&self, font: &RomFont<'_>, title_offset: usize, frame_no: Option<u32>) -> Frame {
+        let mut frame = super::draw::framed_wide_at(font, "SETTINGS", "", title_offset);
         let argb = &mut frame.argb;
         let stamp = crate::version::short_stamp();
         fallback_text(
@@ -1640,7 +1697,14 @@ impl SettingsScreen {
                 if vcol > dots_from + 1 {
                     font.text(argb, dots_from, r, &".".repeat(vcol - 1 - dots_from), ink::DIM);
                 }
-                font.text(argb, vcol, r, &value, color);
+                let cue = frame_no.and_then(|frame| self.value_motion.iter()
+                    .find(|(target, _)| target == row).and_then(|(_, motion)| motion.at(frame)));
+                if let Some(cue) = cue {
+                    let label_end = (LABEL_COL + label.chars().count()) * 8;
+                    cue.draw(argb, font, &value, (vcol * 8, r * 8), label_end..(VALUE_END_COL + 2) * 8);
+                } else {
+                    font.text(argb, vcol, r, &value, color);
+                }
             }
             if let Some(entry) = self.entry.as_ref().filter(|entry| entry.row == *row) {
                 let x = (VALUE_END_COL.saturating_sub(value.chars().count()) + entry.at) * 8;
@@ -1672,5 +1736,62 @@ impl SettingsScreen {
             }
         }
         frame
+    }
+}
+
+#[cfg(test)]
+mod value_motion_tests {
+    use super::*;
+
+    fn at(tab: Tab, row: Row) -> SettingsScreen {
+        let mut screen = SettingsScreen::open(MatchConfig::default(), Settings::default());
+        screen.tab = TABS.iter().position(|&candidate| candidate == tab).unwrap();
+        screen.cursor[screen.tab] = rows(tab).iter().position(|&candidate| candidate == row).unwrap();
+        screen
+    }
+
+    #[test]
+    fn accepted_steps_replace_the_cue_and_toggles_flash_without_direction() {
+        let mut screen = at(Tab::Video, Row::GaugeArt);
+        screen.apply_at(MenuInput::Left, 12);
+        assert_eq!(screen.value(Row::GaugeArt), "PLATE");
+        assert_eq!(screen.value_motion, [(Row::GaugeArt, ValueMotion::new(12, Some(ValueDirection::Left)))]);
+        screen.apply_at(MenuInput::Right, 13);
+        assert_eq!(screen.value(Row::GaugeArt), "RULED");
+        assert_eq!(screen.value_motion, [(Row::GaugeArt, ValueMotion::new(13, Some(ValueDirection::Right)))]);
+        screen.apply_at(MenuInput::Confirm, 14);
+        assert_eq!(screen.value(Row::GaugeArt), "BLOCKS");
+        assert_eq!(screen.value_motion, [(Row::GaugeArt, ValueMotion::new(14, None))]);
+        screen.apply_at(MenuInput::Down, 15);
+        assert!(screen.value_motion.is_empty());
+
+        let mut screen = at(Tab::Video, Row::ScreenShake);
+        screen.apply_at(MenuInput::Left, 21);
+        assert_eq!(screen.value_motion, [(Row::ScreenShake, ValueMotion::new(21, None))]);
+
+        let mut screen = at(Tab::Sound, Row::Master);
+        screen.settings.master = 10;
+        screen.apply_at(MenuInput::Right, 21);
+        assert!(screen.value_motion.is_empty());
+    }
+
+    #[test]
+    fn a_reset_or_typed_commit_flashes_only_changed_displayed_values() {
+        let mut screen = at(Tab::Video, Row::ResetTab);
+        screen.settings.gauge_art = GaugeArt::Plate;
+        screen.apply_at(MenuInput::Confirm, 30);
+        assert_eq!(screen.value_motion, [(Row::GaugeArt, ValueMotion::new(30, None))]);
+
+        let mut screen = at(Tab::Netplay, Row::PlayerTag);
+        screen.settings.player_tag = "PLAYER".to_owned();
+        screen.apply_at(MenuInput::Confirm, 40);
+        screen.type_key_at(TypedKey::Enter, 41);
+        assert!(screen.value_motion.is_empty());
+        screen.apply_at(MenuInput::Confirm, 42);
+        screen.type_key_at(TypedKey::Char('2'), 43);
+        assert!(screen.value_motion.is_empty());
+        screen.type_key_at(TypedKey::Enter, 44);
+        assert_eq!(screen.value(Row::PlayerTag), "PLAYER2");
+        assert_eq!(screen.value_motion, [(Row::PlayerTag, ValueMotion::new(44, None))]);
     }
 }

@@ -5,7 +5,7 @@ use sf_video::busts::Bust;
 use sf_video::compositor::{fallback_text, ink, RomFont};
 use sf_video::render::Frame;
 
-use super::draw::framed;
+use super::draw::framed_at;
 use super::select::SelectScreen;
 use super::Transition;
 use crate::config::MatchConfig;
@@ -217,12 +217,16 @@ impl DramaticSetupScreen {
     }
 
     pub fn render(&self, font: &RomFont<'_>, notice: Option<&str>) -> Frame {
+        self.render_with_title(font, notice, 0)
+    }
+
+    pub(super) fn render_with_title(&self, font: &RomFont<'_>, notice: Option<&str>, title_offset: usize) -> Frame {
         let header = if self.co_op {
             "LOCAL CO-OP DRAMATIC"
         } else {
             "DRAMATIC BATTLE"
         };
-        let mut frame = framed(font, header, "");
+        let mut frame = framed_at(font, header, "", title_offset);
         let argb = &mut frame.argb;
         let rivalry = RIVALRIES.get(self.matchup);
         if let Some(rivalry) = rivalry {
@@ -293,20 +297,21 @@ impl DramaticPicks {
         &self.selects[self.role]
     }
 
-    pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
-        self.selects[self.role].apply(input)
+    pub fn apply_at(&mut self, input: MenuInput, frame_no: u32) -> Option<Transition> {
+        self.selects[self.role].apply_at(input, frame_no)
     }
 
-    pub fn render(
+    pub fn render_with_title(
         &self,
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
         frame_no: u32,
         notice: Option<&str>,
+        title_offset: usize,
     ) -> Frame {
         let mut frame = self
             .select()
-            .render_named(font, busts, PICK_TITLES[self.role], frame_no, Some((self.picker(), false)));
+            .render_named_with_title(font, busts, PICK_TITLES[self.role], frame_no, Some((self.picker(), false)), title_offset);
         if let Some(notice) = notice {
             font.text_centred(&mut frame.argb, 26, notice, ink::YELLOW);
         }
@@ -329,6 +334,7 @@ impl DramaticPicks {
             // pick or the stage screen reopens this picker at the same era.
             select.apply(MenuInput::Back);
         }
+        select.clear_motion();
         self.chosen[self.role] = Some((fighter, revision));
         if self.role == PICK_TITLES.len() - 1 {
             self.match_on(fighter)
@@ -345,6 +351,7 @@ impl DramaticPicks {
         self.chosen[self.role] = None;
         self.role -= if self.remote_ally { 2 } else { 1 };
         self.chosen[self.role] = None;
+        self.selects[self.role].clear_motion();
         true
     }
 
@@ -413,7 +420,7 @@ impl DramaticGuest {
         self.locked
     }
 
-    pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
+    pub fn apply_at(&mut self, input: MenuInput, frame_no: u32) -> Option<Transition> {
         if input == MenuInput::Back && (self.locked || self.fixed.is_some()) {
             return Some(Transition::Back);
         }
@@ -422,9 +429,10 @@ impl DramaticGuest {
         {
             return None;
         }
-        match self.select.apply(input) {
+        match self.select.apply_at(input, frame_no) {
             Some(Transition::Fighter(fighter)) if fighter == self.fighter() => {
                 self.locked = true;
+                self.select.mark_external_lock(frame_no);
                 Some(Transition::Picked(fighter))
             }
             Some(Transition::Fighter(_)) => None,
@@ -432,15 +440,16 @@ impl DramaticGuest {
         }
     }
 
-    pub fn render(
+    pub fn render_with_title(
         &self,
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
         stages: &[StageListing],
         frame_no: u32,
         notice: Option<&str>,
+        title_offset: usize,
     ) -> Frame {
-        let mut frame = self.select.render_named(font, busts, PICK_TITLES[1], frame_no, Some((1, self.locked)));
+        let mut frame = self.select.render_named_with_title(font, busts, PICK_TITLES[1], frame_no, Some((1, self.locked)), title_offset);
         if let Some(rules) = self.rules {
             let listed_stage = self.stage.and_then(|StagePick::Bank(index)| {
                 stages.iter().find(|stage| stage.index == index)
@@ -540,15 +549,15 @@ mod tests {
         config.dramatic = Some(setup.preset().unwrap().rules);
         let mut guest = DramaticGuest::open(&config, &[]);
         assert_eq!(guest.fighter(), TournamentFighter::Ken);
-        assert_eq!(guest.apply(MenuInput::Left), None);
+        assert_eq!(guest.apply_at(MenuInput::Left, 1), None);
         assert_eq!(
-            guest.apply(MenuInput::Confirm),
+            guest.apply_at(MenuInput::Confirm, 2),
             Some(Transition::Picked(TournamentFighter::Ken))
         );
         assert!(guest.locked());
         assert_eq!(guest.revision(), Revision::Sf6);
-        assert_eq!(guest.apply(MenuInput::Right), None);
-        assert_eq!(guest.apply(MenuInput::Back), Some(Transition::Back));
+        assert_eq!(guest.apply_at(MenuInput::Right, 3), None);
+        assert_eq!(guest.apply_at(MenuInput::Back, 4), Some(Transition::Back));
         assert_eq!(guest.fighter(), TournamentFighter::Ken);
     }
 }

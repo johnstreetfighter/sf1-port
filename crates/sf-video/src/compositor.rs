@@ -947,13 +947,18 @@ impl<'a> RomFont<'a> {
     /// `text` in the 2×2 header font from cell (`col`, `row`): two cells
     /// per character, two rows tall. Characters the font lacks are left blank.
     pub fn header(&self, argb: &mut [u32], col: usize, row: usize, text: &str, color: u8) {
+        self.header_px(argb, col * 8, row * 8, text, color);
+    }
+
+    /// The same 2×2 header font at a pixel-aligned position.
+    pub fn header_px(&self, argb: &mut [u32], x: usize, y: usize, text: &str, color: u8) {
         for (i, ch) in text.chars().enumerate() {
             let Some(code) = header_glyph(ch) else { continue };
-            let c = col + 2 * i;
-            self.tile(argb, c, row, code, color);
-            self.tile(argb, c + 1, row, code + 1, color);
-            self.tile(argb, c, row + 1, code + 0x10, color);
-            self.tile(argb, c + 1, row + 1, code + 0x11, color);
+            let left = x + 16 * i;
+            self.tile_px(argb, left, y, code, color);
+            self.tile_px(argb, left + 8, y, code + 1, color);
+            self.tile_px(argb, left, y + 8, code + 0x10, color);
+            self.tile_px(argb, left + 8, y + 8, code + 0x11, color);
         }
     }
 

@@ -6,7 +6,7 @@ use crate::roster::MenuInput;
 use crate::netplay::{decode_room_code, Link, Room, RoomKind};
 use sf_video::compositor::{fallback_text, ink, RomFont};
 use sf_video::render::Frame;
-use super::draw::{fit, framed_wide};
+use super::draw::{fit, framed_wide_at};
 
 pub const NET_ENTRY_CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.: ";
 const ENTRY_MAX: usize = 32;
@@ -190,7 +190,11 @@ impl OnlineScreen {
     }
 
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = framed_wide(font, "ONLINE LOBBY", "");
+        self.render_with_title(font, 0)
+    }
+
+    pub(super) fn render_with_title(&self, font: &RomFont<'_>, title_offset: usize) -> Frame {
+        let mut frame = framed_wide_at(font, "ONLINE LOBBY", "", title_offset);
         let view = match self.view {
             LobbyView::Browse => "< BROWSE ROOMS >",
             LobbyView::Host => "< HOST MATCH >",

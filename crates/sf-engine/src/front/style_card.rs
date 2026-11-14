@@ -1,6 +1,7 @@
 //! The three spinners inside a Character Select portrait.
 
 use sf_video::compositor::{darken, fallback_text, ink, outline, RomFont};
+use sf_video::render::WIDTH;
 
 use crate::dramatic::DramaticRules;
 use crate::era::{
@@ -22,6 +23,49 @@ const ERA_ORDER: [EraFamily; 8] = [
     EraFamily::Sf1987,
 ];
 const ADVANCE: usize = 4;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum StyleLatch {
+    Open(u32),
+    Lock(u32),
+}
+
+impl StyleLatch {
+    pub(super) fn paint(self, argb: &mut [u32], (x, y, w, h): (usize, usize, usize, usize), side: usize, frame: u32) {
+        let rail = [0xffca_d8ff, 0xffff_d2bc][side];
+        match self {
+            Self::Open(start) => {
+                let age = frame.wrapping_sub(start) as usize;
+                if age >= 7 {
+                    return;
+                }
+                let row = &mut argb[(y + 7 + 14 * age) * WIDTH + x..][..w];
+                row[3..5].fill(rail);
+                row[w - 4..w - 2].fill(rail);
+                for pixel in &mut row[5..w - 4] {
+                    // A pale 18% pass leaves the current values legible.
+                    let source = *pixel;
+                    *pixel = [16, 8, 0].into_iter().zip([220, 230, 255]).fold(0xff00_0000, |color, (shift, ink)| {
+                        let value = ((source >> shift & 0xff) * 82 + ink * 18) / 100;
+                        color | (value << shift)
+                    });
+                }
+            }
+            Self::Lock(start) => {
+                let age = frame.wrapping_sub(start) as usize;
+                if age >= 8 {
+                    return;
+                }
+                let top = 2 + (14 * age).min(h - 10);
+                for dy in top..top + 5 {
+                    let row = &mut argb[(y + dy) * WIDTH + x..][..w];
+                    row[..2].fill(rail);
+                    row[w - 2..].fill(rail);
+                }
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct StyleCard {

@@ -427,10 +427,16 @@ impl ComboCounter {
         }
     }
 
+    /// The live count once it is visible, independently of Training's held count.
+    pub(crate) fn live_hits(&self, side: Side) -> Option<u16> {
+        let run = &self.runs[side.index()];
+        (run.running && run.hits >= 2).then_some(run.hits)
+    }
+
     /// The count `side` shows, with its damage when `damage` asks for it.
     pub fn shown(&self, side: Side, damage: bool) -> Option<ComboCount> {
         let run = &self.runs[side.index()];
-        let (hits, dealt) = if run.running && run.hits >= 2 { (run.hits, run.damage) } else { run.last? };
+        let (hits, dealt) = self.live_hits(side).map(|hits| (hits, run.damage)).or(run.last)?;
         Some(ComboCount { hits, damage: damage.then_some(dealt) })
     }
 }

@@ -104,6 +104,7 @@ fn assert_fighter_label(fight: &Fight, assets: &Assets, frame: &Frame, row: usiz
                 ((x + i * 8) as i32, y as i32, colour | code)
             })
             .collect(),
+        ..TextEdits::default()
     };
     let expected = render_frame_edited(assets, &scene, &edits);
     for row in y..y + 8 {

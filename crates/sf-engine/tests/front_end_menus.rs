@@ -345,7 +345,10 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
         let out = tap(s, input);
         assert_eq!(out.transition, Some(Transition::CursorMoved));
         assert_eq!(out.sound_latch, sound::CURSOR);
-        assert_eq!(row_color(&out.frame, &a, &menu, main[at], at), Some(ink::YELLOW), "cursor on {:?}", main[at]);
+        assert_eq!(s.menu_item(), Some(main[at]));
+        for _ in 0..4 { s.step(idle()); }
+        let settled = s.step(idle());
+        assert_eq!(row_color(&settled.frame, &a, &menu, main[at], at), Some(ink::YELLOW), "cursor on {:?}", main[at]);
     };
     expect_cursor(&mut s, p_dir(1, DOWN), 1);
     expect_cursor(&mut s, p_dir(2, DOWN), 2); // either player's stick drives the one cursor
@@ -411,6 +414,74 @@ fn main_menu_rows_cursor_greyed_items_and_sounds() {
     let out = tap(&mut s, back());
     assert_eq!((out.screen, out.transition), ("attract", Some(Transition::Back)));
     assert!(s.attract_machine().unrecovered().is_empty());
+}
+
+#[test]
+fn main_and_multi_player_cursors_flash_and_kick_on_the_accepted_input_frame() {
+    let Some(a) = assets() else { return };
+    let font = RomFont::new(&a.gfx4, &a.maincpu);
+    let mut s = session(load_assets(ROMS, MANIFEST).unwrap());
+    for _ in 0..100 { s.step(idle()); }
+    tap(&mut s, start());
+    const CREAM: [u32; 3] = [0xffff_ffaa, 0xff88_4400, 0xffff_dd88];
+    const WARM: [u32; 3] = [0xffff_dd88, 0xff88_4400, 0xffee_aa33];
+
+    let animated = |mut expected: Frame, menu: &MenuScreen, row: usize, kick: isize, pens| {
+        let item = menu.items()[row];
+        let x = MenuScreen::item_col(item) * 8;
+        let y = menu.item_y(row);
+        let width = item.label().len() * 8;
+        for scan in y..y + 8 {
+            expected.argb[scan * WIDTH + x - 17..scan * WIDTH + x + width].fill(0xff00_0000);
+        }
+        font.glyph_in(&mut expected.argb, (x - 16).saturating_add_signed(kick), y, '>', pens);
+        for (cell, ch) in item.label().chars().enumerate() {
+            font.glyph_in(&mut expected.argb, x + cell * 8, y, ch, pens);
+        }
+        expected
+    };
+
+    let main = MenuScreen::main().at(1);
+    let selected_main = s.step(p_dir(1, DOWN));
+    assert_eq!(selected_main.transition, Some(Transition::CursorMoved));
+    assert_eq!(selected_main.sound_latch, sound::CURSOR);
+    let expected_main = animated(main.render(&font, None, None), &main, 1, 2, CREAM);
+    let main_row = main.item_y(1) * WIDTH..(main.item_y(1) + 8) * WIDTH;
+    assert_eq!(selected_main.frame.argb[main_row.clone()], expected_main.argb[main_row]);
+
+    let multi = MenuScreen::multi_player();
+    let baseline = |row| multi.clone().at(row).render(&font, None, None);
+    let rows_match = |got: Frame, expected: Frame| {
+        assert!(got.argb[32 * WIDTH..] == expected.argb[32 * WIDTH..], "menu pixels below the title");
+    };
+    let opened = s.step(confirm());
+    assert_eq!(opened.transition, Some(Transition::Choose(MenuItem::MultiPlayer)));
+    rows_match(opened.frame, baseline(0));
+    let moved = s.step(p_dir(1, DOWN));
+    rows_match(moved.frame, animated(baseline(1), &multi, 1, 2, CREAM));
+    let reversal = s.step(p_dir(1, UP));
+    assert_eq!(reversal.transition, Some(Transition::CursorMoved));
+    rows_match(reversal.frame, animated(baseline(0), &multi, 0, 2, CREAM));
+
+    for (kick, pens) in [(2, CREAM), (-1, CREAM), (-1, WARM), (-1, WARM), (0, WARM)] {
+        let tick = s.step(p_dir(1, UP));
+        assert_eq!(tick.transition, None, "holding Up adds no movement edge");
+        rows_match(tick.frame, animated(baseline(0), &multi, 0, kick, pens));
+    }
+    assert_eq!(s.step(idle()).frame.argb, baseline(0).argb);
+
+    s.step(p_dir(1, DOWN));
+    let returned = s.step(back());
+    assert_eq!(returned.transition, Some(Transition::Back));
+    assert_eq!(row_color(&returned.frame, &a, &main, MenuItem::MultiPlayer, 1), Some(ink::YELLOW));
+    rows_match(s.step(confirm()).frame, baseline(1));
+
+    s.step(back());
+    let mut move_and_confirm = p_dir(1, UP);
+    move_and_confirm.menu.confirm = true;
+    let chosen = s.step(move_and_confirm);
+    assert_eq!(chosen.transition, Some(Transition::Choose(MenuItem::SinglePlayer)));
+    assert_eq!(chosen.screen, "single player", "movement and confirm both take effect on the press frame");
 }
 
 #[test]
@@ -483,12 +554,12 @@ fn every_sub_menu_draws_its_header_in_the_rom_header_font_inside_the_gold_frame(
         s.step(idle());
     }
     let font = RomFont::new(&a.gfx4, &a.maincpu);
-    let check = |frame: &Frame, header: &str| {
+    let check = |frame: &Frame, header: &str, offset: usize| {
         let mut expected = vec![0xff00_0000u32; frame.argb.len()];
         let width = 2 * header.len();
         let start = (38 - width) / 2;
         font.gold_frame(&mut expected, 5, 2, 38, 25, start..start + width);
-        font.header(&mut expected, 5 + start, 1, header, ink::BLUE);
+        font.header_px(&mut expected, (5 + start) * 8, 8 + offset, header, ink::BLUE);
         // Rows 1..=3 hold the header and the frame's top edge only.
         for y in 8..32 {
             for x in 0..WIDTH {
@@ -505,11 +576,35 @@ fn every_sub_menu_draws_its_header_in_the_rom_header_font_inside_the_gold_frame(
             }
         }
     };
-    tap(&mut s, start());
-    check(&tap(&mut s, confirm()).frame, "SINGLE PLAYER");
-    tap(&mut s, back());
+    let main = tap(&mut s, start());
+    let single = s.step(confirm());
+    assert_eq!(single.transition, Some(Transition::Choose(MenuItem::SinglePlayer)));
+    assert_eq!(single.screen, "single player");
+    check(&single.frame, "SINGLE PLAYER", 2);
+    check(&s.step(idle()).frame, "SINGLE PLAYER", 2);
+    for _ in 0..3 {
+        check(&s.step(idle()).frame, "SINGLE PLAYER", 1);
+    }
+    check(&s.step(idle()).frame, "SINGLE PLAYER", 0);
+
+    let returned = s.step(back());
+    assert_eq!(returned.transition, Some(Transition::Back));
+    assert_eq!(returned.screen, "main menu");
+    let art_row = |y| y * WIDTH + 48..y * WIDTH + 336;
+    assert!(returned.frame.argb[..16 * WIDTH] == main.frame.argb[..16 * WIDTH], "fixed top rail");
+    for y in 16..110 {
+        assert!(returned.frame.argb[art_row(y)] == main.frame.argb[art_row(y + 2)], "returning logo row {y}");
+    }
+    assert!(returned.frame.argb[112 * WIDTH..] == main.frame.argb[112 * WIDTH..], "fixed menu rows");
+    s.step(idle());
+    // A new route replaces the stamp immediately, even before the previous
+    // title has settled.
     tap(&mut s, p_dir(1, DOWN));
-    check(&tap(&mut s, confirm()).frame, "MULTI PLAYER");
+    check(&tap(&mut s, confirm()).frame, "MULTI PLAYER", 2);
+    for _ in 0..4 {
+        s.step(idle());
+    }
+    check(&s.step(idle()).frame, "MULTI PLAYER", 0);
 }
 
 /// The Main Menu has an unbroken gold frame, the edition logo inside its

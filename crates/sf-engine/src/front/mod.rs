@@ -33,6 +33,7 @@ mod style_card;
 pub mod settings;
 pub mod stage_select;
 pub mod tune;
+mod value_motion;
 pub mod world_tour;
 
 pub use fight::FightDips;

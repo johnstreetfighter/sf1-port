@@ -25,7 +25,7 @@ use crate::compositor::{small_glyph, RomFont};
 use crate::render::{HEIGHT, WIDTH};
 
 mod signature;
-pub use signature::{GaugeKind, GaugePresentation, RowPresentation};
+pub use signature::{GaugeCharge, GaugeKind, GaugePresentation, RowPresentation};
 use signature::{draw_label, GaugeColumn, RowPaint};
 
 /// A portion of a whole: `num` out of `den`, clamped to `0..=1` when drawn.
@@ -481,11 +481,12 @@ fn draw_row(
     }
     columns.push(None);
     let end = columns.len();
-    for (i, column) in columns.into_iter().enumerate() {
+    for (i, &column) in columns.iter().enumerate() {
         let lx = x0 + i;
         let edge_cap = i == 0 || i == end - 1;
         match column {
             None => {
+                let rule = divider_ink(&columns, i, paint, rule);
                 for dy in 0..height - 1 {
                     corner.put(lx, y0 + dy, rule);
                 }
@@ -494,6 +495,7 @@ fn draw_row(
                 }
             }
             Some(column) => {
+                let rule = paint.charge_rail(column, rule);
                 corner.put(lx, y0, rule);
                 for fy in 0..fill_rows {
                     let pen = paint.fill(ink, column, fy, pens::SHADOW);
@@ -505,6 +507,15 @@ fn draw_row(
         }
     }
     x0 + end
+}
+
+fn divider_ink(columns: &[Option<GaugeColumn>], index: usize, paint: RowPaint, normal: u32) -> u32 {
+    [columns.get(index + 1), index.checked_sub(1).and_then(|i| columns.get(i))]
+        .into_iter()
+        .flatten()
+        .flatten()
+        .find_map(|&column| paint.charge_ink(column))
+        .unwrap_or(normal)
 }
 
 /// Where a row sits in its corner: the first local column, the columns it
@@ -595,6 +606,7 @@ fn draw_blocks_row(
                     let lit = if cell == full as usize { part.px(content_width) } else { 0 };
                     (dark_bevel, lit)
                 };
+                let bevel = paint.charge_bevel(GaugeColumn::new(0, content_width, lit, cell, cells), bevel);
                 bevel_box(corner, (origin, at.y0), size, bevel, shadow, |dx, fy| {
                     paint.fill(ink, GaugeColumn::new(dx, content_width, lit, cell, cells), fy, empty)
                 });
@@ -605,6 +617,7 @@ fn draw_blocks_row(
             let width = length.px(at.avail - 3).max(1);
             let lit = fill.px(width);
             let border = if state == GaugeState::Full { lit_bevel } else { dark_bevel };
+            let border = paint.charge_bevel(GaugeColumn::continuous(0, width, lit), border);
             bevel_box(corner, (at.x0, at.y0), (width + 3, at.height), border, shadow, |dx, fy| {
                 paint.fill(ink, GaugeColumn::continuous(dx, width, lit), fy, empty)
             });
@@ -613,7 +626,10 @@ fn draw_blocks_row(
         GaugeRow::Level { level, fill, length, .. } => {
             let bottom = at.y0 + at.height;
             let top = bottom.saturating_sub(LEVEL_BOX).max(at.floor);
-            level_box(corner, top, dark_bevel, paint.track(pens::BEVEL));
+            let width = length.px(at.avail - 1).max(1);
+            let lit = fill.px(width);
+            let bevel = paint.charge_bevel(GaugeColumn::continuous(0, width, lit), dark_bevel);
+            level_box(corner, top, bevel, paint.track(pens::BEVEL));
             if let Some(font) = font {
                 let digit_pens = paint.digit(if greyed { pens::DIGIT_GREY } else { pens::DIGIT_GOLD });
                 let x = corner.text_x(1, 8);
@@ -622,12 +638,11 @@ fn draw_blocks_row(
             // The line leaves the box's right side: rule, one fill row,
             // rule and shadow, in the box's middle.
             let rule = paint.rail(if greyed { pens::GREY } else { pens::RULE });
-            let width = length.px(at.avail - 1).max(1);
-            let lit = fill.px(width);
             let line = top + 3;
             for i in 0..=width {
                 let lx = at.x0 + i;
                 let cap = i == width;
+                let rule = paint.charge_rail(GaugeColumn::continuous(i.min(width - 1), width, lit), rule);
                 corner.put(lx, line, rule);
                 let pen = if cap {
                     rule
@@ -691,7 +706,8 @@ fn draw_plate_row(
     let inner = at.avail - 2;
     let fill_rows = at.height - 3;
     // Interior columns, each lit or not; `None` is a divider.
-    let mut columns = Vec::with_capacity(inner);
+    let mut columns = Vec::with_capacity(at.avail);
+    columns.push(None);
     match row {
         GaugeRow::Stock { cells, full, part, .. } => {
             let cells = cells.max(1) as usize;
@@ -729,22 +745,29 @@ fn draw_plate_row(
             }
         }
     }
-    let right = columns.len() + 1;
-    for dx in 0..=right {
-        corner.put(at.x0 + dx, at.y0, light);
-        corner.put(at.x0 + dx, at.y0 + at.height - 2, body);
+    let right = columns.len();
+    columns.push(None);
+    for (dx, &column) in columns.iter().enumerate() {
+        let rail = |normal| column.map_or_else(
+            || divider_ink(&columns, dx, paint, normal),
+            |column| paint.charge_rail(column, normal),
+        );
+        corner.put(at.x0 + dx, at.y0, rail(light));
+        corner.put(at.x0 + dx, at.y0 + at.height - 2, rail(body));
         corner.put(at.x0 + dx, at.y0 + at.height - 1, dark);
     }
     for fy in 0..fill_rows {
         let y = at.y0 + 1 + fy;
-        corner.put(at.x0, y, body);
-        corner.put(at.x0 + right, y, body);
         for (i, &column) in columns.iter().enumerate() {
             let pen = match column {
-                None => paint.dark_rail(pens::GOLD_DARK),
+                None => divider_ink(&columns, i, paint, if i == 0 || i == right {
+                    body
+                } else {
+                    paint.dark_rail(pens::GOLD_DARK)
+                }),
                 Some(column) => paint.fill(ink, column, fy, pens::SHADOW),
             };
-            corner.put(at.x0 + 1 + i, y, pen);
+            corner.put(at.x0 + i, y, pen);
         }
     }
     at.x0 + right + 1
