@@ -16,6 +16,7 @@ pub mod compositor;
 pub mod decode;
 pub mod ending_screens;
 pub mod mirror_palette;
+pub mod move_effects;
 pub mod era_hud;
 pub mod palette;
 pub mod render;

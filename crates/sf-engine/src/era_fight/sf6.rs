@@ -191,6 +191,22 @@ impl EraFighterState {
             && (available(self.fighter) || self.what_if_active())
     }
 
+    pub(crate) fn sf6_denjin_charged_move(&self, slot: u8) -> bool {
+        self.sf6.charged_move == slot
+    }
+
+    pub(crate) fn sf6_denjin_charging(&self, slot: u8) -> bool {
+        self.is_sf6() && slot == INSTALL && self.alpha_move_active(slot) && self.sf6.installed
+    }
+
+    pub(crate) fn sf6_denjin_palm(&self, slot: u8) -> bool {
+        self.is_sf6() && matches!(slot, EXTRA | OD_EXTRA | SA2) && self.sf6_denjin_charged_move(slot)
+    }
+
+    pub(crate) fn sf6_denjin_projectile(&self, slot: u8) -> bool {
+        self.is_sf6() && matches!(slot, 0x1a | OD_PROJECTILE | SA1) && self.sf6_denjin_charged_move(slot)
+    }
+
     fn sf6_arts(&self, fighter: TournamentFighter) -> [(&'static str, ButtonClass, usize); 3] {
         let mut arts = arts(fighter);
         if self.is_evil_ryu_sf6() {
@@ -875,7 +891,7 @@ impl Bus<'_> {
                 (
                     state.alpha_super_level(slot),
                     state.sf6.perfect_scale != 0,
-                    state.sf6.charged_move == slot,
+                    state.sf6_denjin_charged_move(slot),
                     state.is_evil_ryu_sf6()
                         && slot == crate::combo::throw::THROW_MOVE
                         && self.toggle_state.raging_demon.active,

@@ -731,6 +731,7 @@ impl Bus<'_> {
         &mut self,
         defender: u16,
         attack_x: u16,
+        contact: (u16, u16),
         low: bool,
         projectile: bool,
         airborne: bool,
@@ -776,6 +777,7 @@ impl Bus<'_> {
             let contacts = &mut self.toggle_state.era.player_parry_contacts;
             *contacts = contacts.saturating_add(1);
         }
+        self.record_sf3_parry(side, contact);
         self.queue_sound(8);
         true
     }

@@ -136,6 +136,12 @@ pub enum HitSource {
     Chip,
 }
 
+impl HitSource {
+    pub(crate) fn projectile(blocked: bool) -> Self {
+        if blocked { Self::Chip } else { Self::Projectile }
+    }
+}
+
 /// Hitstun and blockstun of one move, in frames (see the module docs'
 /// "Frames"). A `hit` of 0 leaves the 1987 reaction as it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

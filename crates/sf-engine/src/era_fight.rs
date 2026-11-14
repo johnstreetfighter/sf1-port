@@ -441,7 +441,7 @@ pub struct EraFighterState {
     guard_power: GuardPower,
     pub(crate) move_hits: u8,
     pub(crate) juggle_count: u8,
-    attack_reached_active: bool,
+    pub(crate) attack_reached_active: bool,
     tour: world_tour::TourFighter,
     evil_ryu_kit: EvilRyuKit,
 }
@@ -915,6 +915,10 @@ pub struct EraCombatState {
     pub(crate) gauge_v_trigger_spends: [bool; 3],
     pub(crate) guard_contacts: [bool; 2],
     pub(crate) player_parry_contacts: u8,
+    pub(crate) move_effects: crate::fight_reader::MoveEffectCues,
+    pub(crate) pending_slam_dust: [bool; 2],
+    pub(crate) signature_projectiles: [Option<sf_video::move_effects::signature::ProjectileKind>; PROJECTILE_SLOTS],
+    pub(crate) projectile_sparks: [Option<sf_video::move_effects::signature::ImpactKind>; PROJECTILE_SLOTS],
     projectiles: [EraProjectileState; PROJECTILE_SLOTS],
 }
 
@@ -952,7 +956,7 @@ impl EraProjectileState {
     }
 }
 
-fn projectile_index(slot: u16) -> Option<usize> {
+pub(crate) fn projectile_index(slot: u16) -> Option<usize> {
     let offset = usize::from(slot.checked_sub(0x100)?);
     let index = offset / 0x40;
     (offset % 0x40 == 0 && index < PROJECTILE_SLOTS).then_some(index)
@@ -974,6 +978,10 @@ impl crate::canonical::Canonical for EraCombatState {
             gauge_v_trigger_spends: _,
             guard_contacts: _,
             player_parry_contacts: _,
+            move_effects: _,
+            pending_slam_dust: _,
+            signature_projectiles: _,
+            projectile_sparks: _,
             projectiles,
         } = self;
         out.tag("EraCombatState.v2");
@@ -1045,6 +1053,7 @@ impl Bus<'_> {
         let new_match = step != state.arcade_step;
         self.toggle_state.era.arcade_step = step;
         self.toggle_state.era.freeze = 0;
+        self.toggle_state.era.pending_slam_dust = [false; 2];
         self.toggle_state.era.super_events = [None; 3];
         self.toggle_state.era.alpha_super_events = [None; 3];
         self.toggle_state.era.alpha_counter_events = [false; 3];
@@ -1308,8 +1317,10 @@ impl Bus<'_> {
     }
 
     pub(crate) fn era_clear_projectile(&mut self, slot: u16) {
-        if let Some(state) = self.era_projectile_mut(slot) {
-            *state = EraProjectileState::default();
+        if let Some(index) = projectile_index(slot) {
+            self.toggle_state.era.projectiles[index] = EraProjectileState::default();
+            self.toggle_state.era.signature_projectiles[index] = None;
+            self.toggle_state.era.projectile_sparks[index] = None;
         }
     }
 
@@ -1319,9 +1330,14 @@ impl Bus<'_> {
         }
     }
 
-    pub(crate) fn era_spawn_projectile(&mut self, slot: u16, ps: u32, move_id: u8) {
+    pub(crate) fn era_spawn_projectile(&mut self, slot: u16, ps: u32, move_id: u8, strength: u8) {
         self.era_mark_attack_active(ps);
         self.era_clear_projectile(slot);
+        if let Some(index) = projectile_index(slot) {
+            let kind = self.signature_projectile_kind(ps, move_id);
+            self.toggle_state.era.signature_projectiles[index] = kind;
+            self.toggle_state.era.projectile_sparks[index] = self.projectile_hit_spark(ps, move_id, strength);
+        }
         let modern_scaled = self.modern_scaled_move(ps);
         let Some(era) = self.era_state(ps).filter(|state| modern_scaled || state.is_sf2() || state.is_alpha() || state.uses_family_bank()) else {
             if modern_scaled {
@@ -1367,6 +1383,7 @@ impl Bus<'_> {
     }
 
     pub(crate) fn era_projectile_hit(&mut self, slot: u16) -> bool {
+        self.record_signature_projectile_contact(slot);
         let Some(state) = self.era_projectile_mut(slot) else {
             return true;
         };

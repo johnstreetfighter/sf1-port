@@ -194,6 +194,56 @@ impl FightRead {
     }
 }
 
+/// Local presentation cues from the latest machine tick, in native frame pixels.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct MoveEffectCues {
+    /// Floor contact by fighter side.
+    pub landing: [Option<(i32, i32)>; 2],
+    /// Clean melee contacts by attacker.
+    pub melee_hits: [Option<SignatureImpact>; 2],
+    /// Successful SF3 parry contacts by defender.
+    pub sf3_parry: [Option<(i32, i32)>; 2],
+    /// Alpha Ken's live rising-fist position and facing-left flag.
+    pub ken_fire: [Option<(i32, i32, bool)>; 2],
+    /// Alpha Ken's clean fire contact by defender.
+    pub ken_burn: [bool; 2],
+    /// Each fighter's live pose center and facing-left flag.
+    pub fighter_anchors: [Option<(i32, i32, bool)>; 2],
+    /// Native effect slots whose hit sparks are replaced in Preview.
+    pub native_sparks: [bool; 12],
+    pub denjin_hands: [Option<(i32, i32, bool)>; 2],
+    pub denjin_charge_snap: [Option<(i32, i32, bool)>; 2],
+    pub denjin_release: [Option<(i32, i32, bool)>; 2],
+    pub accents: [Option<FighterAccent>; 2],
+    pub signature_flights: [Option<SignatureFlight>; 12],
+    pub signature_impacts: [Option<SignatureImpact>; 12],
+    pub zanei_rush: [bool; 2],
+    pub zanei_hits: [Option<SignatureImpact>; 2],
+    /// Confirmed Drive Impact contacts by attacker.
+    pub drive_impact_contacts: [Option<SignatureImpact>; 2],
+    pub slam_dust: [Option<SignatureImpact>; 2],
+    /// Signed camera scroll. Subtract its frame-to-frame change from stage-anchored effects.
+    pub camera_x: i32,
+}
+
+pub(crate) type FighterAccent = (sf_video::move_effects::accent::AccentKind, i32, i32, bool);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SignatureFlight {
+    pub kind: sf_video::move_effects::signature::ProjectileKind,
+    pub x: i32,
+    pub y: i32,
+    pub flip: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SignatureImpact {
+    pub kind: sf_video::move_effects::signature::ImpactKind,
+    pub world_x: i32,
+    pub y: i32,
+    pub flip: bool,
+}
+
 /// Reads the real fight's RAM once a frame; see the module docs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FightReader {
