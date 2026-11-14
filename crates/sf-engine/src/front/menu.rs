@@ -7,7 +7,7 @@ use sf_video::compositor::{ink, RomFont};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 use super::attract::TitleLogo;
-use super::draw::{centred_col, framed, BLACK, FRAME_COL, FRAME_COLS, FRAME_ROW, FRAME_ROWS};
+use super::draw::{centred_col, framed_at, selected_row, BLACK, FRAME_COL, FRAME_COLS, FRAME_ROW, FRAME_ROWS};
 use super::Transition;
 use crate::roster::MenuInput;
 use crate::version::EDITION_NAME;
@@ -230,6 +230,7 @@ pub struct MenuScreen {
     /// The cursor's item, or None when every item is greyed.
     cursor: Option<usize>,
     overhaul_modes_enabled: bool,
+    cursor_moved_at: Option<u32>,
 }
 
 impl MenuScreen {
@@ -251,7 +252,12 @@ impl MenuScreen {
     }
 
     fn open(kind: MenuKind) -> Self {
-        let mut screen = MenuScreen { kind, cursor: None, overhaul_modes_enabled: true };
+        let mut screen = MenuScreen {
+            kind,
+            cursor: None,
+            overhaul_modes_enabled: true,
+            cursor_moved_at: None,
+        };
         screen.cursor = screen.items().iter().position(|&item| screen.item_available(item));
         screen
     }
@@ -393,12 +399,56 @@ impl MenuScreen {
         }
     }
 
+    pub(super) fn apply_at(&mut self, input: MenuInput, frame: u32) -> Option<Transition> {
+        let transition = self.apply(input)?;
+        match transition {
+            Transition::CursorMoved if matches!(self.kind, MenuKind::Main | MenuKind::MultiPlayer) => {
+                self.cursor_moved_at = Some(frame);
+            }
+            // A menu left on the stack returns with its saved selection already settled.
+            Transition::Choose(_) | Transition::Back => self.cursor_moved_at = None,
+            _ => {}
+        }
+        Some(transition)
+    }
+
     /// The framed menu: header (on the Main Menu, the title `logo` instead),
     /// rows (cursor yellow with the ROM's arrow, greyed rows dim), and a
     /// one-line `notice` if any.
     pub fn render(&self, font: &RomFont<'_>, logo: Option<&TitleLogo>, notice: Option<&str>) -> Frame {
+        self.render_menu(font, logo, notice, None, 0)
+    }
+
+    pub(super) fn render_at(
+        &self,
+        font: &RomFont<'_>,
+        logo: Option<&TitleLogo>,
+        notice: Option<&str>,
+        frame: u32,
+        title_offset: usize,
+    ) -> Frame {
+        let cursor_age = self.cursor_moved_at.map(|start| frame.wrapping_sub(start));
+        self.render_menu(font, logo, notice, cursor_age, title_offset)
+    }
+
+    fn render_menu(
+        &self,
+        font: &RomFont<'_>,
+        logo: Option<&TitleLogo>,
+        notice: Option<&str>,
+        cursor_age: Option<u32>,
+        title_offset: usize,
+    ) -> Frame {
         let mut frame = if self.kind == MenuKind::Main {
             let mut argb = vec![BLACK; WIDTH * HEIGHT];
+            if let Some(logo) = logo {
+                logo.draw_at(font, &mut argb, 16 - title_offset);
+                if let Some(subtitle) = EDITION_NAME.strip_prefix("Street Fighter': ") {
+                    draw_sf1_plus_branding(font, &mut argb, subtitle, title_offset);
+                }
+                // Clip the title's lift to the frame interior.
+                argb[(16 - title_offset) * WIDTH..16 * WIDTH].fill(BLACK);
+            }
             font.gold_frame(
                 &mut argb,
                 FRAME_COL,
@@ -407,15 +457,9 @@ impl MenuScreen {
                 FRAME_ROW + FRAME_ROWS - MAIN_FRAME_ROW,
                 0..0,
             );
-            if let Some(logo) = logo {
-                logo.draw_at(font, &mut argb, 2);
-                if let Some(subtitle) = EDITION_NAME.strip_prefix("Street Fighter': ") {
-                    draw_sf1_plus_branding(font, &mut argb, subtitle);
-                }
-            }
             Frame { argb }
         } else {
-            framed(font, self.header(), "")
+            framed_at(font, self.header(), "", title_offset)
         };
         if self.kind == MenuKind::Training {
             font.text_centred(&mut frame.argb, PROMPT_ROW, "OPPONENT", ink::BLUE);
@@ -429,8 +473,8 @@ impl MenuScreen {
             let color = if !self.item_available(*item) {
                 ink::DIM
             } else if self.cursor == Some(i) {
-                font.text_px(&mut frame.argb, x - 16, y, ">", ink::YELLOW);
-                ink::YELLOW
+                selected_row(font, &mut frame.argb, x, y, item.label(), cursor_age);
+                continue;
             } else {
                 ink::BLUE
             };
@@ -440,7 +484,7 @@ impl MenuScreen {
     }
 }
 
-fn draw_sf1_plus_branding(font: &RomFont<'_>, argb: &mut [u32], subtitle: &str) {
+fn draw_sf1_plus_branding(font: &RomFont<'_>, argb: &mut [u32], subtitle: &str, rise: usize) {
     // The accent sits just above and to the right of the ROM logo's final R.
     const PRIME_X: usize = 304;
     const PRIME_Y: usize = 33;
@@ -466,7 +510,7 @@ fn draw_sf1_plus_branding(font: &RomFont<'_>, argb: &mut [u32], subtitle: &str) 
                 b'+' => 0xffdd_9900,
                 _ => continue,
             };
-            argb[(PRIME_Y + dy) * WIDTH + PRIME_X + dx] = color;
+            argb[(PRIME_Y - rise + dy) * WIDTH + PRIME_X + dx] = color;
         }
     }
 
@@ -475,11 +519,11 @@ fn draw_sf1_plus_branding(font: &RomFont<'_>, argb: &mut [u32], subtitle: &str) 
     let width = subtitle.chars().count() * 8;
     let left = (WIDTH - width - 3) / 2;
     for (i, ch) in subtitle.chars().enumerate() {
-        font.glyph_in(argb, left + i * 8, SF1_PLUS_SUBTITLE_Y, ch.to_ascii_uppercase(), PENS);
+        font.glyph_in(argb, left + i * 8, SF1_PLUS_SUBTITLE_Y - rise, ch.to_ascii_uppercase(), PENS);
     }
     for dy in 0..8 {
         let shift = (7 - dy) / 2;
-        let start = (SF1_PLUS_SUBTITLE_Y + dy) * WIDTH + left;
+        let start = (SF1_PLUS_SUBTITLE_Y - rise + dy) * WIDTH + left;
         argb.copy_within(start..start + width, start + shift);
         argb[start..start + shift].fill(0xff00_0000);
     }

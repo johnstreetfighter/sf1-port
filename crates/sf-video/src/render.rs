@@ -50,8 +50,8 @@ const TX_ROWS: usize = 32;
 
 /// Changes to the presented text layer. The scene's video RAM is never
 /// written: a hidden cell is skipped when the layer is composed, so what
-/// the cell covered shows through, and an added tile is drawn as the layer's
-/// own tile at a screen position.
+/// the cell covered shows through, and additions use the layer's own
+/// palette at a screen position.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TextEdits {
     /// Cells to leave out: a text row and an inclusive column range.
@@ -59,6 +59,31 @@ pub struct TextEdits {
     /// Text tiles to draw after the layer: the screen pixel of the tile's
     /// top-left corner and the video-RAM word (code, flips, colour).
     pub added: Vec<(i32, i32, u16)>,
+    /// Pixel rectangles painted over the text layer in its palette.
+    pub fills: Vec<TextFill>,
+    /// ROM tiles with presentation inks, at native size or doubled.
+    pub inked: Vec<TextInkTile>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextInkTile {
+    pub x: i32,
+    pub y: i32,
+    /// Tile code and its native flip bits.
+    pub word: u16,
+    pub scale: u8,
+    pub inks: [u32; 3],
+}
+
+/// A rectangle in visible screen coordinates and its text palette entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextFill {
+    pub x: usize,
+    pub y: usize,
+    pub width: usize,
+    pub height: usize,
+    pub color: u8,
+    pub pen: u8,
 }
 
 /// A run of text-layer cells on one row (`col_first..=col_last`).
@@ -85,7 +110,9 @@ pub fn render_frame(assets: &Assets, scene: &SceneState) -> Frame {
 /// frame only.
 pub fn render_frame_edited(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Frame {
     let pens = compose_pens(assets, scene, edits, &[], &[], [0, 0]);
-    frame_from_pens(scene, &pens)
+    let mut frame = frame_from_pens(scene, &pens);
+    draw_inked_text(&mut frame, None, assets, scene, edits);
+    frame
 }
 
 /// `render_frame_edited`, and which pixels are stage: drawn last by the bg
@@ -158,8 +185,8 @@ pub fn render_frame_staged_with_motion(
     let max_art = ((1 << TINT_SHIFT) - ALT_PALETTE_BASE) / 16;
     let art = &art[..art.len().min(max_art)];
     let pens = compose_pens(assets, scene, edits, tints, art, offset);
-    let stage = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
-    let frame = if tints.is_empty() && art.is_empty() {
+    let mut stage: Vec<_> = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
+    let mut frame = if tints.is_empty() && art.is_empty() {
         frame_from_pens(scene, &pens)
     } else {
         let palette = Palette::from_ram(&scene.paletteram);
@@ -177,7 +204,40 @@ pub fn render_frame_staged_with_motion(
         }).collect();
         Frame { argb }
     };
+    draw_inked_text(&mut frame, Some(&mut stage), assets, scene, edits);
     (frame, stage)
+}
+
+fn draw_inked_text(
+    frame: &mut Frame, mut stage: Option<&mut [bool]>, assets: &Assets, scene: &SceneState, edits: &TextEdits,
+) {
+    if scene.active & 0x08 == 0 {
+        return;
+    }
+    for edit in &edits.inked {
+        let scale = i32::from(edit.scale);
+        let tile = decode_char_tile(&assets.gfx4, usize::from(edit.word & 0x3ff));
+        for (ty, row) in tile.iter().enumerate() {
+            for (tx, &pen) in row.iter().enumerate() {
+                if pen == 3 {
+                    continue;
+                }
+                let tx = if edit.word & 0x400 == 0 { tx } else { 7 - tx };
+                let ty = if edit.word & 0x800 == 0 { ty } else { 7 - ty };
+                let x = edit.x + tx as i32 * scale;
+                let y = edit.y + ty as i32 * scale;
+                for py in y.max(0)..(y + scale).min(HEIGHT as i32) {
+                    for px in x.max(0)..(x + scale).min(WIDTH as i32) {
+                        let i = py as usize * WIDTH + px as usize;
+                        frame.argb[i] = edit.inks[usize::from(pen)];
+                        if let Some(stage) = stage.as_deref_mut() {
+                            stage[i] = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn compose_pens(
@@ -387,6 +447,17 @@ fn draw_text_layer(pens: &mut [u16], assets: &Assets, scene: &SceneState, edits:
                         (GFX4_PALETTE_BASE + color * 4 + pen as usize) as u16;
                 }
             }
+        }
+    }
+    for fill in &edits.fills {
+        if fill.x >= WIDTH || fill.y >= HEIGHT || fill.color >= 16 || fill.pen >= 3 {
+            continue;
+        }
+        let pen = GFX4_PALETTE_BASE + usize::from(fill.color) * 4 + usize::from(fill.pen);
+        let right = fill.x.saturating_add(fill.width).min(WIDTH);
+        let bottom = fill.y.saturating_add(fill.height).min(HEIGHT);
+        for y in fill.y..bottom {
+            pens[y * WIDTH + fill.x..y * WIDTH + right].fill(pen as u16);
         }
     }
 }

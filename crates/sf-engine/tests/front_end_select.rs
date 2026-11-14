@@ -172,6 +172,7 @@ fn border(frame: &Frame, layout: &SelectScreen, slot: usize) -> u32 {
 
 const BRIGHT_BRACKETS: [u32; 2] = [0xff5a_81ff, 0xffff_634f];
 const DIM_BRACKETS: [u32; 2] = [0xff34_4d94, 0xff94_3b3e];
+const ARRIVAL_BRACKETS: [u32; 2] = [0xffeb_f3ff, 0xffff_f0e8];
 const LABEL_INK: [u32; 2] = [0xff24_48db, 0xffd9_2d25];
 const LABEL_OUTLINE: [u32; 2] = [0xffb7_cbff, 0xffff_c4af];
 
@@ -206,6 +207,16 @@ fn assert_cursor(
                 side + 1,
                 out.sound_frame
             );
+        }
+    }
+    assert_label(&out.frame, layout, slot, side, shared);
+}
+
+fn assert_moving_cursor(out: &FrameOutput, layout: &SelectScreen, slot: usize, side: usize, shared: bool) {
+    let (x, y, w, h) = layout.tile_rect(slot);
+    for (corner, visible) in [(x + 4, !shared || side == 0), (x + w - 5, !shared || side == 1)] {
+        if visible {
+            assert_eq!(px(&out.frame, corner, y + h - 3), ARRIVAL_BRACKETS[side]);
         }
     }
     assert_label(&out.frame, layout, slot, side, shared);
@@ -305,6 +316,12 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
         i.p2.directions[DOWN] = true;
     }));
     assert_eq!(out.transition, Some(Transition::CursorMoved));
+    assert_moving_cursor(&out, &l, 1, 0, false);
+    assert_moving_cursor(&out, &l, 7, 1, false);
+    assert!(!panel_shows(&out.frame, &l, 0, &bust(TournamentFighter::Ken).mirrored()));
+    assert!(!panel_shows(&out.frame, &l, 1, bust(TournamentFighter::Gen)));
+    for _ in 0..3 { s.step(idle()); }
+    let out = s.step(idle());
     assert_cursor(&out, &l, 1, 0, false, false);
     assert_cursor(&out, &l, 7, 1, false, false);
     assert_eq!(border(&out.frame, &l, 0), c.gold);
@@ -312,13 +329,17 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
     assert!(panel_shows(&out.frame, &l, 1, bust(TournamentFighter::Gen)));
     // Both on Gen: the blue left and red right keep their own labels.
     let out = tap(&mut s, p1(DOWN));
-    assert!(panel_shows(&out.frame, &l, 0, &bust(TournamentFighter::Gen).mirrored()));
+    assert_moving_cursor(&out, &l, 7, 0, true);
+    assert_cursor(&out, &l, 7, 1, true, false);
+    assert!(panel_shows(&out.frame, &l, 1, bust(TournamentFighter::Gen)));
     let (x, y, w, h) = l.tile_rect(7);
     let rails = (
         px(&out.frame, x + w / 2 - 1, y + h - 1),
         px(&out.frame, x + w / 2, y + h - 1),
     );
     assert_eq!(rails, (0xff13_1d46, 0xff45_1c21));
+    for _ in 0..3 { s.step(idle()); }
+    assert!(panel_shows(&s.step(idle()).frame, &l, 0, &bust(TournamentFighter::Gen).mirrored()));
     for _ in 0..30 {
         let out = s.step(idle());
         assert_cursor(&out, &l, 7, 0, true, false);
@@ -328,6 +349,12 @@ fn local_shows_both_busts_and_two_cursors_that_move_at_once_share_tiles_lock_and
     // Locking just 1P leaves its own brackets bright through 2P's dim phase.
     let locked = select::confirm_fighter(&mut s, p1_lp(), tap);
     assert_eq!(locked.transition, Some(Transition::Picked(TournamentFighter::Gen)));
+    let (panel_x, panel_y, panel_w, _) = l.panel_rect(0);
+    for y in panel_y + 2..panel_y + 7 {
+        for x in [panel_x, panel_x + 1, panel_x + panel_w - 2, panel_x + panel_w - 1] {
+            assert_eq!(px(&locked.frame, x, y), 0xffca_d8ff);
+        }
+    }
     for _ in 0..30 {
         let out = s.step(idle());
         assert_cursor(&out, &l, 7, 0, true, true);
@@ -358,7 +385,7 @@ fn arcade_has_one_cursor() {
     // Either stick drives the one blue 1P cursor.
     let out = tap(&mut s, p2(RIGHT));
     assert_eq!(out.transition, Some(Transition::CursorMoved));
-    assert_cursor(&out, &l, 1, 0, false, false);
+    assert_moving_cursor(&out, &l, 1, 0, false);
     for slot in 0..12 {
         let (x, y, w, h) = l.tile_rect(slot);
         let corner = px(&out.frame, x + w - 3, y + h - 3);
@@ -454,7 +481,7 @@ fn a_mirror_match_is_offered_only_where_the_ladder_report_found_it_clean() {
     let out = tap(&mut s, p2(RIGHT)); // onto Joe
     assert_eq!(out.transition, Some(Transition::CursorMoved));
     assert_cursor(&out, &l, 4, 0, true, true);
-    assert_cursor(&out, &l, 4, 1, true, false);
+    assert_moving_cursor(&out, &l, 4, 1, true);
     let out = select::confirm_fighter(&mut s, p2_lp(), GameSession::step);
     assert_eq!(out.transition, Some(Transition::Fighters(TournamentFighter::Joe, TournamentFighter::Joe)));
     // Ryu's mirror is clean too: both may lock Ryu.

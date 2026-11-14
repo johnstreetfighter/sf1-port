@@ -219,15 +219,15 @@ impl Screen {
         }
     }
 
-    fn apply(&mut self, input: MenuInput) -> Option<Transition> {
+    fn apply(&mut self, input: MenuInput, frame: u32) -> Option<Transition> {
         match self {
-            Screen::Menu(m) => m.apply(input),
-            Screen::Select(s) => s.apply(input),
-            Screen::Stage(s) => s.apply(input),
+            Screen::Menu(m) => m.apply_at(input, frame),
+            Screen::Select(s) => s.apply_at(input, frame),
+            Screen::Stage(s) => s.apply_at(input, frame),
             Screen::DramaticSetup(s) => s.apply(input),
-            Screen::DramaticPick(s) => s.apply(input),
-            Screen::DramaticGuest(s) => s.apply(input),
-            Screen::Settings(s) => s.apply(input),
+            Screen::DramaticPick(s) => s.apply_at(input, frame),
+            Screen::DramaticGuest(s) => s.apply_at(input, frame),
+            Screen::Settings(s) => s.apply_at(input, frame),
             Screen::Dip(d) => d.apply(input),
             Screen::Tune(t) => t.apply(input),
             Screen::Jukebox(j) => j.apply(input),
@@ -341,6 +341,8 @@ pub struct GameSession {
     attract_hold: VecDeque<u8>,
     prev: FrameInputs,
     frames: u32,
+    /// The current front-end title's arrival frame on the session clock.
+    title_started_at: Option<u32>,
     /// Sound commands waiting for the latch, one per front-end frame.
     sounds: VecDeque<u8>,
     title_theme_available: bool,
@@ -434,6 +436,7 @@ impl GameSession {
             attract_hold: VecDeque::new(),
             prev: FrameInputs::default(),
             frames: 0,
+            title_started_at: None,
             sounds: VecDeque::new(),
             title_theme_available: false,
             front_music: None,
@@ -579,6 +582,11 @@ impl GameSession {
         look_in_use(&self.settings.crt_look, self.failed_look.as_deref())
     }
 
+    fn pause_look_name(looks: &[LookName], id: &str) -> String {
+        let name = looks.iter().find(|look| look.id == id).map_or(id, |look| look.name.as_str());
+        super::pause::short_look_name(name)
+    }
+
     /// The host could not load the look `id` (`error` is its first line):
     /// the look drawn is `OFF` for this run, on an open Settings screen too,
     /// and the notice line names the error. The settings keep `id`, so the
@@ -599,7 +607,16 @@ impl GameSession {
             .take(sf_video::compositor::TEXT_COLS - 2)
             .collect();
         if self.settings.crt_look == id {
+            let look_changed = self.look() != super::settings::LOOK_OFF;
             self.failed_look = Some(id.to_owned());
+            if look_changed {
+                if let Some(pause) = self.play.as_mut().and_then(|play| play.pause.as_mut()) {
+                    pause.clear_look_motion();
+                }
+                if let Some(pause) = self.playback.as_mut().and_then(|watching| watching.pause.as_mut()) {
+                    pause.clear_look_motion();
+                }
+            }
         }
         for screen in &mut self.stack {
             if let Screen::Settings(s) = screen {
@@ -1730,6 +1747,8 @@ impl GameSession {
                 }
                 Transition::Choose(item) => {
                     self.sounds.push_back(sound::CONFIRM);
+                    let mut changed = false;
+                    let mut related = None;
                     match item {
                         MenuItem::Resume => {
                             play.pause = None;
@@ -1737,6 +1756,7 @@ impl GameSession {
                         }
                         MenuItem::Overlays => {
                             let next = play.fight.overlay().next();
+                            changed = next.label() != play.fight.overlay().label();
                             play.fight.set_overlay(next);
                             let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
                             play.last = play.fight.render(assets);
@@ -1746,12 +1766,14 @@ impl GameSession {
                             // it and is saved. The look is the host's to draw, so
                             // the paused frame itself does not change.
                             let n = self.looks.len() as i32;
-                            let look = self.look().to_owned();
+                            let look = look_in_use(&self.settings.crt_look, self.failed_look.as_deref());
+                            let before = Self::pause_look_name(&self.looks, look);
                             let at = self.looks.iter().position(|l| l.id == look).map_or(0, |i| i as i32);
                             let delta = if event == MenuInput::Left { -1 } else { 1 };
                             self.settings.crt_look = self.looks[(at + delta).rem_euclid(n) as usize].id.clone();
                             self.failed_look = None;
                             self.settings_changed = true;
+                            changed = before != Self::pause_look_name(&self.looks, &self.settings.crt_look);
                         }
                         MenuItem::GaugeArt => {
                             // The fight and the Settings value change together.
@@ -1759,6 +1781,7 @@ impl GameSession {
                                 MenuInput::Left => play.fight.gauge_art().prev(),
                                 _ => play.fight.gauge_art().next(),
                             };
+                            changed = art != play.fight.gauge_art();
                             play.fight.set_gauge_art(art);
                             self.settings.gauge_art = art;
                             self.settings_changed = true;
@@ -1767,7 +1790,9 @@ impl GameSession {
                             play.last = play.fight.render(assets);
                         }
                         MenuItem::MoveEffects => {
+                            let before = play.fight.move_effects_preview();
                             play.fight.toggle_move_effects();
+                            changed = before != play.fight.move_effects_preview();
                             if let Some(pause) = &mut play.pause {
                                 pause.set_move_effects(play.fight.move_effects_preview());
                             }
@@ -1794,8 +1819,12 @@ impl GameSession {
                         // The pause box opened the settings box itself.
                         MenuItem::TrainingSettings => {}
                         MenuItem::LivePreset => {
-                            let next = next_live_preset(play.fight.setup().config.preset);
+                            let preset = play.fight.setup().config.preset;
+                            let drill = play.fight.active_drill();
+                            let next = next_live_preset(preset);
                             play.fight.set_preset(next);
+                            changed = preset != play.fight.setup().config.preset;
+                            related = (drill != play.fight.active_drill()).then_some(MenuItem::TrainingDrill);
                             if let Some(pause) = &mut play.pause {
                                 pause.set_move_effects(play.fight.move_effects_preview());
                             }
@@ -1813,35 +1842,47 @@ impl GameSession {
                         }
                         MenuItem::HoldCombo => {
                             // Saved with the settings, like the menus' rows.
+                            let before = play.fight.hold_combo();
                             self.settings.hold_combo = !self.settings.hold_combo;
                             play.fight.set_hold_combo(self.settings.hold_combo);
+                            changed = before != play.fight.hold_combo();
                             play.record_command(ReplayCommand::HoldCombo(self.settings.hold_combo));
                             self.settings_changed = true;
                         }
                         MenuItem::FillMeters => {
                             // Saved with the settings; the machine carries it too.
+                            let before = play.fight.setup().config.fill_meters;
                             self.settings.fill_meters = !self.settings.fill_meters;
                             play.fight.set_fill_meters(self.settings.fill_meters);
+                            changed = before != play.fight.setup().config.fill_meters;
                             play.record_command(ReplayCommand::FillMeters(self.settings.fill_meters));
                             self.settings_changed = true;
                         }
                         MenuItem::TrainingDrill => {
                             let drills: Vec<_> = crate::utility::Drill::ALL.into_iter()
                                 .filter(|&drill| play.fight.drill_available(drill)).collect();
-                            let current = play.fight.active_drill().and_then(|d| drills.iter().position(|&x| x == d))
+                            let before = play.fight.active_drill();
+                            let trial = play.fight.active_trial();
+                            let current = before.and_then(|d| drills.iter().position(|&x| x == d))
                                 .map_or(0, |index| index + 1);
                             let delta = if event == MenuInput::Left { drills.len() } else { 1 };
                             let next = (current + delta) % (drills.len() + 1);
                             let drill = next.checked_sub(1).map(|i| drills[i]);
                             play.fight.set_drill(drill);
+                            changed = before != play.fight.active_drill();
+                            related = (trial != play.fight.active_trial()).then_some(MenuItem::ComboTrial);
                             play.record_command(ReplayCommand::Drill(drill));
                         }
                         MenuItem::ComboTrial => {
-                            let current = play.fight.active_trial().unwrap_or(0);
+                            let before = play.fight.active_trial();
+                            let drill = play.fight.active_drill();
+                            let current = before.unwrap_or(0);
                             let next = (current + if event == MenuInput::Left { 5 } else { 1 }) % 6;
                             play.fight.set_move_inputs(self.settings.move_inputs);
                             let trial = (next != 0).then_some(next);
                             play.fight.set_combo_trial(trial);
+                            changed = before != play.fight.active_trial();
+                            related = (drill != play.fight.active_drill()).then_some(MenuItem::TrainingDrill);
                             play.record_command(ReplayCommand::Trial(trial));
                         }
                         MenuItem::QuitToMenu if self.net_setup.is_some() => {
@@ -1856,6 +1897,14 @@ impl GameSession {
                             self.finish_replay_recording(false);
                             self.play = None;
                             self.stack.truncate(1);
+                        }
+                    }
+                    if let Some(pause) = self.play.as_mut().and_then(|play| play.pause.as_mut()) {
+                        if changed {
+                            pause.note_value_change(item, event, self.frames);
+                        }
+                        if let Some(item) = related {
+                            pause.note_related_value_change(item, self.frames);
                         }
                     }
                     return Some(t);
@@ -1873,7 +1922,7 @@ impl GameSession {
         }
         for &event in events {
             let play = self.play.as_mut()?;
-            let Some(t) = play.after.as_mut()?.apply(event) else {
+            let Some(t) = play.after.as_mut()?.apply_at(event, self.frames) else {
                 continue;
             };
             match t {
@@ -2000,21 +2049,21 @@ impl GameSession {
                 break;
             };
             let applied = match (top, event) {
-                (Screen::Select(s), Event::Menu(event)) if s.two_players() => s.apply_side(side, event),
-                (Screen::Stage(s), Event::Menu(event)) if s.two_players() => s.apply_side(side, event),
+                (Screen::Select(s), Event::Menu(event)) if s.two_players() => s.apply_side_at(side, event, self.frames),
+                (Screen::Stage(s), Event::Menu(event)) if s.two_players() => s.apply_side_at(side, event, self.frames),
                 (Screen::DramaticPick(s), Event::Menu(event)) if s.co_op() => {
-                    (s.picker() == side || event == MenuInput::Back).then(|| s.apply(event)).flatten()
+                    (s.picker() == side || event == MenuInput::Back).then(|| s.apply_at(event, self.frames)).flatten()
                 }
                 (Screen::Tune(t), Event::Typed(key)) => t.type_key(key),
-                (Screen::Settings(screen), Event::Typed(key)) => screen.type_key(key),
+                (Screen::Settings(screen), Event::Typed(key)) => screen.type_key_at(key, self.frames),
                 (Screen::Online(screen), Event::Typed(key)) => screen.type_key(key),
                 (Screen::WorldTour(screen), Event::Menu(event)) => {
-                    let (transition, changed) = screen.apply(event, &mut self.world_tour_profile);
+                    let (transition, changed) = screen.apply_at(event, &mut self.world_tour_profile, self.frames);
                     self.world_tour_changed |= changed;
                     transition
                 }
                 (_, Event::Typed(_)) => None,
-                (other, Event::Menu(event)) => other.apply(event),
+                (other, Event::Menu(event)) => other.apply(event, self.frames),
             };
             let Some(t) = applied else {
                 continue;
@@ -2040,6 +2089,9 @@ impl GameSession {
                 Transition::Unpicked => {}
                 Transition::Fighters(p1, p2) => {
                     self.sounds.push_back(sound::CONFIRM);
+                    if let Some(Screen::Select(select)) = self.stack.last_mut() {
+                        select.clear_motion();
+                    }
                     match self.stage_screen(kind, p1, p2, None) {
                         Some(screen) => self.stack.push(Screen::Stage(screen)),
                         None => self.start_fight(kind, p1, p2, None),
@@ -2080,6 +2132,8 @@ impl GameSession {
                                 Some(screen) => self.stack.push(Screen::Stage(screen)),
                                 None => self.notice = Some("STAGE DATA IS UNAVAILABLE".into()),
                             }
+                        } else {
+                            self.title_started_at = Some(self.frames);
                         }
                     } else {
                         self.start_fight(FightKind::Arcade, p1, self.config.roster.p2, None);
@@ -2181,6 +2235,7 @@ impl GameSession {
                     }
                     if let Some(Screen::DramaticPick(picks)) = self.stack.last_mut() {
                         if picks.back() {
+                            self.title_started_at = Some(self.frames);
                             self.sounds.push_back(sound::CONFIRM);
                             break;
                         }
@@ -2294,6 +2349,7 @@ impl GameSession {
     pub fn step(&mut self, input: FrameInputs) -> FrameOutput {
         let prev = std::mem::replace(&mut self.prev, input);
         self.frames += 1;
+        let previous_screen = (self.stack.len(), self.screen());
         let was_playing = self.play.is_some();
         let connection_was_open = self.net_setup.is_some();
         self.receive_net_events();
@@ -2419,8 +2475,13 @@ impl GameSession {
                         world_tour_result = Some(play.fight.match_winner());
                         transition = Some(Transition::MatchOver);
                     } else if play.netplay.as_ref().is_none_or(|rollback| rollback.confirmed_match_over()) {
-                        play.after = Some(if self.net_setup.is_some() { AfterMatchBox::open_online() }
-                            else { AfterMatchBox::default() });
+                        play.after = Some(if self.net_setup.is_some() {
+                            AfterMatchBox::open_online()
+                        } else if play.fight.setup().kind == FightKind::Local {
+                            AfterMatchBox::open_local(self.frames)
+                        } else {
+                            AfterMatchBox::default()
+                        });
                         winner = Some(play.fight.match_winner());
                         transition = Some(Transition::MatchOver);
                     }
@@ -2457,6 +2518,12 @@ impl GameSession {
         self.net_rollback_events();
         self.net_send();
         self.net_spectator_tick();
+        if previous_screen != (self.stack.len(), self.screen()) {
+            self.title_started_at = (!self.stack.is_empty() && self.play.is_none()
+                && self.playback.is_none() && self.cabinet.is_none()
+                && transition != Some(Transition::OpenMainMenu))
+                .then_some(self.frames);
+        }
         // The stage-pick rule starts over when the players are back at the
         // menu or the attract.
         if self.play.is_none() && !matches!(self.stack.last(), Some(Screen::Select(_) | Screen::Stage(_))) {
@@ -2476,10 +2543,7 @@ impl GameSession {
         let box_sound = (self.play.is_some() && fight_frame.is_none())
             .then(|| self.sounds.pop_front().unwrap_or(sound::IDLE));
         let font = RomFont::new(&self.assets.gfx4, &self.assets.maincpu);
-        let look_name = match self.looks.iter().find(|l| l.id == self.look()) {
-            Some(look) => super::pause::short_look_name(&look.name),
-            None => super::pause::short_look_name(self.look()),
-        };
+        let look_name = Self::pause_look_name(&self.looks, self.look());
         let (theme, theme_frame) = self.play.as_ref().and(fight_frame.as_ref())
             .map_or((None, None), |frame| (frame.theme, frame.theme_frame));
         let clear_impacts = fight_frame.as_ref().is_some_and(|frame| frame.clear_impacts);
@@ -2487,10 +2551,10 @@ impl GameSession {
             .map(|frame| std::mem::take(&mut frame.impacts)).unwrap_or_default();
         let presented = self.play.as_ref().map(|play| {
             let boxed = |frame: Frame| match (&play.after, &play.pause) {
-                (Some(after), _) => after.render(&font, &frame),
+                (Some(after), _) => after.render_at(&font, &frame, self.frames),
                 // The move list is a layer beside the fight: the fight shows as it was.
                 (None, Some(_)) if play.moves.is_some() => frame,
-                (None, Some(pause)) => pause.render_with_training(
+                (None, Some(pause)) => pause.render_with_training_at(
                     &font,
                     &frame,
                     play.fight.overlay().label(),
@@ -2501,6 +2565,7 @@ impl GameSession {
                     play.fight.setup().config.fill_meters,
                     play.fight.active_drill(),
                     play.fight.active_trial(),
+                    self.frames,
                 ),
                 (None, None) => frame,
             };
@@ -2540,6 +2605,7 @@ impl GameSession {
             }
             None => {
                 let screen = self.stack.last().expect("a screen");
+                let title_offset = super::draw::stamp_offset(self.title_started_at, self.frames);
                 let music = self.menu_music(screen);
                 if was_playing && music.is_some() && !self.sounds.contains(&sound::STOP_ALL) {
                     // A higher-priority fight jingle could still own the
@@ -2547,22 +2613,22 @@ impl GameSession {
                     self.sounds.push_back(sound::STOP_MUSIC);
                 }
                 let frame = match screen {
-                    Screen::Menu(m) => m.render(&font, self.title_logo.as_ref(), self.notice.as_deref()),
-                    Screen::Select(s) => s.render_at(&font, &self.busts, self.frames),
-                    Screen::Stage(s) => s.render(&font),
-                    Screen::WorldTour(screen) => screen.render(&font, &self.busts, &self.world_tour_profile, self.frames, self.notice.as_deref()),
-                    Screen::DramaticSetup(s) => s.render(&font, self.notice.as_deref()),
-                    Screen::DramaticPick(s) => s.render(&font, &self.busts, self.frames, self.notice.as_deref()),
+                    Screen::Menu(m) => m.render_at(&font, self.title_logo.as_ref(), self.notice.as_deref(), self.frames, title_offset),
+                    Screen::Select(s) => s.render_with_title(&font, &self.busts, self.frames, title_offset),
+                    Screen::Stage(s) => s.render_with_title_at(&font, title_offset, self.frames),
+                    Screen::WorldTour(screen) => screen.render_with_title(&font, &self.busts, &self.world_tour_profile, self.frames, self.notice.as_deref(), title_offset),
+                    Screen::DramaticSetup(s) => s.render_with_title(&font, self.notice.as_deref(), title_offset),
+                    Screen::DramaticPick(s) => s.render_with_title(&font, &self.busts, self.frames, self.notice.as_deref(), title_offset),
                     Screen::DramaticGuest(s) => {
                         let stages = self.backgrounds.as_ref().map_or(&[][..], |bank| bank.listed_stages());
-                        s.render(&font, &self.busts, stages, self.frames, self.notice.as_deref())
+                        s.render_with_title(&font, &self.busts, stages, self.frames, self.notice.as_deref(), title_offset)
                     }
-                    Screen::Settings(s) => s.render(&font),
-                    Screen::Dip(d) => d.render(&font),
-                    Screen::Rebind(r) => r.render(&font),
-                    Screen::Jukebox(j) => j.render(&font),
-                    Screen::Online(screen) => screen.render(&font),
-                    Screen::Replays(screen) => screen.render(&font, self.replays.iter(), self.notice.as_deref()),
+                    Screen::Settings(s) => s.render_with_title_at(&font, title_offset, self.frames),
+                    Screen::Dip(d) => d.render_with_title(&font, title_offset),
+                    Screen::Rebind(r) => r.render_with_title(&font, title_offset),
+                    Screen::Jukebox(j) => j.render_with_title(&font, title_offset),
+                    Screen::Online(screen) => screen.render_with_title(&font, title_offset),
+                    Screen::Replays(screen) => screen.render_with_title(&font, self.replays.iter(), self.notice.as_deref(), title_offset),
                     // The demo fight loops behind the panel, silent but for
                     // the screen's own sounds; no input reaches it.
                     Screen::Tune(_) => {

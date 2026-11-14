@@ -5,7 +5,7 @@
 use sf_video::compositor::{ink, RomFont};
 use sf_video::render::Frame;
 
-use super::draw::{boxed, dimmed};
+use super::draw::{boxed, dimmed, selected_row, stamp_offset};
 use super::menu::MenuItem;
 use super::Transition;
 use crate::netplay::protocol::AfterMatchChoice;
@@ -28,9 +28,23 @@ const VOTE_ROW: usize = BOX_ROW + 9;
 pub struct AfterMatchBox {
     cursor: usize,
     peer_votes: Option<[Option<AfterMatchChoice>; 2]>,
+    motion: Option<LocalMotion>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LocalMotion {
+    opened_at: u32,
+    cursor_moved_at: Option<u32>,
 }
 
 impl AfterMatchBox {
+    pub(super) fn open_local(frame: u32) -> Self {
+        Self {
+            motion: Some(LocalMotion { opened_at: frame, cursor_moved_at: None }),
+            ..Self::default()
+        }
+    }
+
     /// An online result starts with both peers waiting to choose.
     pub fn open_online() -> Self {
         Self {
@@ -42,6 +56,7 @@ impl AfterMatchBox {
     /// Refresh the online vote display without changing the menu selection.
     pub fn set_peer_votes(&mut self, votes: [Option<AfterMatchChoice>; 2]) {
         self.peer_votes = Some(votes);
+        self.motion = None;
     }
 
     pub fn name(&self) -> &'static str {
@@ -75,8 +90,27 @@ impl AfterMatchBox {
         }
     }
 
+    pub(super) fn apply_at(&mut self, input: MenuInput, frame: u32) -> Option<Transition> {
+        let transition = self.apply(input)?;
+        if let Some(motion) = self.motion.as_mut().filter(|_| transition == Transition::CursorMoved) {
+            motion.cursor_moved_at = Some(frame);
+        }
+        Some(transition)
+    }
+
     /// `last` dimmed, the box over it.
     pub fn render(&self, font: &RomFont<'_>, last: &Frame) -> Frame {
+        self.render_box(font, last, 0, None)
+    }
+
+    pub(super) fn render_at(&self, font: &RomFont<'_>, last: &Frame, frame: u32) -> Frame {
+        let offset = stamp_offset(self.motion.as_ref().map(|motion| motion.opened_at), frame);
+        let cursor_age = self.motion.as_ref().and_then(|motion| motion.cursor_moved_at)
+            .map(|start| frame.wrapping_sub(start));
+        self.render_box(font, last, offset, cursor_age)
+    }
+
+    fn render_box(&self, font: &RomFont<'_>, last: &Frame, offset: usize, cursor_age: Option<u32>) -> Frame {
         let mut frame = dimmed(last);
         if let Some(votes) = self.peer_votes {
             boxed(
@@ -98,14 +132,12 @@ impl AfterMatchBox {
             boxed(&mut frame, font, BOX_COL, BOX_ROW, BOX_COLS, BOX_ROWS);
         }
         for (i, item) in ITEMS.iter().enumerate() {
-            let row = Self::item_row(i);
-            let color = if i == self.cursor {
-                font.text(&mut frame.argb, Self::item_col() - 2, row, ">", ink::YELLOW);
-                ink::YELLOW
+            let (x, y) = (Self::item_col() * 8, Self::item_row(i) * 8 + offset);
+            if i == self.cursor {
+                selected_row(font, &mut frame.argb, x, y, item.label(), cursor_age);
             } else {
-                ink::BLUE
-            };
-            font.text(&mut frame.argb, Self::item_col(), row, item.label(), color);
+                font.text_px(&mut frame.argb, x, y, item.label(), ink::BLUE);
+            }
         }
         frame
     }

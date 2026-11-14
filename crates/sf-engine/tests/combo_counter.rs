@@ -265,6 +265,58 @@ fn a_combo_shows_from_its_second_hit_and_clears_shortly_after() {
 }
 
 #[test]
+fn growing_and_finishing_a_combo_accents_the_same_visible_count() {
+    let Some(a) = assets() else { return };
+    let mut session = local_fight(a, RulesetPreset::DefinitiveOverhaul, Settings::default());
+    let side = Side::P2;
+    let slot = regions::combo_slot(side);
+    let mut script = Script::new(side);
+    script.hit(1, false, 1).hit(1, true, 1).hit(1, true, 1).hit(1, true, 1).hit(1, true, 8);
+    let finish_frame = script.reads.len();
+    script.free(14);
+    session.feed_fight_reads(&script.reads);
+
+    let mut on_contact = None;
+    for frame in 0..script.reads.len() {
+        let output = session.step(idle());
+        let fight = session.fight().unwrap();
+        let count = fight.callouts().frame().side(side).combo;
+        match frame {
+            0..=1 => assert!(count.is_none()),
+            2 | 4 | 6 | 8 => {
+                let hits = u16::try_from(frame / 2 + 1).unwrap();
+                assert_eq!(count.unwrap().hits, hits);
+                let spark = (slot.y + 7) * WIDTH + slot.x + slot.w - 16 - 3 - 2;
+                assert_eq!(output.frame.argb[spark], sf_video::era_hud::pens::GOLD_LIGHT);
+                if frame == 8 {
+                    on_contact = Some((fight.clone(), output.frame.clone()));
+                }
+            }
+            _ => {}
+        }
+        if frame >= finish_frame {
+            assert_eq!(count.unwrap().hits, 5);
+            let age = frame - finish_frame;
+            let stroke_end = (slot.y + 26) * WIDTH + slot.x + slot.w;
+            if age < 13 {
+                let len = (6 * (age + 1)).min(32);
+                let pen = if age < 7 { sf_video::era_hud::pens::GOLD_LIGHT } else { sf_video::era_hud::pens::GOLD };
+                assert!(output.frame.argb[stroke_end - len..stroke_end].iter().all(|&pixel| pixel == pen));
+            } else {
+                assert_ne!(output.frame.argb[stroke_end - 1], sf_video::era_hud::pens::GOLD);
+            }
+        }
+    }
+    let (mut restored, contact) = on_contact.unwrap();
+    let snapshot = restored.save_netplay_snapshot(8);
+    let assets = session.fight_assets().unwrap();
+    let after = restored.step(assets, Default::default(), Default::default(), false).frame;
+    restored.restore_netplay_snapshot(&snapshot);
+    assert_eq!(restored.render(assets).argb, contact.argb);
+    assert_eq!(restored.step(assets, Default::default(), Default::default(), false).frame.argb, after.argb);
+}
+
+#[test]
 fn single_hits_show_nothing_and_hits_after_hitstun_start_a_new_count() {
     let Some(a) = assets() else { return };
     let mut s = local_fight(a, RulesetPreset::DefinitiveOverhaul, Settings::default());
@@ -350,7 +402,7 @@ fn the_hold_row_keeps_the_last_count_and_round_trips_through_settings_toml() {
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::HoldCombo)));
     assert!(out.settings_changed, "saved with the settings");
     assert!(s.settings().hold_combo && s.fight().unwrap().hold_combo());
-    let out = s.step(idle());
+    let out = (0..7).map(|_| s.step(idle())).last().unwrap();
     assert!(text_at(&out.frame, &font_assets, TrainingBox::value_end_col() - 2, row, "ON", ink::YELLOW), "the row reads ON");
     tap(&mut s, start()); // resume
     s.step(idle());

@@ -60,6 +60,10 @@ fn tap(s: &mut GameSession, input: FrameInputs) -> FrameOutput {
     out
 }
 
+fn settled_value(s: &mut GameSession) -> FrameOutput {
+    (0..7).map(|_| s.step(idle())).last().unwrap()
+}
+
 const DOWN: usize = 2;
 
 fn down() -> FrameInputs {
@@ -264,6 +268,7 @@ fn the_gauge_art_row_changes_the_live_fight_and_the_settings_value() {
     for _ in 0..3 {
         tap(&mut s, down());
     }
+    let fight_frame = s.fight_machine().unwrap().state.frame;
     // Each choice changes both, flags the save, and the box shows it.
     for art in [GaugeArt::Plate, GaugeArt::Ruled, GaugeArt::Blocks] {
         let out = tap(&mut s, confirm());
@@ -273,8 +278,35 @@ fn the_gauge_art_row_changes_the_live_fight_and_the_settings_value() {
         assert_eq!(s.settings().gauge_art, art);
         assert_eq!(s.screen(), "pause");
     }
-    let shown = s.step(idle());
+    let shown = settled_value(&mut s);
     assert!(text_at(&shown.frame, &a, 36 - "BLOCKS".len(), PauseBox::item_row(3), "BLOCKS", ink::YELLOW));
+
+    // A rapid reversal replaces the cue, and wrapping follows the input.
+    let step = |s: &mut GameSession, dir, want: GaugeArt| {
+        let shown = s.step(with(|input| input.p1.directions[dir] = true));
+        assert_eq!(shown.transition, Some(Transition::Choose(MenuItem::GaugeArt)));
+        assert_eq!(s.fight().unwrap().gauge_art(), want);
+        assert_eq!(s.settings().gauge_art, want);
+        assert_eq!(s.fight_machine().unwrap().state.frame, fight_frame);
+        let mut settled = s.clone();
+        let resting = settled_value(&mut settled).frame;
+        let row = PauseBox::item_row(3);
+        let start = (36 - want.label().len()) * 8;
+        let end = 36 * 8;
+        let tick = if dir == LEFT { start - 6 } else { end + 6 };
+        assert_eq!(shown.frame.argb[(row * 8 + 3) * WIDTH + tick], 0xffff_ffaa);
+        assert_ne!(shown.frame.argb[(row * 8 + 3) * WIDTH + tick], resting.argb[(row * 8 + 3) * WIDTH + tick]);
+        for (i, (active, rest)) in shown.frame.argb.iter().zip(&resting.argb).enumerate() {
+            let (x, y) = (i % WIDTH, i / WIDTH);
+            assert!(active == rest || ((start - 6..end + 8).contains(&x) && (row * 8..row * 8 + 8).contains(&y)),
+                "animation escaped the value region at ({x},{y})");
+        }
+    };
+    step(&mut s, LEFT, GaugeArt::Ruled);
+    step(&mut s, RIGHT, GaugeArt::Blocks);
+    step(&mut s, LEFT, GaugeArt::Ruled);
+    s.step(idle());
+    step(&mut s, LEFT, GaugeArt::Plate);
     // The match config, which netplay carries, has no such field.
     assert!(!s.fight().unwrap().setup().config.to_toml().contains("gauge_art"));
 }
@@ -343,7 +375,7 @@ fn the_look_row_steps_the_full_list_over_the_live_fight_and_saves_as_a_settings_
         assert_eq!(s.screen(), "pause");
     }
     // The long name is shortened to fit; the label stays clear of it.
-    let shown = s.step(idle()).frame;
+    let shown = settled_value(&mut s).frame;
     let short = short_look_name(&long.name);
     assert!(short.chars().count() <= LOOK_CELLS);
     assert!(text_at(&shown, &a, 36 - short.chars().count(), PauseBox::item_row(2), &short, ink::YELLOW));
@@ -644,7 +676,7 @@ fn the_settings_box_moves_cycles_and_saves_its_rows_and_steps_no_frames() {
         let cfg = s.fight_machine().unwrap().match_config();
         assert_eq!((cfg.roster.p1, cfg.roster.p2), (TournamentFighter::Ryu, TournamentFighter::Ken));
     }
-    let shown = s.step(idle());
+    let shown = settled_value(&mut s);
     let value = short_preset_name(preset);
     assert!(text_at(&shown.frame, &font_assets, end - value.len(), rows[0], value, ink::YELLOW));
 
@@ -658,7 +690,7 @@ fn the_settings_box_moves_cycles_and_saves_its_rows_and_steps_no_frames() {
         assert_eq!(out.transition, Some(Transition::Choose(MenuItem::HoldCombo)));
         assert!(out.settings_changed, "saved with the settings");
         assert_eq!((hold(&s), s.settings().hold_combo), (want, want));
-        let shown = s.step(idle());
+        let shown = settled_value(&mut s);
         let text = if want { "ON" } else { "OFF" };
         assert!(text_at(&shown.frame, &font_assets, end - text.len(), rows[1], text, ink::YELLOW));
     }
@@ -678,7 +710,7 @@ fn the_settings_box_moves_cycles_and_saves_its_rows_and_steps_no_frames() {
         assert!(out.settings_changed, "saved with the settings");
         assert_eq!((fill(&s), s.fight().unwrap().setup().config.fill_meters, s.settings().fill_meters), (want, want, want));
         assert_eq!(*s.fight_machine().unwrap().match_config(), MatchConfig { fill_meters: want, ..before });
-        let shown = s.step(idle());
+        let shown = settled_value(&mut s);
         let text = if want { "ON" } else { "OFF" };
         assert!(text_at(&shown.frame, &font_assets, end - text.len(), rows[2], text, ink::YELLOW));
         assert!(text_at(&shown.frame, &font_assets, col, rows[1], "HOLD COMBO", ink::BLUE), "HOLD COMBO's row is untouched");

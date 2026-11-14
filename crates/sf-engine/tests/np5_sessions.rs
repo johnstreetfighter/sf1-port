@@ -555,7 +555,15 @@ fn online_pause_and_moves_keep_simulating_neutral_input_and_resume_without_a_hel
             },
         );
     }
-    for _ in 0..5 {
+    for _ in 0..3 {
+        assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
+        assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
+    }
+    let art = assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Left));
+    assert_eq!(art[1].transition, Some(Transition::Choose(MenuItem::GaugeArt)));
+    assert_ne!(paused.peers[1].fight().unwrap().gauge_art(), control.peers[1].fight().unwrap().gauge_art());
+    assert_eq!(paused.peers[1].settings().gauge_art, paused.peers[1].fight().unwrap().gauge_art());
+    for _ in 0..2 {
         assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
         assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
     }
@@ -1009,6 +1017,43 @@ fn stage_back_is_shared_for_host_and_client_pickers_and_old_character_locks_stay
         .iter()
         .all(|peer| peer.screen() == "stage select"));
     assert_shared_stage_back(rematch, 1);
+}
+
+#[test]
+fn stage_motion_uses_the_same_first_frame_on_the_peer_and_ignores_same_cursor_packets() {
+    let mut pair = Pair::stage_select();
+    let mut settled = pair.idle();
+    for _ in 0..12 {
+        settled = pair.idle();
+    }
+    assert!(settled[0].frame.argb == settled[1].frame.argb, "both peers start on the same stage");
+
+    let [host, client] = pair.step([key(MenuInput::Right), FrameInputs::default()]);
+    assert_eq!(host.transition, Some(Transition::CursorMoved));
+    assert!(client.frame.argb == settled[1].frame.argb, "the client waits for the picker's packet");
+    let first_received = (0..8)
+        .map(|_| pair.idle())
+        .find(|frames| frames[1].frame.argb != settled[1].frame.argb)
+        .expect("the picker's move reaches the client");
+    assert!(first_received[1].frame.argb == host.frame.argb, "both peers render the cue at age zero");
+
+    for _ in 0..12 {
+        settled = pair.idle();
+    }
+    assert!(settled[0].frame.argb == settled[1].frame.argb, "both peers settle on the new stage");
+    assert!(settled[0].frame.argb != host.frame.argb, "the arrival cue clears");
+    let (_, mut packet) = pair.packets.iter().rev().find(|(from, packet)| {
+        *from == 0 && matches!(packet, NetPacket::LobbyPick { phase: LobbyPhase::Stage, locked: false, .. })
+    }).cloned().expect("the host sent an unlocked stage cursor");
+    if let NetPacket::LobbyPick { seq, .. } = &mut packet {
+        *seq += 1;
+    }
+    pair.peers[1].push_net_events(&[NetTransportEvent::PacketReceived {
+        from_peer: 0,
+        addr: "127.0.0.1:7000".into(),
+        bytes: packet.to_bytes(),
+    }]);
+    assert!(pair.idle()[1].frame.argb == settled[1].frame.argb, "a newer packet with the same cursor adds no cue");
 }
 
 fn observer_step(

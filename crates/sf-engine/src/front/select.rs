@@ -23,15 +23,18 @@ use sf_video::busts::Bust;
 use sf_video::compositor::{blit_window, darken, fallback_text, ink, outline, RomFont, SelectPortrait};
 use sf_video::render::Frame;
 
-use super::draw::framed;
+use super::draw::framed_at;
 use super::fight::{first_opponent_flag, FightKind};
-use super::style_card::{render_badge, StyleCard};
+use super::style_card::{render_badge, StyleCard, StyleLatch};
 use super::Transition;
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::era::{EraFamily, StylePick};
 use crate::roster::{MenuInput, TournamentFighter};
 
 mod cursor;
+mod motion;
+
+use motion::{MoveCue, SideMotion};
 
 /// Where a mode's pieces sit, in pixels inside the gold frame (which spans
 /// 40..344 by 16..216; nothing is drawn on its foot row, 200..208).
@@ -96,6 +99,7 @@ pub struct SelectScreen {
     dramatic_styles: bool,
     preferred_eras: [EraFamily; 2],
     cards: [Option<StyleCard>; 2],
+    motion: [SideMotion; 2],
     /// The cursor that moved last (Arcade's large frame follows P1's).
     last_moved: usize,
 }
@@ -116,6 +120,7 @@ impl SelectScreen {
             dramatic_styles: false,
             preferred_eras: [EraFamily::Sf1Plus; 2],
             cards: [None, None],
+            motion: [SideMotion::default(); 2],
             last_moved: 0,
         }
     }
@@ -290,7 +295,12 @@ impl SelectScreen {
         if let Some(slot) = TournamentFighter::ALL.iter().position(|&candidate| candidate == fighter)
             .filter(|&slot| self.may_pick(0, slot)) {
             self.cursors[0] = slot;
+            self.motion[0] = SideMotion::default();
         }
+    }
+
+    pub(super) fn clear_motion(&mut self) {
+        self.motion = [SideMotion::default(); 2];
     }
 
     pub(super) fn restore_open_style(&mut self, pick: StylePick) {
@@ -315,6 +325,18 @@ impl SelectScreen {
     /// Apply a replicated cursor/lock only through the same eligibility table
     /// used by local input. The session checks the sender's assigned side.
     pub(crate) fn set_remote_pick(&mut self, side: usize, fighter: TournamentFighter, locked: bool, style: Option<StylePick>) -> Option<Transition> {
+        self.receive_pick(side, fighter, locked, style, None)
+    }
+
+    pub(super) fn set_remote_pick_at(
+        &mut self, side: usize, fighter: TournamentFighter, locked: bool, style: Option<StylePick>, frame_no: u32,
+    ) -> Option<Transition> {
+        self.receive_pick(side, fighter, locked, style, Some(frame_no))
+    }
+
+    fn receive_pick(
+        &mut self, side: usize, fighter: TournamentFighter, locked: bool, style: Option<StylePick>, frame_no: Option<u32>,
+    ) -> Option<Transition> {
         let slot = TournamentFighter::ALL.iter().position(|candidate| *candidate == fighter)?;
         if side >= 2 || !self.may_pick(side, slot) { return None; }
         let card = match (self.styles, locked, style) {
@@ -322,10 +344,12 @@ impl SelectScreen {
             (None, _, None) | (_, false, None) => None,
             _ => return None,
         };
+        let before = self.motion_state(side);
         self.cursors[side] = slot;
         self.locked[side] = locked.then_some(fighter);
         self.cards[side] = card;
         self.last_moved = side;
+        self.update_motion(side, before, frame_no);
         Some(match (self.locked[0], self.locked[1]) {
             (Some(p1), Some(p2)) => Transition::Fighters(p1, p2),
             _ if locked => Transition::Picked(fighter),
@@ -373,19 +397,40 @@ impl SelectScreen {
 
     /// One input from the merged menu cursor (Arcade and Training).
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
+        self.apply_side(self.input_side(input), input)
+    }
+
+    pub(super) fn apply_at(&mut self, input: MenuInput, frame_no: u32) -> Option<Transition> {
+        self.apply_side_at(self.input_side(input), input, frame_no)
+    }
+
+    fn input_side(&self, input: MenuInput) -> usize {
         let side = self.active_side();
-        if let Picks::Sequential { .. } = self.picks {
-            if side == 1 && self.cards[1].is_none() && input == MenuInput::Back {
-                return self.apply_side(0, input);
-            }
-        }
-        self.apply_side(side, input)
+        if side == 1 && self.cards[1].is_none() && input == MenuInput::Back { 0 } else { side }
     }
 
     /// One input for `side`. Up and down move between rows, left and right
     /// along a row, skipping tiles the side may not pick; confirm or Start
     /// locks; back unlocks, or leaves when nothing is locked.
     pub fn apply_side(&mut self, side: usize, input: MenuInput) -> Option<Transition> {
+        self.apply_side_with_clock(side, input, None)
+    }
+
+    pub(super) fn apply_side_at(&mut self, side: usize, input: MenuInput, frame_no: u32) -> Option<Transition> {
+        self.apply_side_with_clock(side, input, Some(frame_no))
+    }
+
+    fn apply_side_with_clock(&mut self, side: usize, input: MenuInput, frame_no: Option<u32>) -> Option<Transition> {
+        if side >= 2 {
+            return None;
+        }
+        let before = self.motion_state(side);
+        let transition = self.apply_side_action(side, input)?;
+        self.update_motion(side, before, frame_no);
+        Some(transition)
+    }
+
+    fn apply_side_action(&mut self, side: usize, input: MenuInput) -> Option<Transition> {
         if side == 1 && self.picks == Picks::One {
             return None;
         }
@@ -438,6 +483,36 @@ impl SelectScreen {
         })
     }
 
+    fn motion_state(&self, side: usize) -> (usize, bool, bool) {
+        (self.cursors[side], self.cards[side].is_some(), self.locked[side].is_some())
+    }
+
+    fn update_motion(&mut self, side: usize, before: (usize, bool, bool), frame_no: Option<u32>) {
+        if !self.arcade_cursors {
+            return;
+        }
+        let (slot, card, locked) = self.motion_state(side);
+        let (old_slot, had_card, was_locked) = before;
+        let motion = &mut self.motion[side];
+        let moved = slot != old_slot;
+        if moved || card != had_card || locked != was_locked {
+            motion.moved_at = if moved { frame_no } else { None };
+            motion.latch = if locked && (moved || !was_locked) {
+                frame_no.map(StyleLatch::Lock)
+            } else if card && !had_card {
+                frame_no.map(StyleLatch::Open)
+            } else {
+                None
+            };
+        }
+    }
+
+    pub(super) fn mark_external_lock(&mut self, frame_no: u32) {
+        if self.arcade_cursors {
+            self.motion[0] = SideMotion { moved_at: None, latch: Some(StyleLatch::Lock(frame_no)) };
+        }
+    }
+
     fn lock(&mut self, side: usize) -> Transition {
         let fighter = self.fighter(side);
         if self.picks == Picks::One && self.cards[side].is_none() {
@@ -456,22 +531,25 @@ impl SelectScreen {
     /// ROM's header font inside the gold frame, the large frames, the
     /// tiles, and the names in the ROM's 8×8 font.
     pub fn render(&self, font: &RomFont<'_>, busts: &[Option<Bust>; 12]) -> Frame {
-        self.render_at(font, busts, 0)
+        self.render_with_title(font, busts, 0, 0)
     }
 
-    pub(super) fn render_at(&self, font: &RomFont<'_>, busts: &[Option<Bust>; 12], frame_no: u32) -> Frame {
-        self.render_named(font, busts, "PLAYER SELECT", frame_no, None)
+    pub(super) fn render_with_title(
+        &self, font: &RomFont<'_>, busts: &[Option<Bust>; 12], frame_no: u32, title_offset: usize,
+    ) -> Frame {
+        self.render_named_with_title(font, busts, "PLAYER SELECT", frame_no, None, title_offset)
     }
 
-    pub(super) fn render_named(
+    pub(super) fn render_named_with_title(
         &self,
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
         title: &str,
         frame_no: u32,
         single_cursor: Option<(usize, bool)>,
+        title_offset: usize,
     ) -> Frame {
-        let mut frame = framed(font, title, "");
+        let mut frame = framed_at(font, title, "", title_offset);
         let argb = &mut frame.argb;
         let gold = font.pen(ink::GOLD_A, 2);
         let cursor_color = if self.arcade_cursors {
@@ -507,7 +585,12 @@ impl SelectScreen {
                         (b.width as isize - (pw - 4) as isize) / 2,
                         (b.height as isize - (ph - 4) as isize) / 2,
                     );
-                    blit_window(argb, px + 2, py + 2, pw - 4, ph - 4, &portrait(b), sx, sy);
+                    let area = (px + 2, py + 2, pw - 4, ph - 4);
+                    if let Some(cue) = MoveCue::read(self.motion[side].moved_at, frame_no) {
+                        cue.portrait(argb, area, &portrait(b), (sx, sy), player(side));
+                    } else {
+                        blit_window(argb, area.0, area.1, area.2, area.3, &portrait(b), sx, sy);
+                    }
                 }
                 None => {
                     let name = TournamentFighter::ALL[shown].name().to_ascii_uppercase();
@@ -518,6 +601,9 @@ impl SelectScreen {
                 if let Some(card) = &self.cards[side] {
                     card.render(argb, font, self.panel_rect(side), side_ink[side]);
                 }
+            }
+            if let Some(latch) = self.motion[side].latch {
+                latch.paint(argb, self.panel_rect(side), player(side), frame_no);
             }
         }
 
@@ -597,7 +683,8 @@ impl SelectScreen {
         for side in 0..visible {
             let (x, y, w, h) = self.tile_rect(self.cursors[side]);
             if self.arcade_cursors {
-                cursor::draw(argb, (x, y, w, h), player(side), shared, bright || locked(side));
+                let cue = MoveCue::read(self.motion[side].moved_at, frame_no);
+                cursor::draw(argb, (x, y, w, h), player(side), shared, bright || locked(side), cue);
                 continue;
             }
             let inset = if side == 1 && shared { 2 } else { 0 };
@@ -615,5 +702,56 @@ fn portrait(b: &Bust) -> SelectPortrait<'_> {
         argb: &b.argb,
         width: b.width,
         height: b.height,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use MenuInput::{Back, Confirm, Left, Right};
+    use TournamentFighter::{Ken, Ryu};
+
+    #[test]
+    fn rapid_reversals_replace_the_moved_side_and_style_input_has_its_own_cue() {
+        let mut select = SelectScreen::local(&MatchConfig::default(), &[]);
+        assert_eq!(select.apply_side_at(0, Right, 10), Some(Transition::CursorMoved));
+        assert_eq!(select.apply_side_at(1, Left, 10), Some(Transition::CursorMoved));
+        assert_eq!(select.motion.map(|side| side.moved_at), [Some(10); 2]);
+
+        assert_eq!(select.apply_side_at(1, Left, 11), None);
+        assert_eq!(select.motion.map(|side| side.moved_at), [Some(10); 2]);
+        assert_eq!(select.apply_side_at(0, Left, 12), Some(Transition::CursorMoved));
+        assert_eq!(select.motion.map(|side| side.moved_at), [Some(12), Some(10)]);
+        assert!(MoveCue::read(select.motion[0].moved_at, 16).is_some());
+        assert!(MoveCue::read(select.motion[1].moved_at, 16).is_none());
+
+        assert_eq!(select.apply_side_at(0, Confirm, 13), Some(Transition::StyleOpened));
+        assert_eq!(select.motion[0].moved_at, None);
+        assert_eq!(select.motion[0].latch, Some(StyleLatch::Open(13)));
+        assert_eq!(select.apply_side_at(0, Right, 14), Some(Transition::CursorMoved));
+        assert_eq!(select.motion[0].latch, Some(StyleLatch::Open(13)));
+        assert_eq!(select.motion[0].moved_at, None);
+        assert_eq!(select.apply_side_at(0, Back, 15), Some(Transition::Unpicked));
+        assert_eq!(select.motion[0], SideMotion::default());
+    }
+
+    #[test]
+    fn replicated_picks_only_start_motion_when_the_received_side_changes() {
+        let mut select = SelectScreen::local(&MatchConfig::default(), &[]);
+        assert_eq!(select.set_remote_pick_at(1, Ryu, false, None, 10), Some(Transition::CursorMoved));
+        assert_eq!(select.motion[1].moved_at, Some(10));
+        assert_eq!(select.set_remote_pick_at(1, Ryu, false, None, 12), Some(Transition::CursorMoved));
+        assert_eq!(select.motion[1].moved_at, Some(10));
+        assert_eq!(select.set_remote_pick_at(1, Ken, true, None, 13), None);
+        assert_eq!(select.fighter(1), Ryu);
+        let style = Some(StylePick::default());
+        assert_eq!(select.set_remote_pick_at(1, Ryu, true, style, 14), Some(Transition::Picked(Ryu)));
+        assert_eq!(select.set_remote_pick_at(1, Ryu, true, style, 15), Some(Transition::Picked(Ryu)));
+        assert_eq!(select.motion[1].latch, Some(StyleLatch::Lock(14)));
+        assert_eq!(select.motion[0], SideMotion::default());
+
+        let mut fresh = SelectScreen::local(&MatchConfig::default(), &[]);
+        assert_eq!(fresh.set_remote_pick(1, Ryu, true, style), Some(Transition::Picked(Ryu)));
+        assert_eq!(fresh.motion[1], SideMotion::default());
     }
 }

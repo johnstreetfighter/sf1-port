@@ -792,12 +792,18 @@ fn the_fix_is_written_in_the_chosen_notation_and_drawn_in_the_column() {
             let run = play(&base, preset, 1, inputs(&miss), 80);
             assert_eq!(run.fix_kind(), Some(FixKind::Missed(Dir::DownForward)), "{preset:?} {notation:?}");
             assert_eq!(fix_words_of(&run), [text], "{preset:?} {notation:?}");
-            // And it is on the screen, from the column's edge in its slot, in gold.
+            // Check the entrance and the original gold lettering once it settles.
+            let slot = regions::word_slot_at(Side::P1, 0, regions::TRY_DROP);
+            let (x, pens) = if preset == RulesetPreset::Faithful1987 {
+                (slot.x, sf_video::callouts::LETTER_PENS)
+            } else {
+                (slot.x + 2, [0xffff_dd99, sf_video::callouts::LETTER_PENS[1], 0xffdd_aa22])
+            };
+            assert!(lettered(&run.shots[0], &a, x, slot.y, text, pens), "{preset:?} {notation:?}: {text} enters");
             let shot = &run.shots[1];
             if let Ok(dir) = std::env::var("SF_FIX_FRAMES") {
                 write_png(&dir, &format!("shoryuken_missed_{notation:?}_{preset:?}").to_lowercase(), shot);
             }
-            let slot = regions::word_slot_at(Side::P1, 0, regions::TRY_DROP);
             assert!(lettered(shot, &a, slot.x, slot.y, text, sf_video::callouts::LETTER_PENS), "{preset:?} {notation:?}: {text} is lettered");
             if notation == InputNotation::Arrows {
                 // The arrow is a made glyph, inked in its cell.

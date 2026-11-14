@@ -37,16 +37,19 @@ use std::path::Path;
 use std::sync::Arc;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
+use sf_engine::era::EraFamily;
+use sf_engine::front::after_match::AfterMatchBox;
 use sf_engine::front::cabinet::{flow_position, Players};
-use sf_engine::front::fight::{first_opponent_flag, Fight, FightKind, FightSetup, MatchTheme};
+use sf_engine::front::fight::{first_opponent_flag, Fight, FightKind, FightSetup, MatchTheme, DRIVE_BLACK_FRAMES};
+use sf_engine::front::menu::MenuItem;
 use sf_engine::front::stage_select::{home_owner, StageScreen};
-use sf_engine::front::{FightDips, FrameInputs, GameSession, PlayerInputs, Transition};
+use sf_engine::front::{FightDips, FrameInputs, FrameOutput, GameSession, PlayerInputs, Transition};
 use sf_engine::roster::{MenuInput, PlayMode, StagePick, TournamentFighter};
 use sf_engine::theme::{ThemeCue, ThemeId};
 use sf_video::background_bank::{shown_stages, BackgroundBank, LayerView, StageListing, StageView, RELEASED_WAVES};
 use sf_video::compositor::{ink, RomFont};
 use sf_video::romset::{load_assets, Assets};
-use sf_video::render::Frame;
+use sf_video::render::{Frame, WIDTH};
 use sf_video::stage::pack_records;
 use sf_video::stage_preview::{StagePreview, StagePreviews};
 
@@ -68,6 +71,7 @@ const BG_PALETTES: usize = 0x43778;
 const RIGHT: usize = 0;
 const LEFT: usize = 1;
 const DOWN: usize = 2;
+const UP: usize = 3;
 const OWNERS: [&str; 10] = ["Retsu", "Geki", "Joe", "Mike", "Lee", "Gen", "Birdie", "Eagle", "Adon", "Sagat"];
 
 fn assets() -> Option<Assets> {
@@ -694,12 +698,13 @@ fn attacks(side: usize, f: u32) -> FrameInputs {
 
 /// Play the fight on until the after-match box: `side` attacks and wins,
 /// or with `None` nobody does and the match times out as a draw.
-fn until_after_match(s: &mut GameSession, winner: Option<usize>) {
+fn until_after_match(s: &mut GameSession, winner: Option<usize>) -> FrameOutput {
     for f in 0..80_000 {
         let input = winner.map_or_else(idle, |side| attacks(side, f));
-        if s.step(input).screen == "after match" {
+        let out = s.step(input);
+        if out.screen == "after match" {
             assert_eq!(s.fight().unwrap().match_winner(), winner, "who won");
-            return;
+            return out;
         }
     }
     panic!("the match end (at {})", s.screen());
@@ -769,6 +774,99 @@ fn the_loser_picks_and_a_rematch_keeps_the_stage_with_one_press() {
     assert_eq!(tap(&mut s, p2_confirm()), "drive");
     let run = to_fight_loop(&mut s);
     assert_stage(&s, &run, &check, 5, "the rematch on Gen's stage");
+}
+
+#[test]
+fn the_after_match_rows_and_rematch_title_stamp_without_holding_input() {
+    let Some(check) = assets() else { return };
+    let font = RomFont::new(&check.gfx4, &check.maincpu);
+    let mut s = draws_session();
+    open_select(&mut s, Mode::Local);
+    select::confirm_fighter(&mut s, confirm(), tap);
+    assert_eq!(s.step(p2_confirm()).transition, Some(Transition::StyleOpened));
+    s.step(idle());
+    tap(&mut s, with(|i| i.p2.directions[RIGHT] = true));
+    assert_eq!(tap(&mut s, p2_confirm()), "stage select");
+    pick(&mut s, 2, 5);
+    to_fight_loop(&mut s);
+
+    let fight = s.fight().unwrap();
+    let fighters = [fight.player_fighter(0), fight.player_fighter(1)];
+    let styles = [fight.fighter_style(0), fight.fighter_style(1)];
+    assert_eq!(styles[1].unwrap().family, EraFamily::Sf2);
+
+    let arrival = until_after_match(&mut s, Some(0));
+    assert_eq!(arrival.transition, Some(Transition::MatchOver));
+    let final_fight = s.fight().unwrap().render(s.fight_assets().unwrap());
+    let settled = AfterMatchBox::default().render(&font, &final_fight);
+    let item_x = AfterMatchBox::item_col() * 8;
+    let row_image = |shift, selected, flash: bool| {
+        let mut expected = settled.clone();
+        for y in 80..134 {
+            expected.argb[y * WIDTH + 136..y * WIDTH + 248].fill(BLACK);
+        }
+        for (index, item) in [MenuItem::Rematch, MenuItem::Reselect, MenuItem::Menu].into_iter().enumerate() {
+            let y = AfterMatchBox::item_row(index) * 8 + shift;
+            let selected = index == selected;
+            if selected && flash {
+                const CREAM: [u32; 3] = [0xffff_ffaa, 0xff88_4400, 0xffff_dd88];
+                font.glyph_in(&mut expected.argb, item_x - 14, y, '>', CREAM);
+                for (cell, ch) in item.label().chars().enumerate() {
+                    font.glyph_in(&mut expected.argb, item_x + cell * 8, y, ch, CREAM);
+                }
+            } else {
+                let ink = if selected { ink::YELLOW } else { ink::BLUE };
+                if selected {
+                    font.text_px(&mut expected.argb, item_x - 16, y, ">", ink);
+                }
+                font.text_px(&mut expected.argb, item_x, y, item.label(), ink);
+            }
+        }
+        expected.argb
+    };
+
+    let mut rapid = s.clone();
+    assert!(arrival.frame.argb == row_image(2, 0, false), "arrival stamps only the option rows");
+    for (age, shift) in [2, 1, 1, 1, 0].into_iter().enumerate() {
+        assert!(s.step(idle()).frame.argb == row_image(shift, 0, false), "after-match age {}", age + 1);
+    }
+    let moved = rapid.step(down());
+    assert_eq!((moved.screen, moved.transition), ("after match", None));
+    assert!(moved.frame.argb == row_image(2, 1, true), "moving during the stamp flashes the new row immediately");
+    let reversed = rapid.step(with(|i| i.p1.directions[UP] = true));
+    assert_eq!((reversed.screen, reversed.transition), ("after match", None));
+    assert!(reversed.frame.argb == row_image(1, 0, true), "rapid reversal replaces the previous row cue");
+
+    let stage = rapid.step(confirm());
+    assert_eq!((stage.screen, stage.transition), ("stage select", Some(Transition::Choose(MenuItem::Rematch))));
+    let mut unhurried = rapid.clone();
+    let settle = [(); 5].map(|_| unhurried.step(idle()).frame);
+    let title = |shift: usize| {
+        let mut expected = settle[4].argb.clone();
+        for y in 8..24 {
+            expected[y * WIDTH + 96..y * WIDTH + 288].fill(BLACK);
+        }
+        font.header_px(&mut expected, 96, 8 + shift, "STAGE SELECT", ink::BLUE);
+        font.text_px(&mut expected, 160, 25, "P2 PICKS", ink::P2_BLUE);
+        expected
+    };
+    assert!(stage.frame.argb == title(2), "the title stamp arrives with the stage picker and preview");
+    for (frame, shift) in settle.iter().zip([2, 1, 1, 1, 0]) {
+        assert!(frame.argb == title(shift), "title displacement of {shift} px");
+    }
+
+    let accepted = rapid.step(p2_confirm());
+    assert_eq!((accepted.screen, accepted.transition), ("drive", Some(Transition::Stage(listed(&rapid, 5)))));
+    assert!(accepted.frame.argb.iter().all(|&pixel| pixel == BLACK));
+    for _ in 1..DRIVE_BLACK_FRAMES {
+        assert!(rapid.step(idle()).frame.argb.iter().all(|&pixel| pixel == BLACK));
+    }
+    assert_ne!(rapid.screen(), "drive", "confirm during the title stamp starts the regular cabinet blink");
+    let run = to_fight_loop(&mut rapid);
+    let rematch = rapid.fight().unwrap();
+    assert_eq!(fighters, [rematch.player_fighter(0), rematch.player_fighter(1)]);
+    assert_eq!(styles, [rematch.fighter_style(0), rematch.fighter_style(1)]);
+    assert_stage(&rapid, &run, &check, 5, "the rematch on Gen's stage");
 }
 
 #[test]
@@ -1099,6 +1197,102 @@ fn pixel(frame: &Frame, x: usize, y: usize) -> u32 {
 
 fn window(frame: &Frame, (x, y, w, h): Box4) -> Vec<u32> {
     (y..y + h).flat_map(|row| (x..x + w).map(move |col| pixel(frame, col, row))).collect()
+}
+
+#[test]
+fn stage_motion_stays_in_its_regions_and_restarts_on_rapid_input() {
+    let Some(a) = assets() else { return };
+    let bank = bank(&a);
+    let config = MatchConfig::from_preset(RulesetPreset::DefinitiveOverhaul);
+    let shown = shown_stages(bank.listed_stages(), config.roster.bonus_challengers, RELEASED_WAVES);
+    let mut s = GameSession::new(a, config).with_background_bank(bank);
+    for _ in 0..200 {
+        s.step(idle());
+    }
+    let start = to_stage_screen(&mut s, Mode::Local);
+    for _ in 0..5 {
+        s.step(idle());
+    }
+    let initial = s.step(idle()).frame;
+    let p2_move = s.step(with(|i| i.p2.directions[RIGHT] = true));
+    assert_eq!(p2_move.transition, None);
+    assert!(p2_move.frame.argb == initial.argb, "the other pad causes no motion");
+
+    let geometry = StageScreen::open(&shown, FightKind::Local, TournamentFighter::Ryu, TournamentFighter::Ken, 0, None).unwrap();
+    let right = with(|i| i.p1.directions[RIGHT] = true);
+    let left = with(|i| i.p1.directions[LEFT] = true);
+    let first = s.step(right);
+    assert_eq!((first.screen, first.transition), ("stage select", Some(Transition::CursorMoved)));
+    let mut rapid = s.clone();
+    let mut frames = vec![first.frame];
+    for _ in 1..=8 {
+        frames.push(s.step(idle()).frame);
+    }
+    let settled = &frames[8];
+    let (bx, by, bw, bh) = geometry.big_rect();
+    let (tx, ty, tw, th) = geometry.tile_rect(start + 1);
+    let caption_y = by + bh + 3;
+    for (age, frame) in frames[..8].iter().enumerate() {
+        let scan_left = ((bw - 5) * age + 3) / 7;
+        let slide = [3, 3, 2, 2, 1, 0, 0, 0][age];
+        let mut changes = [0; 3];
+        for (i, (&actual, &rest)) in frame.argb.iter().zip(&settled.argb).enumerate() {
+            let (x, y) = (i % WIDTH, i / WIDTH);
+            if (bx..bx + bw).contains(&x) && (by - 1..=by + bh).contains(&y) {
+                changes[0] += usize::from(actual != rest);
+                if (by..by + bh).contains(&y) && x.abs_diff(bx + scan_left + 2) > 3 {
+                    let source_x = (x - bx).saturating_sub(slide) + bx;
+                    assert_eq!(actual, pixel(settled, source_x, y), "preview slide at age {age}, ({x}, {y})");
+                }
+            } else if (caption_y..caption_y + 8).contains(&y) {
+                changes[1] += usize::from(actual != rest);
+                assert_eq!(actual == BLACK, rest == BLACK, "caption glyphs stay fixed");
+            } else if ((x == tx - 1 || x == tx + tw) && (ty - 1..=ty + th).contains(&y))
+                || ((y == ty - 1 || y == ty + th) && (tx - 1..=tx + tw).contains(&x))
+            {
+                changes[2] += usize::from(actual != rest);
+            } else {
+                assert_eq!(actual, rest, "motion escaped its bounds at age {age}, ({x}, {y})");
+            }
+        }
+        assert!(changes[0] > 0, "preview scan at age {age}");
+        assert_eq!(changes[1] > 0, age < 6, "caption flash at age {age}");
+        assert_eq!(changes[2] > 0, age < 6, "tile snap at age {age}");
+        if age < 6 {
+            let inset = 2 - age / 2;
+            let top_left = tx - 1;
+            for x in top_left..top_left + inset {
+                assert_eq!(pixel(frame, x, ty - 1), pixel(settled, x, ty - 1), "corner gap at age {age}");
+            }
+            let x = top_left + inset;
+            assert_ne!(pixel(frame, x, ty - 1), pixel(settled, x, ty - 1), "corner glint at age {age}");
+        }
+    }
+    assert!(s.step(idle()).frame.argb == settled.argb, "the animation ends at age eight");
+
+    let reversed = rapid.step(left);
+    assert_eq!(reversed.transition, Some(Transition::CursorMoved));
+    // The reversed preview uses the newly chosen stage immediately. Away
+    // from the scan at its right edge, it starts three pixels to the left.
+    assert_eq!(pixel(&reversed.frame, bx + bw / 2, by + bh / 2), pixel(&initial, bx + bw / 2 + 3, by + bh / 2));
+    let (x, y, w, h) = geometry.tile_rect(start + 1);
+    assert_eq!(window(&reversed.frame, (x - 1, y - 1, w + 2, h + 2)), window(&initial, (x - 1, y - 1, w + 2, h + 2)), "the previous tile settles as soon as the new move is accepted");
+
+    let random = (0..=start).fold(reversed, |_, _| {
+        rapid.step(idle());
+        rapid.step(left)
+    });
+    assert_eq!(random.transition, Some(Transition::CursorMoved));
+    let mut random_settled = rapid.clone();
+    let rest = (1..=8).map(|_| random_settled.step(idle()).frame).last().unwrap();
+    assert_ne!(window(&random.frame, geometry.big_rect()), window(&rest, geometry.big_rect()), "Random's preview also moves");
+    let confirm = rapid.step(confirm());
+    assert_eq!((confirm.screen, confirm.transition), ("drive", Some(Transition::RandomStage)));
+    assert!(confirm.frame.argb.iter().all(|&pixel| pixel == BLACK));
+    for _ in 1..DRIVE_BLACK_FRAMES {
+        assert!(rapid.step(idle()).frame.argb.iter().all(|&pixel| pixel == BLACK));
+    }
+    assert_ne!(rapid.screen(), "drive", "confirmation completes the native blink on time");
 }
 
 fn has_pixel(frame: &Frame, rows: std::ops::Range<usize>, color: u32) -> bool {

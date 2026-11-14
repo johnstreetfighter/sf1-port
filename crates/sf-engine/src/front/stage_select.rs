@@ -15,6 +15,8 @@
 //! 1987 stages and `RANDOM` (two rows) and all 38 stages and `RANDOM` (five
 //! rows) fit one screen with no redesign.
 
+mod motion;
+
 use std::sync::Arc;
 
 use sf_video::background_bank::StageListing;
@@ -22,10 +24,12 @@ use sf_video::compositor::{fallback_text, ink, outline, RomFont};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 use sf_video::stage_preview::{StagePreview, StagePreviews};
 
-use super::draw::{fit, framed_wide};
+use super::draw::{fit, framed_wide_at};
 use super::fight::FightKind;
 use super::Transition;
 use crate::roster::{MenuInput, StagePick, TournamentFighter};
+
+use self::motion::{Direction, StageMotion};
 
 /// Tiles to a row.
 pub const GRID_COLS: usize = 8;
@@ -76,6 +80,7 @@ pub struct StageScreen {
     /// Each stage's backdrop, by bank index; without them the tiles are
     /// plain swatches.
     previews: Option<Arc<StagePreviews>>,
+    motion: Option<StageMotion>,
 }
 
 /// The stage the `RANDOM` tile gives for `seed` (the session's frame
@@ -119,7 +124,9 @@ impl StageScreen {
             None => None,
         };
         let cursor = cursor.or_else(home).unwrap_or(0);
-        (!stages.is_empty()).then(|| StageScreen { stages: stages.to_vec(), cursor, kind, p1, p2, picker, previews: None })
+        (!stages.is_empty()).then(|| StageScreen {
+            stages: stages.to_vec(), cursor, kind, p1, p2, picker, previews: None, motion: None,
+        })
     }
 
     /// The screen with each stage's backdrop (by bank index) for its tiles
@@ -144,6 +151,10 @@ impl StageScreen {
         (side == self.picker).then(|| self.apply(input)).flatten()
     }
 
+    pub(super) fn apply_side_at(&mut self, side: usize, input: MenuInput, frame: u32) -> Option<Transition> {
+        (side == self.picker).then(|| self.apply_at(input, frame)).flatten()
+    }
+
     /// Whether the cursor is on the `RANDOM` tile.
     pub fn on_random(&self) -> bool {
         self.cursor == self.stages.len()
@@ -151,10 +162,14 @@ impl StageScreen {
 
     /// A replicated stage cursor must name a stage this screen lists. Random
     /// remains a cursor choice; the session resolves its shared seed.
-    pub(crate) fn set_remote_pick(&mut self, pick: StagePick, random: bool, locked: bool) -> Option<Transition> {
+    pub(super) fn set_remote_pick_at(&mut self, pick: StagePick, random: bool, locked: bool, frame: u32) -> Option<Transition> {
         let StagePick::Bank(index) = pick;
-        let cursor = self.stages.iter().position(|stage| stage.index == index)?;
-        self.cursor = if random { self.stages.len() } else { cursor };
+        let listed = self.stages.iter().position(|stage| stage.index == index)?;
+        let cursor = if random { self.stages.len() } else { listed };
+        if cursor != self.cursor {
+            let direction = Direction::between(self.cursor, cursor, self.tiles());
+            self.move_cursor(cursor, direction, Some(frame));
+        }
         Some(if locked {
             if random { Transition::RandomStage } else { Transition::Stage(pick) }
         } else { Transition::CursorMoved })
@@ -221,14 +236,22 @@ impl StageScreen {
     /// confirm or Start picks the stage under the cursor or, on `RANDOM`,
     /// asks for any listed stage, back returns to the select.
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
-        let n = self.stages.len() + 1;
+        self.apply_input(input, None)
+    }
+
+    pub(super) fn apply_at(&mut self, input: MenuInput, frame: u32) -> Option<Transition> {
+        self.apply_input(input, Some(frame))
+    }
+
+    fn apply_input(&mut self, input: MenuInput, frame: Option<u32>) -> Option<Transition> {
+        let n = self.tiles();
         match input {
             MenuInput::Up | MenuInput::Left => {
-                self.cursor = (self.cursor + n - 1) % n;
+                self.move_cursor((self.cursor + n - 1) % n, Direction::Backward, frame);
                 Some(Transition::CursorMoved)
             }
             MenuInput::Down | MenuInput::Right => {
-                self.cursor = (self.cursor + 1) % n;
+                self.move_cursor((self.cursor + 1) % n, Direction::Forward, frame);
                 Some(Transition::CursorMoved)
             }
             MenuInput::Confirm | MenuInput::Start => Some(match self.cursor() {
@@ -240,12 +263,25 @@ impl StageScreen {
         }
     }
 
+    fn move_cursor(&mut self, cursor: usize, direction: Direction, frame: Option<u32>) {
+        self.cursor = cursor;
+        self.motion = frame.map(|frame| StageMotion::new(frame, direction));
+    }
+
     /// The framed screen: `STAGE SELECT`, who is picking, the cursor's
     /// stage large with its owner and place, the grid of tiles with the
     /// `RANDOM` tile last, and the cursor's tile framed in the picker's
     /// colour.
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = framed_wide(font, "STAGE SELECT", "");
+        self.render_screen(font, 0, None)
+    }
+
+    pub(super) fn render_with_title_at(&self, font: &RomFont<'_>, title_offset: usize, frame: u32) -> Frame {
+        self.render_screen(font, title_offset, self.motion.and_then(|motion| motion.at(frame)))
+    }
+
+    fn render_screen(&self, font: &RomFont<'_>, title_offset: usize, cue: Option<motion::SelectionCue>) -> Frame {
+        let mut frame = framed_wide_at(font, "STAGE SELECT", "", title_offset);
         let argb = &mut frame.argb;
         let gold = font.pen(ink::GOLD_A, 2);
         // Training has one player at the controls, always drawn as Player 1.
@@ -267,13 +303,23 @@ impl StageScreen {
             Some(p) => blit_scaled(argb, (bx, by, bw, bh), p, (0, 0, p.width, p.height)),
             None => blank_or_random(argb, (bx, by, bw, bh), self.on_random(), side_color),
         }
+        if let Some(cue) = cue {
+            cue.preview(argb, (bx, by, bw, bh));
+        }
         let caption = match self.cursor() {
             Some(stage) => format!("{} \u{b7} {}", stage.owner.to_ascii_uppercase(), stage.place.to_ascii_uppercase()),
             None => format!("{RANDOM} \u{b7} ANY STAGE"),
         };
         let caption = fit(&caption, CAPTION_CELLS);
         let caption_y = by + bh + CAPTION_GAP.0;
-        font.text_px(argb, (WIDTH - 8 * caption.chars().count()) / 2, caption_y, &caption, side_ink);
+        let caption_x = (WIDTH - 8 * caption.chars().count()) / 2;
+        if let Some(pens) = cue.and_then(motion::SelectionCue::caption_pens) {
+            for (i, ch) in caption.chars().enumerate() {
+                font.glyph_in(argb, caption_x + 8 * i, caption_y, ch, pens);
+            }
+        } else {
+            font.text_px(argb, caption_x, caption_y, &caption, side_ink);
+        }
 
         // The tiles.
         let blue = font.pen(ink::BLUE, 2);
@@ -282,6 +328,9 @@ impl StageScreen {
             let here = i == self.cursor;
             if here {
                 outline(argb, x - 1, y - 1, w + 2, h + 2, side_color);
+                if let Some(cue) = cue {
+                    cue.tile(argb, (x - 1, y - 1, w + 2, h + 2));
+                }
             }
             outline(argb, x, y, w, h, if here { side_color } else { gold });
             let window = (x + 1, y + 1, TILE_IMAGE.0, TILE_IMAGE.1);

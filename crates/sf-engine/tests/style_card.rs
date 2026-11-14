@@ -226,6 +226,8 @@ fn local_cards_darken_the_portraits_update_the_badge_and_remember_each_era() {
     let p1 = tap(&mut session, |i| i.p1.buttons[0] = true);
     assert_eq!(p1.transition, Some(Transition::StyleOpened));
     assert_eq!(p1.screen, "select");
+    assert_eq!(p1.frame.argb[35 * WIDTH + 51], 0xffca_d8ff);
+    assert_eq!(p1.frame.argb[35 * WIDTH + 146], 0xffca_d8ff);
 
     // The card dims just P1's bust. The pixels between the spinners and
     // captions still show the portrait at one-quarter brightness.
@@ -233,7 +235,7 @@ fn local_cards_darken_the_portraits_update_the_badge_and_remember_each_era() {
     darken(&mut dimmed, 50, 30, 98, 98);
     let mut changed = false;
     for y in 30..128 {
-        if matches!(y, 30..=38 | 86..=96 | 102..=114 | 120..=127) {
+        if matches!(y, 30..=34 | 36..=38 | 86..=96 | 102..=114 | 120..=127) {
             let strip = y * WIDTH + 50..y * WIDTH + 148;
             assert_eq!(p1.frame.argb[strip.clone()], dimmed[strip.clone()]);
             changed |= p1.frame.argb[strip.clone()] != grid.frame.argb[strip];

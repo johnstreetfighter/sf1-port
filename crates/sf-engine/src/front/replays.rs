@@ -1,6 +1,6 @@
 use super::fight::FightKind;
 use super::{
-    draw::{fit, framed},
+    draw::{fit, framed_at},
     Transition,
 };
 use crate::replay::MatchReplay;
@@ -38,13 +38,14 @@ impl ReplaysScreen {
         }
     }
 
-    pub fn render(
+    pub(super) fn render_with_title(
         &self,
         font: &RomFont<'_>,
         replays: impl ExactSizeIterator<Item = impl AsRef<MatchReplay>>,
         notice: Option<&str>,
+        title_offset: usize,
     ) -> Frame {
-        let mut frame = framed(font, "MATCH REPLAYS", "");
+        let mut frame = framed_at(font, "MATCH REPLAYS", "", title_offset);
         if replays.len() == 0 {
             font.text_centred(&mut frame.argb, 11, "NO SAVED MATCHES", ink::BLUE);
         }
