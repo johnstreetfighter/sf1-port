@@ -442,6 +442,38 @@ pub fn local_fight(select: &GameSession, revision: Revision, loadout: Loadout) -
     session
 }
 
+/// Ken on P1 from `select`, and P2 moved onto Ryu with the given style.
+#[allow(dead_code)]
+pub fn local_fight_p2_ryu(
+    select: &GameSession,
+    revision: Revision,
+    loadout: Loadout,
+) -> GameSession {
+    let mut session = select.clone();
+    tap(
+        &mut session,
+        FrameInputs {
+            p2: pad(LEFT, None),
+            ..FrameInputs::default()
+        },
+    );
+    assert!(matches!(
+        lock_style(
+            &mut session,
+            true,
+            TournamentFighter::Ryu,
+            revision,
+            loadout
+        ),
+        Some(Transition::Fighters(_, _))
+    ));
+    wait_for_fight(&mut session);
+    let [_, p2] = session.fight_machine().unwrap().era_fighters();
+    assert_eq!(p2.fighter, Some(TournamentFighter::Ryu));
+    assert_eq!((p2.style.revision, p2.style.loadout), (revision, loadout));
+    session
+}
+
 fn wait_for_fight(session: &mut GameSession) {
     for _ in 0..60 {
         if session.screen() == "country select" {

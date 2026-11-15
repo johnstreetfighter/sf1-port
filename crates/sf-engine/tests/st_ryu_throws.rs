@@ -6,16 +6,15 @@ mod support;
 use sf_engine::combo::throw::{THROWN_MOVE, THROW_MOVE};
 use sf_engine::data_bank::GROUND;
 use sf_engine::era::{GaugeMode, Loadout, Revision};
-use sf_engine::fair_cpu::FIGHT_LOOP;
-use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::fight::Fight;
-use sf_engine::front::{FrameInputs, GameSession, PlayerInputs, Transition};
+use sf_engine::front::{GameSession, PlayerInputs};
 use sf_engine::overlay::FighterTelemetry;
 use sf_engine::roster::TournamentFighter;
 use sf_video::callouts::Side;
 use sf_video::romset::Assets;
 use support::{
-    local_fight, local_select_with_fighter, local_select_with_p1, pad, LEFT, LP, RIGHT, UP,
+    local_fight, local_fight_p2_ryu, local_select_with_fighter, local_select_with_p1, pad, LEFT,
+    LP, RIGHT,
 };
 
 const MP: usize = 1;
@@ -139,75 +138,54 @@ fn replay_step(fight: &mut Fight, assets: &Assets, elapsed: u32, input: [PlayerI
     );
 }
 
-fn tap(session: &mut GameSession, input: FrameInputs) -> Option<Transition> {
-    let transition = session.step(input).transition;
-    session.step(FrameInputs::default());
-    transition
-}
-
-fn local_fight_with_p2_ryu(mut session: GameSession, loadout: Loadout) -> GameSession {
-    let p2 = |dir, button| FrameInputs {
-        p2: pad(dir, button),
-        ..FrameInputs::default()
-    };
-    tap(&mut session, p2(LEFT, None));
-    assert_eq!(
-        tap(&mut session, p2(0, Some(LP))),
-        Some(Transition::StyleOpened)
-    );
-    tap(&mut session, p2(RIGHT, None));
-    if loadout == Loadout::Old {
-        tap(&mut session, p2(UP, None));
-        tap(&mut session, p2(RIGHT, None));
-    }
-    assert!(matches!(
-        tap(&mut session, p2(0, Some(LP))),
-        Some(Transition::Fighters(_, _))
-    ));
-    for _ in 0..60 {
-        if session.screen() == "country select" {
-            break;
-        }
-        session.step(FrameInputs::default());
-    }
-    assert_eq!(session.screen(), "country select");
-    tap(
-        &mut session,
-        FrameInputs {
-            p1: pad(0, Some(LP)),
-            ..FrameInputs::default()
-        },
-    );
-    for _ in 0..1500 {
-        if let Some(machine) = session
-            .fight_machine()
-            .filter(|machine| flow_position(machine) == FIGHT_LOOP)
-        {
-            let [p1, p2] = machine.era_fighters();
-            assert_eq!(p1.fighter, Some(TournamentFighter::Ken));
-            assert_eq!(p2.fighter, Some(TournamentFighter::Ryu));
-            assert_eq!(
-                (p2.style.revision, p2.style.loadout),
-                (Revision::St, loadout)
-            );
-            return session;
-        }
-        session.step(FrameInputs::default());
-    }
-    panic!("the native fight loop did not open");
+/// Ken on P1 and Ryu on P2, each locked into the given Era Style and loadout.
+fn ken_vs_p2_ryu(
+    select: &GameSession,
+    ken: (Revision, Loadout),
+    ryu: (Revision, Loadout),
+) -> GameSession {
+    let session = local_fight_p2_ryu(select, ryu.0, ryu.1);
+    let [p1, _] = session.fight_machine().unwrap().era_fighters();
+    assert_eq!(p1.fighter, Some(TournamentFighter::Ken));
+    assert_eq!((p1.style.revision, p1.style.loadout), ken);
+    session
 }
 
 fn check_ryu_throw(
-    mut fight: Fight,
+    fight: Fight,
     assets: &Assets,
     button: usize,
     back: bool,
     response: Option<(u32, PlayerInputs)>,
     softened: bool,
 ) -> u16 {
+    check_ryu_throw_from(fight, assets, 0, button, back, response, softened)
+}
+
+fn telemetry(fight: &Fight) -> [FighterTelemetry; 2] {
+    let read = fight.machine().diagnostic_telemetry();
+    [read.p1, read.p2]
+}
+
+/// Ryu on side `ryu` throws Ken on the other side, who may answer at one tick.
+fn check_ryu_throw_from(
+    mut fight: Fight,
+    assets: &Assets,
+    ryu: usize,
+    button: usize,
+    back: bool,
+    response: Option<(u32, PlayerInputs)>,
+    softened: bool,
+) -> u16 {
+    let ken = 1 - ryu;
+    let (toward, away, side) = if ryu == 0 {
+        (RIGHT, LEFT, Side::P1)
+    } else {
+        (LEFT, RIGHT, Side::P2)
+    };
     let expected = timing(button);
-    let origin = axis_x(&fight, fight.machine().diagnostic_telemetry().p1);
-    let initial_hp = fight.machine().era_fighters()[1].sub_hp;
+    let origin = axis_x(&fight, telemetry(&fight)[ryu]);
+    let initial_hp = fight.machine().era_fighters()[ken].sub_hp;
     let damage_tick = if softened {
         expected.release
     } else {
@@ -222,15 +200,15 @@ fn check_ryu_throw(
     for elapsed in 0..=defender_recovery + 1 {
         let mut input = [PlayerInputs::default(); 2];
         if elapsed == 0 {
-            input[0] = pad(if back { LEFT } else { RIGHT }, Some(button));
+            input[ryu] = pad(if back { away } else { toward }, Some(button));
         }
         if let Some((tick, response)) = response {
             if elapsed == tick {
-                input[1] = response;
+                input[ken] = response;
             }
         }
         if elapsed == defender_recovery + 1 {
-            input[1] = pad(RIGHT, Some(LP));
+            input[ken] = pad(toward, Some(LP));
         }
         if [0, 13, expected.release, damage_tick].contains(&elapsed) {
             replay_step(&mut fight, assets, elapsed, input);
@@ -239,44 +217,48 @@ fn check_ryu_throw(
         }
 
         let fighters = fight.fight_read().fighters;
-        let read = fight.machine().diagnostic_telemetry();
-        let lost = initial_hp - fight.machine().era_fighters()[1].sub_hp;
+        let read = telemetry(&fight);
+        let lost = initial_hp - fight.machine().era_fighters()[ken].sub_hp;
         if elapsed == 0 {
-            assert_eq!(fighters[0].move_id, THROW_MOVE);
-            assert_eq!(fighters[1].move_id, THROWN_MOVE);
+            assert_eq!(fighters[ryu].move_id, THROW_MOVE);
+            assert_eq!(fighters[ken].move_id, THROWN_MOVE);
         }
         assert_eq!(
             fight
                 .machine()
                 .toggle_state()
                 .throw
-                .st_ryu_capture_active(1),
+                .st_ryu_capture_active(ken),
             elapsed < expected.release,
             "Ken capture at +{elapsed}"
         );
         assert_eq!(
-            fighters[0].move_id == 1,
+            fighters[ryu].move_id == 1,
             elapsed >= expected.attacker_neutral,
             "Ryu recovery at +{elapsed}"
         );
         if elapsed < defender_recovery {
-            assert_ne!(fighters[1].move_id, 1, "Ken still recovering at +{elapsed}");
+            assert_ne!(
+                fighters[ken].move_id, 1,
+                "Ken still recovering at +{elapsed}"
+            );
         } else if elapsed == defender_recovery {
             assert!(
-                !fighters[1].getting_up,
+                !fighters[ken].getting_up,
                 "Ken finishes recovery at +{elapsed}"
             );
         } else {
-            assert!(fighters[1].attacking(), "Ken can jab at +{elapsed}");
+            assert!(fighters[ken].attacking(), "Ken can jab at +{elapsed}");
         }
         if elapsed == expected.release {
-            let release_dx = if back { -127 } else { 127 };
-            assert_eq!(axis_x(&fight, read.p2) - origin, release_dx);
-            assert_eq!(height(&fight, read.p2), expected.release_height);
+            let forward = if ryu == 0 { 127 } else { -127 };
+            let release_dx = if back { -forward } else { forward };
+            assert_eq!(axis_x(&fight, read[ken]) - origin, release_dx);
+            assert_eq!(height(&fight, read[ken]), expected.release_height);
         }
         if softened && elapsed > expected.release && elapsed <= expected.soft_land {
             assert_eq!(
-                height(&fight, read.p2) > 0,
+                height(&fight, read[ken]) > 0,
                 elapsed < expected.soft_land,
                 "airborne recovery at +{elapsed}"
             );
@@ -288,9 +270,9 @@ fn check_ryu_throw(
                 "first throw damage at +{elapsed}"
             );
             if !softened {
-                assert_eq!(height(&fight, read.p2), 0, "full damage on landing");
+                assert_eq!(height(&fight, read[ken]), 0, "full damage on landing");
             }
-            assert!(fight.fight_read().landed_by(Side::P1).is_some());
+            assert!(fight.fight_read().landed_by(side).is_some());
             damage = lost;
         }
         assert_eq!(lost, damage, "one damage event at +{damage_tick}");
@@ -344,7 +326,11 @@ fn st_ryu_throws_with_p2_controls() {
         return;
     };
     for loadout in LOADOUTS {
-        let session = local_fight_with_p2_ryu(select.clone(), loadout);
+        let session = ken_vs_p2_ryu(
+            &select,
+            (Revision::St, Loadout::Standard),
+            (Revision::St, loadout),
+        );
         let assets = session.assets();
         let mut base = session.fight().unwrap().clone();
         ready(&mut base, assets);
@@ -504,6 +490,54 @@ fn st_same_tick_throws_only_capture_one_fighter_and_replay() {
 }
 
 #[test]
+fn st_same_tick_throws_with_p2_ryu_follow_the_same_side_parity() {
+    let Some(select) = local_select_with_fighter(
+        GaugeMode::EraDefault,
+        TournamentFighter::Ken,
+        Revision::St,
+        Loadout::Standard,
+    ) else {
+        return;
+    };
+    for loadout in LOADOUTS {
+        let session = ken_vs_p2_ryu(
+            &select,
+            (Revision::St, Loadout::Standard),
+            (Revision::St, loadout),
+        );
+        let assets = session.assets();
+        let mut fight = session.fight().unwrap().clone();
+        ready(&mut fight, assets);
+        let mut fight = at_gap(fight, 32);
+        let mut wins = [false; 2];
+        for delay in 0..16 {
+            let seed = fight
+                .machine()
+                .toggle_state()
+                .throw
+                .st_order_seed()
+                .unwrap();
+            // The selector picks a side, not a fighter: even output still
+            // visits P2 first with Ryu on that side.
+            let winner = if seed & 2 == 0 { 1 } else { 0 };
+            let mut replay = fight.clone();
+            replay_step(
+                &mut replay,
+                assets,
+                delay,
+                [pad(RIGHT, Some(MP)), pad(LEFT, Some(MP))],
+            );
+            let moves = replay.fight_read().fighters.map(|fighter| fighter.move_id);
+            assert_eq!(moves[winner], THROW_MOVE, "{loadout:?} seed {seed:#06x}");
+            assert_eq!(moves[1 - winner], THROWN_MOVE, "only one capture");
+            wins[winner] = true;
+            step(&mut fight, assets, [PlayerInputs::default(); 2]);
+        }
+        assert_eq!(wins, [true; 2], "{loadout:?} visits either side first");
+    }
+}
+
+#[test]
 fn st_back_throw_into_left_edge_keeps_the_defender_on_the_launch_side() {
     let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, Loadout::Standard)
     else {
@@ -543,33 +577,153 @@ fn mixed_era_throws_keep_the_ordinary_response_and_match_switch() {
             return;
         };
         let session = local_fight(&select, ken, Loadout::Standard);
+        check_mixed_era_throws(&session, [ryu, ken]);
+    }
+}
+
+#[test]
+fn mixed_era_throws_keep_the_ordinary_response_and_match_switch_with_p2_ryu() {
+    for (ken, ryu) in [
+        (Revision::Sf1Plus, Revision::St),
+        (Revision::St, Revision::Sf1Plus),
+    ] {
+        let Some(select) = local_select_with_fighter(
+            GaugeMode::EraDefault,
+            TournamentFighter::Ken,
+            ken,
+            Loadout::Standard,
+        ) else {
+            return;
+        };
+        let session = ken_vs_p2_ryu(&select, (ken, Loadout::Standard), (ryu, Loadout::Standard));
+        check_mixed_era_throws(&session, [ken, ryu]);
+    }
+}
+
+/// Each side throws in turn, with the SF2 untechable-throw switch off and on.
+/// Only an SF2 ST attacker under the switch keeps the defender from teching.
+fn check_mixed_era_throws(session: &GameSession, revisions: [Revision; 2]) {
+    let assets = session.assets();
+    let mut base = session.fight().unwrap().clone();
+    ready(&mut base, assets);
+    let base = at_gap(base, 32);
+    for (attacker, revision) in revisions.into_iter().enumerate() {
+        let defender = 1 - attacker;
+        for disabled in [false, true] {
+            let mut fight = base.clone();
+            let mut snapshot = fight.save_netplay_snapshot(0);
+            snapshot.machine.match_config.sf1plus.untechable_sf2_throws = disabled;
+            snapshot.setup.config.sf1plus.untechable_sf2_throws = disabled;
+            fight.restore_netplay_snapshot(&snapshot);
+            let initial_hp = fight.machine().era_fighters()[defender].sub_hp;
+            let mut input = [PlayerInputs::default(); 2];
+            input[attacker] = pad(if attacker == 0 { RIGHT } else { LEFT }, Some(HP));
+            step(&mut fight, assets, input);
+            assert_eq!(
+                fight.fight_read().fighters[defender].move_id,
+                THROWN_MOVE,
+                "{revisions:?} attacker P{}",
+                attacker + 1
+            );
+            let mut input = [PlayerInputs::default(); 2];
+            input[defender] = pad(0, Some(LP));
+            input[defender].buttons[LK] = true;
+            step(&mut fight, assets, input);
+            assert_eq!(
+                fight.fight_read().fighters[defender].move_id == THROWN_MOVE,
+                disabled && revision == Revision::St,
+                "{revisions:?} attacker P{} switch {disabled}",
+                attacker + 1
+            );
+            assert_eq!(fight.machine().era_fighters()[defender].sub_hp, initial_hp);
+            assert!(fight
+                .machine()
+                .toggle_state()
+                .throw
+                .st_order_seed()
+                .is_none());
+        }
+    }
+}
+
+#[test]
+fn st_p2_ryu_throws_soften_only_for_new_p1_ken() {
+    for ken in LOADOUTS {
+        let Some(select) = local_select_with_fighter(
+            GaugeMode::EraDefault,
+            TournamentFighter::Ken,
+            Revision::St,
+            ken,
+        ) else {
+            return;
+        };
+        for ryu in LOADOUTS {
+            let session = ken_vs_p2_ryu(&select, (Revision::St, ken), (Revision::St, ryu));
+            let assets = session.assets();
+            let mut base = session.fight().unwrap().clone();
+            ready(&mut base, assets);
+            let base = at_gap(base, 32);
+            let soften = pad(RIGHT, Some(MP));
+            for button in [MP, MK] {
+                for back in [false, true] {
+                    let new = ken == Loadout::Standard;
+                    let early = check_ryu_throw_from(
+                        base.clone(),
+                        assets,
+                        1,
+                        button,
+                        back,
+                        Some((13, soften)),
+                        new,
+                    );
+                    let late = check_ryu_throw_from(
+                        base.clone(),
+                        assets,
+                        1,
+                        button,
+                        back,
+                        Some((14, soften)),
+                        false,
+                    );
+                    let expected = if new { late / 2 } else { late };
+                    assert_eq!(early, expected, "{ken:?} Ken vs {ryu:?} Ryu");
+                }
+            }
+            check_ryu_throw_from(
+                base,
+                assets,
+                1,
+                MP,
+                false,
+                Some((13, pad(0, Some(MP)))),
+                false,
+            );
+        }
+    }
+}
+
+#[test]
+fn st_old_p2_ken_takes_the_full_ryu_throw() {
+    for ryu in LOADOUTS {
+        let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, ryu) else {
+            return;
+        };
+        let session = local_fight(&select, Revision::St, Loadout::Old);
         let assets = session.assets();
         let mut base = session.fight().unwrap().clone();
         ready(&mut base, assets);
         let base = at_gap(base, 32);
-        for (attacker, revision) in [ryu, ken].into_iter().enumerate() {
-            let defender = 1 - attacker;
-            for disabled in [false, true] {
-                let mut fight = base.clone();
-                let mut snapshot = fight.save_netplay_snapshot(0);
-                snapshot.machine.match_config.sf1plus.untechable_sf2_throws = disabled;
-                snapshot.setup.config.sf1plus.untechable_sf2_throws = disabled;
-                fight.restore_netplay_snapshot(&snapshot);
-                let initial_hp = fight.machine().era_fighters()[defender].sub_hp;
-                let mut input = [PlayerInputs::default(); 2];
-                input[attacker] = pad(if attacker == 0 { RIGHT } else { LEFT }, Some(HP));
-                step(&mut fight, assets, input);
-                assert_eq!(fight.fight_read().fighters[defender].move_id, THROWN_MOVE);
-                let mut input = [PlayerInputs::default(); 2];
-                input[defender] = pad(0, Some(LP));
-                input[defender].buttons[LK] = true;
-                step(&mut fight, assets, input);
-                assert_eq!(
-                    fight.fight_read().fighters[defender].move_id == THROWN_MOVE,
-                    disabled && revision == Revision::St
+        for button in [MP, MK] {
+            for back in [false, true] {
+                let damage = check_ryu_throw(
+                    base.clone(),
+                    assets,
+                    button,
+                    back,
+                    Some((13, pad(LEFT, Some(MP)))),
+                    false,
                 );
-                assert_eq!(fight.machine().era_fighters()[defender].sub_hp, initial_hp);
-                assert!(fight.machine().toggle_state().throw.st_order_seed().is_none());
+                assert_eq!(damage, 214, "{ryu:?} Ryu vs Old Ken");
             }
         }
     }
