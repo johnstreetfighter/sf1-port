@@ -76,6 +76,8 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
+use crate::score::NativeScore;
+
 /// The first address past the ROM, where the extended tune table starts
 /// when the program image is longer than the ROM.
 pub const EXTENSION_BASE: u16 = 0x8000;
@@ -99,6 +101,14 @@ pub trait MusicBus {
     fn write(&mut self, t: u64, port: u8, data: u8);
     /// Read the sound latch (0xc800).
     fn latch(&mut self, t: u64) -> u8;
+    /// Take the next timed request or stop for a separate score.
+    fn take_score_event(
+        &mut self,
+        _t: u64,
+        _separate_live: bool,
+    ) -> Option<(u8, Option<Arc<NativeScore>>)> {
+        None
+    }
     /// Take the next NMI if one is due at or before `t` (returns its time).
     fn take_nmi(&mut self, t: u64) -> Option<u64>;
 }
@@ -226,6 +236,19 @@ pub struct MusicFault {
     pub drop_saved_copy: bool,
 }
 
+/// One current or saved source and its channel positions. The translated
+/// channel records still hold the native sequencer's musical state.
+#[derive(Clone)]
+struct ScoreSlot {
+    score: Arc<NativeScore>,
+    positions: [u32; 8],
+}
+
+enum TuneSource {
+    Program(u16),
+    Separate(Arc<NativeScore>),
+}
+
 /// The music CPU: RAM, program ROM, and clock.
 pub struct MusicCpu {
     rom: Vec<u8>,
@@ -248,6 +271,8 @@ pub struct MusicCpu {
     attached: Option<Arc<Vec<u8>>>,
     /// The program image's length without an extension.
     base_len: usize,
+    current_score: Option<ScoreSlot>,
+    saved_score: Option<ScoreSlot>,
 }
 
 impl MusicCpu {
@@ -265,6 +290,8 @@ impl MusicCpu {
             observations: MusicObservations::default(),
             fault: MusicFault::default(),
             nesting: 0,
+            current_score: None,
+            saved_score: None,
         }
     }
 
@@ -288,9 +315,8 @@ impl MusicCpu {
     /// extension (the stream pointers are big-endian at each channel's +0).
     fn extension_in_use(&self) -> bool {
         let streams = |base: u16| {
-            (0..8u16).any(|ch| {
-                (EXTENSION_BASE..EXTENSION_END).contains(&self.rd16be(base + 0x30 * ch))
-            })
+            (0..8u16)
+                .any(|ch| (EXTENSION_BASE..EXTENSION_END).contains(&self.rd16be(base + 0x30 * ch)))
         };
         (self.rd(C011_MUSIC) != 0 && streams(MUSIC_CHANNELS))
             || (self.rd(C012_SAVED) != 0 && streams(SAVED_CHANNELS))
@@ -373,10 +399,44 @@ impl MusicCpu {
         }
     }
 
+    fn score_channel(&self, ix: u16) -> Option<(&ScoreSlot, usize)> {
+        let (slot, base) = if ix >= SAVED_CHANNELS {
+            (self.saved_score.as_ref()?, SAVED_CHANNELS)
+        } else {
+            (self.current_score.as_ref()?, MUSIC_CHANNELS)
+        };
+        let channel = ((ix - base) / 0x30) as usize;
+        slot.score.channels[channel].as_ref()?;
+        Some((slot, channel))
+    }
+
+    fn stream_exists(&self, ix: u16) -> bool {
+        self.score_channel(ix).is_some() || self.rd(ix) | self.rd(ix + 1) != 0
+    }
+
+    fn stream_has_patch(&self, ix: u16) -> bool {
+        self.stream_exists(ix) && (self.score_channel(ix).is_none() || self.rd16be(ix + 0x18) != 0)
+    }
+
+    fn extended_stream(&self, ix: u16) -> bool {
+        self.score_channel(ix).is_some()
+            || (self.rom.len() > EXTENSION_BASE as usize
+                && (EXTENSION_BASE..EXTENSION_END).contains(&self.rd16be(ix)))
+    }
+
     fn raw_channel(&self, ix: u16) -> bool {
-        self.rom.len() > EXTENSION_BASE as usize
-            && self.rd(ix + RAW_FLAG) == RAW_MAGIC
-            && (EXTENSION_BASE..EXTENSION_END).contains(&self.rd16be(ix))
+        self.rd(ix + RAW_FLAG) == RAW_MAGIC && self.extended_stream(ix)
+    }
+
+    fn set_score_position(&mut self, ix: u16, position: u32) {
+        let (slot, base) = if ix >= SAVED_CHANNELS {
+            (&mut self.saved_score, SAVED_CHANNELS)
+        } else {
+            (&mut self.current_score, MUSIC_CHANNELS)
+        };
+        slot.as_mut()
+            .expect("a separate score owns this stream")
+            .positions[((ix - base) / 0x30) as usize] = position;
     }
 
     fn raw_control(&self, ix: u16, value: u8) -> u8 {
@@ -637,6 +697,8 @@ impl MusicCpu {
     /// at clock 0 the first chip write lands at clock 43,213, as in the
     /// reference. Leaves `t` at the idle loop's first `ei`.
     pub fn boot(&mut self, bus: &mut impl MusicBus) {
+        self.current_score = None;
+        self.saved_score = None;
         self.c(bus, 4 + 8 + 10 + 10);
         self.c(bus, 10 + 10 + 10 + 10 + 21 * 0x7fe + 16);
         for i in 0..0x800u16 {
@@ -764,9 +826,13 @@ impl MusicCpu {
     /// 0x019d: take a new command from the latch.
     fn commands(&mut self, bus: &mut impl MusicBus) {
         self.c(bus, 13 + 4); // ld a,(0xc001); ld c,a
-        let a = bus.latch(self.t + ABS_ACCESS);
+        let at = self.t + ABS_ACCESS;
+        let latch = bus.latch(at);
+        let separate_live = self.current_score.is_some() || self.saved_score.is_some();
+        let request = bus.take_score_event(at, separate_live);
+        let a = request.as_ref().map_or(latch, |(command, _)| *command);
         self.c(bus, 13 + 4); // ld a,(0xc800); cp c
-        if a == self.rd(C001_LAST_CMD) {
+        if request.is_none() && a == self.rd(C001_LAST_CMD) {
             if a != 0xff {
                 self.observations.repeated_cmd_ignores += 1;
             }
@@ -801,27 +867,34 @@ impl MusicCpu {
         // The extended table takes the commands the 1987 game never sends,
         // at the 1987 lookup's cost, when the image carries one.
         let extended = a >= EXTENDED_FIRST && self.rom.len() > EXTENSION_BASE as usize;
-        let entry = if extended {
-            EXTENSION_BASE + 2 * (a - EXTENDED_FIRST) as u16
+        let (source, header) = if let Some((_, Some(score))) = request {
+            self.c(bus, 4 + 7 + 10 + 7 + 8 + 10);
+            let header = score.header;
+            (TuneSource::Separate(score), header)
         } else {
-            0x1011u16.wrapping_add(off as u16)
+            let entry = if extended {
+                EXTENSION_BASE + 2 * (a - EXTENDED_FIRST) as u16
+            } else {
+                0x1011u16.wrapping_add(off as u16)
+            };
+            let de = u16::from_le_bytes([self.rd(entry), self.rd(entry + 1)]);
+            self.c(bus, 4 + 7 + 10); // ld a,d; cp 0xff; jp z
+            if extended && de == 0 {
+                // No tune is named: the command does nothing.
+                return;
+            }
+            if de >> 8 == 0xff {
+                self.special(bus, de as u8);
+                return;
+            }
+            let header = self.rd(de);
+            self.c(bus, 7 + 8 + 10); // ld a,(de); bit 7,a; jp nz
+            if header & 0x80 != 0 {
+                self.effect_start(bus, de, header);
+                return;
+            }
+            (TuneSource::Program(de), header)
         };
-        let de = u16::from_le_bytes([self.rd(entry), self.rd(entry + 1)]);
-        self.c(bus, 4 + 7 + 10); // ld a,d; cp 0xff; jp z
-        if extended && de == 0 {
-            // No tune is named: the command does nothing.
-            return;
-        }
-        if de >> 8 == 0xff {
-            self.special(bus, de as u8);
-            return;
-        }
-        let header = self.rd(de);
-        self.c(bus, 7 + 8 + 10); // ld a,(de); bit 7,a; jp nz
-        if header & 0x80 != 0 {
-            self.effect_start(bus, de, header);
-            return;
-        }
         self.c(bus, 4 + 7 + 4 + 13 + 4 + 7 + 4); // ... cp c
         let c = header & 0x0f;
         let b = self.rd(C011_MUSIC);
@@ -842,7 +915,9 @@ impl MusicCpu {
                 );
                 self.wr(C012_SAVED, b);
                 if !self.fault.drop_saved_copy {
-                    for i in 0..0x17f {
+                    self.saved_score = self.current_score.clone();
+                    let bytes = 0x17f + u16::from(self.saved_score.is_some());
+                    for i in 0..bytes {
                         let v = self.rd(MUSIC_CHANNELS + i);
                         self.wr(SAVED_CHANNELS + i, v);
                     }
@@ -864,7 +939,7 @@ impl MusicCpu {
                 self.observations.tune_lower_priority_saved_loads += 1;
                 self.c(bus, 4 + 13 + 10 + 12);
                 self.wr(C012_SAVED, header);
-                self.load_channels(bus, SAVED_CHANNELS, de);
+                self.load_channels(bus, SAVED_CHANNELS, source);
                 return;
             }
         } else {
@@ -874,7 +949,7 @@ impl MusicCpu {
         // 0x01f8
         self.c(bus, 4 + 13 + 10 + 17);
         self.wr(C011_MUSIC, header);
-        self.load_channels(bus, MUSIC_CHANNELS, de);
+        self.load_channels(bus, MUSIC_CHANNELS, source);
         // 0x0202: silence every channel no effect owns.
         self.c(bus, 14 + 19 + 14 + 19 + 4 + 7);
         let mut e = self.rd(EFFECT_SLOT_A) | self.rd(EFFECT_SLOT_B);
@@ -896,15 +971,30 @@ impl MusicCpu {
 
     /// 0x0228: eight channel stream pointers from the header (little-endian
     /// pairs after the header byte), the rest of each channel cleared.
-    fn load_channels(&mut self, bus: &mut impl MusicBus, base: u16, de: u16) {
+    fn load_channels(&mut self, bus: &mut impl MusicBus, base: u16, source: TuneSource) {
         self.c(bus, 7);
-        let mut de = de;
+        let (slot, mut de) = match source {
+            TuneSource::Program(de) => (None, Some(de)),
+            TuneSource::Separate(score) => (
+                Some(ScoreSlot {
+                    score,
+                    positions: [0; 8],
+                }),
+                None,
+            ),
+        };
+        if base == MUSIC_CHANNELS {
+            self.current_score = slot;
+        } else {
+            self.saved_score = slot;
+        }
         let mut hl = base;
         for ch in 0..8 {
-            de = de.wrapping_add(1);
-            let c = self.rd(de);
-            de = de.wrapping_add(1);
-            let b = self.rd(de);
+            let [c, b] = de.as_mut().map_or([0, 0], |de| {
+                let bytes = [self.rd(de.wrapping_add(1)), self.rd(de.wrapping_add(2))];
+                *de = de.wrapping_add(2);
+                bytes
+            });
             self.wr(hl, b);
             self.wr(hl + 1, c);
             hl += 2;
@@ -1022,7 +1112,7 @@ impl MusicCpu {
             } else {
                 // ld a,(ix+0) 19; or (ix+1) 19; jr nz 12 / 7
                 self.c(bus, 7 + 19 + 19);
-                if self.rd(ix) | self.rd(ix + 1) == 0 {
+                if !self.stream_has_patch(ix) {
                     // 0x0345: ld a,(0xc014) 13; ld c,a 4; ld a,(0xc024) 13;
                     // or a 4; call z,0x009d 17 / 10; call 0x00b9 17; jr 12
                     self.c(bus, 7 + 13 + 4 + 13 + 4);
@@ -1095,6 +1185,7 @@ impl MusicCpu {
         self.observations.saved_discards += 1;
         self.c(bus, 4 + 13 + 10 + 10 + 10 + 10 + 21 * 0x17e + 16 + 10);
         self.wr(C012_SAVED, 0);
+        self.saved_score = None;
         for i in 0..0x180 {
             self.wr(SAVED_CHANNELS + i, 0);
         }
@@ -1111,9 +1202,12 @@ impl MusicCpu {
         // 8038; call 0x0412 17
         self.observations.saved_pops += 1;
         self.c(bus, 13 + 13 + 10 + 10 + 10 + 21 * 0x17e + 16 + 17);
+        let silently_advanced = self.rd(C011_MUSIC) & 0x40 != 0;
         let header = self.rd(C012_SAVED);
         self.wr(C011_MUSIC, header);
-        for i in 0..0x17f {
+        self.current_score = self.saved_score.take();
+        let bytes = 0x17f + u16::from(self.current_score.is_some());
+        for i in 0..bytes {
             let v = self.rd(SAVED_CHANNELS + i);
             self.wr(MUSIC_CHANNELS + i, v);
         }
@@ -1121,7 +1215,7 @@ impl MusicCpu {
         // remaining spans resume now, without counting the interlude.
         for ch in 0..8 {
             let ix = MUSIC_CHANNELS + 0x30 * ch;
-            if self.raw_channel(ix) {
+            if self.raw_channel(ix) && (self.current_score.is_none() || !silently_advanced) {
                 self.raw_store(ix + RAW_CLOCK, self.t as u32);
             }
         }
@@ -1147,7 +1241,7 @@ impl MusicCpu {
                 self.c(bus, 17);
                 self.key_off(bus, ch);
                 self.c(bus, 19 + 19);
-                if self.rd(ix) | self.rd(ix + 1) == 0 {
+                if !self.stream_has_patch(ix) {
                     self.c(bus, 12);
                 } else {
                     // ld h,(ix+0x18) 19; ld l,(ix+0x19) 19; call 0x08e4 17;
@@ -1720,6 +1814,7 @@ impl MusicCpu {
             Flow::TuneEnd => self.pop_saved(bus),
             Flow::SavedEnd => self.discard_saved(bus),
         }
+        self.wr(C010_SILENT, 0);
     }
 
     /// 0x0453: tick eight channels from `base` (charges its `ret`). A tune
@@ -1733,7 +1828,7 @@ impl MusicCpu {
             self.wr(C014_CHANNEL, ch);
             let n = self.rd(ix + 7).wrapping_add(1);
             self.wr(ix + 7, n);
-            if self.rd(ix) | self.rd(ix + 1) != 0 {
+            if self.stream_exists(ix) {
                 self.c(bus, 17);
                 let flow = self.channel_tick(bus, ix);
                 if flow != Flow::Done {
@@ -1823,6 +1918,9 @@ impl MusicCpu {
             self.c(bus, 11);
             return;
         }
+        if self.score_channel(ix).is_some() {
+            self.wr(ix + 0x0e, 0);
+        }
         self.c(bus, 5 + 13 + 4);
         if self.rd(C010_SILENT) != 0 {
             self.c(bus, 11);
@@ -1836,6 +1934,24 @@ impl MusicCpu {
     /// 0x0a1a: the channel's next stream byte.
     fn read_byte(&mut self, bus: &mut impl MusicBus, ix: u16) -> u8 {
         self.c(bus, 19 + 19 + 7 + 4 + 6 + 19 + 19 + 10);
+        self.stream_byte(ix)
+    }
+
+    fn stream_byte(&mut self, ix: u16) -> u8 {
+        if let Some((slot, channel)) = self.score_channel(ix) {
+            let position = slot.positions[channel];
+            let stream = slot.score.channels[channel]
+                .as_ref()
+                .expect("an active channel");
+            if let (Some(&byte), Some(next)) =
+                (stream.get(position as usize), position.checked_add(1))
+            {
+                self.set_score_position(ix, next);
+                return byte;
+            }
+            self.note(0x0a1a);
+            return 0x0f;
+        }
         let hl = self.rd16be(ix);
         let a = self.rd(hl);
         self.wr16be(ix, hl.wrapping_add(1));
@@ -2153,6 +2269,9 @@ impl MusicCpu {
                 self.wr(ix + 0x17, p);
                 if self.rd(C010_SILENT) != 0 {
                     self.c(bus, 11);
+                    if self.score_channel(ix).is_some() {
+                        self.wr16be(ix + 0x18, 0x6b00 + 0x29 * u16::from(p));
+                    }
                 } else {
                     self.c(bus, 5 + 4 + 4 + 7 + 7 + 7 + 17);
                     let hl = self.mul8(bus, p, 0x29).wrapping_add(0x6b00);
@@ -2174,7 +2293,9 @@ impl MusicCpu {
                 let a = self.raw_control(ix, (self.rd(ix + 0x1a) & 0x3f) | v);
                 self.wr(ix + 0x1a, a);
                 let reg = self.rd(C014_CHANNEL).wrapping_add(0x20);
-                if !self.raw_channel(ix) || self.rd(C010_SILENT) == 0 {
+                if self.rd(C010_SILENT) == 0
+                    || (self.score_channel(ix).is_none() && !self.raw_channel(ix))
+                {
                     self.write_ch(bus, reg, a);
                 }
                 self.c(bus, 10);
@@ -2207,19 +2328,44 @@ impl MusicCpu {
                     self.c(bus, 4 + 17);
                     let hi = self.read_byte(bus, ix);
                     self.c(bus, 19 + 19 + 10);
-                    self.wr(ix, hi);
-                    self.wr(ix + 1, lo);
+                    if self.score_channel(ix).is_some() {
+                        // A separate stream uses four logical bytes. The
+                        // read charges the ROM jump's original clock cost.
+                        let upper = self.stream_byte(ix);
+                        let top = self.stream_byte(ix);
+                        let target = u32::from_le_bytes([lo, hi, upper, top]);
+                        let (slot, channel) = self.score_channel(ix).expect("a separate stream");
+                        let stream = slot.score.channels[channel]
+                            .as_ref()
+                            .expect("an active channel");
+                        if target as usize >= stream.len() {
+                            self.note(0x09c8);
+                            let flow = if self.rd(C010_SILENT) == 0 {
+                                Flow::TuneEnd
+                            } else {
+                                Flow::SavedEnd
+                            };
+                            return Some(flow);
+                        }
+                        self.set_score_position(ix, target);
+                    } else {
+                        self.wr(ix, hi);
+                        self.wr(ix + 1, lo);
+                    }
                 } else {
                     // 0x09d6: skip the address.
                     self.c(bus, 19 + 19 + 10 + 11 + 19 + 19 + 10);
-                    let p = self.rd16be(ix).wrapping_add(2);
-                    self.wr16be(ix, p);
+                    if let Some((slot, channel)) = self.score_channel(ix) {
+                        let next = slot.positions[channel].saturating_add(4);
+                        self.set_score_position(ix, next);
+                    } else {
+                        let p = self.rd16be(ix).wrapping_add(2);
+                        self.wr16be(ix, p);
+                    }
                 }
             }
             0xa => {
-                if self.rom.len() > EXTENSION_BASE as usize
-                    && (EXTENSION_BASE..EXTENSION_END).contains(&self.rd16be(ix))
-                {
+                if self.extended_stream(ix) {
                     return self.raw_opcode(bus, ix);
                 }
                 self.note(0x0000);

@@ -125,7 +125,7 @@ impl Bus<'_> {
         self.shift_grid_x(fighter, dx);
         self.set_st_ryu_knockdown_height(fighter, height);
         if launch.tick == floor {
-            self.finish_knockdown_dust(fighter);
+            self.finish_slam_dust(fighter);
         }
         self.set_eb(fighter, 0x15, dx as u8);
         self.clamp_x(fighter);

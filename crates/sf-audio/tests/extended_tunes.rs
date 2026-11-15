@@ -685,11 +685,17 @@ fn local_music_pack_ryu_theme_converts_and_plays_from_the_extended_table() {
     use sf_video::background_bank::RYU_THEME;
 
     let Some(rom) = rom() else { return };
-    let Ok(pack) = find_pack(&pack_folders(&[Path::new(ROMS)])) else {
+    let Ok(mut pack) = find_pack(&pack_folders(&[Path::new(ROMS)])) else {
         eprintln!("skipping: local music pack not present");
         return;
     };
     assert!(pack.unreadable.is_empty(), "unreadable pack scores: {:?}", pack.unreadable);
+    // This regression exercises the original Ryu score in the fixed window.
+    // The full pack plays through the separate library.
+    pack.scores.retain(|source| {
+        sf_audio::score::compile(&source.text, &rom).is_ok_and(|score| score.command == RYU_THEME)
+    });
+    assert_eq!(pack.scores.len(), 1, "the pack supplies one Ryu score");
     let mut t = table(&rom);
     let errs = tunes::add_pack(&mut t, &rom, &pack);
     assert!(errs.is_empty(), "pack conversion errors: {errs:?}");

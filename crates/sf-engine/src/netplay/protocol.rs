@@ -10,6 +10,9 @@ use crate::session_io::ControlScheme;
 use crate::sf1plus::Sf1PlusRules;
 
 pub const PROTOCOL_VERSION: u8 = 1;
+use crate::front::fight::MatchTheme;
+use crate::theme::ThemeId;
+
 pub const MAX_PACKET_BYTES: usize = 512;
 pub const PLAYER_TAG_CHARS: &str = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 
@@ -204,6 +207,12 @@ impl<'a> Reader<'a> {
     fn u32(&mut self) -> Option<u32> { Some(u32::from_le_bytes(self.take()?)) }
     fn u64(&mut self) -> Option<u64> { Some(u64::from_le_bytes(self.take()?)) }
     fn done(&self) -> bool { self.at == self.bytes.len() }
+    fn text(&mut self, len: u8) -> Option<&'a str> {
+        let end = self.at.checked_add(usize::from(len))?;
+        let text = std::str::from_utf8(self.bytes.get(self.at..end)?).ok()?;
+        self.at = end;
+        Some(text)
+    }
 }
 
 // Explicit schema order, and exhaustive destructuring for future field audits.
@@ -376,7 +385,13 @@ pub enum NetPacket {
     /// stalled ticks, when an input at `current_frame + delay` can be sampled.
     Input { current_frame: u32, start_frame: u32, count: u8, bits: [u16; 9],
         ack_frame: u32, frame_advantage: i8, checksum_frame: u32, checksum: u64 },
-    SpectatorChunk { generation: u32, start_frame: u32, count: u8, pairs: [(u16, u16); 16] },
+    SpectatorChunk {
+        generation: u32,
+        start_frame: u32,
+        count: u8,
+        pairs: [(u16, u16); 16],
+        theme: Option<MatchTheme>,
+    },
     SpectatorAck { generation: u32, next_expected_frame: u32 },
     AfterMatchVote { generation: u32, seq: u32, choice: AfterMatchChoice },
     /// Host's current setup draft, published to the second ally and spectators.
@@ -439,9 +454,15 @@ impl NetPacket {
                 for bits in bits { bits.write(&mut bytes); }
                 ack_frame.write(&mut bytes); frame_advantage.write(&mut bytes); checksum_frame.write(&mut bytes); checksum.write(&mut bytes);
             }
-            Self::SpectatorChunk { generation, start_frame, count, pairs } => {
+            Self::SpectatorChunk { generation, start_frame, count, pairs, theme } => {
                 bytes.push(7); generation.write(&mut bytes); start_frame.write(&mut bytes); count.write(&mut bytes);
                 for (p1, p2) in pairs { p1.write(&mut bytes); p2.write(&mut bytes); }
+                theme.is_some().write(&mut bytes);
+                if let Some(theme) = theme {
+                    let slug = theme.id.slug().as_bytes();
+                    bytes.extend_from_slice(&[theme.phase, slug.len() as u8]);
+                    bytes.extend_from_slice(slug);
+                }
             }
             Self::SpectatorAck { generation, next_expected_frame } => {
                 bytes.push(8); generation.write(&mut bytes); next_expected_frame.write(&mut bytes);
@@ -539,7 +560,16 @@ impl NetPacket {
                 if pairs[..usize::from(count)].iter().any(|(p1, p2)| *p1 > 0x03ff || *p2 > 0x03ff)
                     || pairs[usize::from(count)..].iter().any(|pair| *pair != (0, 0))
                 { return None; }
-                Self::SpectatorChunk { generation, start_frame, count, pairs }
+                let theme = if read.boolean()? {
+                    let phase = read.u8()?;
+                    if usize::from(phase) >= ThemeId::ALL.len() { return None; }
+                    let len = read.u8()?;
+                    let id = ThemeId::from_slug(read.text(len)?)?;
+                    Some(MatchTheme { id, phase })
+                } else {
+                    None
+                };
+                Self::SpectatorChunk { generation, start_frame, count, pairs, theme }
             }
             8 => Self::SpectatorAck { generation: read.u32()?, next_expected_frame: read.u32()? },
             9 => Self::AfterMatchVote { generation: read.u32()?, seq: read.u32()?, choice: read_choice(&mut read)? },

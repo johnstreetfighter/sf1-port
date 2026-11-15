@@ -762,7 +762,8 @@ impl Bus<'_> {
         self.training_hit(defender, record);
         self.era_damage(defender, damage, self.roster.mode == PlayMode::Training);
         if !motion.softened {
-            self.record_throw_dust(thrower, fighter);
+            self.arm_slam_dust(thrower, fighter);
+            self.finish_slam_dust(fighter);
             self.queue_sound(9);
         }
         if matches!(thrower, P1_STRUCT | P2_STRUCT) {

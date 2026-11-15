@@ -12,6 +12,7 @@ use sf_engine::data_bank::GROUND;
 use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::Fight;
 use sf_engine::front::PlayerInputs;
+use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind};
 use sf_engine::moves::{ButtonClass, Dir, MoveInput, Strength};
 use sf_engine::roster::TournamentFighter::{self, Birdie, Eagle};
 use sf_video::decode::decode_sprite_tile;
@@ -129,6 +130,7 @@ struct Outcome {
     damage: u16,
     hits: usize,
     caught: bool,
+    mat_slams: usize,
     blocked: bool,
     airborne: bool,
     airborne_strike: bool,
@@ -161,7 +163,16 @@ fn observe(fight: &mut Fight, assets: &Assets, slot: u8, defense: u8) -> Outcome
         if attacker.move_id != slot && defender.move_id != THROWN_MOVE {
             return result;
         }
-        fight.step(assets, PlayerInputs::default(), pad(defense, None), false);
+        let before = fight.machine().era_fighters()[1].sub_hp;
+        let output = fight.step(assets, PlayerInputs::default(), pad(defense, None), false);
+        for cue in output.impacts.into_iter().filter(|cue| cue.kind == ImpactKind::MatSlam) {
+            assert!(result.caught, "the grab must precede the slam");
+            assert!(fight.machine().era_fighters()[1].sub_hp < before);
+            assert_eq!(cue.fighter, ImpactFighter::P2);
+            assert_eq!(cue.direction, ImpactDirection::Down);
+            assert_eq!(cue.y, GROUND as u16);
+            result.mat_slams += 1;
+        }
     }
     panic!("move {slot:#04x} did not recover");
 }
@@ -212,11 +223,13 @@ fn birdie_chains_capture_at_close_range_and_whiff_at_a_distance() {
         command(&mut close, &assets, SPIN, button);
         let caught = observe(&mut close, &assets, slot, RIGHT);
         assert!(caught.caught && caught.damage > 0 && !caught.blocked);
+        assert_eq!(caught.mat_slams, 1);
 
         let mut far = base.clone();
         command(&mut far, &assets, SPIN, button);
         let whiff = observe(&mut far, &assets, slot, 0);
         assert!(!whiff.caught && whiff.damage == 0);
+        assert_eq!(whiff.mat_slams, 0);
     }
 }
 

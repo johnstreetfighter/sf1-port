@@ -32,6 +32,7 @@
 
 pub mod announcer;
 pub mod check;
+mod impact;
 pub mod mix;
 pub mod msm5205;
 pub mod music;

@@ -195,8 +195,8 @@ impl Rec {
         for _ in 0..3 {
             self.tap(with(|i| i.menu.tab_right = true));
         }
-        // MASTER, ANNOUNCER, FM, SAMPLES, JUKEBOX.
-        for _ in 0..4 {
+        // MASTER, ANNOUNCER, ANNOUNCER VOICE, FM, SAMPLES, JUKEBOX.
+        for _ in 0..5 {
             self.tap(down());
         }
         assert_eq!(self.tap(confirm()), "jukebox");

@@ -21,6 +21,7 @@ const DASH: u8 = 0x1e;
 const MP: usize = 1;
 const MK: usize = 4;
 const HP: usize = 2;
+const HK: usize = 5;
 
 fn select(revision: Revision, loadout: Loadout, fighter: TournamentFighter) -> Option<GameSession> {
     local_select_with_fighter(GaugeMode::EraDefault, fighter, revision, loadout)
@@ -90,11 +91,23 @@ fn focus_absorbs_one_attack_then_recovers_lost_health() {
         GaugeRow::Stock { cells: 4, .. }
     ));
 
+    let mut clean = fight.clone();
+    assert!((0..32).any(|frame| {
+        let p2 = pad(0, (frame == 0).then_some(HK));
+        step(&mut clean, assets, pad(0, None), p2).impacts.iter()
+            .any(|cue| cue.kind == sf_engine::impact::ImpactKind::HeavyStrike)
+    }), "Ken's standing heavy connects without armor");
     run_focus(&mut fight, assets, false, 2, pad(0, None));
     assert_eq!(p1_slot(&fight), FOCUS_CHARGE);
-    run_focus(&mut fight, assets, false, 1, pad(0, Some(MP)));
-    run_focus(&mut fight, assets, false, 15, pad(0, None));
-    assert_eq!(p1_slot(&fight), FOCUS_CHARGE, "the first punch is absorbed");
+    for frame in 0..32 {
+        let p2 = pad(0, (frame == 0).then_some(HK));
+        let out = step(&mut fight, assets, held(0, &[MP, MK]), p2);
+        assert!(out.impacts.iter().all(|cue| cue.kind != sf_engine::impact::ImpactKind::HeavyStrike));
+        if fight.machine().era_fighters()[0].sub_hp < hp_before {
+            break;
+        }
+    }
+    assert_eq!(p1_slot(&fight), FOCUS_CHARGE, "the heavy kick is absorbed");
     let damaged = fight.machine().era_fighters()[0];
     assert!(damaged.sub_hp < hp_before);
     assert!(

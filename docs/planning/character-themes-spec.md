@@ -10,7 +10,7 @@ Give each bonus challenger its selected individual character theme, add the chos
 
 Arcade follows the CPU opponent. Multiplayer and Training follow explicit stage associations: one associated participant supplies the theme, two alternate each match, and neither means cycling the stage's associated themes. Existing Jukebox overrides remain available.
 
-Every new arrangement passes a verified source card, an approved short proof, a complete musical loop, separate FM-part review, and native integration. Capcom arrangements and source event data remain local.
+Every new arrangement passes a verified source card, an approved short proof, a complete musical loop, separate FM-part review, and native integration. The thirty approved playable scores are tracked in `assets/sf1-port-music`. Source event data and listening artifacts remain local.
 
 ### Approved repertoire
 
@@ -42,7 +42,7 @@ The borrowed family/teacher assignments are deliberate project choices. They do 
 10. As a reviewer, I want the full introduction, tempo/time base, true loop boundaries, sustained state, and two reference passes recorded, so that fades and arbitrary capture edges do not become loop data.
 11. As an arranger, I want each source sound system investigated independently, so that an SF2-specific extractor is not assumed to support another game.
 12. As a planner, I want verified resources distinguished from unresolved sourcing dependencies, so that a bounded unsuccessful search is not treated as proof of absence.
-13. As a maintainer, I want Capcom arrangements, extracted events, captures, and listening artifacts kept local, so that reusable public tools and tests carry no arrangement data.
+13. As a maintainer, I want the thirty approved playable scores in the repository so that a source checkout can play them with a supplied ROM set. Extracted events, captures, and listening artifacts stay local.
 14. As a listener, I want a short representative proof exposing lead, bass, harmony, register, timing, and accompaniment, so that I can judge the direction before the full arrangement is developed.
 15. As a reviewer, I want voice merging, omitted percussion, register displacement, and other material compromises explained, so that source selection is not mistaken for approval of musical simplification.
 16. As a reviewer, I want to approve the short proof before complete expansion, so that the larger arrangement follows an accepted direction.
@@ -95,7 +95,7 @@ The borrowed family/teacher assignments are deliberate project choices. They do 
 - **Listening acceptance.** A short proof is approved before full expansion. The complete arrangement preserves source structure and two real loop passes; the mix and individual FM parts are reviewed and adjusted before acceptance. Offline rendering is an audition aid, not native-integration evidence.
 - **Ryu baseline.** Preserve its approved stock SF1 lead, bass, and lead echo, with gentler/quieter accompaniment. This remains a theme-specific result, not a mandatory preset for other fighters.
 - **Percussion.** Decide per proof. Ryu remains FM-only. FM percussion shares the voice budget; new synchronized ADPCM requires an agreed native timing/stop/resume/ownership design before implementation. Do not add a host-played percussion bed automatically.
-- **Public/private separation.** Public changes contain reusable playback/tooling and original synthetic tests. Capcom scores, extracted events, source captures, proof/full/stem recordings, and source-specific evidence remain local beside the ROM/reference resources.
+- **Pack distribution.** Track the thirty approved playable scores in `assets/sf1-port-music`. Load the repository pack from the executable or working directory's `assets` folder and accept valid ROM-adjacent overrides by theme identity. Keep the title arrangement in the ROM-adjacent folder. Extracted events, source captures, proof and review recordings, and source-specific evidence remain local beside the ROM and reference resources. Windows ZIP packaging continues to include the art and voice packs.
 
 ## Testing Decisions
 
@@ -122,7 +122,7 @@ Public checks use original material. ROM-dependent checks explicitly skip unavai
 
 The user approved the full character-theme design and its author-proposed defaults on 2026-11-10. ADR-0023 records the architecture; ADR-0009 is amended to retain native playback while replacing the fixed storage-window assumptions. The project keeps domain vocabulary in CONTEXT rather than a separate glossary.
 
-The earlier wave-theme issues [#31](https://github.com/johnstreetfighter/sf1-port/issues/31), [#49](https://github.com/johnstreetfighter/sf1-port/issues/49), and [#62](https://github.com/johnstreetfighter/sf1-port/issues/62) need reconciliation with individual themes, private selected arrangements, stage membership, and the command collision. This spec does not silently add the original shared-stage compositions described there.
+The earlier wave-theme issues [#31](https://github.com/johnstreetfighter/sf1-port/issues/31), [#49](https://github.com/johnstreetfighter/sf1-port/issues/49), and [#62](https://github.com/johnstreetfighter/sf1-port/issues/62) need reconciliation with individual themes, the approved arrangements, stage membership, and the command collision. This spec does not silently add the original shared-stage compositions described there.
 
 Resource findings are bounded: World Warrior archives and Ryu evidence were found; Alpha archives are documented historically but their current location was not found; 2nd Impact archives/SIMMs/CHDs exist but require an exact audit and cue investigation; original Final Fight and Revenge/ST-V resources were not located. These are investigation prerequisites, not proof that copies do not exist elsewhere. No source extraction or music-asset work occurred during planning.
 

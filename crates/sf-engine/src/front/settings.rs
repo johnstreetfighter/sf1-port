@@ -8,6 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
+use sf_video::announcer::AnnouncerVoice;
 use sf_video::compositor::{fallback_text, ink, RomFont};
 use sf_video::era_hud::GaugeArt;
 use sf_video::render::{Frame, HEIGHT, WIDTH};
@@ -32,6 +33,8 @@ pub struct Settings {
     /// Present on the display's vsync (the Video tab's `VSYNC`); off shows
     /// frames as soon as they are ready, the game on a 60 Hz clock.
     pub vsync: bool,
+    /// Local scene motion for mat and wall impacts.
+    pub screen_shake: bool,
     /// Milliseconds to wait after each vblank before stepping the game
     /// (the Video tab's `FRAME DELAY`), 0 to [`FRAME_DELAY_CAP_MS`]: the
     /// delay saved. The delay used is clamped to the cap for the look
@@ -50,6 +53,8 @@ pub struct Settings {
     /// The overhaul announcer's chip (ADR 0011), under `master`; 0 is off.
     /// Local presentation: never in the synced `MatchConfig`.
     pub announcer: u8,
+    /// The local announcer voice, chosen on the Sound tab.
+    pub announcer_voice: AnnouncerVoice,
     /// A ROM folder or archive to try after the standard locations.
     pub rom_folder: Option<String>,
     /// The 1987 cabinet's DIP words.
@@ -344,6 +349,7 @@ impl Default for Settings {
             scale: 3,
             fullscreen: true,
             vsync: true,
+            screen_shake: true,
             frame_delay_ms: 0,
             gauge_art: GaugeArt::Ruled,
             aspect: Aspect::default(),
@@ -351,6 +357,7 @@ impl Default for Settings {
             fm: 10,
             samples: 10,
             announcer: 10,
+            announcer_voice: AnnouncerVoice::default(),
             rom_folder: None,
             cabinet_dsw1: 0xdfff,
             cabinet_dsw2: 0xffff,
@@ -373,11 +380,32 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// The sound settings the host uses for playback.
+    pub fn sound(&self) -> LiveSound {
+        LiveSound {
+            master: self.master,
+            fm: self.fm,
+            samples: self.samples,
+            announcer: self.announcer,
+            announcer_voice: self.announcer_voice,
+        }
+    }
+
     /// The frame delay in use: the saved delay, clamped to the cap for the
     /// look ([`frame_delay_cap`]).
     pub fn frame_delay(&self) -> u8 {
         self.frame_delay_ms.min(frame_delay_cap(&self.crt_look))
     }
+}
+
+/// Local sound choices, including changes still open on the Settings screen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LiveSound {
+    pub master: u8,
+    pub fm: u8,
+    pub samples: u8,
+    pub announcer: u8,
+    pub announcer_voice: AnnouncerVoice,
 }
 
 /// `text` as a quoted string in the file, `\` and `"` escaped (a drop-in's
@@ -449,6 +477,7 @@ impl Settings {
              scale = {}\n\
              fullscreen = {}\n\
              vsync = {}\n\
+             screen_shake = {}\n\
              frame_delay_ms = {}\n\
              gauge_art = \"{}\"\n\
              aspect = \"{}\"\n\
@@ -456,6 +485,7 @@ impl Settings {
              fm = {}\n\
              samples = {}\n\
              announcer = {}\n\
+             announcer_voice = \"{}\"\n\
              rom_folder = {}\n\
              cabinet_dsw1 = 0x{:04x}\n\
              cabinet_dsw2 = 0x{:04x}\n\
@@ -475,6 +505,7 @@ impl Settings {
             self.scale,
             self.fullscreen,
             self.vsync,
+            self.screen_shake,
             self.frame_delay_ms,
             self.gauge_art.slug(),
             self.aspect.slug(),
@@ -482,6 +513,7 @@ impl Settings {
             self.fm,
             self.samples,
             self.announcer,
+            self.announcer_voice.slug(),
             escaped(self.rom_folder.as_deref().unwrap_or("")),
             self.cabinet_dsw1,
             self.cabinet_dsw2,
@@ -583,7 +615,7 @@ impl Settings {
                 // A delay past the cap (the cap was higher once) is
                 // clamped, never refused: the rest of the file still loads.
                 "frame_delay_ms" => s.frame_delay_ms = num(u32::MAX)?.min(u32::from(FRAME_DELAY_CAP_MS)) as u8,
-                "fullscreen" | "vsync" | "hold_combo" | "fill_meters" | "wired_only" => {
+                "fullscreen" | "vsync" | "screen_shake" | "hold_combo" | "fill_meters" | "wired_only" => {
                     let on = match v {
                         "true" => true,
                         "false" => false,
@@ -592,6 +624,7 @@ impl Settings {
                     match k {
                         "fullscreen" => s.fullscreen = on,
                         "vsync" => s.vsync = on,
+                        "screen_shake" => s.screen_shake = on,
                         "hold_combo" => s.hold_combo = on,
                         "wired_only" => s.wired_only = on,
                         _ => s.fill_meters = on,
@@ -619,6 +652,12 @@ impl Settings {
                 "fm" => s.fm = num(10)? as u8,
                 "samples" => s.samples = num(10)? as u8,
                 "announcer" => s.announcer = num(10)? as u8,
+                "announcer_voice" => {
+                    s.announcer_voice = unquoted(v)
+                        .as_deref()
+                        .and_then(AnnouncerVoice::from_slug)
+                        .ok_or_else(|| format!("line {n}: expected \"ringside\" or \"japanese\" for '{k}'"))?;
+                }
                 "player_tag" => {
                     s.player_tag = unquoted(v)
                         .filter(|tag| tag_from_str(tag).is_some())
@@ -814,8 +853,10 @@ pub enum Row {
     TuneLook,
     Vsync,
     FrameDelay,
+    ScreenShake,
     Master,
     Announcer,
+    AnnouncerVoice,
     Fm,
     Samples,
     Device(usize),
@@ -874,8 +915,9 @@ pub fn rows(tab: Tab) -> Vec<Row> {
             Row::Heading("MOTION"),
             Row::Vsync,
             Row::FrameDelay,
+            Row::ScreenShake,
         ],
-        Tab::Sound => vec![Row::Master, Row::Announcer, Row::Fm, Row::Samples, Row::Jukebox],
+        Tab::Sound => vec![Row::Master, Row::Announcer, Row::AnnouncerVoice, Row::Fm, Row::Samples, Row::Jukebox],
         Tab::Controls => vec![
             Row::Device(0),
             Row::Device(1),
@@ -1090,8 +1132,10 @@ impl SettingsScreen {
             Row::TuneLook => "TUNE CRT LOOK >",
             Row::Vsync => "VSYNC",
             Row::FrameDelay => "FRAME DELAY",
+            Row::ScreenShake => "SCREEN SHAKE",
             Row::Master => "MASTER",
             Row::Announcer => "ANNOUNCER",
+            Row::AnnouncerVoice => "ANNOUNCER VOICE",
             Row::Fm => "FM",
             Row::Samples => "SAMPLES",
             Row::Device(0) => "P1 DEVICE",
@@ -1153,6 +1197,7 @@ impl SettingsScreen {
             Row::Scale => format!("{}X", self.settings.scale),
             Row::Fullscreen => if self.settings.fullscreen { "FULLSCREEN" } else { "WINDOWED" }.to_string(),
             Row::Vsync => on(self.settings.vsync),
+            Row::ScreenShake => on(self.settings.screen_shake),
             Row::FrameDelay => format!("{}MS", self.frame_delay()),
             Row::Aspect => self.settings.aspect.label().to_string(),
             Row::GaugeArt => self.settings.gauge_art.label().to_string(),
@@ -1162,6 +1207,7 @@ impl SettingsScreen {
             },
             Row::Master => self.settings.master.to_string(),
             Row::Announcer => self.settings.announcer.to_string(),
+            Row::AnnouncerVoice => self.settings.announcer_voice.slug().to_ascii_uppercase(),
             Row::Fm => self.settings.fm.to_string(),
             Row::Samples => self.settings.samples.to_string(),
             Row::Device(side) => self.settings.devices[side].label().to_string(),
@@ -1225,6 +1271,7 @@ impl SettingsScreen {
             }
             Row::Fullscreen => self.settings.fullscreen = !self.settings.fullscreen,
             Row::Vsync => self.settings.vsync = !self.settings.vsync,
+            Row::ScreenShake => self.settings.screen_shake = !self.settings.screen_shake,
             Row::FrameDelay => {
                 // From the delay in use, within the look's cap.
                 let cap = i32::from(frame_delay_cap(self.look()));
@@ -1250,6 +1297,12 @@ impl SettingsScreen {
             }
             Row::Master => self.settings.master = step(self.settings.master as i32, 0, 10) as u8,
             Row::Announcer => self.settings.announcer = step(self.settings.announcer as i32, 0, 10) as u8,
+            Row::AnnouncerVoice => {
+                self.settings.announcer_voice = match self.settings.announcer_voice {
+                    AnnouncerVoice::Ringside => AnnouncerVoice::Japanese,
+                    AnnouncerVoice::Japanese => AnnouncerVoice::Ringside,
+                };
+            }
             Row::Fm => self.settings.fm = step(self.settings.fm as i32, 0, 10) as u8,
             Row::Samples => self.settings.samples = step(self.settings.samples as i32, 0, 10) as u8,
             Row::Device(side) => {
@@ -1310,6 +1363,7 @@ impl SettingsScreen {
                 self.settings.scale = first.scale;
                 self.settings.fullscreen = first.fullscreen;
                 self.settings.vsync = first.vsync;
+                self.settings.screen_shake = first.screen_shake;
                 self.settings.frame_delay_ms = first.frame_delay_ms;
                 self.settings.aspect = first.aspect;
                 self.settings.gauge_art = first.gauge_art;
@@ -1320,6 +1374,7 @@ impl SettingsScreen {
             Tab::Sound => {
                 self.settings.master = first.master;
                 self.settings.announcer = first.announcer;
+                self.settings.announcer_voice = first.announcer_voice;
                 self.settings.fm = first.fm;
                 self.settings.samples = first.samples;
             }
@@ -1506,7 +1561,7 @@ impl SettingsScreen {
                     self.reset_tab();
                     Some(Transition::ValueChanged)
                 }
-                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
+                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::ScreenShake | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
                     if let Row::Toggle(i) = row {
                         if TOGGLES[i].frames.is_some() {
                             return None;

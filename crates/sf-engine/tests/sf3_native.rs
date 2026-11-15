@@ -553,7 +553,8 @@ fn third_strike_red_parries_a_second_projectile_hit_from_blockstun() {
         let mut probe = fight.clone();
         let next_hit = (0..12)
             .find(|_| {
-                step(&mut probe, assets, pad(LEFT, None), PlayerInputs::default());
+                let out = step(&mut probe, assets, pad(LEFT, None), PlayerInputs::default());
+                assert!(out.impacts.iter().all(|cue| cue.kind != sf_engine::impact::ImpactKind::HeavyStrike));
                 hp(&probe, 0) < after_first
             })
             .expect("the next fireball hit would chip the guard");
@@ -615,6 +616,8 @@ fn airborne_ex_tatsumaki_keeps_jump_height_and_lands() {
 
 #[test]
 fn ex_blade_kick_rebounds_a_launched_target_at_the_wall() {
+    use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind};
+
     let Some(select) =
         local_select_with_p1(GaugeMode::EraDefault, Revision::Sf3ThreeS, Loadout::Art1)
     else {
@@ -622,37 +625,113 @@ fn ex_blade_kick_rebounds_a_launched_target_at_the_wall() {
     };
     let session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
     let assets = session.assets();
-    let mut fight = session.fight().unwrap().clone();
-    for _ in 0..110 {
-        step(&mut fight, assets, pad(RIGHT, None), pad(RIGHT, None));
-    }
-    approach(&mut fight, assets);
-    set_meter(&mut fight, 0, 40);
-    let before = hp(&fight, 1);
-    command(
-        &mut fight,
-        assets,
-        0,
-        &[LEFT, LEFT | DOWN, DOWN, DOWN | RIGHT, RIGHT],
-        &[LK, MK],
-    );
-    assert_eq!(fight.fight_read().fighters[0].move_id, 0x2c);
-    assert_eq!(meter(&fight, 0), 0);
-    let mut edge = 0;
-    let mut rebound = false;
-    for _ in 0..42 {
-        idle(&mut fight, assets, 1);
-        let x = fight.machine().diagnostic_telemetry().p2.center_x;
-        if hp(&fight, 1) < before {
-            edge = edge.max(x);
-            rebound |= edge - x > 10;
+    let initial = session.fight().unwrap();
+    for (wall, back, direction) in [
+        (RIGHT, LEFT, ImpactDirection::Left),
+        (LEFT, RIGHT, ImpactDirection::Right),
+    ] {
+        let mut fight = initial.clone();
+        if wall == LEFT {
+            approach(&mut fight, assets);
+            step(&mut fight, assets, pad(RIGHT | UP, None), PlayerInputs::default());
+            idle(&mut fight, assets, 55);
+            let fighters = fight.machine().diagnostic_telemetry();
+            assert!(fighters.p1.center_x > fighters.p2.center_x, "Ryu jumps over Ken");
+        }
+        for _ in 0..110 {
+            let walk = pad(wall, None);
+            assert!(step(&mut fight, assets, walk, walk).impacts.is_empty());
+        }
+        for _ in 0..100 {
+            let fighters = fight.machine().diagnostic_telemetry();
+            if fighters.p1.center_x.abs_diff(fighters.p2.center_x) <= 38 {
+                break;
+            }
+            assert!(
+                step(&mut fight, assets, pad(wall, None), PlayerInputs::default())
+                    .impacts
+                    .is_empty()
+            );
+        }
+        idle(&mut fight, assets, 8);
+        set_meter(&mut fight, 0, 40);
+        let before = hp(&fight, 1);
+        command(
+            &mut fight,
+            assets,
+            0,
+            &[back, back | DOWN, DOWN, DOWN | wall, wall],
+            &[LK, MK],
+        );
+        assert_eq!(fight.fight_read().fighters[0].move_id, 0x2c);
+        assert_eq!(meter(&fight, 0), 0);
+        let mut first_hit = None;
+        let mut wall_hit = None;
+        let mut edge = None::<i32>;
+        let mut rebounded = false;
+        for _ in 0..42 {
+            let output = step(
+                &mut fight,
+                assets,
+                PlayerInputs::default(),
+                PlayerInputs::default(),
+            );
+            let frame = fight.machine().state.frame;
+            let x = fight.machine().diagnostic_telemetry().p2.center_x;
+            if hp(&fight, 1) < before {
+                first_hit.get_or_insert(frame);
+                edge = Some(edge.map_or(x, |extreme| {
+                    if wall == RIGHT { extreme.max(x) } else { extreme.min(x) }
+                }));
+            }
+            for cue in output.impacts {
+                assert_eq!(cue.kind, ImpactKind::WallSlam);
+                assert_eq!(cue.fighter, ImpactFighter::P2);
+                assert_eq!(cue.direction, direction);
+                assert_eq!(cue.frame, frame);
+                assert!(wall_hit.replace(frame).is_none(), "one cue per rebound");
+            }
+            if let Some(edge) = edge.filter(|_| wall_hit.is_some()) {
+                rebounded |= if wall == RIGHT {
+                    edge.saturating_sub(x) > 10
+                } else {
+                    x.saturating_sub(edge) > 10
+                };
+            }
+        }
+        let contact = first_hit.expect("EX Blade Kick made contact");
+        let rebound = wall_hit.expect("the launch reached the wall");
+        assert!(rebound >= contact, "wall cue follows the kick's contact");
+        assert!(rebounded, "the victim moves away after the cue at wall {wall}");
+        if wall == RIGHT {
+            // The live rebound can be followed by a separate, lethal sweep.
+            // Set its health as other native KO fixtures do; the fall itself
+            // comes from the real collision and reaction stream.
+            let mut snapshot = fight.save_netplay_snapshot(0);
+            let health = (sf_engine::fighter::P2_STRUCT + 6 - sf_engine::fighter::WORK_BASE) as usize;
+            snapshot.machine.work[health..health + 2].copy_from_slice(&[1, 0]);
+            snapshot.machine.toggle_state.era.fighters[1].sub_hp = 4;
+            fight.restore_netplay_snapshot(&snapshot);
+            approach(&mut fight, assets);
+            let mut heavy = None;
+            let mut mat = None;
+            for tick in 0..96 {
+                let attack = if tick == 0 { pad(DOWN, Some(5)) } else { PlayerInputs::default() };
+                let output = step(&mut fight, assets, attack, PlayerInputs::default());
+                for cue in output.impacts {
+                    assert_eq!(cue.fighter, ImpactFighter::P2);
+                    match cue.kind {
+                        ImpactKind::HeavyStrike => assert!(heavy.replace(cue.frame).is_none()),
+                        ImpactKind::MatSlam => assert!(mat.replace(cue.frame).is_none()),
+                        ImpactKind::WallSlam => panic!("the sweep does not trigger another wall cue"),
+                    }
+                }
+            }
+            let heavy = heavy.expect("the finishing sweep connects");
+            let mat = mat.expect("Ken's KO reaches the floor");
+            assert!(rebound < heavy && heavy < mat, "wall, strike, and floor contacts remain distinct");
         }
     }
-    assert!(hp(&fight, 1) < before, "EX blade kick made contact");
-    assert!(
-        rebound,
-        "the target returned from the wall during the launch"
-    );
 }
 
 #[test]

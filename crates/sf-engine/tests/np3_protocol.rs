@@ -150,7 +150,16 @@ fn packets() -> Vec<NetPacket> {
         NetPacket::Input { current_frame: 0, start_frame: 4, count: 1,
             bits: [0x10, 0, 0, 0, 0, 0, 0, 0, 0], ack_frame: u32::MAX, frame_advantage: -2,
             checksum_frame: u32::MAX, checksum: 0 },
-        NetPacket::SpectatorChunk { generation: 3, start_frame: 0, count: 2, pairs },
+        NetPacket::SpectatorChunk {
+            generation: 3,
+            start_frame: 0,
+            count: 2,
+            pairs,
+            theme: Some(sf_engine::front::fight::MatchTheme {
+                id: sf_engine::theme::ThemeId::Akuma,
+                phase: 1,
+            }),
+        },
         NetPacket::SpectatorAck { generation: 3, next_expected_frame: 2 },
         NetPacket::AfterMatchVote { generation: 3, seq: 4, choice: AfterMatchChoice::Reselect },
     ]

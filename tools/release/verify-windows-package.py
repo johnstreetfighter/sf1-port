@@ -22,9 +22,8 @@ from release_packs import RESERVED_NAME, git, require, tagged_pack_files
 
 RELEASE_FILES = {"BUILD.txt", "Cargo.lock", "QUICKSTART.txt", "README.md",
                  "THIRD_PARTY_NOTICES.md", "sf-game.exe", "licenses/README.md"}
-PRIVATE_COMPONENTS = {"roms", "captures", "settings.toml", "bindings.toml", "match.toml",
-                      "sf1-port-music"}
-PACK_COMPONENTS = {"sf1-port-art", "sf1-port-voice"}
+PRIVATE_COMPONENTS = {"roms", "captures", "settings.toml", "bindings.toml", "match.toml"}
+PACK_COMPONENTS = {"sf1-port-art", "sf1-port-voice", "sf1-port-music"}
 PRIVATE_SUFFIXES = {".7z", ".bin", ".exe", ".log", ".pdb", ".rom", ".vox", ".wav", ".zip"}
 PRINTABLE = (
     (re.compile(rb"[\x20-\x7e]{6,}"), "ascii"),
@@ -264,7 +263,7 @@ def verify(archive: Path, exe: Path, source: Path, tag: str, commit: str, extra:
     print(f"ZIP SHA-256: {zip_digest}")
     print(f"EXE SHA-256: {game_digest}")
     print(f"Verified {count} ZIP files and {sum(p.startswith('shaders/') for p in tracked)} tagged shaders.")
-    print(f"Verified {len(packs)} tagged art and voice pack files.")
+    print(f"Verified {len(packs)} tagged art, voice, and music pack files.")
     print("Windows x64 GUI imports: " + ", ".join(imports))
     print("Workstation path scan passed.")
 

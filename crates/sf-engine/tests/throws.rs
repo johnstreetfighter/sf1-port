@@ -36,6 +36,7 @@ use sf_engine::fight_reader::FightRead;
 use sf_engine::fighter::{P1_STRUCT, P2_STRUCT};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::{FrameInputs, FrameOutput, GameSession, Transition};
+use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind};
 use sf_engine::roster::TournamentFighter;
 use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
@@ -794,20 +795,34 @@ fn throw_deals_damage_plays_get_up_follows_shoulder_motion_and_can_ko() {
     //    DAMAGE (6 HP) on the slam frame, rises through GET_UP_MOVE, and
     //    returns to stance.
     let mut s = close.clone();
-    s.step(with(|i| {
+    let grab = s.step(with(|i| {
         i.p1.directions[RIGHT] = true;
         i.p1.buttons[HP] = true;
     }));
+    assert!(grab.impacts.is_empty(), "a grab has no impact cue");
     // Snapshot determinism mid-throw.
     let mid = s.clone();
     let mid_snap = s.fight_machine().unwrap().save_snapshot();
     let mut slammed = None;
     let mut saw_get_up = false;
     for f in 1..=90 {
-        s.step(idle());
+        let out = s.step(idle());
         let r = read(&s);
         if let Some(hit) = r.landed_by(Side::P1) {
+            let [cue] = out.impacts.as_slice() else {
+                panic!("expected one mat cue on the throw landing frame: {:?}", out.impacts);
+            };
+            assert_eq!(cue.kind, ImpactKind::MatSlam);
+            assert_eq!(cue.fighter, ImpactFighter::P2);
+            assert_eq!(cue.direction, ImpactDirection::Down);
+            assert_eq!(cue.y, 0xe8);
+            let machine = s.fight_machine().unwrap();
+            assert_eq!(cue.frame, machine.state.frame);
+            assert_eq!(cue.x, center_x(&s, P2_STRUCT) + machine.camera_x());
+            assert_eq!(displayed_pose(&s, P2_STRUCT).0, 0x0c84, "Ken is on the mat");
             slammed = Some((f, hit));
+        } else {
+            assert!(out.impacts.is_empty(), "the throw has a single cue, on landing");
         }
         if r.fighter(Side::P2).getting_up {
             saw_get_up = true;
@@ -864,6 +879,7 @@ fn throw_deals_damage_plays_get_up_follows_shoulder_motion_and_can_ko() {
     //    and knock him out (`knocked_out() == true`) without playing `get-up`.
     let mut s = close;
     let mut saw_ko = false;
+    let mut ko_mat_cues = 0;
     for round_throw in 0..8 {
         walk_to_throw_range(&mut s);
         s.step(with(|i| {
@@ -871,9 +887,15 @@ fn throw_deals_damage_plays_get_up_follows_shoulder_motion_and_can_ko() {
             i.p1.buttons[HP] = true;
         }));
         for _ in 0..75 {
-            s.step(idle());
+            let out = s.step(idle());
             let r = read(&s);
             if round_throw == 7 {
+                if r.landed_by(Side::P1).is_some() {
+                    assert_eq!(out.impacts.len(), 1, "the lethal throw lands with one cue");
+                    assert_eq!(out.impacts[0].kind, ImpactKind::MatSlam);
+                    assert_eq!(out.impacts[0].fighter, ImpactFighter::P2);
+                }
+                ko_mat_cues += out.impacts.iter().filter(|cue| cue.kind == ImpactKind::MatSlam).count();
                 assert!(
                     !r.fighter(Side::P2).getting_up,
                     "a KO'd victim stays on the mat"
@@ -887,6 +909,129 @@ fn throw_deals_damage_plays_get_up_follows_shoulder_motion_and_can_ko() {
     }
     assert!(saw_ko, "a lethal throw marks the victim knocked out");
     assert_eq!(read(&s).fighter(Side::P2).health, 0);
+    assert_eq!(ko_mat_cues, 1, "the KO lands on the throw's cue");
+    for _ in 0..48 {
+        assert!(s.step(idle()).impacts.is_empty(), "the KO cannot repeat the slam");
+    }
+}
+
+#[test]
+fn native_and_banked_lethal_sweeps_have_a_strike_cue_then_a_mat_cue() {
+    for attacker in [TournamentFighter::Ryu, TournamentFighter::Sagat] {
+        assert_lethal_sweep_cues(attacker);
+    }
+}
+
+fn assert_lethal_sweep_cues(attacker: TournamentFighter) {
+    let Some(mut session) = match_with_art(
+        MatchConfig::from_preset(MODERN),
+        attacker,
+        TournamentFighter::Ken,
+    ) else {
+        return;
+    };
+    for frame in 0..100 {
+        let output = session.step(with(|input| input.p2.directions[UP] = frame == 0));
+        assert!(output.impacts.is_empty(), "an ordinary jump has no slam");
+    }
+    for _ in 0..12 {
+        walk_to_throw_range(&mut session);
+        let mut strike = None;
+        let mut slam = None;
+        let mut prone = None;
+        for frame in 0..96 {
+            let output = session.step(with(|input| {
+                input.p1.directions[DOWN] = frame == 0;
+                input.p1.buttons[HK] = frame == 0;
+            }));
+            let tick = session.fight_machine().unwrap().state.frame;
+            if displayed_pose(&session, P2_STRUCT).0 == 0x0c84 {
+                prone.get_or_insert(tick);
+            }
+            for cue in output.impacts {
+                assert_eq!(cue.fighter, ImpactFighter::P2);
+                assert_eq!(cue.frame, tick);
+                match cue.kind {
+                    ImpactKind::HeavyStrike => assert!(strike.replace(tick).is_none()),
+                    ImpactKind::MatSlam => {
+                        assert_eq!(cue.direction, ImpactDirection::Down);
+                        assert_eq!(cue.y, 0xe8);
+                        assert!(slam.replace(tick).is_none());
+                    }
+                    kind => panic!("unexpected sweep cue {kind:?}"),
+                }
+            }
+        }
+        let strike = strike.unwrap_or_else(|| panic!("{attacker:?}'s sweep did not hit Ken"));
+        if read(&session).fighter(Side::P2).health == 0 {
+            let slam = slam.expect("a lethal sweep slams Ken onto the mat");
+            assert!(strike < slam, "the strike and fall are distinct contacts");
+            assert_eq!(Some(slam), prone, "the cue matches the first prone pose");
+            return;
+        }
+        assert_eq!((slam, prone), (None, None), "the live reaction lands on its feet");
+    }
+    panic!("{attacker:?}'s sweeps did not KO Ken");
+}
+
+#[test]
+fn screen_shake_moves_the_throw_playfield_and_keeps_the_hud_anchored() {
+    use sf_video::render::{render_frame, WIDTH};
+
+    let Some(mut session) = match_with_art(
+        MatchConfig::from_preset(MODERN),
+        TournamentFighter::Ryu,
+        TournamentFighter::Ken,
+    ) else {
+        return;
+    };
+    walk_to_throw_range(&mut session);
+    let assets = session.assets();
+    let mut shaking = session.fight().unwrap().clone();
+    let mut steady = shaking.clone();
+    steady.set_screen_shake(false);
+
+    let mut landing = None;
+    for frame in 0..75 {
+        let p1 = with(|input| {
+            input.p1.directions[RIGHT] = frame == 0;
+            input.p1.buttons[HP] = frame == 0;
+        })
+        .p1;
+        let shaken = shaking.step(assets, p1, Default::default(), false);
+        let stable = steady.step(assets, p1, Default::default(), false);
+        assert_eq!(shaking.state_checksum(), steady.state_checksum());
+        assert_eq!(shaken.impacts, stable.impacts);
+        assert_eq!(shaken.sound_latch, stable.sound_latch);
+        if stable.impacts.iter().any(|cue| cue.kind == ImpactKind::MatSlam) {
+            assert!(landing.replace(frame).is_none());
+            // The HUD sits over the moving background. Isolate the native
+            // health-bar pixels using the text layer alone.
+            let mut text_scene = steady.machine().state.scene();
+            text_scene.active = 8;
+            let text = render_frame(assets, &text_scene);
+            let clear = text.argb[90 * WIDTH];
+            let health_pixels: Vec<_> = (40..48)
+                .flat_map(|y| (168..264).map(move |x| y * WIDTH + x))
+                .filter(|&i| text.argb[i] != clear)
+                .collect();
+            assert!(!health_pixels.is_empty(), "the anchored health bar is visible");
+            assert!(health_pixels.iter().all(|&i| shaken.frame.argb[i] == text.argb[i] && stable.frame.argb[i] == text.argb[i]));
+            // Below the stationary callouts and above the local dust burst,
+            // the playfield should match the frame eight rows above it.
+            let playfield = 120 * WIDTH..170 * WIDTH;
+            let translated = 128 * WIDTH..178 * WIDTH;
+            let original = &stable.frame.argb[playfield.clone()];
+            assert!(&shaken.frame.argb[playfield] != original, "the playfield moves");
+            let agreeing = shaken.frame.argb[translated].iter().zip(original)
+                .filter(|(shaken, stable)| shaken == stable).count();
+            assert!(agreeing * 100 >= original.len() * 99,
+                "only {agreeing}/{} playfield pixels followed the 8px jolt", original.len());
+        } else if landing.is_none_or(|landed| frame >= landed + 10) {
+            assert_eq!(shaken.frame.argb, stable.frame.argb, "the jolt is transient");
+        }
+    }
+    assert!(landing.is_some(), "the throw hit the mat");
 }
 
 fn throw_destination_matrix(throwers: &[TournamentFighter], edges: &[Option<usize>]) {
@@ -1160,7 +1305,7 @@ fn throw_tech_succeeds_inside_the_seven_frame_window_and_fails_after_it() {
             distance(&s)
         );
         for _ in 0..40 {
-            s.step(idle());
+            assert!(s.step(idle()).impacts.is_empty(), "a teched throw has no slam");
         }
         let r = read(&s);
         assert_eq!(r.fighter(Side::P1).health, 48);

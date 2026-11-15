@@ -1,0 +1,125 @@
+{
+  "format": 1,
+  "files": {
+    "abigail.score": {
+      "size": 23598,
+      "crc32": "d2e8f928"
+    },
+    "akuma.score": {
+      "size": 34002,
+      "crc32": "c2f0f230"
+    },
+    "balrog.score": {
+      "size": 46822,
+      "crc32": "a90bbc31"
+    },
+    "belger.score": {
+      "size": 36100,
+      "crc32": "37447a81"
+    },
+    "bison.score": {
+      "size": 46930,
+      "crc32": "9a0d2918"
+    },
+    "charlie.score": {
+      "size": 34369,
+      "crc32": "7089f355"
+    },
+    "chun-li.score": {
+      "size": 62026,
+      "crc32": "1ba6fcdf"
+    },
+    "cody.score": {
+      "size": 28574,
+      "crc32": "9e9fe0ad"
+    },
+    "damnd.score": {
+      "size": 59329,
+      "crc32": "896faed5"
+    },
+    "dan.score": {
+      "size": 32577,
+      "crc32": "68add55f"
+    },
+    "dhalsim.score": {
+      "size": 27764,
+      "crc32": "51cab4ac"
+    },
+    "dorai.score": {
+      "size": 40886,
+      "crc32": "c17dc73f"
+    },
+    "evil-ryu.score": {
+      "size": 35219,
+      "crc32": "445dcc30"
+    },
+    "gou-hibiki.score": {
+      "size": 42168,
+      "crc32": "5c472644"
+    },
+    "gouken.score": {
+      "size": 56872,
+      "crc32": "e9af4034"
+    },
+    "goutetsu.score": {
+      "size": 28543,
+      "crc32": "c9947f7d"
+    },
+    "guile.score": {
+      "size": 41835,
+      "crc32": "9fa3d5bc"
+    },
+    "guy.score": {
+      "size": 22626,
+      "crc32": "13b8cc01"
+    },
+    "haggar.score": {
+      "size": 36886,
+      "crc32": "27e05fd2"
+    },
+    "hugo.score": {
+      "size": 14284,
+      "crc32": "ed6a172f"
+    },
+    "ken.score": {
+      "size": 40113,
+      "crc32": "0cac3b70"
+    },
+    "oro.score": {
+      "size": 33235,
+      "crc32": "daf3c5bb"
+    },
+    "poison.score": {
+      "size": 39297,
+      "crc32": "d44cde97"
+    },
+    "rolento.score": {
+      "size": 34776,
+      "crc32": "6250a1a1"
+    },
+    "rose.score": {
+      "size": 30465,
+      "crc32": "a325c2b7"
+    },
+    "ryu.score": {
+      "size": 37518,
+      "crc32": "67b5800a"
+    },
+    "sodom.score": {
+      "size": 22103,
+      "crc32": "1cef8474"
+    },
+    "vega.score": {
+      "size": 71638,
+      "crc32": "057f6930"
+    },
+    "zangief.score": {
+      "size": 46123,
+      "crc32": "985177fd"
+    },
+    "zeku.score": {
+      "size": 40510,
+      "crc32": "e5403f83"
+    }
+  }
+}

@@ -110,7 +110,7 @@ impl Bus<'_> {
         self.shift_grid_x(fighter, target_x.wrapping_sub(self.fighter_axis_x(fighter)));
         self.set_st_ryu_knockdown_height(fighter, height);
         if flight == land {
-            self.finish_knockdown_dust(fighter);
+            self.finish_slam_dust(fighter);
         }
         self.push_apart(fighter, defender);
         self.clamp_x(fighter);

@@ -7,6 +7,8 @@
 
 ---
 
+ADR-0023 assigns Evil Ryu command `0x51` and keeps `0x41` for Ryu. Character themes and stage rotations follow the [approved character-theme design](2026-11-10-character-themes-design.md).
+
 ## 1. Intent
 
 Per [`docs/design/2026-11-03-bonus-roster-by-lore-design.md`](2026-11-03-bonus-roster-by-lore-design.md) ([`ADR-0008`](../adr/0008-bonus-roster-chosen-by-lore.md)), *Street Fighter: The World Tournament* expands the 1987 roster from the **12 tournament fighters** to **40 fighters** (`12 + 28` lore-admitted bonus challengers) across **three ordered release waves**, where each wave gets its own spec and tickets when work on it starts and **ships whole**:
@@ -21,7 +23,7 @@ Today, [`crates/sf-engine/src/bonus.rs`](../../crates/sf-engine/src/bonus.rs) an
 This design specifies **Project 6 (Wave 1)**:
 1. **40-Fighter Engine Readiness:** Widening the roster model, `DataBank` (`0x10_0000..=0x37_ffff`, 40 slots of `0x1_0000`), `SpriteBank` / sprite palette rows, and `BackgroundBank` (composite VS and ending screens) to support all 40 fighters (`0..40`) so Waves 2 and 3 plug in without architectural rework.
 2. **The 40-Slot Character Select Screen:** Implementing the unified center-grid layout (`26×30` portrait tiles on a `27×32` pitch in "even rows" `6×2` / `7×2` / `8×3` / `8×5`, flanked by `64×108` P1/P2 frames that flip to Project 4's Option B `ERA`/`REV`/`LOAD` Style card on fighter lock, plus the `MenuInput::Filter` two-way toggle between `ALL` and `1987`).
-3. **Complete Wave 1 (*Super Street Fighter: Rising*):** Delivering **Evil Ryu** and **M. Bison** on the real 1987 engine—including their native `SF1` & `SF1+` kits, canonical later Era Styles (`SF2`–`SF6`), What-If Era Styles (`enable_what_if_styles`), home stages (*Ayutthaya Storm* and *Shadaloo Temple*), YM2151 FM `.score` themes (`0x41` and `0x42`), 1P Arcade ladder runs, composite ending screens & win quotes, secret Arcade intrusions, the **Final-Round Ryu → Evil Ryu Transformation** in the 1P Arcade Thailand final (`Ryu vs. Sagat` and `Sagat vs. Ryu`), Wave 1 Dramatic Battle presets, and Wave 1 World Tour secret nodes.
+3. **Complete Wave 1 (*Super Street Fighter: Rising*):** Delivering **Evil Ryu** and **M. Bison** on the real 1987 engine—including their native `SF1` & `SF1+` kits, canonical later Era Styles (`SF2`–`SF6`), What-If Era Styles (`enable_what_if_styles`), home stages (*Ayutthaya Storm* and *Shadaloo Temple*), YM2151 FM `.score` themes (`0x51` and `0x42`), 1P Arcade ladder runs, composite ending screens & win quotes, secret Arcade intrusions, the **Final-Round Ryu → Evil Ryu Transformation** in the 1P Arcade Thailand final (`Ryu vs. Sagat` and `Sagat vs. Ryu`), Wave 1 Dramatic Battle presets, and Wave 1 World Tour secret nodes.
 
 ---
 
@@ -36,10 +38,10 @@ This design specifies **Project 6 (Wave 1)**:
 3. **Deliver Evil Ryu & M. Bison's Complete Movesets & Era Styles (`DataBank` & `era.rs`):**
    - **`SF1` and `SF1+` are native styles** for every Bonus Challenger (lit on the Style card even when `enable_what_if_styles` is `false`, per Section 5.6 of [`2026-11-03-bonus-roster-by-lore-design.md`](2026-11-03-bonus-roster-by-lore-design.md)).
    - Build Evil Ryu and M. Bison's complete `SF1`, `SF1+`, canonical later eras (`SF2`–`SF6`), and What-If eras in `DataBank` using temporary ROM-derived stand-in sprites so headless `Fight` / `GameSession` tests verify all moves, eras, intrusions, endings, Dramatic Battle presets, and World Tour nodes immediately, while keeping `RELEASED_WAVES = 0` on default player menus until the November 27 PixelLab art tickets flip `RELEASED_WAVES = 1`.
-4. **Deliver Wave 1 Stages, YM2151 FM Themes (`0x41`, `0x42`), Arcade Ladder & Endings:**
-   - Register Evil Ryu's home stage (**Ayutthaya Storm (Night)**, Thailand, tune `0x41` `art/themes/evil-ryu.score`) and M. Bison's home stage (**Shadaloo Temple (Bangkok)**, Thailand, tune `0x42` `art/themes/bison.score`) in `BackgroundBank` (`wave = 1`), plus composite VS screens (`vs:{Left}:{Right}`) and composite congratulatory ending screens (`ending:Evil Ryu`, `ending:M. Bison`) with `TextWriter` epilogues and post-match win quotes (`0x4014c`).
+4. **Deliver Wave 1 Stages, YM2151 FM Themes (`0x51`, `0x42`), Arcade Ladder & Endings:**
+   - Register Evil Ryu's home stage (**Ayutthaya Storm (Night)**, Thailand, tune `0x51`) and M. Bison's home stage (**Shadaloo Temple (Bangkok)**, Thailand, tune `0x42`) in `BackgroundBank` (`wave = 1`), plus composite VS screens (`vs:{Left}:{Right}`) and composite congratulatory ending screens (`ending:Evil Ryu`, `ending:M. Bison`) with `TextWriter` epilogues and post-match win quotes (`0x4014c`).
 5. **Deliver the Thailand Final Round 3 Transformation & Secret Arcade Intrusions:**
-   - **Final-Round Ryu → Evil Ryu Transformation (1P Arcade Thailand Final, `opponent_index == 9`):** When `enable_bonus_challengers && enable_secret_arcade_intrusions` (`released_waves >= 1`) and the player reaches the Thailand final (`ladder step 9`) **as Ryu vs. CPU Sagat** or **as Sagat vs. CPU stand-in Ryu**, reaching the **deciding final round** (tied `1–1` entering Round 3, `0xffc00a == 2`) transforms **Ryu into Evil Ryu** during `Flow::AwaitWipe` (`0x3ec58`) before Round 3 starts (text-layer announce `SATSUI NO HADO!`, stage/palette/theme shift to *Ayutthaya Storm (Night)*, and move-table pointer `ps + 0x12` swapped to `EvilRyu`). If human Ryu wins Round 3 as awakened Evil Ryu, the run plays **Evil Ryu's "Satsui no Hado / Scarring of Sagat" ending** (whereas winning `2–0` without Round 3 keeps pure Ryu's classic `0x7700` ending).
+   - **Final-Round Ryu → Evil Ryu Transformation (1P Arcade Thailand Final, `opponent_index == 9`):** When `enable_bonus_challengers && enable_secret_arcade_intrusions` (`released_waves >= 1`) and the player reaches the Thailand final (`ladder step 9`) **as Ryu vs. CPU Sagat** or **as Sagat vs. CPU stand-in Ryu**, reaching the **deciding final round** (tied `1–1` entering Round 3, `0xffc00a == 2`) transforms **Ryu into Evil Ryu** during `Flow::AwaitWipe` (`0x3ec58`) before Round 3 starts (text-layer announce `SATSUI NO HADO!`, stage and palette shift to *Ayutthaya Storm (Night)*, and move-table pointer `ps + 0x12` swapped to `EvilRyu`). If human Ryu wins Round 3 as awakened Evil Ryu, the run plays **Evil Ryu's "Satsui no Hado / Scarring of Sagat" ending** (whereas winning `2–0` without Round 3 keeps pure Ryu's classic `0x7700` ending).
    - **Secret Arcade Intrusions (Exhibition Rule — `0` credit cost on loss):**
      1. **Evil Ryu Intrusion (*Satsui no Hado Awakening*):** On a qualifying high-skill run (`0` continues and `>= 2` Perfects or `>= 3` Special/Super KOs) by any fighter other than `Ryu`, `Sagat`, or `EvilRyu` after clearing ladder step 8 (Adon) and before ladder step 9 (Sagat) in Country 5 (Thailand).
      2. **M. Bison Intrusion (*Shadaloo Recruitment*):** After defeating ladder step 9 (Sagat, or stand-in Ryu when playing as Sagat) in Country 5 (Thailand) on a `0`-continue run (`>= 1` Perfect or Super KO, or after winning Round 3 as awakened Evil Ryu) before the ending montage (`0x3ef96 -> 0x44a40`).
@@ -71,7 +73,7 @@ This design specifies **Project 6 (Wave 1)**:
 
 ### 3.3 `BackgroundBank` & `RELEASED_WAVES` (`crates/sf-video/src/background_bank.rs`)
 - [`BackgroundBank`](../../crates/sf-video/src/background_bank.rs) already defines `StageListing { index, owner, place, wave }`, `RELEASED_WAVES: u8 = 0`, `shown_stages(listed, bonus_challengers, released)`, and `EXTENDED_THEME_FIRST: u16 = 0x40` (`art/themes/test-theme.score` uses `0x40`).
-- Wave 1 stages register via `let idx = bank.add_stage(name, view); bank.list_wave_stage(idx, owner, place, 1);` (`"evil-ryu"` with theme `0x41` and `"bison"` with theme `0x42`), so `shown_stages(listed, true, 1)` automatically exposes all 10 1987 stages + the 2 Wave 1 stages (`12` stages + `RANDOM` = `13` tiles on `StageScreen`) the moment `released >= 1`.
+- Wave 1 stages register via `let idx = bank.add_stage(name, view); bank.list_wave_stage(idx, owner, place, 1);` (`"evil-ryu"` with theme `0x51` and `"bison"` with theme `0x42`), so `shown_stages(listed, true, 1)` automatically exposes all 10 1987 stages + the 2 Wave 1 stages (`12` stages + `RANDOM` = `13` tiles on `StageScreen`) the moment `released >= 1`.
 
 ### 3.4 `SelectScreen` (`crates/sf-engine/src/front/select.rs`)
 - Currently `SelectScreen` uses `framed` (`cols 5..=42`) with `ONE_PLAYER` (a `104×104` left frame and `3×4` tiles of `46×30`) and `TWO_PLAYERS` (two `102×102` top frames and `6×2` tiles of `46×30` below).
@@ -85,7 +87,7 @@ This design specifies **Project 6 (Wave 1)**:
 ### Approach A (Chosen): 40-Fighter Engine + 40-Slot Select Redesign + Complete Wave 1 Now (with Temporary Stand-In Sprites & `RELEASED_WAVES` Gate)
 - Widen `RosterFighter` (`0..40`) and `DataBank` (`0x10_0000..=0x37_ffff`) once for all 40 fighters.
 - Ship the 40-slot Character Select layout (`6×2` / `7×2` / `8×3` / `8×5` even rows, `64×108` frames with Option B Style card, `MenuInput::Filter` toggle between `ALL` and `1987`, and VS-bust crop fallback).
-- Implement Evil Ryu and M. Bison's full move/era tables, stages, FM `.score` themes (`0x41`, `0x42`), 1P Arcade ladder, Round 3 Ryu → Evil Ryu transformation, secret intrusions, Dramatic Battle presets, and World Tour nodes now using temporary ROM-derived stand-in sprites in tests, keeping `RELEASED_WAVES = 0` on default player menus until the November 27 PixelLab art tickets (`Evil Ryu`, `M. Bison`, 2 stages, 14 `26×30` portraits) are approved and flip `RELEASED_WAVES = 1`.
+- Implement Evil Ryu and M. Bison's full move/era tables, stages, FM `.score` themes (`0x51`, `0x42`), 1P Arcade ladder, Round 3 Ryu → Evil Ryu transformation, secret intrusions, Dramatic Battle presets, and World Tour nodes now using temporary ROM-derived stand-in sprites in tests, keeping `RELEASED_WAVES = 0` on default player menus until the November 27 PixelLab art tickets (`Evil Ryu`, `M. Bison`, 2 stages, 14 `26×30` portraits) are approved and flip `RELEASED_WAVES = 1`.
 - **Pros:** Unblocks all engine, UI, audio, and gameplay tickets immediately before November 27; strictly honors **"A wave ships whole"**; requires zero rework for Waves 2 and 3.
 
 ### Approach B: Wait Until After November 27 to Build Engine & Moveset Support
@@ -285,25 +287,20 @@ Per Section 5.6 of [`2026-11-03-bonus-roster-by-lore-design.md`](2026-11-03-bonu
 
 ---
 
-### 5.4 Pillar 4 — Wave 1 Stages, YM2151 FM Themes (`0x41`, `0x42`), Arcade Ladder, Endings & Win Quotes
+### 5.4 Pillar 4 — Wave 1 Stages, YM2151 FM Themes (`0x51`, `0x42`), Arcade Ladder, Endings & Win Quotes
 
 #### A. Home Stages (`BackgroundBank`, `wave = 1`)
 Per [`docs/design/2026-11-03-stages-and-music-design.md`](2026-11-03-stages-and-music-design.md) Sections 5–7, each Wave 1 challenger has a distinct home stage in `BackgroundBank` registered via `let idx = bank.add_stage(name, view); bank.list_wave_stage(idx, owner, place, 1);`:
-1. **Evil Ryu — *Ayutthaya Storm (Night)* (`stage: "evil-ryu"`, `owner: "Evil Ryu"`, `place: "Thailand"`, `wave: 1`, `theme: 0x41`):**
+1. **Evil Ryu — *Ayutthaya Storm (Night)* (`stage: "evil-ryu"`, `owner: "Evil Ryu"`, `place: "Thailand"`, `wave: 1`, `theme: 0x51`):**
    - Set in the storm-lashed ruins of Ayutthaya at midnight (lightning-lit monsoon clouds in `bg`, fractured Reclining Buddha stone courtyard with wind-whipped torches in `fg`).
    - Before the Nov 27 PixelLab stage art pass, `BackgroundBank` builds a deterministic night-storm re-palette and tile assembly of Country 5 (Thailand, `bg` dark indigo/crimson lightning sky, `fg` storm-darkened temple stone) so `"evil-ryu"` is a valid, scrollable 512×256 `StageView` in all tests immediately.
 2. **M. Bison — *Shadaloo Temple (Bangkok)* (`stage: "bison"`, `owner: "M. Bison"`, `place: "Thailand"`, `wave: 1`, `theme: 0x42`):**
    - Set at the brass-winged skull altar and towering bell pagoda of Shadaloo's Bangkok headquarters at dusk.
    - Before the Nov 27 PixelLab stage art pass, `BackgroundBank` builds a deterministic dusk-purple/gold temple `StageView` from Thailand/China architectural tiles so `"bison"` is a valid, scrollable `StageView` in all tests immediately.
 
-#### B. Native YM2151 FM Themes (`0x41` & `0x42`) and `sf1-port-music` Pack Override
-1. **Committed Original 1987-Style YM2151 `.score` Themes (`art/themes/`):**
-   - **`art/themes/evil-ryu.score` (command `0x41`):** Original ominous 1987-style YM2151 FM theme in minor key (driving bassline + tense brass/bell lead evoking the Satsui awakening in Thailand).
-   - **`art/themes/bison.score` (command `0x42`):** Original martial, imperial 1987-style YM2151 FM theme (marching snare/bass pulse + ominous organ/brass chords evoking Shadaloo's rise).
-   - Registered in [`crates/sf-host/src/themes.rs`](../../crates/sf-host/src/themes.rs) alongside `test-theme.score` (`0x40`) so `sf_host::themes::program` compiles them into the Z80 extended tune table at startup (`missing_themes` is empty for both stages).
-2. **Optional Local `sf1-port-music` Pack Override (`2026-11-03-stages-and-music-design.md` Section 12 & `themes.rs`):**
-   - Per [`crates/sf-host/src/themes.rs`](../../crates/sf-host/src/themes.rs), `sf_audio::music_pack::find_pack(&pack_folders(rom_folders))` looks for an `sf1-port-music` folder beside the ROM set.
-   - Update `sf_audio::tunes::add_pack` / `sf_host::themes::install` so that while `0x40` (`test-theme.score`) stays reserved, a valid `.score` file in `sf1-port-music` targeting a challenger's stage command (`>= 0x41`, such as `0x41` for Evil Ryu or `0x42` for M. Bison) **replaces** the committed default `.score` for that command in the extended tune table.
+#### B. Native YM2151 FM Themes and the Local Music Pack
+
+Evil Ryu uses the *Black Power* arrangement from the original arcade *Street Fighter Alpha 3* at `0x51`. M. Bison uses his *World Warrior* arrangement at `0x42`. The scores live in the local `sf1-port-music` folder beside the ROMs. See the [character-theme design](2026-11-10-character-themes-design.md) for source and listening checks.
 
 #### C. 1P Arcade Ladder, Composite Endings (`0x44b00`), & Post-Match Win Quotes (`0x4014c`)
 1. **1P Arcade Ladder as Evil Ryu or M. Bison:**
@@ -335,7 +332,7 @@ flowchart TD
     C -- No --> E["Ladder Step 9: Thailand Final\n(vs Sagat, or vs Stand-In Ryu when playing as Sagat)"]
     D --> E
     E --> F{"Match is Ryu vs Sagat OR Sagat vs Ryu\nAND reaches tied 1-1 Round 3 (0xffc00a == 2)?"}
-    F -- Yes --> G["ROUND 3 SATSUI AWAKENING:\nRyu transforms into Evil Ryu (ps + 0x12 = 0x1c_0000)!\nStage/Palettes/Theme shift to Ayutthaya Storm (0x41)\n'SATSUI NO HADO!' flash"]
+    F -- Yes --> G["ROUND 3 SATSUI AWAKENING:\nRyu transforms into Evil Ryu (ps + 0x12 = 0x1c_0000)!\nStage and palette shift to Ayutthaya Storm\n'SATSUI NO HADO!' flash"]
     F -- No --> H["Standard Thailand Final Completion"]
     G --> I["Thailand Final Won by Player"]
     H --> I
@@ -358,9 +355,9 @@ flowchart TD
    - **Sub-HP, Satsui Awakening Meter Surge, & Dynamic `Pause -> MOVES` Switch:**
      - The awakened Evil Ryu side initializes Round 3 with Evil Ryu's **`864` max Sub-HP** (`90%` of `960`, filling the full 48-px HUD bar) and receives a **Satsui Awakening meter surge** (`+1` Super / `A-ISM` / `V-ISM` stock, `+50%` Ultra / `V-Gauge`, or full `6`-stock Drive Gauge) on top of any meter carried over from Round 2.
      - Both Evil Ryu and M. Bison have full entries and coach tips in `crates/sf-engine/src/move_list.rs` (`ML1`–`ML6`), and opening `Pause -> MOVES` during Round 3 after the transformation dynamically displays **Evil Ryu's move list** (`Shakunetsu Hadoken`, `Metsu Shoryuken`, `Ashura Senku`, etc.).
-   - **Stage, Palette, Theme & Visual Shift:**
+   - **Stage, Palette & Visual Shift:**
      - Set `bus.core.arcade_stage_override = Some("evil-ryu")`, consulted by `picked_stage(bus)` in `PlayMode::Arcade`.
-     - In `Flow::AwaitWipe` (`0x3ec58`), call `request_stage_palette(bus, idx)` alongside `stage_reset(bus)` and `stage_music(bus)` so the background bank's `fg` (`0x200`) and `bg` (`0x000`) palettes for **`"evil-ryu"` (*Ayutthaya Storm (Night)*)** upload to palette RAM and extended FM theme **`0x41` (`evil-ryu.score`)** starts playing.
+     - In `Flow::AwaitWipe` (`0x3ec58`), call `request_stage_palette(bus, idx)` alongside `stage_reset(bus)` so the background bank's `fg` (`0x200`) and `bg` (`0x000`) palettes for **`"evil-ryu"` (*Ayutthaya Storm (Night)*)** upload to palette RAM. The selected match theme carries into the deciding round.
      - Update the transformed fighter's sprite palette override in `OverhaulScene` to Evil Ryu's dark charcoal/crimson Satsui palette, and update the HUD nameplate to **`EVIL RYU`**.
      - During `intro_frame` at the start of Round 3, trigger a `20`-frame crimson/purple screen flash and draw **`SATSUI NO HADO!`** centered on the text layer before `ROUND 3 / FIGHT!`.
 3. **Ending Branch When Human Ryu Wins Round 3 as Awakened Evil Ryu:**
@@ -380,7 +377,7 @@ Per Section 5.5 of [`2026-11-03-bonus-roster-by-lore-design.md`](2026-11-03-bonu
   1. **Intrusion 1 — Evil Ryu (*Satsui no Hado Awakening*, between ladder steps 8 and 9 in Thailand):**
      - **Trigger:** In `next_opponent` (`0x3ef96`), right after the player wins ladder step 8 (Adon, `0xffc003 == 4, 0xffc004 == 0`), if the player's fighter is **not** `Ryu`, `Sagat`, or `EvilRyu`, and `continues_used == 0 && (perfect_rounds >= 2 || special_or_super_kos >= 3)` (and `!intrusion_1_played`):
        - Set `active_intrusion = Some(BonusChallenger::EvilRyu)`, `intrusion_1_played = true`, and `arcade_stage_override = Some("evil-ryu")`, leaving `0xffc003 == 4` and `0xffc004 == 0` untouched until the intrusion finishes.
-     - **Presentation & Fight:** Plays the challenger fanfare sequence (`0x423b8`: stops music with `0x3f`, plays challenger sound **`0x3e`**, and draws text block `0x15ba2` `A NEW CHALLENGER ENTERS THE RING!`), shows the composite VS screen `vs:{Player}:Evil Ryu` in `opponent_intro_start` (`0x3f9ec`), and runs a 2-out-of-3 exhibition match against **CPU Evil Ryu** on **Ayutthaya Storm (Night)** (`theme 0x41`).
+     - **Presentation & Fight:** Plays the challenger fanfare sequence (`0x423b8`: stops music with `0x3f`, plays challenger sound **`0x3e`**, and draws text block `0x15ba2` `A NEW CHALLENGER ENTERS THE RING!`), shows the composite VS screen `vs:{Player}:Evil Ryu` in `opponent_intro_start` (`0x3f9ec`), and runs a 2-out-of-3 exhibition match against **CPU Evil Ryu** on **Ayutthaya Storm (Night)** (`theme 0x51`).
      - **Post-Match (`match_end` `0x3ebea`):**
        - Whether the player **wins** or **loses** (`winner == CPU_STRUCT`), clear `active_intrusion` and `arcade_stage_override`, do **not** increment `continues_used` or enter `continue_start` (`0x3efda`), advance `0xffc004` from `0` to `1`, and proceed directly to ladder step 9 (Sagat).
   2. **Intrusion 2 — M. Bison (*Shadaloo Recruitment*, after defeating ladder step 9 in Thailand):**
@@ -400,7 +397,7 @@ When `config.enable_bonus_challengers && released_waves >= 1`:
 1. **Two New Wave 1 Signature Rivalry Presets (`Presets 7 & 8`):**
    | # | Preset Title | Allies (Team of 2) | Boss (1536 Sub-HP, 1.25× Dmg) | Stage & Theme | Lore Tie |
    |---|---|---|---|---|---|
-   | 7 | **Satsui Awakening** | **Ryu & Ken** | **Evil Ryu** | Thailand — *Ayutthaya Storm (Night)* (`0x41`) | Ryu and Ken confront the dark Ansatsuken unleashed at the end of the 1987 tournament |
+   | 7 | **Satsui Awakening** | **Ryu & Ken** | **Evil Ryu** | Thailand — *Ayutthaya Storm (Night)* (`0x51`) | Ryu and Ken confront the dark Ansatsuken unleashed at the end of the 1987 tournament |
    | 8 | **Fall of the Emperor** | **Ryu & Sagat** | **M. Bison** | Thailand — *Shadaloo Temple (Bangkok)* (`0x42`) | The newly scarred Emperor of Muay Thai and his rival stand against Lord Bison's Shadaloo recruitment |
 2. **Full `CUSTOM 2V1` Selectability:**
    - Opening `CUSTOM 2V1` on `DramaticSetupScreen` uses the 40-slot `SelectScreen` and `StageScreen`, so **Evil Ryu** and **M. Bison** (and their stages *Ayutthaya Storm* and *Shadaloo Temple*) can be picked as `Ally 1`, `Ally 2`, or `Boss`.
@@ -410,7 +407,7 @@ When `config.enable_bonus_challengers && released_waves >= 1`:
    - Unlocked on the Thailand region of `WorldTourScreen` once the player clears Node `#18` (`th-2-era` Grand Finale) while `enable_bonus_challengers && released_waves >= 1`:
    | # | Node ID | Country | Mission Type | Opponent(s) & Stage | Reward |
    |---|---|---|---|---|---|
-   | 19 | `th-3-satsui` | Thailand | **Secret Rival Bout (No Blocking or Era Mastery)** | **Evil Ryu** (`SFZ3` / `USF4` Satsui kit on *Ayutthaya Storm (Night)*, `0x41`) | `+350 XP` + unlocks Evil Ryu badge in `world_tour.toml` |
+   | 19 | `th-3-satsui` | Thailand | **Secret Rival Bout (No Blocking or Era Mastery)** | **Evil Ryu** (`SFZ3` / `USF4` Satsui kit on *Ayutthaya Storm (Night)*, `0x51`) | `+350 XP` + unlocks Evil Ryu badge in `world_tour.toml` |
    | 20 | `th-4-shadaloo` | Thailand | **Secret 2v1 Dramatic Boss** | **Player + Emperor Sagat** vs **Boss M. Bison** (`2v1` Dramatic Battle on *Shadaloo Temple (Bangkok)*, `0x42`) | `+500 XP` + *Wave 1: Rising* ★ Star |
 2. **Playable Across All World Tour Nodes:**
    - Pressing `Tab Left` (`Fighter / Style Select`) on `WorldTourScreen` opens the 40-slot `SelectScreen`, allowing the player to run any of the 20 World Tour nodes as **Evil Ryu** or **M. Bison** in any of their Era Styles.
@@ -431,7 +428,7 @@ To keep credit usage disciplined and explicit (`sf-art` pipeline from `ADR-0006`
    - **Flip `RELEASED_WAVES` from `0` to `1`** in [`crates/sf-video/src/background_bank.rs`](../../crates/sf-video/src/background_bank.rs) (and `roster.rs`), making Wave 1 (*Super Street Fighter: Rising*) live on all player-facing menus when `enable_bonus_challengers` is `true`.
 
 #### B. Retiring the Standalone `bonus.rs` and `bonus_arcade.rs` Prototype Modules
-- Once the real-engine integration tests cover `RosterFighter` (`0..40`), the 40-slot `SelectScreen`, Evil Ryu and M. Bison's `DataBank` move/era tables, stages/FM themes (`0x41`, `0x42`), 1P Arcade runs & endings, the Thailand Final Round 3 transformation, secret Arcade intrusions, Wave 1 Dramatic Battle presets, and Wave 1 World Tour nodes:
+- Once the real-engine integration tests cover `RosterFighter` (`0..40`), the 40-slot `SelectScreen`, Evil Ryu and M. Bison's `DataBank` move/era tables, stages/FM themes (`0x51`, `0x42`), 1P Arcade runs & endings, the Thailand Final Round 3 transformation, secret Arcade intrusions, Wave 1 Dramatic Battle presets, and Wave 1 World Tour nodes:
   - Delete the standalone 1D/struct prototype stepping code in [`crates/sf-engine/src/bonus.rs`](../../crates/sf-engine/src/bonus.rs) (`BonusMatch`, `Side`, `Challenger` 13-list, `tiles_for`, `cue`) and [`crates/sf-engine/src/bonus_arcade.rs`](../../crates/sf-engine/src/bonus_arcade.rs) (`BonusRun`, `ending_panels`).
 
 ---
@@ -439,7 +436,7 @@ To keep credit usage disciplined and explicit (`sf-art` pipeline from `ADR-0006`
 ### 5.8 Domain Glossary Additions (`CONTEXT.md`, staged for `BC1`)
 To avoid merge conflicts with active Project 3 worktrees, the first ticket (`BC1`) adds these entries to `CONTEXT.md`:
 - **Roster fighter (`RosterFighter`)** — Any of the **40 fighters** (`0..40`) in the complete roster: the 12 **Tournament fighters** (`0..12`, wave `0`) plus the 28 lore-admitted **Bonus challengers** (`12..40`, waves `1..=3`: Wave 1 *Super Street Fighter: Rising* slots `12..14`, Wave 2 *Hyper Street Fighter: Bloodlines* slots `14..24`, Wave 3 *Ultra Street Fighter: Final Round* slots `24..40`), each with a dedicated `0x1_0000`-byte (`64 KB`) slot in the **Extended data bank** (`0x10_0000..=0x37_ffff`). (`ADR-0008`, `ADR-0014`.)
-- **Final-Round Satsui Awakening** — In 1P Arcade mode at the Thailand final (`opponent_index == 9`) when `enable_bonus_challengers` and `enable_secret_arcade_intrusions` are on, reaching a tied `1–1` deciding final round (Round 3, `0xffc00a == 2`) in **Ryu vs. Sagat** or **Sagat vs. Stand-In Ryu** transforms Ryu into **Evil Ryu** (`ps + 0x12 = 0x1c_0000`), shifts the stage, palettes, and FM theme to **Ayutthaya Storm (Night)** (`0x41`), and (if human Ryu wins Round 3) routes to Evil Ryu's *Satsui no Hado* ending instead of pure Ryu's `0x7700` ending.
+- **Final-Round Satsui Awakening** — In 1P Arcade mode at the Thailand final (`opponent_index == 9`) when `enable_bonus_challengers` and `enable_secret_arcade_intrusions` are on, reaching a tied `1–1` deciding final round (Round 3, `0xffc00a == 2`) in **Ryu vs. Sagat** or **Sagat vs. Stand-In Ryu** transforms Ryu into **Evil Ryu** (`ps + 0x12 = 0x1c_0000`), shifts the stage and palettes to **Ayutthaya Storm (Night)** while preserving the match theme, and (if human Ryu wins Round 3) routes to Evil Ryu's *Satsui no Hado* ending instead of pure Ryu's `0x7700` ending.
 
 ---
 
@@ -447,5 +444,5 @@ To avoid merge conflicts with active Project 3 worktrees, the first ticket (`BC1
 
 The following implementation details are intentionally left to engineering judgment during ticket execution:
 - Exact byte offsets inside `0x1c_0000` (Evil Ryu) and `0x1d_0000` (M. Bison) in [`crates/sf-engine/src/data_bank.rs`](../../crates/sf-engine/src/data_bank.rs) for each special move's stream, projectile template, and teleport routine record.
-- Exact YM2151 register voice patches and note sequences in `art/themes/evil-ryu.score` (`0x41`) and `art/themes/bison.score` (`0x42`).
+- Local YM2151 scores use the approved individual assignments for Evil Ryu (`0x51`) and M. Bison (`0x42`).
 - Exact `(x, y)` coordinates of the two post-Thailand secret node markers (`th-3-satsui` and `th-4-shadaloo`) on the Thailand region of `WorldTourScreen`.

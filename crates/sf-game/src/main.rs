@@ -49,7 +49,7 @@ use sf_host::pads::PadReader;
 use sf_host::picture::picture_rect;
 use sf_host::roms::{self, Candidate, RomSet};
 use sf_host::shaders::{self, Catalogue};
-use sf_host::themes::{self, Themes};
+use sf_host::themes::{self, ThemeDelivery, ThemeFrame, Themes};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 mod evil_ryu_art;
@@ -307,11 +307,13 @@ struct Play {
     /// overhaul one: `None` until then, `Some(None)` when there are none.
     themes: Option<Option<Themes>>,
     /// Where the themes come from: the music CPU's ROM and the folders the
-    /// ROMs were looked for in (the music pack is beside one of them).
+    /// ROMs and repository assets were looked for in.
     audiocpu: Vec<u8>,
     rom_folders: Vec<PathBuf>,
+    asset_roots: Vec<PathBuf>,
     /// The music CPU runs with the tune table now.
     tune_table: bool,
+    theme_delivery: ThemeDelivery,
     /// The Jukebox's tracks, from the `jukebox` folder beside the ROM set
     /// (ticket #200).
     jukebox: Deck,
@@ -372,8 +374,7 @@ impl Game {
                 log.line("playtest", &format!("could not load the {} VS screen: {error}", playtest.display_name()));
             }
         }
-        // The announcer's voice pack, looked for as the art pack is.
-        let voice = sf_host::voice::load_with_fallbacks(&rom_folders, &asset_roots, log);
+        let voices = sf_host::voice::VoicePacks::load(&rom_folders, &asset_roots, &audio2, log);
 
         let (satsui_body, satsui_fire) = evil_ryu_art::satsui_art(&assets);
         let mut config = self.config.take().unwrap_or_default();
@@ -435,13 +436,13 @@ impl Game {
         match &sound {
             Some(s) => {
                 s.set_gains(gains(&self.settings));
-                s.set_voice(voice);
+                s.set_voice_packs(voices);
             }
             None => log.line("settings", "audio: no usable output device; running silent"),
         }
         let saved = self.settings.clone();
         let (audiocpu, rom_folders) = themes_from;
-        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, tune_table: false, jukebox };
+        let play = Play { session, net: HostNetDriver::new(), sound, saved, saved_world_tour, screen: "", themes: None, audiocpu, rom_folders, asset_roots, tune_table: false, theme_delivery: ThemeDelivery::default(), jukebox };
         self.phase = Phase::Playing(Box::new(play));
     }
 
@@ -566,7 +567,9 @@ impl Driver for Game {
                 // is picked up before the next frame can use a score.
                 if play.themes.is_none() && session.match_config().preset != RulesetPreset::Faithful1987 {
                     let folders: Vec<&Path> = play.rom_folders.iter().map(PathBuf::as_path).collect();
-                    let themes = themes::load(session.match_config().preset, &play.audiocpu, &folders, log);
+                    let themes = themes::load_with_fallbacks(
+                        session.match_config().preset, &play.audiocpu, &folders, &play.asset_roots, log,
+                    );
                     themes::apply(themes.as_ref(), session, log);
                     play.themes = Some(themes);
                 }
@@ -619,14 +622,23 @@ impl Driver for Game {
                     // the theme's command is left out while the track plays,
                     // and passed on when the file could not be played.
                     let action = out.track.as_ref().map_or(Action::None, |cue| play.jukebox.cue(cue, log));
-                    let latch = play.jukebox.latch(&action, out.sound_latch);
-                    s.push_frame(out.sound_frame, latch, out.latch_cycles);
+                    let ThemeFrame { latch, score } = if let Some(cue) = out.theme {
+                        if matches!(action, Action::Start(_)) {
+                            ThemeFrame { latch: cue.id.command(), score: None }
+                        } else {
+                            play.theme_delivery.resolve(play.themes.as_ref().and_then(Option::as_ref), cue, log)
+                        }
+                    } else {
+                        ThemeFrame { latch: out.sound_latch, score: None }
+                    };
+                    let routed = play.jukebox.latch(&action, latch);
+                    let score = if routed == latch { score } else { None };
+                    s.push_game_frame_with_score(&out, routed, score, session.live_sound());
                     match action {
                         Action::Start(track) => s.start_track(out.sound_frame, track),
                         Action::Stop => s.stop_track(out.sound_frame),
                         Action::None => {}
                     }
-                    s.announce(out.sound_frame, &out.announcements);
                 }
                 save_replays(session, &self.app_dir, log);
                 if out.quit || (self.evil_ryu_playtest.is_some() && session.fight().is_none()) {
@@ -664,9 +676,6 @@ impl Driver for Game {
                     }
                     log.line("settings", &format!("saved: {}", files::describe(settings, config)));
                     play.saved = settings.clone();
-                    if let Some(s) = &play.sound {
-                        s.set_gains(gains(settings));
-                    }
                 }
                 // SAVE AS on the tuning screen: write the look, list it and
                 // make it the player's look.

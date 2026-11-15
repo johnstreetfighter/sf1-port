@@ -503,3 +503,40 @@ fn outside_training_a_hit_is_read_by_the_health_it_took_and_nothing_is_recorded(
     }
 }
 
+
+#[test]
+fn clean_heavy_impact_survives_the_training_floor_and_respects_faithful() {
+    use sf_engine::front::fight::OverlayMode;
+    use sf_engine::impact::{ImpactDirection, ImpactFighter, ImpactKind};
+    use sf_video::render::{VISAREA_X, VISAREA_Y, WIDTH};
+
+    for preset in [RulesetPreset::DefinitiveOverhaul, RulesetPreset::Faithful1987] {
+        let Some(a) = assets() else { return };
+        let mut s = training_dummy(a, preset, Settings::default());
+        let mut floor_hits = 0;
+        for f in 0..1_200 {
+            let before = health(s.fight_machine().unwrap(), Side::P2);
+            let out = s.step(attack(f));
+            let read = s.fight().unwrap().fight_read();
+            let landed = read.landed_by(Side::P1).is_some_and(|hit| !hit.chip);
+            floor_hits += usize::from(landed && before == FLOOR);
+            if landed && preset == RulesetPreset::DefinitiveOverhaul {
+                let [cue] = out.impacts.as_slice() else {
+                    panic!("expected one clean heavy cue on frame {f}: {:?}", out.impacts);
+                };
+                assert_eq!(cue.kind, ImpactKind::HeavyStrike);
+                assert_eq!(cue.fighter, ImpactFighter::P2);
+                assert_eq!(cue.direction, ImpactDirection::Right);
+                assert_eq!(cue.frame, s.fight_machine().unwrap().state.frame);
+                let fight = s.fight().unwrap();
+                assert_eq!(fight.overlay(), OverlayMode::Off);
+                let x = usize::from(cue.x - fight.machine().camera_x()) - VISAREA_X;
+                let y = usize::from(cue.y) - VISAREA_Y;
+                assert_eq!(out.frame.argb[y * WIDTH + x], 0xfffffaf1, "spark at the contact point");
+            } else {
+                assert!(out.impacts.is_empty(), "{preset:?} frame {f}: {:?}", out.impacts);
+            }
+        }
+        assert!(floor_hits >= 3, "{preset:?} landed {floor_hits} hits at the floor");
+    }
+}

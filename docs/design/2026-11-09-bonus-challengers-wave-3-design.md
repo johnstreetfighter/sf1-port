@@ -7,6 +7,8 @@
 
 ---
 
+The stage-command columns below identify the primary owner's command. The [character-theme design](2026-11-10-character-themes-design.md) and [ADR-0023](../adr/0023-character-themes-and-separate-native-score-storage.md) assign individual themes and determine which one plays when fighters share a stage.
+
 ## 1. Intent
 
 Once the planned **Wave 1 (*Super Street Fighter: Rising*, `Spec #292`)** and **Wave 2 (*Hyper Street Fighter: Bloodlines*, `Spec #319`)** work is implemented, it will expand the 12-fighter 1987 tournament roster to `24` (`slots 0..24`, `8×3` Select Grid).
@@ -43,8 +45,8 @@ Following the **Code-First + Deterministic ROM Stand-In Catalogue** architecture
    - **Belger & Damnd *Final Fight* Boss Kits (`ROUTINE_PROJECTILE_AT_EDGE`):** Standing second-phase Belger (*Crossbow Shot* `236+P` / `air 236+P`, *Executive Chair Ram* `[4]6+P`, *Penthouse Vault* `214+K`) and Thrasher Damnd with *Whistle Call* (`214+P`, spawning a Mad Gear thug rush projectile at the behind-Damnd screen edge `x = 0x64` / `0x19c` via `spawn_effect` `0x42e1e` with `ROUTINE_EFFECT_HIT` + `ROUTINE_EFFECT_VS_ATTACK`), *Thrasher Jump Kick* (`236+K`), and *Brooklyn Battering Ram* (`236+P`).
 2. **Complete `DataBank` Movesets (`0x28_0000..=0x37_ffff`), Era Styles (`SF1`–`SF6`), & ROM Stand-In Catalogues for All 16 Wave 3 Challengers:**
    - Every Wave 3 challenger has **native `SF1` and `SF1+` styles**, **Canon** styles for every entry they appeared in, and **`[WHAT-IF]`** flagship styles (`SF2 ST`, `SFZ3`, `SF3 3S`, `USF4`, `SF5 CE`, `SF6`) for eras they missed (including all 6 later eras for `Mike Haggar`, `Belger`, and `Damnd`), plus entries in `moves::REGISTRY`, `front/moves.rs`, `utility.rs`, and `ComboTrialSpec` (`TRD4` `#316`).
-3. **Eight Wave 3 Stages & Original YM2151 FM Themes (`0x49`–`0x50`):**
-   - Register 8 Wave 3 stages (`wave = 3`) in `BackgroundBank` and 8 committed original 1987-style YM2151 `.score` compositions (`0x49`–`0x50`) in `art/themes/` and `crates/sf-host/src/themes.rs`, bringing the total stage roster to **`26` stages + `RANDOM`** (`27` tiles across `4` rows of `8` on `StageScreen`).
+3. **Eight Wave 3 Stages & Primary Character Themes (`0x49`–`0x50`):**
+   - Register 8 Wave 3 stages (`wave = 3`) in `BackgroundBank` with eight primary character theme assignments, bringing the total stage roster to **`26` stages + `RANDOM`** (`27` tiles across `4` rows of `8` on `StageScreen`).
 4. **Full 40-Fighter Composite VS Screens (`40 × 40 = 1,600`), 16 Endings (`0x44b00`), & Win Quotes (`0x4014c`):**
    - Extend `BackgroundBank::add_vs_screens` and `BackgroundBank::add_ending_screens` (`crates/sf-video/src/vs_screens.rs`) across all 40 `Wave 0..=3` fighters with a strict `<= 6` `Bg` colour-row budget per fighter bust+nameplate, character-specific `TextWriter` epilogues, and post-match win quotes.
 5. **Wave 3 Secret Arcade Intrusions, 2v1 Dramatic Battle (`Presets 15–22`), & 1987 World Tour (`Nodes #26–#33`):**
@@ -55,7 +57,7 @@ Following the **Code-First + Deterministic ROM Stand-In Catalogue** architecture
 
 ### Anti-Goals
 - **Never expose half-finished Wave 3 fighters on default menus:** Keep `RELEASED_WAVES = 2` until all 5 Wave 3 PixelLab art tickets (`UW9`–`UW13`) are complete and flip `RELEASED_WAVES = 3`.
-- **Never commit copyrighted Capcom melodies in `.score` files:** Committed `art/themes/*.score` files (`0x49`–`0x50`) are original 1987-style YM2151 compositions; canonical *Final Fight* / *SF2* / *Alpha* arrangements live only in the optional local `sf1-port-music` pack.
+- **Music pack.** The character arrangements live in the local `sf1-port-music` folder beside the ROMs.
 
 ---
 
@@ -196,19 +198,19 @@ Following the **Code-First + Deterministic ROM Stand-In Catalogue** architecture
 
 ---
 
-### 3.4 Pillar 4 — Eight Wave 3 Stages, Original YM2151 FM Themes (`0x49`–`0x50`), Composite VS/Endings (`40×40`), & Win Quotes (`UW6`)
+### 3.4 Pillar 4 — Eight Wave 3 Stages, Primary Character Themes (`0x49`–`0x50`), Composite VS/Endings (`40×40`), & Win Quotes (`UW6`)
 
 #### A. Eight Wave 3 Stage Records (`wave = 3`) & YM2151 Themes (`0x49`–`0x50`)
 | Stage ID | Stage Title & Setting | Listed Owner (`StageView.owner`) | Shared Home Stage For | Country | Theme Cmd | `.score` File |
 |---|---|---|---|---|---|---|
-| `"damnd"` | **Metro City Slums — Warehouse Alley (1987)** | `"Damnd"` | **Damnd**, **Cody**, **Guy** | `"USA"` | `0x49` | `art/themes/damnd.score` |
-| `"haggar"` | **Metro City — Mayor's Slum Gym & Underground Ring** | `"Haggar"` | **Mike Haggar**, **Hugo**, **Poison** | `"USA"` | `0x4a` | `art/themes/haggar.score` |
-| `"sodom"` | **Metro City Subway — Katana Ring** | `"Sodom"` | **Sodom**, **Rolento** | `"USA"` | `0x4b` | `art/themes/sodom.score` |
-| `"belger"` | **Metro City Bay Area — Belger's Penthouse Tower** | `"Belger"` | **Belger**, **Abigail** | `"USA"` | `0x4c` | `art/themes/belger.score` |
-| `"zeku"` | **Kyoto — Bushinryu Rooftop Moon Dojo** | `"Zeku"` | **Zeku** | `"Japan"` | `0x4d` | `art/themes/zeku.score` |
-| `"rose"` | **Genoa — Palazzo Mistero Tarot Harbor** | `"Rose"` | **Rose**, **Charlie Nash (`Nash`)** | `"Italy"` | `0x4e` | `art/themes/rose.score` |
-| `"zangief"` | **Bilsk Steelworks — Blast Furnace Ring** | `"Zangief"` | **Zangief** | `"USSR"` | `0x4f` | `art/themes/zangief.score` |
-| `"vega"` | **Barcelona & Las Vegas — Shadaloo Golden Cage** | `"Vega"` | **Vega**, **Balrog** | `"Spain"` | `0x50` | `art/themes/vega.score` |
+| `"damnd"` | **Metro City Slums — Warehouse Alley (1987)** | `"Damnd"` | **Damnd**, **Cody**, **Guy** | `"USA"` | `0x49` | `damnd.score` |
+| `"haggar"` | **Metro City — Mayor's Slum Gym & Underground Ring** | `"Haggar"` | **Mike Haggar**, **Hugo**, **Poison** | `"USA"` | `0x4a` | `haggar.score` |
+| `"sodom"` | **Metro City Subway — Katana Ring** | `"Sodom"` | **Sodom**, **Rolento** | `"USA"` | `0x4b` | `sodom.score` |
+| `"belger"` | **Metro City Bay Area — Belger's Penthouse Tower** | `"Belger"` | **Belger**, **Abigail** | `"USA"` | `0x4c` | `belger.score` |
+| `"zeku"` | **Kyoto — Bushinryu Rooftop Moon Dojo** | `"Zeku"` | **Zeku** | `"Japan"` | `0x4d` | `zeku.score` |
+| `"rose"` | **Genoa — Palazzo Mistero Tarot Harbor** | `"Rose"` | **Rose**, **Charlie Nash (`Nash`)** | `"Italy"` | `0x4e` | `rose.score` |
+| `"zangief"` | **Bilsk Steelworks — Blast Furnace Ring** | `"Zangief"` | **Zangief** | `"USSR"` | `0x4f` | `zangief.score` |
+| `"vega"` | **Barcelona & Las Vegas — Shadaloo Golden Cage** | `"Vega"` | **Vega**, **Balrog** | `"Spain"` | `0x50` | `vega.score` |
 
 - With `released_waves == 3` and `enable_bonus_challengers == true`, `BackgroundBank::shown_stages` returns **`26` stages** (`10` 1987 + `2` Wave 1 + `6` Wave 2 + `8` Wave 3) + `RANDOM` (`27` tiles across `4` rows of `8` on `StageScreen`).
 - `JukeboxScreen` lists all `26` stages and all **`40` fighters** (`RosterFighter::released(3, true)`).
@@ -286,5 +288,5 @@ To keep PixelLab credit usage disciplined and explicit (`ADR-0006`):
 
 The following implementation details are intentionally left to engineering judgment during ticket execution:
 - Exact byte offsets within `0x28_0000..=0x37_ffff` in `DataBank` for each Wave 3 challenger's move streams, projectile templates, `ROUTINE_COMMAND_THROW` capture offsets, `SPECIAL_WALL_DIVE` trajectories, and Zeku's `0x32_0000` / `0x32_8000` move tables.
-- Exact YM2151 FM voice patches and note sequences in `art/themes/{damnd,haggar,sodom,belger,zeku,rose,zangief,vega}.score` (`0x49`–`0x50`).
+- Local YM2151 scores and review evidence follow the approved individual character assignments.
 - Exact `(x, y)` coordinates of the 8 `[WAVE 3]` nodes (`Nodes #26–#33`) on `WorldTourScreen`.

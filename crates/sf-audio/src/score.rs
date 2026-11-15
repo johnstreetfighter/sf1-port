@@ -34,6 +34,7 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
+use std::sync::Arc;
 
 use crate::tunes::{ExtendedTunes, Stream, Tune, TuneError, CHANNELS, EXTENDED_FIRST, EXTENDED_LAST, ROM_BYTES};
 
@@ -101,6 +102,30 @@ impl Converted {
     pub fn add_to(&self, tunes: &mut ExtendedTunes) -> Result<(), TuneError> {
         tunes.add(self.command, &self.tune)
     }
+}
+
+/// A compiled tune in a separate logical address space. Channel byte
+/// positions and jumps are relative to the start of their stream.
+#[derive(Debug)]
+pub struct NativeScore {
+    pub(crate) header: u8,
+    pub(crate) channels: [Option<Vec<u8>>; CHANNELS],
+}
+
+impl NativeScore {
+    /// Total bytes of the compiled channel streams.
+    pub fn bytes(&self) -> usize {
+        self.channels.iter().flatten().map(Vec::len).sum()
+    }
+}
+
+/// The readable header and the separately stored, validated score.
+#[derive(Debug)]
+pub struct CompiledScore {
+    pub title: String,
+    pub command: u8,
+    pub theme: Option<String>,
+    pub score: Arc<NativeScore>,
 }
 
 /// One word of the score and its line.
@@ -227,7 +252,12 @@ fn pitch(w: &Word, name: &str) -> Result<Option<i32>, ScoreError> {
         'G' => 7,
         'A' => 9,
         'B' => 11,
-        _ => return fail(w.line, format!("`{}` is not a statement, a note or a rest", w.text)),
+        _ => {
+            return fail(
+                w.line,
+                format!("`{}` is not a statement, a note or a rest", w.text),
+            )
+        }
     };
     let rest: String = chars.collect();
     let (shift, octave) = match rest.strip_prefix('#') {
@@ -239,7 +269,12 @@ fn pitch(w: &Word, name: &str) -> Result<Option<i32>, ScoreError> {
     };
     let octave: i32 = match octave.parse() {
         Ok(o) if (0..=8).contains(&o) => o,
-        _ => return fail(w.line, format!("`{}` has no octave 0 to 8 after its note name", w.text)),
+        _ => {
+            return fail(
+                w.line,
+                format!("`{}` has no octave 0 to 8 after its note name", w.text),
+            )
+        }
     };
     let index = 12 * octave + semitone + shift;
     if !(LOWEST..=HIGHEST).contains(&index) {
@@ -455,7 +490,7 @@ impl Channel {
         Ok(())
     }
 
-    fn close(&mut self, line: usize, rom: &[u8]) -> Result<(), ScoreError> {
+    fn close(&mut self, line: usize, rom: &[u8], wide: bool) -> Result<(), ScoreError> {
         let Some(block) = self.blocks.pop() else {
             return fail(line, "`}` closes no block");
         };
@@ -486,7 +521,19 @@ impl Channel {
         let opcode = if block.forever { 0x0c } else { 0x0c + depth as u8 };
         self.bytes.extend([opcode, block.count]);
         self.jumps.push(self.bytes.len());
-        self.bytes.extend((block.start as u16).to_le_bytes());
+        if wide {
+            let target = u32::try_from(block.start).map_err(|_| ScoreError {
+                line,
+                message: "the channel's jump is outside the 32-bit score address space".into(),
+            })?;
+            self.bytes.extend(target.to_le_bytes());
+        } else {
+            let target = u16::try_from(block.start).map_err(|_| ScoreError {
+                line,
+                message: "the jump is outside the 16-bit legacy tune address space".into(),
+            })?;
+            self.bytes.extend(target.to_le_bytes());
+        }
         if let Some(parent) = self.blocks.last_mut() {
             parent.notes = true;
         }
@@ -500,12 +547,44 @@ impl Channel {
 /// Convert the score `text` for the program `rom` (sf-02.7k, whose patches
 /// the score names).
 pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
+    parse(text, rom, false).map(|(converted, _)| converted)
+}
+
+/// Compile the same readable format for the native driver's separate score
+/// storage. Four-byte jumps stay relative to the channel and never relocate
+/// into the sound ROM or RAM map.
+pub fn compile(text: &str, rom: &[u8]) -> Result<CompiledScore, ScoreError> {
+    let (
+        Converted {
+            title,
+            command,
+            tune,
+        },
+        theme,
+    ) = parse(text, rom, true)?;
+    let score = NativeScore {
+        header: tune.header,
+        channels: tune
+            .channels
+            .map(|stream| stream.map(|stream| stream.bytes)),
+    };
+    Ok(CompiledScore {
+        title,
+        command,
+        theme,
+        score: Arc::new(score),
+    })
+}
+
+fn parse(text: &str, rom: &[u8], wide: bool) -> Result<(Converted, Option<String>), ScoreError> {
     if rom.len() < ROM_BYTES {
         return fail(0, format!("the ROM image is {} bytes; the patches need all {ROM_BYTES}", rom.len()));
     }
     let all = words(text);
     let mut at = 0;
     let mut title = None::<String>;
+    let mut theme = None;
+    let mut saved_advance = None;
     let (mut command, mut priority, mut unit) = (None, None, None);
     let mut channels: [Option<Channel>; CHANNELS] = Default::default();
     let mut current: Option<usize> = None;
@@ -514,8 +593,11 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
         let w = &all[at];
         at += 1;
         match w.text {
-            "title" | "command" | "priority" | "unit" if current.is_some() => {
-                return fail(w.line, format!("`{}` belongs before the first channel", w.text));
+            "title" | "command" | "theme" | "priority" | "saved" | "unit" if current.is_some() => {
+                return fail(
+                    w.line,
+                    format!("`{}` belongs before the first channel", w.text),
+                );
             }
             "title" => {
                 let line = w.line;
@@ -533,6 +615,39 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
                 let c = number(a, "command", EXTENDED_FIRST as u32, EXTENDED_LAST as u32)?;
                 if command.replace(c as u8).is_some() {
                     return fail(w.line, "`command` is given twice");
+                }
+            }
+            "theme" => {
+                let slug = take(&all, &mut at, w, "a theme slug")?;
+                let valid = slug.line == w.line
+                    && slug.text.split('-').all(|segment| {
+                        !segment.is_empty()
+                            && segment
+                                .bytes()
+                                .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
+                    })
+                    && !all.get(at).is_some_and(|next| next.line == w.line);
+                if !valid {
+                    return fail(w.line, "`theme` needs one lowercase kebab-case slug");
+                }
+                if theme.replace(slug.text.to_owned()).is_some() {
+                    return fail(w.line, "`theme` is given twice");
+                }
+            }
+            "saved" => {
+                let mode = take(&all, &mut at, w, "advance or pause")?;
+                let advances = match mode.text {
+                    "advance" => true,
+                    "pause" => false,
+                    _ => {
+                        return fail(
+                            mode.line,
+                            "`saved` must be followed by `advance` or `pause`",
+                        )
+                    }
+                };
+                if saved_advance.replace(advances).is_some() {
+                    return fail(w.line, "`saved` is given twice");
                 }
             }
             "priority" => {
@@ -566,7 +681,7 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
             }
             _ => {
                 let Some(n) = current else {
-                    return fail(w.line, format!("`{}` is not a header (title, command, priority, unit) or a `channel`", w.text));
+                    return fail(w.line, format!("`{}` is not a header (title, command, theme, priority, saved, unit) or a `channel`", w.text));
                 };
                 let ch = channels[n].as_mut().expect("a channel is open");
                 if ch.ended {
@@ -643,7 +758,12 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
                             "left" => 1,
                             "right" => 2,
                             "both" => 3,
-                            other => return fail(a.line, format!("pan `{other}` is not left, right or both")),
+                            other => {
+                                return fail(
+                                    a.line,
+                                    format!("pan `{other}` is not left, right or both"),
+                                )
+                            }
                         };
                         ch.set_pan(p);
                     }
@@ -666,7 +786,7 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
                         }
                         ch.open(w.line, true, 0)?;
                     }
-                    "}" => ch.close(w.line, rom)?,
+                    "}" => ch.close(w.line, rom, wide)?,
                     "end" => {
                         if !ch.blocks.is_empty() {
                             return fail(w.line, "`end` must be at the channel's top level, not inside a block");
@@ -674,7 +794,12 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
                         ch.bytes.push(0x0f);
                         ch.ended = true;
                     }
-                    "{" => return fail(w.line, "`{` opens nothing; write `repeat N {` or `forever {`"),
+                    "{" => {
+                        return fail(
+                            w.line,
+                            "`{` opens nothing; write `repeat N {` or `forever {`",
+                        )
+                    }
                     note => {
                         let (name, spec) = match note.split_once(':') {
                             Some((name, spec)) => (name, Some(spec)),
@@ -696,7 +821,12 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
         return fail(0, "the score has no channel");
     }
     let tune = Tune {
-        header: priority.unwrap_or(DEFAULT_PRIORITY),
+        header: priority.unwrap_or(DEFAULT_PRIORITY)
+            | if saved_advance.unwrap_or(false) {
+                0x40
+            } else {
+                0
+            },
         channels: channels.map(|c| {
             c.map(|c| Stream {
                 bytes: c.bytes,
@@ -704,11 +834,14 @@ pub fn convert(text: &str, rom: &[u8]) -> Result<Converted, ScoreError> {
             })
         }),
     };
-    Ok(Converted {
-        title: title.unwrap_or_default(),
-        command,
-        tune,
-    })
+    Ok((
+        Converted {
+            title: title.unwrap_or_default(),
+            command,
+            tune,
+        },
+        theme,
+    ))
 }
 
 /// A channel is whole when its blocks are closed and it ends.
@@ -721,6 +854,9 @@ fn finish(ch: &Channel) -> Result<(), ScoreError> {
             0,
             format!("channel {} has no `end` and no `forever` block, so the driver would read on past its last byte", ch.number),
         );
+    }
+    if u32::try_from(ch.bytes.len()).is_err() {
+        return fail(0, format!("channel {} is too large", ch.number));
     }
     Ok(())
 }

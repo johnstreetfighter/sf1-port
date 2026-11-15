@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::{decode_inputs, encode_inputs};
-use crate::front::fight::{Fight, FightEvent, FightFrame, FightSnapshot};
+use crate::front::fight::{Fight, FightEvent, FightFrame, FightLatch, FightSnapshot};
 use crate::front::session::PlayerInputs;
 use sf_video::announcer::AnnouncerLine;
 use sf_video::romset::Assets;
@@ -37,6 +37,9 @@ struct Slot {
     event: Option<FightEvent>,
     heard_latches: [bool; 256],
     heard_announcements: Vec<AnnouncerLine>,
+    heard_impacts: Vec<(crate::impact::ImpactKind, crate::impact::ImpactFighter)>,
+    impact_boundary: bool,
+    cleared_impacts: bool,
 }
 
 /// Rollback bookkeeping borrowing the session's existing Fight on each call.
@@ -59,8 +62,11 @@ pub struct RollbackEngine {
     confirmed_fight_events: Vec<(u32, FightEvent)>,
     pending_checksums: BTreeMap<u32, u64>,
     reported_desyncs: BTreeSet<u32>,
-    pending_latches: VecDeque<(u8, u32)>,
+    pending_latches: VecDeque<FightLatch>,
+    // A corrected input can move the same round's theme to another frame.
+    heard_themes: BTreeSet<(u32, crate::theme::ThemeId)>,
     pending_announcements: Vec<AnnouncerLine>,
+    pending_impacts: BTreeMap<u32, Vec<crate::impact::ImpactCue>>,
     pending_fight_events: VecDeque<FightEvent>,
     events: VecDeque<RollbackEvent>,
     remote_advantage: Option<i8>,
@@ -70,6 +76,7 @@ pub struct RollbackEngine {
     disconnected: bool,
     match_over: bool,
     rollback_frames: u8,
+    corrected_picture: bool,
 }
 
 impl RollbackEngine {
@@ -92,7 +99,9 @@ impl RollbackEngine {
             pending_checksums: BTreeMap::new(),
             reported_desyncs: BTreeSet::new(),
             pending_latches: VecDeque::new(),
+            heard_themes: BTreeSet::new(),
             pending_announcements: Vec::new(),
+            pending_impacts: BTreeMap::new(),
             pending_fight_events: VecDeque::new(),
             events: VecDeque::new(),
             remote_advantage: None,
@@ -102,6 +111,7 @@ impl RollbackEngine {
             disconnected: false,
             match_over: false,
             rollback_frames: 0,
+            corrected_picture: false,
         }
     }
 
@@ -122,6 +132,11 @@ impl RollbackEngine {
     }
     pub fn last_rollback_frames(&self) -> u8 {
         self.rollback_frames
+    }
+    /// A correction invalidated the last presented picture, even if the
+    /// next tick waits for remote input and does not advance the fight.
+    pub(crate) fn take_corrected_picture(&mut self) -> bool {
+        std::mem::take(&mut self.corrected_picture)
     }
     pub fn is_waiting(&self) -> bool {
         self.waiting
@@ -219,11 +234,26 @@ impl RollbackEngine {
         let mut output = self.simulate(self.next, fight, assets);
         self.next = self.next.checked_add(1)?;
         self.advance_confirmed();
-        if let Some((latch, cycles)) = self.pending_latches.pop_front() {
-            output.sound_latch = latch;
-            output.latch_cycles = cycles;
+        if let Some(latch) = self.pending_latches.pop_front() {
+            output.put_latch(latch);
         }
         output.announcements.append(&mut self.pending_announcements);
+        // A corrected frame can reveal a round start before the next step.
+        // Preserve that boundary until presentation and discard older accents.
+        let boundary = self.slots.iter_mut().flatten().filter(|slot| slot.impact_boundary)
+            .max_by_key(|slot| slot.frame);
+        let boundary_frame = boundary.as_ref().map(|slot| slot.frame);
+        output.clear_impacts = boundary.is_some_and(|slot| !std::mem::replace(&mut slot.cleared_impacts, true));
+        for (frame, mut cues) in std::mem::take(&mut self.pending_impacts) {
+            if boundary_frame.is_some_and(|boundary| frame < boundary) {
+                continue;
+            }
+            let slot = self.slots[frame as usize % RING].as_mut()
+                .filter(|slot| slot.frame == frame)
+                .expect("pending contacts remain inside the rollback ring");
+            slot.heard_impacts.extend(cues.iter().map(|cue| (cue.kind, cue.fighter)));
+            output.impacts.append(&mut cues);
+        }
         output.event = self.pending_fight_events.pop_front();
         Some(output)
     }
@@ -290,6 +320,7 @@ impl RollbackEngine {
                 .clone();
             fight.restore_netplay_snapshot(&snapshot);
             self.rollback_frames = (self.next - frame) as u8;
+            self.corrected_picture = true;
             for replay in frame..self.next {
                 self.simulate(replay, fight, assets);
             }
@@ -337,9 +368,9 @@ impl RollbackEngine {
         let (p1, p2) = self.player_order(self.local[frame as usize], remote);
         let index = frame as usize % RING;
         let previous = self.slots[index].take().filter(|s| s.frame == frame);
-        let (heard_latches, heard_announcements) = previous
-            .map_or(([false; 256], Vec::new()), |s| {
-                (s.heard_latches, s.heard_announcements)
+        let (heard_latches, heard_announcements, heard_impacts, cleared_impacts) = previous
+            .map_or(([false; 256], Vec::new(), Vec::new(), false), |s| {
+                (s.heard_latches, s.heard_announcements, s.heard_impacts, s.cleared_impacts)
             });
         let before = fight.save_netplay_snapshot(frame);
         let mut output = fight.step(assets, decode_inputs(p1), decode_inputs(p2), false);
@@ -351,12 +382,21 @@ impl RollbackEngine {
             event: output.event.take(),
             heard_latches,
             heard_announcements,
+            heard_impacts,
+            impact_boundary: output.clear_impacts,
+            cleared_impacts,
         };
-        if output.sound_latch != IDLE && !slot.heard_latches[usize::from(output.sound_latch)] {
-            slot.heard_latches[usize::from(output.sound_latch)] = true;
+        let new_latch = match output.theme.zip(output.theme_event) {
+            Some((theme, event)) => self.heard_themes.insert((event, theme.id)),
+            None if output.sound_latch != IDLE => {
+                !std::mem::replace(&mut slot.heard_latches[usize::from(output.sound_latch)], true)
+            }
+            None => false,
+        };
+        let latch = output.take_latch();
+        if new_latch {
             if self.pending_latches.len() < MAX_PENDING_AUDIO {
-                self.pending_latches
-                    .push_back((output.sound_latch, output.latch_cycles));
+                self.pending_latches.push_back(latch);
             } else if !self.disconnected {
                 self.disconnected = true;
                 self.push_event(RollbackEvent::PeerDisconnected);
@@ -378,8 +418,15 @@ impl RollbackEngine {
             }
         }
         output.announcements.clear();
-        output.sound_latch = IDLE;
-        output.latch_cycles = 0;
+        // A native frame emits at most one contact per affected fighter.
+        // Replace undelivered predictions and remember only contacts that
+        // have already reached presentation, even if their spark moves.
+        output.impacts.retain(|cue| !slot.heard_impacts.contains(&(cue.kind, cue.fighter)));
+        if output.impacts.is_empty() {
+            self.pending_impacts.remove(&frame);
+        } else {
+            self.pending_impacts.insert(frame, std::mem::take(&mut output.impacts));
+        }
         self.slots[index] = Some(slot);
         output
     }
@@ -435,5 +482,161 @@ impl RollbackEngine {
             self.events.pop_front();
         }
         self.events.push_back(event);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::MatchConfig;
+    use crate::front::cabinet::Players;
+    use crate::front::fight::{FightDips, FightKind, FightSetup, MatchTheme};
+    use crate::theme::ThemeId;
+    use sf_video::romset::load_assets;
+
+    #[test]
+    fn clean_heavy_impact_audio_is_deduplicated_on_resimulation() {
+        let (assets, fight) = crate::impact::tests::close_local_fight();
+        let idle = PlayerInputs::default();
+        let heavy = PlayerInputs { buttons: [false, false, true, false, false, false], ..idle };
+        let mut direct = fight.clone();
+        direct.step(&assets, heavy, idle, false);
+        let (before, expected) = (0..30).find_map(|_| {
+            let before = direct.save_netplay_snapshot(0);
+            let out = direct.step(&assets, idle, idle, false);
+            out.impacts.first().copied().map(|cue| (before, cue))
+        }).expect("a direct standing heavy punch connects");
+
+        let mut predicted = fight;
+        predicted.restore_netplay_snapshot(&before);
+        direct.restore_netplay_snapshot(&before);
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        let out = rollback.step(&mut predicted, &assets, idle).unwrap();
+        assert_eq!(out.impacts, [expected]);
+        assert_eq!(predicted.impact_visuals().collect::<Vec<_>>(), [(expected, 0)]);
+
+        // P2's late input forces the already-audible strike to be replayed.
+        let corrected = PlayerInputs { buttons: [true, false, false, false, false, false], ..idle };
+        let authoritative = direct.step(&assets, idle, corrected, false);
+        assert_eq!(authoritative.impacts.len(), 1);
+        assert_eq!(authoritative.impacts[0].frame, expected.frame);
+        rollback.apply_remote_inputs(&mut predicted, &assets, 0, &[encode_inputs(corrected)]);
+        assert_eq!(rollback.last_rollback_frames(), 1);
+        assert_eq!(predicted.state_checksum(), direct.state_checksum());
+        assert_eq!(predicted.impact_visuals().collect::<Vec<_>>(), [(authoritative.impacts[0], 0)]);
+        let out = rollback.step(&mut predicted, &assets, idle).unwrap();
+        assert!(out.impacts.is_empty(), "the contact's audio played already");
+    }
+
+    #[test]
+    fn a_second_rollback_cancels_an_undelivered_heavy_impact() {
+        let (assets, mut fight) = crate::impact::tests::close_local_fight();
+        let idle = PlayerInputs::default();
+        let heavy = PlayerInputs { buttons: [false, false, true, false, false, false], ..idle };
+        let guard = PlayerInputs { directions: [true, false, false, false], ..idle };
+        fight.step(&assets, heavy, idle, false);
+        let mut before = Vec::new();
+        let expected = (0..30).find_map(|_| {
+            before.push(fight.save_netplay_snapshot(0));
+            fight.step(&assets, idle, idle, false).impacts.into_iter().next()
+        }).expect("a direct standing heavy punch connects");
+        let contact = before.len() - 1;
+        let lead = contact.min(4);
+        assert!(lead >= 2, "room for a late guard before contact");
+        fight.restore_netplay_snapshot(&before[contact - lead]);
+
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        // Leave frame zero unconfirmed so both inputs can correct frame one.
+        rollback.step(&mut fight, &assets, idle).unwrap();
+        rollback.apply_remote_inputs(&mut fight, &assets, 1, &[encode_inputs(guard)]);
+        for _ in 0..lead {
+            assert!(rollback.step(&mut fight, &assets, idle).unwrap().impacts.is_empty());
+        }
+        rollback.apply_remote_inputs(&mut fight, &assets, 1, &[encode_inputs(idle)]);
+        assert_eq!(fight.impact_visuals().collect::<Vec<_>>(), [(expected, 0)]);
+        rollback.apply_remote_inputs(&mut fight, &assets, 1, &[encode_inputs(guard)]);
+        assert!(fight.impact_visuals().next().is_none());
+        assert!(rollback.take_corrected_picture());
+        assert!(!rollback.take_corrected_picture());
+
+        let delivered = rollback.step(&mut fight, &assets, idle).unwrap();
+        assert!(delivered.impacts.is_empty(), "the brief prediction was never presented");
+    }
+
+    #[test]
+    fn a_round_start_discovered_in_rollback_clears_impacts_once() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config: MatchConfig::definitive(),
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, None).unwrap();
+        let idle = PlayerInputs::default();
+        let before = (0..1000).find_map(|_| {
+            let before = fight.save_netplay_snapshot(1);
+            fight.step(&assets, idle, idle, false).clear_impacts.then_some(before)
+        }).expect("the direct fight entered its first round");
+        let mut missed = before.clone();
+        missed.last_flow = crate::front::cabinet::flow_position(fight.machine());
+        fight.restore_netplay_snapshot(&missed);
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        assert!(!rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
+        rollback.slots[0].as_mut().unwrap().before = before;
+
+        let corrected = PlayerInputs { directions: [true, false, false, false], ..idle };
+        rollback.apply_remote_inputs(&mut fight, &assets, 0, &[encode_inputs(corrected)]);
+        assert_eq!(rollback.last_rollback_frames(), 1);
+        assert!(rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
+        assert!(!rollback.step(&mut fight, &assets, idle).unwrap().clear_impacts);
+    }
+
+    #[test]
+    fn a_theme_discovered_during_resimulation_keeps_its_original_latch_time() {
+        let roms = "../../tools/reference/local/roms/sf";
+        if !std::path::Path::new(roms).is_dir() {
+            eprintln!("skipping: local ROM set not present");
+            return;
+        }
+        let assets = load_assets(roms, "../../tools/reference/rom-manifest.json").unwrap();
+        let setup = FightSetup {
+            kind: FightKind::Local,
+            players: Players::Two,
+            config: MatchConfig::definitive(),
+            dsw1: FightDips::DSW1,
+            dsw2: FightDips::default().dsw2(),
+        };
+        let mut fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, None).unwrap();
+        fight.select_theme(Some(MatchTheme::single(ThemeId::Gouken)));
+        let neutral = PlayerInputs::default();
+        let (before, expected) = (0..1000).find_map(|_| {
+            let before = fight.save_netplay_snapshot(0);
+            let out = fight.step(&assets, neutral, neutral, false);
+            out.theme.map(|cue| (before, (out.theme_frame, out.latch_cycles, cue)))
+        }).expect("the direct fight emitted its theme");
+
+        // Simulate a prediction that lacked the native queue entry. A remote
+        // correction then starts from the snapshot containing the real latch.
+        let mut missed = before.clone();
+        missed.machine.toggle_state.queued_themes.fill(None);
+        missed.machine.work[0x0662..0x0682].fill(0xff);
+        fight.restore_netplay_snapshot(&missed);
+        let mut rollback = RollbackEngine::new(0, 0, 8);
+        let prediction = rollback.step(&mut fight, &assets, neutral).unwrap();
+        assert!(prediction.theme.is_none());
+        rollback.slots[0].as_mut().unwrap().before = before;
+        let corrected = PlayerInputs { directions: [true, false, false, false], ..neutral };
+        rollback.apply_remote_inputs(&mut fight, &assets, 0, &[encode_inputs(corrected)]);
+        assert_eq!(rollback.last_rollback_frames(), 1);
+        let delivered = rollback.step(&mut fight, &assets, neutral).unwrap();
+        assert_eq!((delivered.theme_frame, delivered.latch_cycles, delivered.theme.unwrap()), expected);
+        assert!(fight.machine().state.frame > delivered.theme_frame.unwrap());
     }
 }

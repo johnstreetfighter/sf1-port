@@ -1,7 +1,7 @@
-//! The music pack (ADR-0009, ticket #199 `ST7`): a local folder of scores,
-//! arrangements of Capcom melodies the public repository never holds. It sits
-//! beside the ROM set as the art pack and the voice pack do, in
-//! [`MUSIC_FOLDER`], and holds `.score` files in the converter's format
+//! The music pack holds arrangements in `.score` files. The approved
+//! character scores live under the repository's assets. A pack in
+//! [`MUSIC_FOLDER`] beside a player's ROM set supplies local overrides.
+//! Both locations use the converter's format
 //! (docs/reference/extended-tunes.md), each naming its own command. Nothing
 //! here converts them: [`crate::tunes::add_pack`] does, against the player's
 //! sound ROM, so a pack stays plain text.

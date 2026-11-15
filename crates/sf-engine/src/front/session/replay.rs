@@ -134,6 +134,7 @@ impl GameSession {
             p2_fighter: p2_fighter.into(),
             p1_style,
             p2_style,
+            theme: fight.selected_theme(),
             frames: Vec::new(),
             commands: if fight.hold_combo() {
                 vec![(0, ReplayCommand::HoldCombo(true))]
@@ -150,10 +151,19 @@ impl GameSession {
         let Some(mut replay) = play.recording.take() else {
             return;
         };
+        replay.theme = play.fight.selected_theme();
         let confirmed_inputs = play
             .netplay
             .as_ref()
-            .map(crate::netplay::RollbackEngine::confirmed_inputs)
+            .map(|rollback| {
+                let inputs = rollback.confirmed_inputs();
+                // The host can confirm idle frames while delivering the terminal
+                // event and while the spectator drains its jitter buffer.
+                let end = rollback.confirmed_events().iter()
+                    .find(|(_, event)| *event == FightEvent::MatchOver)
+                    .map_or(inputs.len(), |(frame, _)| *frame as usize + 1);
+                &inputs[..end]
+            })
             .or_else(|| {
                 self.net_setup
                     .as_ref()
@@ -227,9 +237,11 @@ impl GameSession {
             self.notice = Some("CANNOT START REPLAY".into());
             return;
         };
+        fight.select_theme(replay.theme);
         fight.set_satsui_art(self.satsui_art.clone());
         fight.set_selected_styles([Some(replay.p1_style), Some(replay.p2_style)]);
         fight.set_gauge_art(self.settings.gauge_art);
+        fight.set_screen_shake(self.settings.screen_shake);
         Self::seed_replay_fight(&mut fight, replay.seed);
         let assets = fight_assets(&self.assets, &self.bank_assets, setup.config.preset);
         while fight.driving() {
@@ -355,9 +367,9 @@ impl GameSession {
         }
         let font = RomFont::new(&self.assets.gfx4, &self.assets.maincpu);
         let fight = watching.playback.fight();
-        let (mut frame, latch, latch_cycles, announcements) = match ff {
-            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements),
-            None => (fight.render(assets), sound_latch, 0, Vec::new()),
+        let (mut frame, latch, latch_cycles, announcements, theme, theme_frame, impacts, clear_impacts) = match ff {
+            Some(ff) => (ff.frame, ff.sound_latch, ff.latch_cycles, ff.announcements, ff.theme, ff.theme_frame, ff.impacts, ff.clear_impacts),
+            None => (fight.render(assets), sound_latch, 0, Vec::new(), None, None, Vec::new(), used_input),
         };
         if let ReplayMode::Takeover {
             player,
@@ -408,9 +420,14 @@ impl GameSession {
             sound_frame: self.frames,
             sound_latch: if exit { sound::STOP_ALL } else { latch },
             latch_cycles,
+            theme: theme.filter(|_| !exit),
+            theme_frame: theme_frame.filter(|_| !exit),
+            impacts: if exit { Vec::new() } else { impacts },
+            clear_impacts,
             announcements,
+            overhaul_fight: !exit && preset != RulesetPreset::Faithful1987,
             tune_table: preset != RulesetPreset::Faithful1987,
-            track: self.track_cue(if exit { sound::STOP_ALL } else { latch }),
+            track: self.track_cue(if exit { sound::STOP_ALL } else { latch }, theme.filter(|_| !exit)),
             screen: self.screen(),
             transition: None,
             quit: false,

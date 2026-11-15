@@ -219,7 +219,17 @@ impl Cues {
     /// changes (a fight starting, Arcade's next opponent) it is announced
     /// ahead, unless the theme is on this very frame.
     pub fn step(&mut self, latch: u8, fighting: bool, track: impl Fn(Option<u8>) -> Option<Resolved>) -> Option<TrackCue> {
-        let new = latch != IDLE && latch != self.last;
+        self.step_theme(latch, false, fighting, track)
+    }
+
+    pub(crate) fn step_theme(
+        &mut self,
+        latch: u8,
+        theme_requested: bool,
+        fighting: bool,
+        track: impl Fn(Option<u8>) -> Option<Resolved>,
+    ) -> Option<TrackCue> {
+        let new = theme_requested || (latch != IDLE && latch != self.last);
         self.last = latch;
         if !fighting || (new && ends_music(latch)) {
             // A fight starts with the stop-all command: its track is to be

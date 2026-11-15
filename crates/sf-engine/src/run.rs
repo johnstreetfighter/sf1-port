@@ -1947,6 +1947,8 @@ impl PowerOnMachine {
         self.state.frame += 1;
         let frame = self.state.frame;
         self.latch_writes.clear();
+        self.program.toggle_state.latched_theme = None;
+        self.program.toggle_state.impact_contacts.fill(None);
         let io = self.io;
         let effects_preview = self.program.match_config.preset == crate::config::RulesetPreset::DefinitiveOverhaul;
         let in_fight = effects_preview && self.in_fight();
@@ -2016,6 +2018,13 @@ impl PowerOnMachine {
     /// The work RAM (`0xff8000..0xffe000`).
     pub fn work_ram(&self) -> &[u8] {
         &self.program.work
+    }
+
+    /// The horizontal camera position in stage pixels.
+    pub fn camera_x(&self) -> u16 {
+        use crate::fighter::{CAMERA, WORK_BASE};
+        let at = (CAMERA - WORK_BASE) as usize;
+        u16::from_be_bytes([self.program.work[at], self.program.work[at + 1]])
     }
 
     /// Training's rules' state (the refill waits and the hit record), for
@@ -2212,6 +2221,10 @@ impl PowerOnMachine {
             std::mem::take(&mut era.alpha_counter_events[2]).then_some(CalloutKind::AlphaCounter),
             std::mem::take(&mut era.guard_crush_events[2]).then_some(CalloutKind::Move { word: "GUARD CRUSH" }),
         ]
+    }
+
+    pub(crate) fn select_theme(&mut self, theme: Option<crate::front::fight::MatchTheme>) {
+        self.program.toggle_state.selected_theme = theme;
     }
 
     /// Take the stage tune command a stand-in fight fell back to when Ryu's

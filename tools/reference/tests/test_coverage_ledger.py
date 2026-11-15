@@ -35,7 +35,7 @@ class CoverageLedgerTest(unittest.TestCase):
         self.assertGreater(len(fns_by_cpu["maincpu"]), 100)
         self.assertGreater(len(fns_by_cpu["audiocpu"]), 40)
         self.assertEqual(len(fns_by_cpu["audio2"]), 5)
-        self.assertEqual(len(note_sites), 27)
+        self.assertEqual(len(note_sites), 29)
 
     def test_probe_applies_inputs_and_records_main_instruction_pcs(self):
         s = load_scenario(coverage_ledger.SCENARIOS_DIR / "sf_hadoken_01.json")
@@ -108,11 +108,11 @@ class CoverageLedgerTest(unittest.TestCase):
             self.assertGreater(g["executed_pc_count"], 0)
 
         # Every note() / note_unrecovered() site is classified as reached or unreached
-        self.assertEqual(len(ledger["note_sites"]), 27)
+        self.assertEqual(len(ledger["note_sites"]), 29)
         reached_notes = [n for n in ledger["note_sites"] if n["reached"]]
         unreached_notes = [n for n in ledger["note_sites"] if not n["reached"]]
         self.assertEqual(len(reached_notes), 0)
-        self.assertEqual(len(unreached_notes), 27)
+        self.assertEqual(len(unreached_notes), 29)
         raw_guards = [
             n for n in unreached_notes
             if n["short_file"] == "music.rs" and n["fn"] in ("raw_tick", "raw_opcode")
@@ -120,7 +120,7 @@ class CoverageLedgerTest(unittest.TestCase):
         self.assertEqual({n["fn"] for n in raw_guards}, {"raw_tick", "raw_opcode"})
         for guard in raw_guards:
             self.assertTrue(
-                guard["disposition"].startswith("Unreachable under MAME: extension-only"),
+                guard["disposition"].startswith("Unreachable under MAME: raw-score"),
                 guard,
             )
 

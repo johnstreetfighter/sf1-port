@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "lines": {
+    "alpha_counter": {
+      "take": 2,
+      "take_key": "21b5f9c03f86d27b8c13f52ae51d44fe92dcf37881cf18e04d588939adee8d08"
+    },
+    "burnout": {
+      "take": 1,
+      "take_key": "2d117ddc22960048dac8bca9ee76df4a81ae1d3707bb9c949def26aaf40ac2d6"
+    },
+    "china": {
+      "take": 1,
+      "take_key": "dfd1707cf0178e9158d77171cae28c1e66b9a68276c6ade5d79f8273770f3e2e"
+    },
+    "combo_10": {
+      "take": 1,
+      "take_key": "08c7081ff783d0f713f8cef01c368bd4c50572439d6dada621f25cc5c41b9ed5"
+    },
+    "combo_11": {
+      "take": 2,
+      "take_key": "d645b52e324783232b7b44176d201bb2d8f1e4d7168411ca4f36675cd5e446d9"
+    },
+    "combo_12": {
+      "take": 2,
+      "take_key": "ff669f4eb2dd77de3bd3c48afb0e11883ad85cde7b280bffafcf676ebc89ee31"
+    },
+    "combo_13": {
+      "take": 2,
+      "take_key": "5c9f4f85affab965d3ba55782dae833964d7f847aa791bcf2dc8121de738fa3a"
+    },
+    "combo_14": {
+      "take": 2,
+      "take_key": "ba48dcfa5233c9fd06c4b392183e2e3c2ee52f2a8c0cd9d10b2edd53b1684947"
+    },
+    "combo_15": {
+      "take": 2,
+      "take_key": "a64b18f188021e12fe08addaacb2252bd2808c8d0977a2e22637a8dc3ff01225"
+    },
+    "combo_5": {
+      "take": 3,
+      "take_key": "304c6115f89a6395be7bf5ef9d1e743402a4fd5007247c188b9335be1b9f971d"
+    },
+    "combo_6": {
+      "take": 3,
+      "take_key": "04550581cec8210ad9c6d647a7f665f012fde4a427e3eac055fb9aafa3ebee15"
+    },
+    "combo_7": {
+      "take": 2,
+      "take_key": "5f62d752e7b27e5d31fd21e619a878acee62f2fd7c2fef8ba43143ef9c9fbe42"
+    },
+    "combo_8": {
+      "take": 3,
+      "take_key": "2e024ed949b756d4906a1bef5d8fc2cf550919cc4df3b12a6fe08e6ade9109a5"
+    },
+    "combo_9": {
+      "take": 3,
+      "take_key": "7084392aaf3a63625e59922b7ec93dd09349bd3eb5b8d0ac352cffb6dec051f1"
+    },
+    "counter": {
+      "take": 2,
+      "take_key": "b9fe3535357f3ac5ea96aa6c837f7bd374ddae0f14d347f300d5bc6f3c8f27fb"
+    },
+    "crush_counter": {
+      "take": 2,
+      "take_key": "4a9b6ad56fc9a1ce6d16c2e5b1f78c9c652a0a4633d9c2d2612889b610111d34"
+    },
+    "custom_combo": {
+      "take": 1,
+      "take_key": "08907431024f883eae91baddfce1a59ff0a9882f1eaf422a1feb7457f4005371"
+    },
+    "england": {
+      "take": 2,
+      "take_key": "bf1b13e601031c4622650c1a436b73d23cd3bc71b88f3bd43998dd75fd6fe2e2"
+    },
+    "fight": {
+      "take": 2,
+      "take_key": "ff52cbf61d13134cad860cb6a630ddd13ee5ca1c91154248a6a094e65887d79a"
+    },
+    "first_attack": {
+      "take": 2,
+      "take_key": "ed4aa9a518179bd28804f660237b98adc6f384db0e9885273c276fc739fda58b"
+    },
+    "game_over": {
+      "take": 3,
+      "take_key": "75704d484ff203e21b20eb770c124d65a316ba28c98fbbb1bf32edf0544769d6"
+    },
+    "japan": {
+      "take": 1,
+      "take_key": "3767de2d4cbf0dd15ea270e5ce2ed54ab569cb9d2651678f03bd8de6431615b6"
+    },
+    "perfect": {
+      "take": 2,
+      "take_key": "e6db8b90d79b9183926dab619b149e187d970e0915d631c40086d2e60fb18f4c"
+    },
+    "perfect_parry": {
+      "take": 1,
+      "take_key": "2e57caa14aac6679bd34759beddbdb9372e58e8f2b8dfc2a8bf0349484f5aa6c"
+    },
+    "punish_counter": {
+      "take": 2,
+      "take_key": "702c3166661dc2aeb4a28466bce9296e40ff3d41a10dd3d1ebbeab93e69810dc"
+    },
+    "reversal": {
+      "take": 1,
+      "take_key": "0d6667ab06249fde2b6f4f8e44282d45d72a2c965f88e1d093074e23bbaf29d6"
+    },
+    "round_1": {
+      "take": 3,
+      "take_key": "21bf7dcfdcde480cc1fa2d7a685a01e09f2bb08488bb3343f5b82c2ffc834a3f"
+    },
+    "round_2": {
+      "take": 1,
+      "take_key": "6d46a9a5a26e81cf3095d1adc1baeb1a66ce97be54a259676e23b067f66b5fa8"
+    },
+    "round_3": {
+      "take": 2,
+      "take_key": "6f87b6ae830046751845857084b651b2123815809970f91652116f77dc0da4cf"
+    },
+    "round_4": {
+      "take": 2,
+      "take_key": "d12f0bcb988f206dfe3f3c14ecf7ce28c4528ca0280779e6a764d3217338f14d"
+    },
+    "round_5": {
+      "take": 3,
+      "take_key": "3ad7b16dc1f953dc70a9d50c0ea92a1ffcf3d041dbcc2671c012d4903a15e352"
+    },
+    "super": {
+      "take": 2,
+      "take_key": "3a93377abbb2aab1695370c082eb68a1abc46cf13f4b4777e8f08ff7db71159f"
+    },
+    "thailand": {
+      "take": 1,
+      "take_key": "05e5b08671d86ec472e4c07623bd74e44ed7b065411770596a73e84ecbc393a2"
+    },
+    "time_up": {
+      "take": 2,
+      "take_key": "ece474e2457286d56802c6eb82eda1126aa21fd53c576e8bcc603758081b6c74"
+    },
+    "usa": {
+      "take": 1,
+      "take_key": "005cbdc8a991aa1a664c5f03c0becea1720e12cb9820adaa8a3a89da5bd207ef"
+    }
+  }
+}

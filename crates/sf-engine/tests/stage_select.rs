@@ -38,10 +38,11 @@ use std::sync::Arc;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
 use sf_engine::front::cabinet::{flow_position, Players};
-use sf_engine::front::fight::{first_opponent_flag, Fight, FightKind, FightSetup};
+use sf_engine::front::fight::{first_opponent_flag, Fight, FightKind, FightSetup, MatchTheme};
 use sf_engine::front::stage_select::{home_owner, StageScreen};
 use sf_engine::front::{FightDips, FrameInputs, GameSession, PlayerInputs, Transition};
 use sf_engine::roster::{MenuInput, PlayMode, StagePick, TournamentFighter};
+use sf_engine::theme::{ThemeCue, ThemeId};
 use sf_video::background_bank::{shown_stages, BackgroundBank, LayerView, StageListing, StageView, RELEASED_WAVES};
 use sf_video::compositor::{ink, RomFont};
 use sf_video::romset::{load_assets, Assets};
@@ -881,6 +882,56 @@ fn reselect_goes_through_the_select_then_the_stage_screen_under_the_same_rule() 
     assert_eq!(tap(&mut s, p2_confirm()), "drive");
     let run = to_fight_loop(&mut s);
     assert_stage(&s, &run, &check, 2, "Joe's stage, Ken's home");
+}
+
+#[test]
+fn a_shared_stage_cycles_across_rematch_and_reselect_until_the_main_menu() {
+    let Some(assets) = assets() else { return };
+    let stage = TEST_STAGE.replace(r#""name": "test-stage""#, r#""name": "gouken""#);
+    let bank = pack_records(&assets, &[&stage]).expect("shared stage fixture packs");
+    let index = bank.stage_index("gouken").unwrap();
+    let config = MatchConfig::from_preset(RulesetPreset::DefinitiveOverhaul)
+        .with_real_second_timer_and_draws(false);
+    let mut s = GameSession::new(assets, config).with_background_bank(bank);
+    s.set_stage(Some(StagePick::Bank(index)));
+    for _ in 0..200 {
+        s.step(idle());
+    }
+
+    let match_theme = |s: &mut GameSession, id, phase| {
+        for _ in 0..1500 {
+            let out = s.step(idle());
+            if out.screen == "country select" {
+                s.step(confirm());
+            }
+            if let Some(cue) = out.theme {
+                assert_eq!(cue, ThemeCue { id, fallback: 0x29 });
+                assert_eq!(s.fight().unwrap().selected_theme(), Some(MatchTheme { id, phase }));
+                return;
+            }
+        }
+        panic!("no native theme for match at {}", s.screen());
+    };
+    open_select(&mut s, Mode::Local);
+    assert_eq!(tap(&mut s, with(|i| i.menu.back = true)), "multi player");
+    assert_eq!(tap(&mut s, confirm()), "select");
+    lock_fighters(&mut s, Mode::Local);
+    match_theme(&mut s, ThemeId::Gouken, 0);
+    until_after_match(&mut s, Some(0));
+
+    assert_eq!(choose(&mut s, 0), "drive");
+    match_theme(&mut s, ThemeId::Akuma, 1);
+    until_after_match(&mut s, Some(0));
+
+    assert_eq!(choose(&mut s, 1), "select");
+    lock_fighters(&mut s, Mode::Local);
+    match_theme(&mut s, ThemeId::Goutetsu, 2);
+    assert_eq!(tap(&mut s, with(|i| i.menu.start = true)), "pause");
+    assert_eq!(choose(&mut s, 5), "main menu");
+    assert_eq!(tap(&mut s, confirm()), "multi player");
+    assert_eq!(tap(&mut s, confirm()), "select");
+    lock_fighters(&mut s, Mode::Local);
+    match_theme(&mut s, ThemeId::Gouken, 0);
 }
 
 #[test]

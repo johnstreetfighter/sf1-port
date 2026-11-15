@@ -499,6 +499,33 @@ fn the_cpu_walks_jumps_blocks_high_and_low_and_uses_normals_and_specials() {
     }
 }
 
+#[test]
+fn a_pad_driven_cpu_can_land_a_clean_heavy_impact_on_its_bank_table() {
+    use sf_engine::impact::{ImpactFighter, ImpactKind};
+
+    let Some(a) = assets() else { return };
+    let Some(art) = art(&a) else { return };
+    let mut s = cpu_fight(
+        session(a, Some(&art), RulesetPreset::DefinitiveOverhaul, 4),
+        TournamentFighter::Ryu,
+        TournamentFighter::Retsu,
+    );
+    assert!(s.fight_machine().unwrap().match_config().p2_fair_cpu);
+    let mut sparring = Sparring::new(11);
+    for _ in 0..6_000 {
+        let m = s.fight_machine().unwrap();
+        let input = sparring.step(grid_x(m, P1_STRUCT), grid_x(m, P2_STRUCT));
+        let out = s.step(input);
+        if let Some(cue) = out.impacts.iter().find(|cue| cue.kind == ImpactKind::HeavyStrike && cue.fighter == ImpactFighter::P1) {
+            let read = s.fight().unwrap().fight_read();
+            assert!(read.landed_by(Side::P2).is_some_and(|hit| !hit.chip));
+            assert_eq!(cue.frame, s.fight_machine().unwrap().state.frame);
+            return;
+        }
+    }
+    panic!("seeded pad-driven Retsu never landed a clean heavy");
+}
+
 /// P1's actions for the reaction trials, by the way P1 faces: a standing
 /// heavy kick, a crouching medium kick, a forward jump, a Hadoken.
 fn action(kind: usize, fwd: usize) -> Vec<FrameInputs> {

@@ -128,7 +128,7 @@ impl Bus<'_> {
         }
         if sweep.tick == 56 {
             self.set_eb(fighter, 9, 0x8a);
-            self.finish_knockdown_dust(fighter);
+            self.finish_slam_dust(fighter);
         }
         true
     }

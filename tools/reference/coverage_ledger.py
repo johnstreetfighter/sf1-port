@@ -889,11 +889,11 @@ NOTE_SITE_DISPOSITIONS: dict[tuple[str, str, str], tuple[list[int], str]] = {
     ),
     ("music.rs", "raw_tick", "0x000a"): (
         [],
-        "Unreachable under MAME: extension-only raw-score catch-up guard after 256 events without a positive span; raw channels are initialized only by opcode `0x0a` in the extended image above the original ROM, which MAME does not load (SP15 #267).",
+        "Unreachable under MAME: raw-score catch-up guard after 256 events without a positive span. Raw channels require a separately compiled score or the legacy ROM extension (SP15 #267). MAME loads only the original ROM.",
     ),
     ("music.rs", "raw_opcode", "0x000a"): (
         [],
-        "Unreachable under MAME: extension-only raw-score sub-opcode guard; `opcode` calls `raw_opcode` only with an extended image and stream pointer in its extension range. Original ROM opcode `0x0a` keeps its separate legacy guard (SP15 #267).",
+        "Unreachable under MAME: raw-score sub-opcode guard. Raw opcodes require a separately compiled score or a stream pointer in the legacy ROM extension (SP15 #267). MAME loads only the original ROM.",
     ),
     ("music.rs", "special", "0x02a5"): (
         [],
@@ -903,9 +903,17 @@ NOTE_SITE_DISPOSITIONS: dict[tuple[str, str, str], tuple[list[int], str]] = {
         [],
         "Unreachable under MAME: FM effect stream opcode `> 5` at `0x0e62`; no ROM FM effect stream contains an opcode byte in `0x06..=0x1f`.",
     ),
+    ("music.rs", "stream_byte", "0x0a1a"): (
+        [],
+        "Unreachable under MAME: out-of-bounds read guard for a separately compiled score channel. MAME loads only the original ROM.",
+    ),
     ("music.rs", "div16", "0x0159"): (
         [],
         "Unreachable under MAME: divide-by-zero early return (`DE == 0`) at `0x0159`; all ROM tempo divisors passed to `0x0155` are non-zero.",
+    ),
+    ("music.rs", "opcode", "0x09c8"): (
+        [],
+        "Unreachable under MAME: out-of-bounds jump guard for a separately compiled score channel with a 32-bit stream offset. MAME loads only the original ROM.",
     ),
     ("music.rs", "opcode", "0x0000"): (
         [],

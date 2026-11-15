@@ -84,7 +84,7 @@ pub fn render_frame(assets: &Assets, scene: &SceneState) -> Frame {
 /// `render_frame` with the text layer's `edits` applied to the presented
 /// frame only.
 pub fn render_frame_edited(assets: &Assets, scene: &SceneState, edits: &TextEdits) -> Frame {
-    let pens = compose_pens(assets, scene, edits, &[], &[]);
+    let pens = compose_pens(assets, scene, edits, &[], &[], [0, 0]);
     frame_from_pens(scene, &pens)
 }
 
@@ -142,10 +142,22 @@ pub fn render_frame_staged_with_art(
     tints: &[SpriteTint],
     art: &[SpriteArtOverride<'_>],
 ) -> (Frame, Vec<bool>) {
+    render_frame_staged_with_motion(assets, scene, edits, tints, art, [0, 0])
+}
+
+/// Move the background, foreground and sprites together before drawing native text.
+pub fn render_frame_staged_with_motion(
+    assets: &Assets,
+    scene: &SceneState,
+    edits: &TextEdits,
+    tints: &[SpriteTint],
+    art: &[SpriteArtOverride<'_>],
+    offset: [i32; 2],
+) -> (Frame, Vec<bool>) {
     let tints = &tints[..tints.len().min(15)];
     let max_art = ((1 << TINT_SHIFT) - ALT_PALETTE_BASE) / 16;
     let art = &art[..art.len().min(max_art)];
-    let pens = compose_pens(assets, scene, edits, tints, art);
+    let pens = compose_pens(assets, scene, edits, tints, art, offset);
     let stage = pens.iter().map(|&pen| (pen as usize) < GFX3_PALETTE_BASE).collect();
     let frame = if tints.is_empty() && art.is_empty() {
         frame_from_pens(scene, &pens)
@@ -170,7 +182,7 @@ pub fn render_frame_staged_with_art(
 
 fn compose_pens(
     assets: &Assets, scene: &SceneState, edits: &TextEdits,
-    tints: &[SpriteTint], art: &[SpriteArtOverride<'_>],
+    tints: &[SpriteTint], art: &[SpriteArtOverride<'_>], offset: [i32; 2],
 ) -> Vec<u16> {
     let mut pens = vec![0u16; WIDTH * HEIGHT];
 
@@ -182,6 +194,18 @@ fn compose_pens(
     }
     if scene.active & 0x80 != 0 {
         draw_sprites(&mut pens, assets, scene, tints, art);
+    }
+    if offset != [0, 0] {
+        let [dx, dy] = offset;
+        // Extend the edge of the stage while the visible area is displaced.
+        let mut shifted = Vec::with_capacity(pens.len());
+        for y in 0..HEIGHT as i32 {
+            let row = (y - dy).clamp(0, HEIGHT as i32 - 1) as usize * WIDTH;
+            for x in 0..WIDTH as i32 {
+                shifted.push(pens[row + (x - dx).clamp(0, WIDTH as i32 - 1) as usize]);
+            }
+        }
+        pens = shifted;
     }
     if scene.active & 0x08 != 0 {
         draw_text_layer(&mut pens, assets, scene, edits);

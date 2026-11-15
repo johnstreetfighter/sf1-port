@@ -112,7 +112,7 @@ const GUARD_SPECIAL_PRESSURE: u8 = 8;
 pub const SCENE_MODE: u32 = 0xffc008; // ($4008,A5): 0x80 during the fight
 const DRIFT_COUNT: u32 = 0xffc010; // ($4010,A5): stage-drift frame counter
 const DRIFT_POS: u32 = 0xffc00e; // ($400e,A5): stage-drift position
-const CAMERA: u32 = 0xffc00c; // ($400c,A5): camera x (0..=0x180)
+pub(crate) const CAMERA: u32 = 0xffc00c; // ($400c,A5): camera x (0..=0x180)
 const HISCORE: u32 = 0xffc012; // ($4012,A5): top-score digits
 const FG_SCROLL_COPY: u32 = 0xffc680; // ($4680,A5): fg_scroll register copy
 const BG_SCROLL_COPY: u32 = 0xffc682; // ($4682,A5): bg_scroll register copy
@@ -181,6 +181,8 @@ enum Spark {
 enum Resume {
     /// Load the frame after the call entry (0x42cae).
     Load,
+    /// Load the grounded pose after a fall or throw and cue its contact.
+    LoadMatSlam,
     /// Load the victim's lying frame and reveal the Demon victory pose.
     RevealDemon,
     /// Retry the stream call on the next fighter tick.
@@ -1519,6 +1521,7 @@ impl Bus<'_> {
             return;
         }
         let mut a1 = self.el(me, 0x2c);
+        let mut mat_slam = false;
         loop {
             match self.rb(a1) {
                 // True combos (SP17): a combo-able reaction whose stream
@@ -1546,9 +1549,15 @@ impl Bus<'_> {
                             a1 += 6;
                             break;
                         }
+                        Some(Resume::LoadMatSlam) => {
+                            a1 += 6;
+                            mat_slam = true;
+                            break;
+                        }
                         Some(Resume::RevealDemon) => {
                             self.load_frame(me, a1 + 6);
                             self.clamp_y(me);
+                            self.record_mat_impact(me);
                             self.reveal_raging_demon(other, me);
                             return;
                         }
@@ -1596,6 +1605,9 @@ impl Bus<'_> {
         self.push_apart(me, other);
         self.clamp_y(me);
         self.clamp_x(me);
+        if mat_slam {
+            self.record_mat_impact(me);
+        }
         self.judge_targets(me, other);
     }
 
@@ -1616,11 +1628,15 @@ impl Bus<'_> {
                 if self.st_ryu_air_tatsumaki(self.el(me, 0x38), self.eb(me, 0xa)) {
                     self.set_eb(me, 9, (st & 0xfc) | 4);
                 }
-                self.finish_knockdown_dust(me);
                 self.clear_air_attack_trajectory(self.el(me, 0x38));
                 let snd = self.eb(me, 0x12);
                 if snd != 0 {
                     self.queue_sound(snd as u16);
+                }
+                // Native KO streams follow this call with the grounded prone
+                // pose. Live hit reactions and jumps recover on their feet.
+                if self.eb(me, 8) == 8 && matches!(self.eb(me, 0xa), 0x40..=0x4a) {
+                    return Some(Resume::LoadMatSlam);
                 }
             }
             // 0x454c6: the whiff sound — while the attack frame is still
@@ -1986,7 +2002,7 @@ impl Bus<'_> {
                 Some(if self.throw_slam(me, other) {
                     Resume::RevealDemon
                 } else {
-                    Resume::Load
+                    Resume::LoadMatSlam
                 })
             }
             crate::data_bank::ROUTINE_THROW_GET_UP => {
@@ -2664,6 +2680,13 @@ impl Bus<'_> {
             left.wrapping_sub(left_lim)
         };
         if self.sf3_wall_contact(me, right_wall) {
+            use crate::impact::{ImpactDirection, ImpactKind};
+            let (x, direction) = if right_wall {
+                (right_lim, ImpactDirection::Left)
+            } else {
+                (left_lim, ImpactDirection::Right)
+            };
+            self.record_surface_impact(me, ImpactKind::WallSlam, x, self.center_y(me), direction);
             self.set_eb(me, 0x15, 0);
         }
         let scroll_step = self.st_ryu_pushback_step(me).map_or(self.eb(me, 0x15), |step| step as u8);
@@ -2867,9 +2890,8 @@ impl Bus<'_> {
         {
             return;
         }
-        let ax = sext8(self.eb(me, 0x24)).wrapping_add(self.center_x(me));
+        let (ax, ay) = self.contact_position(me);
         let aw = self.eb(me, 0x25) as u16;
-        let ay = self.center_y(me).wrapping_sub(sext8(self.eb(me, 0x22)));
         let ah = self.eb(me, 0x23) as u16;
         let dcx = self.center_x(other);
         let dcy = self.center_y(other);
@@ -3753,6 +3775,7 @@ impl Bus<'_> {
             self.record_drive_impact_contact(me, other, false);
             self.record_ken_burn(me, other);
             self.record_zanei_hit(me);
+            self.record_heavy_strike(me, other);
             self.era_normal_contact(me, false);
         }
         self.react_one(me, other, entry, src);
@@ -4102,7 +4125,9 @@ impl Bus<'_> {
             // reaction is started here, not through `start_move`).
             self.cancel_close(other);
         }
-        self.arm_knockdown_dust(self.el(me, 0x38), other, src);
+        if !alive {
+            self.arm_slam_dust(self.el(me, 0x38), other);
+        }
     }
 
     /// 0x3b934..0x3b96a: clear 4 words (8 bytes) starting at `a0` (`D1 = 3`
@@ -4223,6 +4248,74 @@ impl Bus<'_> {
         }
     }
 
+    /// Centre of the strike box, also the native hit spark's anchor.
+    fn contact_position(&self, e: u16) -> (u16, u16) {
+        (
+            self.center_x(e).wrapping_add(sext8(self.eb(e, 0x24))),
+            self.center_y(e).wrapping_sub(sext8(self.eb(e, 0x22))),
+        )
+    }
+
+    /// Called after collision, guarding and armor have resolved. The cue
+    /// describes the contact even when Training clamps the defender's life.
+    fn record_heavy_strike(&mut self, me: u16, other: u16) {
+        use crate::combo::{Class, class_of, level};
+        use crate::impact::{ImpactContact, ImpactDirection, ImpactKind};
+        use std::cmp::Ordering;
+
+        if self.preset == crate::config::RulesetPreset::Faithful1987 || self.rb(MODE_DEMO) == 0 {
+            return;
+        }
+        let owner = self.el(me, 0x38);
+        let move_id = self.eb(me, 0xa);
+        // Family specials can borrow native jumping-normal move numbers.
+        if !Self::is_player_table(self.rl(owner + 0x12))
+            || self.era_state(owner).is_some_and(|state| state.alpha_move_active(move_id))
+            || !matches!(class_of(move_id, level(self.eb(me, 0x34))), Class::Heavy | Class::Sweep | Class::Jump(3))
+        {
+            return;
+        }
+        let slot = self.combo_slot(other);
+        let (x, y) = self.contact_position(me);
+        let direction = match self.center_x(me).cmp(&self.center_x(other)) {
+            Ordering::Greater => ImpactDirection::Left,
+            Ordering::Less => ImpactDirection::Right,
+            Ordering::Equal if self.eb(me, 0x37) & 4 != 0 => ImpactDirection::Left,
+            Ordering::Equal => ImpactDirection::Right,
+        };
+        let contact = ImpactContact {
+            kind: ImpactKind::HeavyStrike,
+            x: x.wrapping_add(self.rw(CAMERA)),
+            y,
+            direction,
+        };
+        self.toggle_state.impact_contacts[slot].get_or_insert(contact);
+    }
+
+    fn record_surface_impact(
+        &mut self,
+        victim: u16,
+        kind: crate::impact::ImpactKind,
+        x: u16,
+        y: u16,
+        direction: crate::impact::ImpactDirection,
+    ) {
+        use crate::impact::{ImpactContact, ImpactKind};
+
+        if self.preset == crate::config::RulesetPreset::Faithful1987 || self.rb(MODE_DEMO) == 0 {
+            return;
+        }
+        let slot = self.combo_slot(victim);
+        if self.toggle_state.impact_contacts[slot].is_none_or(|contact| contact.kind == ImpactKind::HeavyStrike) {
+            self.toggle_state.impact_contacts[slot] = Some(ImpactContact {
+                kind,
+                x: x.wrapping_add(self.rw(CAMERA)),
+                y,
+                direction,
+            });
+        }
+    }
+
     fn spawn_contact_effect(&mut self, me: u16, template: u32, demon_spark: bool) -> Option<u16> {
         let s = self.free_effect_slot()?;
         for i in 0..0x20u32 {
@@ -4263,8 +4356,7 @@ impl Bus<'_> {
             self.set_eb(s, 0xb, self.eb(s, 0xb).wrapping_neg());
             self.set_ew(s, 2, self.ew(s, 2) | 0x100);
         }
-        let x = self.center_x(me).wrapping_add(sext8(self.eb(me, 0x24)));
-        let y = self.center_y(me).wrapping_sub(sext8(self.eb(me, 0x22)));
+        let (x, y) = self.contact_position(me);
         let half = if self.ew(s, 2) & 0x400 != 0 { 0x10 } else { 8 };
         self.set_ew(s, 4, self.ew(s, 4).wrapping_add(y).wrapping_sub(half));
         self.set_ew(s, 6, self.ew(s, 6).wrapping_add(x).wrapping_sub(half));
@@ -5378,13 +5470,26 @@ impl Bus<'_> {
     /// are dropped; in demo play with demo sounds off (0x3b7f2, DSW1 bit 13
     /// != 0), everything is.
     pub fn queue_sound(&mut self, cmd: u16) {
-        if self.dsw1 & 0x200 == 0 && (cmd as i16) >= 0x28 && cmd <= 0x3e {
-            return;
+        if self.sound_allowed(cmd) {
+            self.queue_sound_unfiltered(cmd);
         }
-        if self.rb(MODE_DEMO) == 0 && self.dsw1 & 0x2000 != 0 {
-            return;
+    }
+
+    fn sound_allowed(&self, cmd: u16) -> bool {
+        (self.dsw1 & 0x200 != 0 || !((cmd as i16) >= 0x28 && cmd <= 0x3e))
+            && (self.rb(MODE_DEMO) != 0 || self.dsw1 & 0x2000 == 0)
+    }
+
+    pub(crate) fn queue_stage_music(&mut self, fallback: u16, cue: Option<crate::theme::ThemeCue>, legacy: u8) {
+        if self.sound_allowed(fallback) {
+            let idx = usize::from(self.rw(SOUND_WRITE) / 2);
+            self.queue_sound_unfiltered(fallback);
+            if let Some(slot) = self.toggle_state.queued_themes.get_mut(idx) {
+                let event = self.toggle_state.next_theme_event;
+                self.toggle_state.next_theme_event = event.wrapping_add(1);
+                *slot = Some(crate::tasks::StageMusic { cue, legacy, event });
+            }
         }
-        self.queue_sound_unfiltered(cmd);
     }
 
     /// 0x3b802: queue a sound command into the 16-word ring at 0xff8662
@@ -5392,6 +5497,9 @@ impl Bus<'_> {
     /// 0x3b806 shared with 0x3b7c8).
     pub fn queue_sound_unfiltered(&mut self, cmd: u16) {
         let idx = self.rw(SOUND_WRITE);
+        if let Some(slot) = self.toggle_state.queued_themes.get_mut(usize::from(idx / 2)) {
+            *slot = None;
+        }
         self.ww(SOUND_QUEUE + idx as u32, cmd);
         let next = if idx + 2 == 0x20 { 0 } else { idx + 2 };
         self.ww(SOUND_WRITE, next);
@@ -5402,6 +5510,9 @@ impl Bus<'_> {
     pub fn pop_sound(&mut self) -> u8 {
         let idx = self.rw(SOUND_READ);
         let cmd = self.rw(SOUND_QUEUE + idx as u32);
+        let music = self.toggle_state.queued_themes
+            .get_mut(usize::from(idx / 2)).and_then(Option::take);
+        self.toggle_state.latched_theme = if cmd != 0xffff { music } else { None };
         if cmd != 0xffff {
             self.ww(SOUND_QUEUE + idx as u32, 0xffff);
             let next = if idx + 2 == 0x20 { 0 } else { idx + 2 };
@@ -9314,6 +9425,13 @@ impl Bus<'_> {
         let burnout = self.era_state(defender).is_some_and(|state| state.sf6_burnout());
         let center = self.center_x(other);
         if self.sf6_impact_block(owner, defender, !(0x86..=0x17a).contains(&center)) {
+            use crate::impact::{ImpactDirection, ImpactKind};
+            let (x, direction) = if center > 0x17a {
+                (0x17a, ImpactDirection::Left)
+            } else {
+                (0x86, ImpactDirection::Right)
+            };
+            self.record_surface_impact(other, ImpactKind::WallSlam, x, self.center_y(other), direction);
             self.react_one(me, other, 0x45b6e, HitSource::Chip);
             return;
         }
@@ -10031,7 +10149,7 @@ impl Bus<'_> {
     /// [`crate::data_bank::ROUTINE_THROW_SLAM`]: `victim` hits the mat from
     /// `thrower`'s throw.
     fn throw_slam(&mut self, victim: u16, thrower: u16) -> bool {
-        self.record_throw_dust(self.el(thrower, 0x38), victim);
+        self.arm_slam_dust(self.el(thrower, 0x38), victim);
         let victim_slot = self.combo_slot(victim);
         self.toggle_state.throw.crosses[victim_slot] = false;
         self.training_contact(victim);
@@ -10072,6 +10190,19 @@ impl Bus<'_> {
             self.bind_dramatic_target(thrower_ps, primary);
         }
         demon
+    }
+
+    fn record_mat_impact(&mut self, victim: u16) {
+        use crate::impact::{ImpactDirection, ImpactKind};
+
+        self.finish_slam_dust(victim);
+        self.record_surface_impact(
+            victim,
+            ImpactKind::MatSlam,
+            self.center_x(victim),
+            crate::data_bank::GROUND as u16,
+            ImpactDirection::Down,
+        );
     }
 
     fn apply_standard_block_hurtbox(&mut self, e: u16, table: u32) {

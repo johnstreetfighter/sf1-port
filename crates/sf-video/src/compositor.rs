@@ -106,10 +106,10 @@ impl AfterimageTrail {
         }
     }
 
-    fn draw(&self, argb: &mut [u32], stage: Option<&[bool]>) {
+    fn draw(&self, argb: &mut [u32], stage: Option<&[bool]>, offset: [i32; 2]) {
         for (pose, strength) in self.poses.iter().zip([144, 96, 48]).rev() {
             for sprite in pose {
-                blit_sprite_with(argb, sprite, stage, |color, behind| PaletteTint {
+                blit_sprite_with(argb, sprite, stage, offset, |color, behind| PaletteTint {
                     color: self.color.unwrap_or_else(|| callouts::grey(color)),
                     strength,
                 }.apply(behind));
@@ -118,10 +118,33 @@ impl AfterimageTrail {
     }
 }
 
+/// The contact point and age of a heavy normal's spark in the visible frame.
+#[derive(Clone, Copy)]
+pub struct HeavyImpactSpark {
+    pub x: i32,
+    pub y: i32,
+    pub age: u32,
+}
+
+/// A floor or wall contact, already projected into the visible frame.
+#[derive(Clone, Copy)]
+pub struct SurfaceImpactBurst {
+    pub x: i32,
+    pub y: i32,
+    pub age: u32,
+    /// Zero for the floor, -1 or 1 away from a wall.
+    pub wall_direction: i32,
+}
+
 /// Layers the overhaul presenter may add. Faithful play ignores the struct.
 #[derive(Clone)]
 pub struct OverhaulScene<'a> {
     pub sprites: &'a [IndexedSprite],
+    pub heavy_impacts: &'a [HeavyImpactSpark],
+    pub surface_impacts: &'a [SurfaceImpactBurst],
+    /// The native world has already moved by this offset. Match it in trails
+    /// and move effects.
+    pub world_offset: [i32; 2],
     /// The era gauges, drawn in the bottom corners in `gauge_art`.
     pub hud: EraHud,
     /// Labels, source palettes, and animation for each gauge corner.
@@ -157,6 +180,9 @@ pub struct OverhaulScene<'a> {
 impl OverhaulScene<'static> {
     pub const EMPTY: Self = Self {
         sprites: &[],
+        heavy_impacts: &[],
+        surface_impacts: &[],
+        world_offset: [0, 0],
         hud: EraHud::NONE,
         gauge_presentation: [None; 2],
         ally2_gauge: None,
@@ -182,7 +208,8 @@ pub fn present(mode: PresentMode, hardware: &Frame, scene: &OverhaulScene<'_>) -
     present_with_move_effects(mode, hardware, scene, &[])
 }
 
-/// Compose a frame with move effects above the fighters and below the HUD.
+/// Compose a frame with move effects above the fighters and below native
+/// impact cues and the HUD. The supplied effects have no impact offset yet.
 pub fn present_with_move_effects(
     mode: PresentMode,
     hardware: &Frame,
@@ -205,7 +232,7 @@ pub fn present_with_move_effects(
         blit_sprite(&mut argb, sprite);
     }
     for trail in scene.afterimages.into_iter().flatten().chain(scene.ally2_afterimages) {
-        trail.draw(&mut argb, scene.stage);
+        trail.draw(&mut argb, scene.stage, scene.world_offset);
     }
     for (side, fighter) in scene.fighters.iter().enumerate() {
         let greyed = scene.callouts.sides[side].greyed;
@@ -224,7 +251,13 @@ pub fn present_with_move_effects(
         }
     }
     for sprite in effects {
-        blit_sprite(&mut argb, sprite);
+        blit_sprite_with(&mut argb, sprite, None, scene.world_offset, |color, _| color);
+    }
+    for burst in scene.surface_impacts {
+        draw_surface_impact(&mut argb, *burst);
+    }
+    for spark in scene.heavy_impacts {
+        draw_heavy_impact(&mut argb, *spark);
     }
     era_hud::draw_lifted_presented(
         &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font,
@@ -244,14 +277,71 @@ pub fn present_with_move_effects(
     Frame { argb }
 }
 
+fn draw_heavy_impact(argb: &mut [u32], spark: HeavyImpactSpark) {
+    const RADII: [i32; 6] = [8, 10, 12, 11, 9, 7];
+    let Some(&radius) = RADII.get(spark.age as usize) else { return };
+    let mut pixel = |dx, dy, color| {
+        let x = spark.x + dx;
+        let y = spark.y + dy;
+        if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
+            argb[y as usize * WIDTH + x as usize] = color;
+        }
+    };
+    for step in 1..=radius {
+        let color = if step <= radius / 2 && spark.age < 3 { 0xffffe4a0 } else { 0xffe99745 };
+        for (dx, dy) in [(step, 0), (-step, 0), (step / 2, -step), (-step / 2, step)] {
+            pixel(dx, dy, color);
+        }
+        if step <= radius / 2 {
+            pixel(-step, -step, color);
+            pixel(step, step, color);
+        }
+    }
+    pixel(0, 0, if spark.age < 3 { 0xfffffaf1 } else { 0xffffc96c });
+}
+
+fn draw_surface_impact(argb: &mut [u32], burst: SurfaceImpactBurst) {
+    if burst.age >= 10 {
+        return;
+    }
+    let age = burst.age as i32;
+    let mut pixel = |dx, dy, color| {
+        let (x, y) = (burst.x + dx, burst.y + dy);
+        if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
+            argb[y as usize * WIDTH + x as usize] = color;
+        }
+    };
+    if burst.wall_direction == 0 {
+        let color = if age < 4 { 0xffe5c092 } else { 0xffb99268 };
+        for i in 0..6 {
+            let spread = 3 + i * 2 + age;
+            let rise = -2 - (i + age * 2) % 9;
+            for side in [-1, 1] {
+                pixel(side * spread, rise, color);
+                pixel(side * spread, rise + 1, color);
+                pixel(side * spread + 1, rise + 1, color);
+            }
+        }
+    } else {
+        let color = if age < 4 { 0xffffebc0 } else { 0xfff2ae63 };
+        for step in 0..(10 + age) {
+            let x = step * burst.wall_direction;
+            pixel(x, 0, color);
+            pixel(x, -step / 2 - 2, color);
+            pixel(x, step / 2 + 2, color);
+        }
+    }
+}
+
 fn blit_sprite(argb: &mut [u32], sprite: &IndexedSprite) {
-    blit_sprite_with(argb, sprite, None, |color, _| color);
+    blit_sprite_with(argb, sprite, None, [0, 0], |color, _| color);
 }
 
 fn blit_sprite_with(
     argb: &mut [u32],
     sprite: &IndexedSprite,
     mask: Option<&[bool]>,
+    offset: [i32; 2],
     shade: impl Fn(u32, u32) -> u32,
 ) {
     for py in 0..16 {
@@ -260,8 +350,8 @@ fn blit_sprite_with(
             if pen == 0 || pen > 15 {
                 continue;
             }
-            let x = sprite.x + px as i32;
-            let y = sprite.y + py as i32;
+            let x = sprite.x + px as i32 + offset[0];
+            let y = sprite.y + py as i32 + offset[1];
             if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
                 let index = y as usize * WIDTH + x as usize;
                 if mask.is_none_or(|mask| mask[index]) {

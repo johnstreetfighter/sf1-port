@@ -35,7 +35,7 @@ rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File tools/release/pack
 ```
 
 The packager reads locked Cargo metadata and copies `sf-game.exe`, the complete
-shader tree, the playable art and voice packs, the source README/notices,
+shader tree, the playable art, voice, and character music packs, the source README/notices,
 dependency license texts, `Cargo.lock`, launch instructions and source/build
 identity. It produces a Windows x86_64 ZIP
 and its SHA-256 sidecar. It rejects a tracked dirty source tree or a checkout that
@@ -68,10 +68,12 @@ the Windows ZIP and its SHA-256 sidecar. Mark stable releases as latest. Downloa
 both published assets, compare them with the verified local files, and check the
 ZIP against the downloaded sidecar before reporting the release complete.
 
-The ZIP includes the playable packs under `assets/sf1-port-art` and
-`assets/sf1-port-voice` beside the executable. The packager uses each tagged
-manifest as its file list and includes the pack README. The verifier checks
-the manifest sizes and CRCs and compares every included pack file with the
-tagged source. ROMs, music packs, raw art candidates, voice archives, settings
-and logs stay outside the ZIP. The quick start links Microsoft's x64 v14
-runtime and explains where users supply their own ROM set.
+The ZIP includes the playable packs under `assets/sf1-port-art`,
+`assets/sf1-port-voice`, and `assets/sf1-port-music` beside the executable.
+The packager uses each tagged manifest as its file list and includes the pack
+README. The music manifest lists the 30 approved character scores. The verifier
+checks manifest sizes and CRCs and compares every included pack file with the
+tagged source. ROMs, the local title arrangement, source captures, listening
+renders, raw art candidates, voice archives, settings, and logs stay outside
+the ZIP. The quick start links Microsoft's x64 v14 runtime and explains where
+users supply their own ROM set.

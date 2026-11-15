@@ -13,6 +13,10 @@
 //!   sf-audio render --taps <ref>/audio_taps.tsv [--native-capture ...] \
 //!       --from-frame F --to-frame G --out hit.wav
 //!
+//! A readable score on the native YM2151 driver:
+//!
+//!   sf-audio render-score --score local.score --seconds 20 --out local.wav
+//!
 //! The voice pipeline's codec steps (`tools/voice/pipeline.py`, EH9):
 //!
 //!   sf-audio voice-encode --wav take.4k.wav --vox take.vox --heard take.heard.wav
@@ -157,6 +161,19 @@ enum Commands {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Audition a readable score through the live native YM2151 driver.
+    RenderScore {
+        #[arg(long)]
+        score: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        seconds: f64,
+        #[arg(long, default_value = "tools/reference/local/roms/sf")]
+        roms: PathBuf,
+        #[arg(long, default_value = "tools/reference/rom-manifest.json")]
+        manifest: PathBuf,
+    },
     /// Encode a take (mono 16-bit PCM WAV at 4 kHz) as the voice pack's
     /// `.vox` (4-bit MSM5205 ADPCM, high nibble first), and write what the
     /// chip plays from it as a 48 kHz WAV for listening. Prints
@@ -224,6 +241,65 @@ fn source_timeline(source: &Source, log: &RefLog) -> Result<LatchTimeline, Strin
             ))
         }
     }
+}
+
+fn render_score(
+    program: Vec<u8>,
+    samples: Vec<u8>,
+    compiled: sf_audio::score::CompiledScore,
+    seconds: f64,
+    out: &std::path::Path,
+) -> Result<(), String> {
+    use sf_audio::mix::GameSound;
+
+    const RATE: u32 = 48_000;
+    const START: u32 = 6;
+    const CHUNK: u32 = 120;
+    let start_time = f64::from(START) / f64::from(FRAME_HZ);
+    let count = (seconds * f64::from(RATE)).round() as usize;
+    let spec = hound::WavSpec {
+        channels: 2,
+        sample_rate: RATE,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut wav =
+        hound::WavWriter::create(out, spec).map_err(|e| format!("{}: {e}", out.display()))?;
+    let mut sound = GameSound::power_on(samples, program, LatchTimeline::default(), 0.0);
+    let mut written = 0;
+    let mut frame = 0;
+    while written < count {
+        let until = frame + CHUNK;
+        while frame < until {
+            let (command, score) = if frame == START {
+                (compiled.command, Some(compiled.score.clone()))
+            } else {
+                (0xff, None)
+            };
+            sound.push_frame_with_score(frame, command, 0, sf_audio::IRQ_LATENCY_MID, score);
+            frame += 1;
+        }
+        let ready = f64::from(frame - 2) / f64::from(FRAME_HZ);
+        let end = (((ready - start_time) * f64::from(RATE)).floor() as usize).min(count);
+        if !sound.wait_ready(ready) {
+            return Err("the native music driver did not reach the audition horizon".into());
+        }
+        for n in written..end {
+            let t = start_time + n as f64 / f64::from(RATE);
+            for value in sound.sample_at_gains(t, 1.0, 0.0) {
+                wav.write_sample((value * 32767.0) as i16)
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        written = end;
+        let faults = sound.unrecovered();
+        if !faults.is_empty() {
+            return Err(format!(
+                "the native music driver reported faults: {faults:04x?}"
+            ));
+        }
+    }
+    wav.finalize().map_err(|e| e.to_string())
 }
 
 fn main() -> ExitCode {
@@ -550,6 +626,35 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
                 out.display()
             );
             Ok(ExitCode::from(0))
+        }
+        Commands::RenderScore {
+            score,
+            out,
+            seconds,
+            roms,
+            manifest,
+        } => {
+            if !seconds.is_finite() || seconds <= 0.0 || seconds > 3600.0 {
+                return Err("--seconds must be greater than zero and no more than 3600".into());
+            }
+            let text =
+                std::fs::read_to_string(&score).map_err(|e| format!("{}: {e}", score.display()))?;
+            let region = |name| {
+                sf_video::romset::load_region(&roms, &manifest, name).map_err(|e| e.to_string())
+            };
+            let program = region("audiocpu")?;
+            let compiled = sf_audio::score::compile(&text, &program)
+                .map_err(|e| format!("{}: {e}", score.display()))?;
+            let bytes = compiled.score.bytes();
+            let samples = region("audio2")?;
+            render_score(program, samples, compiled, seconds, &out)?;
+            println!(
+                "{} native score bytes; wrote {:.3} s to {}",
+                bytes,
+                seconds,
+                out.display()
+            );
+            Ok(ExitCode::SUCCESS)
         }
         Commands::VoiceEncode { wav, vox, heard } => {
             let pcm = voice_pipeline::read_take_wav(&wav)?;

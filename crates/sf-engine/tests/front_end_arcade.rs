@@ -393,6 +393,7 @@ fn with_the_art_pack_arcade_opens_all_twelve_and_ryu_stands_in_for_the_players_o
 fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_and_honour_the_jukebox() {
     use sf_engine::front::settings::Settings;
     use sf_engine::jukebox::{Jukebox, Resolved, TrackCue, TrackSource};
+    use sf_engine::theme::{ThemeCue, ThemeId};
     use sf_video::background_bank::{BackgroundBank, RYU_THEME};
 
     let Some(a) = assets() else { return };
@@ -407,16 +408,20 @@ fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_
     // 1. With Ryu's theme in the playable extended tunes, Lee's stand-in
     //    fight against Ryu on Lee's stage in China plays `RYU_THEME` (0x41)
     //    instead of China's 1987 stage theme (0x2e), with no fallback log.
-    let run_lee_stand_in = |mut s: GameSession| -> (Vec<u8>, Vec<TrackCue>, Vec<String>) {
+    let run_lee_stand_in = |mut s: GameSession| -> (Vec<u8>, Vec<TrackCue>, Vec<String>, Vec<(u32, u32, ThemeCue)>, u64) {
         s.take_log();
         assert_eq!(tap(&mut s, stick(DOWN)).transition, Some(Transition::CursorMoved));
         assert_eq!(tap(&mut s, stick(DOWN)).transition, Some(Transition::CursorMoved));
         let mut latches = Vec::new();
         let mut cues = Vec::new();
+        let mut themes = Vec::new();
         let mut step = |s: &mut GameSession, i: FrameInputs| {
             let out = s.step(i);
             if out.sound_latch != 0xff {
                 latches.push(out.sound_latch);
+            }
+            if let Some(theme) = out.theme {
+                themes.push((out.sound_frame, out.latch_cycles, theme));
             }
             if let Some(cue) = out.track {
                 cues.push(cue);
@@ -452,12 +457,13 @@ fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_
             step(&mut s, idle());
         }
         assert!(s.fight_machine().unwrap().unrecovered().is_empty());
-        (latches, cues, s.take_log())
+        let checksum = s.fight().unwrap().state_checksum();
+        (latches, cues, s.take_log(), themes, checksum)
     };
 
     let mut with_theme = base.clone().with_background_bank(bank.clone());
     with_theme.set_playable_themes(&[RYU_THEME]);
-    let (latches, cues, log) = run_lee_stand_in(with_theme);
+    let (latches, cues, log, with_themes, with_checksum) = run_lee_stand_in(with_theme);
     assert!(latches.contains(&RYU_THEME), "stand-in fight latches Ryu's theme (0x41): {latches:02x?}");
     assert!(!latches.contains(&0x2e), "China's 1987 stage theme (0x2e) is replaced: {latches:02x?}");
     assert!(cues.is_empty(), "no Jukebox cues without a track set: {cues:?}");
@@ -470,13 +476,17 @@ fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_
     //    plays and the log says why.
     let mut without_theme = base.clone().with_background_bank(bank.clone());
     without_theme.set_playable_themes(&[]);
-    let (latches, _, log) = run_lee_stand_in(without_theme);
+    let (latches, _, log, without_themes, without_checksum) = run_lee_stand_in(without_theme);
     assert!(latches.contains(&0x2e), "without the pack, Lee's stage plays its 1987 theme (0x2e): {latches:02x?}");
     assert!(!latches.contains(&RYU_THEME), "missing extended theme is never sent: {latches:02x?}");
     assert!(
         log.iter().any(|l| l.contains("Ryu's theme (0x41) is not in the music pack") && l.contains("0x2e")),
         "the log explains why the stage's 1987 theme played: {log:?}"
     );
+
+    assert_eq!(with_themes, without_themes, "availability changes only what is heard");
+    assert_eq!(with_checksum, without_checksum, "music availability stays out of gameplay");
+    assert!(with_themes.iter().any(|&(_, cycles, cue)| cycles != 0 && cue == ThemeCue { id: ThemeId::Ryu, fallback: 0x2e }));
 
     // 3. A Jukebox choice for the stage ("lee") or fighter ("Lee" or "Ryu")
     //    overrides Ryu's theme as the Jukebox does today.
@@ -516,7 +526,7 @@ fn stand_in_fights_play_ryus_theme_fall_back_to_the_stage_theme_with_a_log_note_
             .with_settings(Settings { jukebox, ..Settings::default() })
             .with_background_bank(bank.clone());
         s.set_playable_themes(&[RYU_THEME]);
-        let (_, cues, _) = run_lee_stand_in(s);
+        let (_, cues, _, _, _) = run_lee_stand_in(s);
         assert!(
             cues.contains(&TrackCue::Prepare(expected.clone())),
             "Jukebox prepares {expected:?} ahead of the fight: {cues:?}"

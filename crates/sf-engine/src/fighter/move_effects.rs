@@ -5,7 +5,7 @@ use sf_video::move_effects::signature::{ImpactKind, ProjectileKind};
 use sf_video::render::{HEIGHT, VISAREA_X, VISAREA_Y, WIDTH};
 
 use super::{sext8, Bus, CAMERA, GAME_MODE};
-use crate::combo::{class_of, level, Class, HitSource};
+use crate::combo::{class_of, level, Class};
 use crate::config::RulesetPreset;
 use crate::data_bank::{GROUND, SF2_SUPER_SLOT};
 use crate::era::EraFamily;
@@ -59,10 +59,13 @@ impl Bus<'_> {
     pub(crate) fn begin_move_effects(&mut self, in_fight: bool) -> [Option<bool>; 2] {
         let native_sparks = self.toggle_state.era.move_effects.native_sparks;
         self.toggle_state.era.move_effects = MoveEffectCues::default();
-        if !self.move_effects_enabled() || !in_fight {
+        if !self.move_effects_enabled() {
             return [None; 2];
         }
         self.toggle_state.era.move_effects.native_sparks = native_sparks;
+        if !in_fight {
+            return [None; 2];
+        }
         Side::BOTH.map(|side| {
             self.effect_fighter(side)
                 .filter(|&entity| self.move_effects_for(self.el(entity, 0x38)))
@@ -81,9 +84,14 @@ impl Bus<'_> {
         let flipped = *self.flip_screen;
         cues.camera_x = if flipped { -camera } else { camera };
         if !in_fight {
-            // The KO loop only presents dust from the defeated fighter settling.
-            let slam_dust = cues.slam_dust;
-            cues = MoveEffectCues { slam_dust, camera_x: cues.camera_x, ..MoveEffectCues::default() };
+            // Keep replacements for native slots that are still alive while the
+            // wrapper finishes the existing sparks. Only new slam dust is drawn.
+            cues = MoveEffectCues {
+                slam_dust: cues.slam_dust,
+                native_sparks: cues.native_sparks,
+                camera_x: cues.camera_x,
+                ..MoveEffectCues::default()
+            };
         }
         for side in Side::BOTH {
             let index = side.index();
@@ -159,42 +167,26 @@ impl Bus<'_> {
         self.toggle_state.era.move_effects = cues;
     }
 
-    pub(super) fn arm_knockdown_dust(&mut self, source: u32, victim: u16, hit: HitSource) {
+    /// Keep the attacker's style until the victim reaches the mat.
+    pub(super) fn arm_slam_dust(&mut self, source: u32, victim: u16) {
         if !self.move_effects_enabled() {
             return;
         }
         let Some(side) = self.effect_fighter_side(victim) else { return };
-        let reaction = self.eb(victim, 0xa);
-        let launched = self.eb(victim, 9) & 1 != 0 && (0x30..=0x3f).contains(&reaction);
-        self.toggle_state.era.pending_slam_dust[side] = (launched || reaction >= 0x40)
-            && (hit != HitSource::Chip || reaction >= 0x40)
-            && self.move_effects_for(source);
+        self.toggle_state.era.pending_slam_dust[side] = self.move_effects_for(source);
     }
 
-    pub(super) fn finish_knockdown_dust(&mut self, victim: u16) {
-        if !self.move_effects_enabled() || self.eb(victim, 0xa) < 0x30 {
+    pub(super) fn finish_slam_dust(&mut self, victim: u16) {
+        if !self.move_effects_enabled() {
             return;
         }
         let Some(side) = self.effect_fighter_side(victim) else { return };
         if std::mem::take(&mut self.toggle_state.era.pending_slam_dust[side]) {
-            self.record_slam_dust(victim, side);
+            let (world_x, y) = self.contact_point(self.center_x(victim), (GROUND - 1) as u16);
+            self.toggle_state.era.move_effects.slam_dust[side] = Some(SignatureImpact {
+                kind: ImpactKind::SlamDust, world_x, y, flip: false,
+            });
         }
-    }
-
-    pub(super) fn record_throw_dust(&mut self, source: u32, victim: u16) {
-        if self.move_effects_for(source) {
-            if let Some(side) = self.effect_fighter_side(victim) {
-                self.toggle_state.era.pending_slam_dust[side] = false;
-                self.record_slam_dust(victim, side);
-            }
-        }
-    }
-
-    fn record_slam_dust(&mut self, victim: u16, side: usize) {
-        let (world_x, y) = self.contact_point(self.center_x(victim), (GROUND - 1) as u16);
-        self.toggle_state.era.move_effects.slam_dust[side] = Some(SignatureImpact {
-            kind: ImpactKind::SlamDust, world_x, y, flip: false,
-        });
     }
 
     fn collect_accent(&self, entity: u16) -> Option<FighterAccent> {

@@ -35,7 +35,7 @@ use std::fmt;
 
 use serde::Deserialize;
 
-use crate::background_bank::{BackgroundBank, Cell, LayerView, MapLayer, StageView, MAP_ROWS, PAGE_COLS, PALETTE_BYTES};
+use crate::background_bank::{BackgroundBank, Cell, LayerView, MapLayer, StageView, EVIL_RYU_THEME, MAP_ROWS, PAGE_COLS, PALETTE_BYTES, RYU_THEME};
 use crate::decode::decode_sprite_tile;
 use crate::romset::Assets;
 
@@ -447,7 +447,14 @@ impl LayerRecipe {
 
 impl StageRecord {
     pub fn from_json(text: &str) -> Result<StageRecord, StageError> {
-        serde_json::from_str(text).map_err(|e| StageError::Record(format!("bad stage record: {e}")))
+        let mut record: Self = serde_json::from_str(text)
+            .map_err(|e| StageError::Record(format!("bad stage record: {e}")))?;
+        // Wave 1 records made before the character-theme registry shared
+        // Ryu's command. Migrate the named stage when reading such a record.
+        if record.name == "evil-ryu" && record.theme == u16::from(RYU_THEME) {
+            record.theme = u16::from(EVIL_RYU_THEME);
+        }
+        Ok(record)
     }
 
     /// The stage's art, rebuilt from the player's ROM.
@@ -473,4 +480,17 @@ pub fn pack_records(rom: &Assets, records: &[&str]) -> Result<BackgroundBank, St
         bank.pack_stage(&StageRecord::from_json(text)?.build(rom)?)?;
     }
     Ok(bank)
+}
+
+#[cfg(test)]
+mod theme_tests {
+    use super::*;
+
+    #[test]
+    fn the_old_evil_ryu_stage_command_cannot_select_the_ryu_score() {
+        let record = include_str!("../../../art/stages/test-stage.json").replace("0x40", "0x41");
+        assert_eq!(StageRecord::from_json(&record).unwrap().theme, u16::from(RYU_THEME));
+        let evil = record.replace("test-stage", "evil-ryu");
+        assert_eq!(StageRecord::from_json(&evil).unwrap().theme, u16::from(EVIL_RYU_THEME));
+    }
 }

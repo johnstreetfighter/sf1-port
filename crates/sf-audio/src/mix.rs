@@ -44,11 +44,15 @@ use std::thread::JoinHandle;
 use sf_video::announcer::AnnouncerLine;
 
 use crate::announcer::Announcer;
-use crate::check::{idle_loop, LatchFeed, TimedChip};
+use crate::check::{idle_loop, LatchFeed, LatchFrame, TimedChip};
+use crate::impact::ImpactMixer;
 use crate::music::{ExtensionCell, MusicCpu};
 use crate::opm::{OPM_CLOCK, OPM_RATE};
 use crate::samples::PortWrite;
+use crate::score::NativeScore;
 use crate::{LatchTimeline, SamplesSound, FRAME_HZ, TICK_HZ};
+
+pub use crate::impact::ImpactAccent;
 
 /// sf.cpp: `ymsnd.add_route(0, "speaker", 0.60, 0)` and `(1, ..., 1)`.
 pub const YM_ROUTE_GAIN: f32 = 0.6;
@@ -67,13 +71,10 @@ const LOOKAHEAD: f64 = 0.25;
 /// clocks; 0.1 s), so a pre-roll never accumulates its discarded samples.
 const HAND_OVER: u64 = OPM_CLOCK as u64 / 10;
 
-/// A frame's latch write as pushed: (frame, value, cycles, latency).
-type FrameWrite = (u32, u8, u32, u32);
-
 /// What the host pushes to the music thread, in order: a frame's latch
 /// write, or the extended tune table to run with from the next write on.
 enum Push {
-    Frame(FrameWrite),
+    Frame(LatchFrame),
     Tunes(Option<Arc<Vec<u8>>>),
 }
 
@@ -120,7 +121,7 @@ impl LatchFeed for ChannelFeed {
         hand_over(&self.shared, first, left, right);
     }
 
-    fn next(&mut self) -> Option<FrameWrite> {
+    fn next(&mut self) -> Option<LatchFrame> {
         loop {
             // The check and the flag under the lock `push_frame` sends under:
             // a consumer that sees `starved` knows no frame is on its way.
@@ -220,6 +221,7 @@ pub struct GameSound {
     level: [f32; 2],
     /// The announcer's chip, when a voice pack is loaded.
     announcer: Option<Announcer>,
+    impacts: ImpactMixer,
     /// The extended tune table the music CPU runs with (ticket #199).
     tunes: ExtensionCell,
     /// The samples CPU's port writes, kept when asked for (a check's).
@@ -279,6 +281,7 @@ impl GameSound {
             steps: [VecDeque::new(), VecDeque::new()],
             level: [0.0; 2],
             announcer: None,
+            impacts: ImpactMixer::default(),
             tunes,
             port_log: None,
             known_until,
@@ -292,6 +295,23 @@ impl GameSound {
     /// [`crate::IRQ_LATENCY_CYCLES`]); frames in order, each after the
     /// time already known.
     pub fn push_frame(&mut self, frame: u32, value: u8, cycles: u32, latency: u32) {
+        self.push_frame_with_score(frame, value, cycles, latency, None);
+    }
+
+    /// Append the latch write and the exact score selected for this frame.
+    /// The score is pinned through the music queue and both driver slots.
+    pub fn push_frame_with_score(
+        &mut self,
+        frame: u32,
+        value: u8,
+        cycles: u32,
+        latency: u32,
+        score: Option<Arc<NativeScore>>,
+    ) {
+        debug_assert!(
+            score.is_none()
+                || (crate::music::EXTENDED_FIRST..=crate::music::EXTENDED_LAST).contains(&value)
+        );
         let Some(tx) = &self.tx else {
             panic!("push_frame on a sound whose writes were all given at power-on");
         };
@@ -303,7 +323,13 @@ impl GameSound {
         {
             let mut o = self.shared.out.lock().unwrap();
             // A closed channel means the thread has stopped; nothing to do.
-            let _ = tx.send(Push::Frame((frame, value, cycles, latency)));
+            let _ = tx.send(Push::Frame(LatchFrame {
+                frame,
+                value,
+                cycles,
+                latency,
+                score,
+            }));
             o.starved = false;
         }
         // The samples CPU's reads never look back.
@@ -343,12 +369,28 @@ impl GameSound {
         self.announcer.as_ref()
     }
 
+    pub fn announcer_mut(&mut self) -> Option<&mut Announcer> {
+        self.announcer.as_mut()
+    }
+
     /// Ask the announcer for `lines` at frame `frame`'s start (the frame
     /// whose latch is pushed with it); nothing without his chip.
     pub fn announce(&mut self, frame: u32, lines: &[AnnouncerLine]) {
         if let Some(a) = self.announcer.as_mut() {
             a.call_at_frame(frame, lines);
         }
+    }
+
+    /// Play an accent at the start of a presented sound frame, independently
+    /// of the sound latch and announcer.
+    pub fn play_impact(&mut self, frame: u32, accent: ImpactAccent) {
+        self.impacts.play(frame, accent);
+    }
+
+    /// End impacts at a scene boundary, including any that are still queued.
+    /// Output before this frame remains audible if playback is behind.
+    pub fn clear_impacts(&mut self, frame: u32) {
+        self.impacts.clear_at(frame);
     }
 
     /// Keep the samples CPU's port writes from now on, for
@@ -462,7 +504,8 @@ impl GameSound {
     }
 
     /// [`Self::sample_at`] with the YM2151's route scaled by `fm` and both
-    /// MSM5205s' by `samples` (the front end's `FM` and `SAMPLES` volumes;
+    /// MSM5205s and the optional impact accents by `samples` (the front
+    /// end's `FM` and `SAMPLES` volumes;
     /// at 1.0 each the output is [`Self::sample_at`]'s exactly).
     pub fn sample_at_gains(&mut self, t: f64, fm: f32, samples: f32) -> [f32; 2] {
         self.sample_at_mix(t, fm, samples, 1.0)
@@ -478,6 +521,9 @@ impl GameSound {
         );
         self.run_samples_to(t);
         let mut msm = self.msm_at(t) * samples;
+        if let Some(impact) = self.impacts.sample_at(t) {
+            msm += impact * samples;
+        }
         if let Some(a) = self.announcer.as_mut() {
             // Run even when muted, so turning him up again finds him on time.
             let level = a.output_at(t);

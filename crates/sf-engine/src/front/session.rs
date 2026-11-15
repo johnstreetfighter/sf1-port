@@ -7,6 +7,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, OnceLock};
 
+use sf_video::announcer::AnnouncerLine;
 use sf_video::busts::{decode_select_busts, Bust};
 use sf_video::compositor::RomFont;
 use sf_video::render::{render_frame, Frame, SpriteArt};
@@ -31,7 +32,9 @@ use super::select::SelectScreen;
 use super::jukebox::{entries as jukebox_entries, listed_tracks, JukeboxScreen};
 use crate::jukebox::TrackFormats;
 use super::stage_select::{random_pick, StageScreen};
-use super::settings::{default_looks, frame_delay_cap, look_in_use, Aspect, DisplayInfo, LookName, Settings, SettingsScreen};
+use super::settings::{
+    default_looks, frame_delay_cap, look_in_use, Aspect, DisplayInfo, LiveSound, LookName, Row, Settings, SettingsScreen,
+};
 use super::tune::{DemoScene, LookParam, LookTuning, Panel, SaveLook, TuneScreen, TypedKey};
 use super::world_tour::WorldTourScreen;
 use super::{sound, Transition};
@@ -43,6 +46,7 @@ use crate::jukebox::{Cues, Resolved, TrackCue};
 use crate::fighter::{P1_STRUCT, P2_STRUCT};
 use crate::moves::{facing_right, InputNotation};
 use crate::roster::{MenuInput, PlayMode, StagePick, TournamentFighter};
+use crate::theme::{ThemeCue, ThemeId};
 use crate::run::PowerOnMachine;
 use crate::replay::{MatchReplay, ReplayCommand, ReplayMode, ReplayPlayback};
 use crate::netplay::{Link, NetTransportCommand, NetTransportEvent, RoomAnnouncement, RoomKind, SyncedMatchRules};
@@ -55,6 +59,7 @@ use crate::world_tour::native::WorldTourProfile;
 mod netplay;
 mod replay;
 mod spectator;
+mod theme_selection;
 mod world_tour;
 
 /// One player's logical inputs: directions (right, left, down, up) and the
@@ -102,12 +107,24 @@ pub struct FrameOutput {
     /// step). The host pushes `sound_latch` at this frame.
     pub sound_frame: u32,
     pub sound_latch: u8,
+    /// Semantic stage music on the frame that carries its native latch.
+    pub theme: Option<ThemeCue>,
+    /// Original native fight frame for this theme. It stays attached to the
+    /// latch cycles if rollback or spectator playback delivers the cue later.
+    pub theme_frame: Option<u32>,
+    /// Clean impact contacts to present, with their original fight frame.
+    pub impacts: Vec<crate::impact::ImpactCue>,
+    /// End lingering impact audio at the start of a new round.
+    pub clear_impacts: bool,
     /// The latch write's cycles into the frame (the machine's vblank
     /// handler's on attract frames, 0 on the front end's own).
     pub latch_cycles: u32,
-    /// The announcer's lines asked for on this frame (an overhaul fight's;
-    /// ADR 0011): the host asks his chip for them at `sound_frame`.
-    pub announcements: Vec<sf_video::announcer::AnnouncerLine>,
+    /// Overhaul call-outs or a Settings audition for the third MSM5205
+    /// (ADR 0011). The host requests them at `sound_frame`.
+    pub announcements: Vec<AnnouncerLine>,
+    /// An overhaul fight (including its boxes and replay playback) is
+    /// active, so the host can route its ROM announcer latches separately.
+    pub overhaul_fight: bool,
     /// The title arrangement or an overhaul fight (its boxes included) is
     /// using the extended tune table. The host hands over the table before
     /// pushing this frame's latch. Never used by Faithful 1987.
@@ -296,6 +313,10 @@ pub struct GameSession {
     preferred_eras: [EraFamily; 2],
     /// The Jukebox's cue machine.
     track_cues: Cues,
+    /// Music history between committed matches. A fight or replay restores
+    /// its selected phase from its own snapshot without advancing this.
+    theme_rotation: theme_selection::ThemeRotation,
+    online_theme_rotation: theme_selection::ThemeRotation,
     attract: PowerOnMachine,
     free_play: Option<FreePlay>,
     /// The title logo the Main Menu draws, read from the ROM.
@@ -390,6 +411,8 @@ impl GameSession {
             picker: 0,
             preferred_eras: [EraFamily::Sf1Plus; 2],
             track_cues: Cues::default(),
+            theme_rotation: theme_selection::ThemeRotation::default(),
+            online_theme_rotation: theme_selection::ThemeRotation::default(),
             attract,
             free_play,
             title_logo,
@@ -609,6 +632,19 @@ impl GameSession {
     /// The settings (video, sound, ROM folder, the cabinet's DIP words).
     pub fn settings(&self) -> &Settings {
         &self.settings
+    }
+
+    /// The sound settings in force this frame, including unsaved changes.
+    pub fn live_sound(&self) -> LiveSound {
+        self.stack
+            .iter()
+            .rev()
+            .find_map(|screen| match screen {
+                Screen::Settings(screen) => Some(screen.settings()),
+                _ => None,
+            })
+            .unwrap_or(&self.settings)
+            .sound()
     }
 
     /// The picture's aspect as the player has it now: the open Settings
@@ -1010,6 +1046,18 @@ impl GameSession {
     }
 
     fn launch_fight(&mut self, setup: FightSetup, flag: Option<u8>, styles: [Option<StylePick>; 2]) {
+        let roster = setup.config.roster;
+        let participants = [roster.p1, roster.p2].map(ThemeId::from);
+        self.launch_fight_with_themes(setup, flag, styles, participants);
+    }
+
+    fn launch_fight_with_themes(
+        &mut self,
+        setup: FightSetup,
+        flag: Option<u8>,
+        styles: [Option<StylePick>; 2],
+        participants: [ThemeId; 2],
+    ) {
         let overhaul = setup.config.preset != RulesetPreset::Faithful1987;
         let backgrounds = self.backgrounds.clone().filter(|_| overhaul);
         let data = overhaul.then(|| {
@@ -1019,12 +1067,24 @@ impl GameSession {
         });
         match Fight::start_banked(&self.assets.maincpu, setup, flag, backgrounds, data) {
             Ok(mut fight) => {
+                if overhaul {
+                    let rotation = match self.net_setup.as_ref() {
+                        Some(setup) if setup.local_side.is_some() => Some(&mut self.online_theme_rotation),
+                        Some(_) => None, // Observers receive the host's original selection with the inputs.
+                        None => Some(&mut self.theme_rotation),
+                    };
+                    let theme = rotation.and_then(|rotation| {
+                        rotation.for_participants(fight.setup(), self.backgrounds.as_deref(), participants)
+                    });
+                    fight.select_theme(theme);
+                }
                 fight.set_satsui_art(self.satsui_art.clone());
                 fight.set_selected_styles(styles);
                 let seed = self.net_connection.as_ref().filter(|_| self.net_setup.is_some())
                     .map_or(u64::from(self.frames), |connection| connection.rules().seed);
                 Self::seed_replay_fight(&mut fight, seed);
                 fight.set_gauge_art(self.settings.gauge_art);
+                fight.set_screen_shake(self.settings.screen_shake);
                 fight.set_hold_combo(self.settings.hold_combo);
                 let recording = self.begin_replay_recording(&fight, flag, seed);
                 self.play = Some(Play {
@@ -1383,6 +1443,9 @@ impl GameSession {
     /// on for the session, as on a cabinet left switched on), every toggle
     /// off, and the Main Menu shows.
     fn arcade_over(&mut self) {
+        if let Some(config) = self.play.as_ref().map(|play| play.fight.setup().config) {
+            self.stop_extended_theme(&config);
+        }
         self.finish_replay_recording(true);
         if let Some(play) = self.play.take() {
             let mut machine = play.fight.into_machine();
@@ -1404,15 +1467,12 @@ impl GameSession {
                 .is_some_and(|b| b.plays_extended_theme(index)),
             None => false,
         };
-        let ryu_extended = self.play.as_ref().is_some_and(|p| {
-            let m = p.fight.machine();
-            m.arcade_opponent() == Some(TournamentFighter::Ryu)
-                && self
-                    .backgrounds
-                    .as_ref()
-                    .is_some_and(|b| b.can_play(sf_video::background_bank::RYU_THEME))
+        let theme_extended = self.music_fight().is_some_and(|fight| {
+            fight.selected_theme().is_some_and(|theme| theme.id.is_extended())
+                || (fight.setup().kind == FightKind::Arcade
+                    && fight.machine().arcade_opponent() == Some(TournamentFighter::Ryu))
         });
-        if stage_extended || ryu_extended {
+        if config.preset != RulesetPreset::Faithful1987 && (stage_extended || theme_extended) {
             self.sounds.push_back(sound::STOP_ALL);
         }
     }
@@ -1423,10 +1483,10 @@ impl GameSession {
     /// fight's stage theme starts the track the Jukebox gives the fight, and
     /// one that ends the driver's music (the stops, the win jingle) stops
     /// it; leaving the fight stops it too ([`Cues::step`]).
-    fn track_cue(&mut self, latch: u8) -> Option<TrackCue> {
+    fn track_cue(&mut self, latch: u8, theme: Option<ThemeCue>) -> Option<TrackCue> {
         let fighting = self.music_fight().is_some_and(|fight| fight.setup().config.preset != RulesetPreset::Faithful1987);
         let mut cues = std::mem::take(&mut self.track_cues);
-        let cue = cues.step(latch, fighting, |command| self.fight_track(command));
+        let cue = cues.step_theme(latch, theme.is_some(), fighting, |command| self.fight_track(command, theme));
         self.track_cues = cues;
         cue
     }
@@ -1436,19 +1496,16 @@ impl GameSession {
             .or_else(|| self.replay_playback().map(ReplayPlayback::fight))
     }
 
-    /// The track for the running fight if `latch` is its stage theme (with
-    /// no latch, the track it has now, for [`TrackCue::Prepare`]).
+    /// The track for a semantic theme request or a legacy stage command.
+    /// With no latch, resolve the track for preparation.
     ///
     /// The stage is the picked one (Local and Training) or, in Arcade, the
     /// one the ladder is at: the start country and the stage and fight
-    /// counters in work RAM name the opponent (`rom_stages::ladder_opponent`;
-    /// read only, as ADR-0004 asks), known well before his theme. The theme
-    /// must be that stage's (or Ryu's theme when Ryu is the CPU opponent in
-    /// Arcade, SP15 `#267`). The fighters are Player 1's and Player 2's,
-    /// with the stage picker's first (ST2's rule: Player 1 on the first
-    /// match, the loser after; Arcade has Player 1's, and Ryu when Ryu is
-    /// the CPU opponent).
-    fn fight_track(&self, latch: Option<u8>) -> Option<Resolved> {
+    /// counters in work RAM name the stage owner.
+    /// Jukebox fighter overrides retain their established precedence:
+    /// the stage picker and the other player in Local, and the player's
+    /// fighter followed by Ryu when he is the stand-in CPU in Arcade.
+    fn fight_track(&self, latch: Option<u8>, theme: Option<ThemeCue>) -> Option<Resolved> {
         if self.settings.jukebox.is_empty() {
             return None;
         }
@@ -1456,10 +1513,9 @@ impl GameSession {
         let setup = fight.setup();
         let arcade_ryu = fight.machine().arcade_opponent() == Some(TournamentFighter::Ryu);
         let stage_info = self.fight_stage_info(&setup);
-        if let Some(command) = latch {
+        if let Some(command) = latch.filter(|_| theme.is_none()) {
             let (_, theme) = stage_info.as_ref()?;
-            let is_theme = *theme == u16::from(command)
-                || (arcade_ryu && command == sf_video::background_bank::RYU_THEME);
+            let is_theme = *theme == u16::from(command);
             is_theme.then_some(())?;
         }
         let stage = stage_info.as_ref().map(|(name, _)| name.as_str());
@@ -1871,7 +1927,14 @@ impl GameSession {
 
     /// The menus' and the select's inputs. The Local select takes each
     /// side's own inputs; everything else takes the merged cursor's.
-    fn screen_input(&mut self, prev: &FrameInputs, now: &FrameInputs, typed: Vec<TypedKey>, quit: &mut bool) -> Option<Transition> {
+    fn screen_input(
+        &mut self,
+        prev: &FrameInputs,
+        now: &FrameInputs,
+        typed: Vec<TypedKey>,
+        quit: &mut bool,
+        audition: &mut Option<AnnouncerLine>,
+    ) -> Option<Transition> {
         if let Some(Screen::Replays(screen)) = self.stack.last_mut() {
             let action = menu_events(prev, now).into_iter().find_map(|input| screen.apply(input, self.replays.len()))?;
             match action {
@@ -2164,8 +2227,11 @@ impl GameSession {
                     if let Some(Screen::Tune(t)) = self.stack.last() {
                         self.tuning = Some(t.tuning());
                     }
-                    // `RESET TAB` on the Controls tab: the default bindings.
                     if let Some(Screen::Settings(s)) = self.stack.last_mut() {
+                        if s.row() == Row::AnnouncerVoice && matches!(event, Event::Menu(MenuInput::Left | MenuInput::Right)) {
+                            *audition = Some(AnnouncerLine::Fight);
+                        }
+                        // `RESET TAB` on the Controls tab: the default bindings.
                         if s.take_reset_bindings() {
                             if let Some((current, defaults)) = self.binds.as_mut() {
                                 *current = *defaults;
@@ -2236,6 +2302,7 @@ impl GameSession {
         let events = menu_events(&prev, &input);
         let typed = std::mem::take(&mut self.typed);
         let mut quit = false;
+        let mut audition = None;
         if self.playback.is_some() {
             return self.step_replay(&prev, &input, &events);
         }
@@ -2262,8 +2329,13 @@ impl GameSession {
                     frame: cabinet.render(&self.assets, &font),
                     sound_frame: self.frames,
                     sound_latch: m.state.sound_latch,
+                    theme: None,
+                    theme_frame: None,
+                    impacts: Vec::new(),
+                    clear_impacts: false,
                     latch_cycles: m.state.latch_cycles,
                     announcements: Vec::new(),
+                    overhaul_fight: false,
                     tune_table: false,
                     track: None,
                     screen: self.screen(),
@@ -2298,7 +2370,7 @@ impl GameSession {
                 Transition::OpenMainMenu
             })
         } else {
-            self.screen_input(&prev, &input, typed, &mut quit)
+            self.screen_input(&prev, &input, typed, &mut quit, &mut audition)
         };
 
         self.online_actions();
@@ -2320,7 +2392,12 @@ impl GameSession {
                 Some(self.net_spectators.step(&mut play.fight, assets))
             } else if let Some(rollback) = play.netplay.as_mut() {
                 let local = if online_menu_was_open || play.pause.is_some() { PlayerInputs::default() } else { input.p1 };
-                rollback.step(&mut play.fight, assets, local)
+                let corrected = rollback.take_corrected_picture();
+                let next = rollback.step(&mut play.fight, assets, local);
+                if corrected && next.is_none() && !play.fight.driving() {
+                    play.last = play.fight.render(assets);
+                }
+                next
             } else {
                 let driving = play.fight.driving();
                 let result = play.fight.step(assets, input.p1, input.p2, start);
@@ -2386,6 +2463,9 @@ impl GameSession {
             self.picker = 0;
             self.chosen = None;
         }
+        if self.play.is_none() && matches!(self.stack.as_slice(), [] | [Screen::Menu(_)]) {
+            self.theme_rotation = theme_selection::ThemeRotation::default();
+        }
         // The fight's hidden drive and the cabinet boot issue their own stops.
         if self.play.is_some() || self.cabinet.is_some() {
             self.front_music = None;
@@ -2400,6 +2480,11 @@ impl GameSession {
             Some(look) => super::pause::short_look_name(&look.name),
             None => super::pause::short_look_name(self.look()),
         };
+        let (theme, theme_frame) = self.play.as_ref().and(fight_frame.as_ref())
+            .map_or((None, None), |frame| (frame.theme, frame.theme_frame));
+        let clear_impacts = fight_frame.as_ref().is_some_and(|frame| frame.clear_impacts);
+        let impacts = self.play.as_ref().and(fight_frame.as_mut())
+            .map(|frame| std::mem::take(&mut frame.impacts)).unwrap_or_default();
         let presented = self.play.as_ref().map(|play| {
             let boxed = |frame: Frame| match (&play.after, &play.pause) {
                 (Some(after), _) => after.render(&font, &frame),
@@ -2424,7 +2509,7 @@ impl GameSession {
                 None => (boxed(play.last.clone()), box_sound.unwrap_or(sound::IDLE), 0, Vec::new()),
             }
         });
-        let (mut frame, sound_latch, latch_cycles, announcements) = match presented {
+        let (mut frame, sound_latch, latch_cycles, mut announcements) = match presented {
             Some(p) => p,
             None if self.stack.is_empty() => {
                 self.sounds.clear();
@@ -2493,21 +2578,27 @@ impl GameSession {
                 (frame, Self::front_music_latch(&mut self.front_music, music, latch), 0, Vec::new())
             }
         };
+        announcements.extend(audition);
         self.net_hud(&mut frame);
         let panel = match (&self.play, self.stack.last()) {
             (Some(play), _) => play.moves.as_ref().map(|m| m.panel(&font)),
             (None, Some(Screen::Tune(t))) => t.panel(&font),
             _ => None,
         };
-        let track = self.track_cue(sound_latch);
+        let track = self.track_cue(sound_latch, theme);
+        let overhaul_fight = self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987);
         FrameOutput {
             frame,
             sound_frame: self.frames,
             sound_latch,
             latch_cycles,
+            theme,
+            theme_frame,
+            impacts,
+            clear_impacts,
             announcements,
-            tune_table: self.front_music == Some(FrontMusic::Title)
-                || self.play.as_ref().is_some_and(|p| p.fight.setup().config.preset != RulesetPreset::Faithful1987),
+            overhaul_fight,
+            tune_table: self.front_music == Some(FrontMusic::Title) || overhaul_fight,
             track,
             screen: self.screen(),
             transition,
