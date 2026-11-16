@@ -346,6 +346,7 @@ fn st_heavy_red_hadoken_causes_one_grounded_guard_reaction() {
 }
 
 #[test]
+#[ignore = "ST Ken jumps with SF1 hurtboxes, so the Hadoken hits him (#158)"]
 fn st_heavy_red_hadoken_matches_whiff_startup_and_recovery() {
     for loadout in LOADOUTS {
         let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, loadout)

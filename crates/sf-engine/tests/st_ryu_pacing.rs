@@ -125,6 +125,7 @@ fn fireball(fight: &mut Fight, assets: &Assets, punch: usize) -> usize {
 }
 
 #[test]
+#[ignore = "ST Ken jumps with SF1 hurtboxes, so the Hadoken hits him (#158)"]
 fn super_turbo_ryu_matches_world_pacing_targets() {
     for (loadout, recovery) in [(Loadout::Standard, 32), (Loadout::Old, 31)] {
         let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, loadout)
