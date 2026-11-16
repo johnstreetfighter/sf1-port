@@ -17,6 +17,26 @@ pub mod bus;
 pub use protocol::{AfterMatchChoice, NetPacket, RejectReason, SyncedMatchRules};
 pub use rollback::{RollbackEngine, RollbackEvent, MAX_ROLLBACK_FRAMES};
 pub use transport::{NetTransportCommand, NetTransportEvent, RoomAnnouncement};
+pub use sf_relay::RoomCode;
+
+/// Where a typed or pasted Direct Join entry points.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JoinTarget {
+    /// A LAN address code (`SF1-…`) or a raw `IP:PORT`.
+    Address { ip: [u8; 4], port: u16 },
+    /// A room on the configured Internet relay.
+    Internet(RoomCode),
+}
+
+/// Read a Direct Join entry in any case. Internet codes never contain `1`
+/// or `.`, so they cannot be mistaken for an address form.
+pub fn parse_join_target(input: &str) -> Option<JoinTarget> {
+    if let Some(code) = RoomCode::parse(input) {
+        return Some(JoinTarget::Internet(code));
+    }
+    let (ip, port) = decode_room_code(&input.trim().to_ascii_uppercase())?;
+    Some(JoinTarget::Address { ip, port })
+}
 
 /// Right/left/down/up occupy bits 0..3; LP/MP/HP/LK/MK/HK occupy 4..9.
 /// All other bits belong to the transport, including bit 15's sentinel.

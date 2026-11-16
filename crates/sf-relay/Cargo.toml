@@ -1,0 +1,33 @@
+[package]
+name = "sf-relay"
+version.workspace = true
+edition.workspace = true
+description = "Internet room relay: room codes, the relay wire format and the QUIC relay service"
+
+[features]
+# Codes, room rules and the wire format are dependency-free so the pure
+# engine can parse what a player types. `net` adds the QUIC relay service
+# and the client the game's host transport uses.
+default = []
+net = ["dep:quinn", "dep:tokio", "dep:rustls", "dep:ring", "dep:webpki-roots"]
+
+[dependencies]
+# QUIC: an authenticated, encrypted connection carrying gameplay as
+# unreliable datagrams. rustls with ring matches the rustls already used by
+# the directory worker (ureq).
+quinn = { version = "=0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"], optional = true }
+tokio = { version = "1.53", default-features = false, features = ["rt", "rt-multi-thread", "net", "time", "sync", "macros"], optional = true }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "logging", "tls12"], optional = true }
+ring = { version = "0.17.14", optional = true }
+webpki-roots = { version = "1.0.11", optional = true }
+
+[dev-dependencies]
+rcgen = { version = "=0.14.10", default-features = false, features = ["crypto", "ring", "pem"] }
+
+[[bin]]
+name = "sf-relay"
+required-features = ["net"]
+
+[[test]]
+name = "service"
+required-features = ["net"]

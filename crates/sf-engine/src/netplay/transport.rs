@@ -32,6 +32,11 @@ pub struct RoomAnnouncement {
 pub enum NetTransportCommand {
     BindHost { port: u16, room: RoomAnnouncement },
     ConnectPeer { addr: String },
+    /// Open a room on the configured relay, or update the open one's
+    /// announcement. `Bound` carries its code once the relay has it ready.
+    HostInternetRoom { room: RoomAnnouncement },
+    /// Join a room on the configured relay by its code.
+    JoinInternetRoom { code: String },
     SendPacket { to_peer: u8, bytes: Vec<u8> },
     RefreshRooms,
     Close,

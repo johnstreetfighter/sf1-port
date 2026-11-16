@@ -13,8 +13,14 @@ use sf_engine::netplay::protocol::{tag_from_str, tag_to_string, RttEstimator, MA
 use sf_engine::netplay::transport::MAX_ROUTES;
 use sf_engine::netplay::{
     decode_room_code, encode_room_code, Link, NetPacket, NetTransportCommand as Command,
-    NetTransportEvent as Event, Room, RoomAnnouncement, RoomKind,
+    NetTransportEvent as Event, Room, RoomAnnouncement, RoomCode, RoomKind,
 };
+use sf_relay::client::{ClientConfig, ClientEvent, Closed, RelayClient, Roots, SendError};
+use sf_relay::rooms::Refusal;
+use sf_relay::wire::Request;
+
+// Every rollback packet must fit one relay datagram.
+const _: () = assert!(MAX_PACKET_BYTES <= sf_relay::wire::MAX_PAYLOAD);
 
 const IO_BUDGET: usize = 64;
 const QUEUE_LIMIT: usize = 256;
@@ -68,6 +74,8 @@ pub struct NetDriverConfig {
     /// OS boundary injection for deterministic worker tests. The normal probe
     /// queries the actual route/media; link_override bypasses it completely.
     pub adapter_probe: AdapterProbe,
+    /// Certificate authorities accepted for the Internet relay.
+    pub relay_roots: Roots,
 }
 
 impl Default for NetDriverConfig {
@@ -82,6 +90,7 @@ impl Default for NetDriverConfig {
             route_ttl: Duration::from_secs(10),
             directory_timeout: Duration::from_secs(2),
             adapter_probe: detect_adapter,
+            relay_roots: Roots::Web,
         }
     }
 }
@@ -112,6 +121,13 @@ struct DiscoverySend {
     bytes: Vec<u8>,
     created: Instant,
 }
+/// An Internet room session on the relay: seat 0 is the host, and a seat is
+/// the route number the engine sees.
+struct RelayLink {
+    client: RelayClient,
+    code: Option<RoomCode>,
+}
+
 struct RoomTiming {
     rtt: RttEstimator,
     last_probe: Instant,
@@ -157,6 +173,8 @@ pub struct HostNetDriver {
     discovery_probes: VecDeque<DiscoveryProbe>,
     discovery_sends: VecDeque<DiscoverySend>,
     room_timing: BTreeMap<SocketAddrV4, RoomTiming>,
+    relay: Option<String>,
+    relay_link: Option<RelayLink>,
 }
 
 impl Default for HostNetDriver {
@@ -230,6 +248,8 @@ impl HostNetDriver {
             discovery_probes: VecDeque::new(),
             discovery_sends: VecDeque::new(),
             room_timing: BTreeMap::new(),
+            relay: None,
+            relay_link: None,
         }
     }
 
@@ -275,6 +295,12 @@ impl HostNetDriver {
             .push_back(message.into().chars().take(256).collect());
     }
 
+    /// The Internet relay as `host` or `host:port`. A change applies to the
+    /// next Internet room; an open one keeps its relay.
+    pub fn set_relay(&mut self, relay: Option<String>) {
+        self.relay = relay.filter(|value| !value.trim().is_empty());
+    }
+
     pub fn set_lobby_url(&mut self, url: Option<String>) {
         let url = url.filter(|value| !value.trim().is_empty());
         if self.lobby_url == url {
@@ -294,6 +320,7 @@ impl HostNetDriver {
     /// each tick so a busy peer cannot monopolize the game's frame thread.
     pub fn poll(&mut self, commands: &[Command]) -> Vec<Event> {
         self.poll_adapter();
+        self.relay_tick();
         for command in commands.iter().take(QUEUE_LIMIT) {
             if let Err(error) = self.command(command) {
                 self.error(error.to_string());
@@ -339,6 +366,7 @@ impl HostNetDriver {
     fn close(&mut self) {
         self.withdraw_directory();
         self.socket = None;
+        self.relay_link = None;
         self.hosting = false;
         self.room = None;
         self.routes = std::array::from_fn(|_| None);
@@ -420,6 +448,24 @@ impl HostNetDriver {
                     bind_ip: self.config.bind_ip,
                 })?;
             }
+            Command::SendPacket { to_peer, bytes } if self.relay_link.is_some() => {
+                check_outgoing(bytes)?;
+                let known = self.relay_seat_is_peer(*to_peer);
+                let link = self.relay_link.as_ref().filter(|_| known).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotConnected, "UNKNOWN NETWORK PEER")
+                })?;
+                link.client.send(*to_peer, bytes).map_err(|error| match error {
+                    SendError::QueueFull => {
+                        io::Error::new(io::ErrorKind::WouldBlock, "NETWORK SEND QUEUE FULL")
+                    }
+                    SendError::TooLarge => {
+                        io::Error::new(io::ErrorKind::InvalidInput, "INVALID OUTGOING PACKET")
+                    }
+                    SendError::Closed => {
+                        io::Error::new(io::ErrorKind::NotConnected, "RELAY CONNECTION LOST")
+                    }
+                })?;
+            }
             Command::SendPacket { to_peer, bytes } => {
                 let addr = self
                     .routes
@@ -429,12 +475,7 @@ impl HostNetDriver {
                     .ok_or_else(|| {
                         io::Error::new(io::ErrorKind::NotConnected, "UNKNOWN NETWORK PEER")
                     })?;
-                if bytes.len() > MAX_PACKET_BYTES || NetPacket::from_bytes(bytes).is_none() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "INVALID OUTGOING PACKET",
-                    ));
-                }
+                check_outgoing(bytes)?;
                 if self.outgoing.len() >= QUEUE_LIMIT {
                     return Err(io::Error::new(
                         io::ErrorKind::WouldBlock,
@@ -455,6 +496,30 @@ impl HostNetDriver {
                 self.publish_rooms(true);
                 self.directory_fetch = true;
             }
+            Command::HostInternetRoom { room } => {
+                if !valid_announcement(room) {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "INVALID ROOM ANNOUNCEMENT",
+                    ));
+                }
+                if self.hosting && self.relay_link.is_some() {
+                    // The same room with new details: the code stays.
+                    self.room = Some(room.clone());
+                    return Ok(());
+                }
+                self.close();
+                self.open_relay(Request::Create)?;
+                self.hosting = true;
+                self.room = Some(room.clone());
+            }
+            Command::JoinInternetRoom { code } => {
+                let code = RoomCode::parse(code).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "INVALID ROOM CODE")
+                })?;
+                self.close();
+                self.open_relay(Request::Join(code))?;
+            }
             Command::Close => {
                 // Dispatch a final forfeit/leave before releasing the socket.
                 // This remains best effort and bounded; WouldBlock never waits.
@@ -467,6 +532,19 @@ impl HostNetDriver {
 
     fn emit_bound(&mut self) {
         if !self.pending_bound {
+            return;
+        }
+        if let Some(link) = &self.relay_link {
+            // An Internet room's code is shown only once the relay has it.
+            let (Some(code), Some(adapter)) = (link.code, self.link) else {
+                return;
+            };
+            self.events.push(Event::Bound {
+                local_addr: self.relay.clone().unwrap_or_default(),
+                room_code: code.to_string(),
+                link: adapter,
+            });
+            self.pending_bound = false;
             return;
         }
         let (Some(link), Some(mut addr)) = (self.link, self.local_addr()) else {
@@ -492,6 +570,101 @@ impl HostNetDriver {
             link,
         });
         self.pending_bound = false;
+    }
+
+    fn open_relay(&mut self, request: Request) -> io::Result<()> {
+        let relay = self.relay.clone().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::NotFound, "NO INTERNET RELAY SET")
+        })?;
+        let client = RelayClient::open(
+            ClientConfig { relay, roots: self.config.relay_roots.clone() },
+            request,
+        )?;
+        self.relay_link = Some(RelayLink { client, code: None });
+        self.pending_bound = true;
+        Ok(())
+    }
+
+    /// Relay events within the frame's I/O budget. Seats are routes: a
+    /// host's guests arrive on routes 1 to 15, a guest hears the host on 0.
+    fn relay_tick(&mut self) {
+        for _ in 0..IO_BUDGET {
+            let Some(event) = self.relay_link.as_ref().and_then(|link| link.client.poll()) else {
+                return;
+            };
+            match event {
+                ClientEvent::Ready { code, relay_ip, .. } => {
+                    if let Some(link) = self.relay_link.as_mut() {
+                        link.code = Some(code);
+                    }
+                    let query = match relay_ip {
+                        std::net::IpAddr::V4(target) => AdapterQuery::Peer {
+                            target,
+                            bind_ip: self.config.bind_ip,
+                        },
+                        std::net::IpAddr::V6(_) => AdapterQuery::Host {
+                            bind_ip: self.config.bind_ip,
+                        },
+                    };
+                    if let Err(error) = self.request_adapter(query) {
+                        self.relay_unknown_link(error);
+                    }
+                }
+                ClientEvent::Datagram { from, bytes } => {
+                    if !self.relay_seat_is_peer(from)
+                        || bytes.len() > MAX_PACKET_BYTES
+                        || NetPacket::from_bytes(&bytes).is_none()
+                        || self.events.len() >= QUEUE_LIMIT
+                    {
+                        continue;
+                    }
+                    self.events.push(Event::PacketReceived {
+                        from_peer: from,
+                        addr: format!("relay seat {from}"),
+                        bytes,
+                    });
+                }
+                ClientEvent::Refused(refusal) => {
+                    let relay = self.relay.clone().unwrap_or_default();
+                    self.close();
+                    self.error(match refusal {
+                        Refusal::NotFound => format!("ROOM CODE NOT FOUND ON {relay}"),
+                        Refusal::Full => "ROOM IS FULL".into(),
+                        Refusal::Throttled => "TOO MANY TRIES, WAIT A MINUTE".into(),
+                        Refusal::Capacity => format!("RELAY {relay} IS FULL"),
+                        Refusal::AlreadyInRoom => "ALREADY IN A ROOM".into(),
+                    });
+                    return;
+                }
+                ClientEvent::Closed(closed) => {
+                    self.close();
+                    self.error(match closed {
+                        Closed::RoomClosed => "ROOM CLOSED".into(),
+                        Closed::RoomExpired => "ROOM CODE EXPIRED".into(),
+                        Closed::Shutdown => "RELAY SHUT DOWN".into(),
+                        Closed::Lost(why) => format!("RELAY CONNECTION LOST: {why}"),
+                    });
+                    return;
+                }
+                ClientEvent::Failed(message) => {
+                    self.close();
+                    self.error(message);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// A host's peers are guest seats; a guest's only peer is the host's seat 0.
+    fn relay_seat_is_peer(&self, seat: u8) -> bool {
+        if self.hosting { seat != 0 } else { seat == 0 }
+    }
+
+    /// Relay play goes ahead when the link cannot be classified; only a
+    /// verified Ethernet link satisfies Wired Only, so treat it as Wi-Fi.
+    fn relay_unknown_link(&mut self, error: io::Error) {
+        self.link = Some(Link::Wifi);
+        self.note(format!("Relay link type unknown: {error}"));
     }
 
     fn request_adapter(&mut self, query: AdapterQuery) -> io::Result<()> {
@@ -532,6 +705,8 @@ impl HostNetDriver {
             self.adapter_busy = false;
             if serial == self.adapter_serial && self.pending_bound {
                 match result {
+                    Ok(info) if self.relay_link.is_some() => self.link = Some(info.link),
+                    Err(error) if self.relay_link.is_some() => self.relay_unknown_link(error),
                     Ok(info) if !info.ip.is_unspecified() => {
                         self.link = Some(info.link);
                         self.advertised_ip = info.ip;
@@ -1094,6 +1269,16 @@ impl HostNetDriver {
             }
         }
     }
+}
+
+fn check_outgoing(bytes: &[u8]) -> io::Result<()> {
+    if bytes.len() > MAX_PACKET_BYTES || NetPacket::from_bytes(bytes).is_none() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "INVALID OUTGOING PACKET",
+        ));
+    }
+    Ok(())
 }
 
 fn valid_announcement(room: &RoomAnnouncement) -> bool {

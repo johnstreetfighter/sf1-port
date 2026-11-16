@@ -3,7 +3,7 @@
 use super::Transition;
 use super::TypedKey;
 use crate::roster::MenuInput;
-use crate::netplay::{decode_room_code, Link, Room, RoomKind};
+use crate::netplay::{parse_join_target, JoinTarget, Link, Room, RoomKind};
 use sf_video::compositor::{fallback_text, ink, RomFont};
 use sf_video::render::Frame;
 use super::draw::{fit, framed_wide};
@@ -17,7 +17,19 @@ const DIRECT_JOIN_ROW: usize = 3;
 pub enum OnlineAction {
     Refresh,
     Join { addr: String, kind: RoomKind },
+    /// Join a room on the configured relay by its canonical code.
+    JoinInternet { code: String, kind: RoomKind },
     Host { port: u16, public: bool, wired_only: bool, kind: RoomKind },
+    /// Open a room on the configured relay.
+    HostInternet { wired_only: bool, kind: RoomKind },
+}
+
+/// Host Match's VISIBILITY row. Internet is offered only with a relay set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Visibility {
+    Internet,
+    Public,
+    Private,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,7 +48,8 @@ pub struct OnlineScreen {
     host_kind: RoomKind,
     rooms: Vec<Room>,
     port: u16,
-    public: bool,
+    visibility: Visibility,
+    relay: bool,
     entry: String,
     at: usize,
     editing: bool,
@@ -50,10 +63,17 @@ impl OnlineScreen {
         Self {
             view: LobbyView::Browse, cursor: 0, wired_only, rooms: Vec::new(),
             join_kind: RoomKind::Versus, host_kind: RoomKind::Versus,
-            port: port.max(1024), public: true,
+            port: port.max(1024), visibility: Visibility::Public, relay: false,
             entry: String::new(), at: 0, editing: false,
             notice: String::new(), room_code: None, actions: Vec::new(),
         }
+    }
+
+    /// Offer Internet rooms on the configured relay, first and by default.
+    pub fn with_relay(mut self, relay: bool) -> Self {
+        self.relay = relay;
+        self.visibility = if relay { Visibility::Internet } else { Visibility::Public };
+        self
     }
 
     pub fn view(&self) -> LobbyView { self.view }
@@ -91,7 +111,7 @@ impl OnlineScreen {
             return;
         }
         let code = text.to_ascii_uppercase();
-        if decode_room_code(&code).is_none() {
+        if parse_join_target(&code).is_none() {
             self.set_notice("INVALID CODE OR IPV4 ADDRESS");
             return;
         }
@@ -117,14 +137,18 @@ impl OnlineScreen {
     }
 
     fn join_code(&mut self, code: &str, kind: RoomKind) -> Option<Transition> {
-        let Some((ip, port)) = decode_room_code(code.trim()) else {
-            self.notice = "INVALID CODE OR IPV4 ADDRESS".into();
-            return Some(Transition::ValueChanged);
+        let action = match parse_join_target(code) {
+            Some(JoinTarget::Address { ip, port }) => OnlineAction::Join {
+                addr: format!("{}.{}.{}.{}:{port}", ip[0], ip[1], ip[2], ip[3]),
+                kind,
+            },
+            Some(JoinTarget::Internet(code)) => OnlineAction::JoinInternet { code: code.to_string(), kind },
+            None => {
+                self.notice = "INVALID CODE OR IPV4 ADDRESS".into();
+                return Some(Transition::ValueChanged);
+            }
         };
-        self.actions.push(OnlineAction::Join {
-            addr: format!("{}.{}.{}.{}:{port}", ip[0], ip[1], ip[2], ip[3]),
-            kind,
-        });
+        self.actions.push(action);
         self.editing = false;
         self.notice = "CONNECTING...".into();
         Some(Transition::ValueChanged)
@@ -244,8 +268,11 @@ impl OnlineScreen {
             LobbyView::Host => {
                 self.draw_row(&mut frame, font, 1, 7, "ROOM KIND",
                     if self.host_kind == RoomKind::Dramatic { "DRAMATIC 2V1" } else { "1V1 VERSUS" });
-                self.draw_row(&mut frame, font, 2, 10, "VISIBILITY",
-                    if self.public { "PUBLIC LAN+LOBBY" } else { "PRIVATE CODE ONLY" });
+                self.draw_row(&mut frame, font, 2, 10, "VISIBILITY", match self.visibility {
+                    Visibility::Internet => "INTERNET CODE",
+                    Visibility::Public => "PUBLIC LAN+LOBBY",
+                    Visibility::Private => "PRIVATE CODE ONLY",
+                });
                 self.draw_row(&mut frame, font, 3, 13, "WIRED ONLY", on_off(self.wired_only));
                 self.draw_row(&mut frame, font, 4, 16, "OPEN ROOM", "");
                 if let Some(code) = &self.room_code {
@@ -345,7 +372,14 @@ impl OnlineScreen {
                     return Some(Transition::ValueChanged);
                 }
                 (2, MenuInput::Left | MenuInput::Right | MenuInput::Confirm) => {
-                    self.public = !self.public;
+                    let choices: &[Visibility] = if self.relay {
+                        &[Visibility::Internet, Visibility::Public, Visibility::Private]
+                    } else {
+                        &[Visibility::Public, Visibility::Private]
+                    };
+                    let current = choices.iter().position(|&v| v == self.visibility).unwrap_or(0);
+                    let step = if input == MenuInput::Left { choices.len() - 1 } else { 1 };
+                    self.visibility = choices[(current + step) % choices.len()];
                     return Some(Transition::ValueChanged);
                 }
                 (3, MenuInput::Left | MenuInput::Right | MenuInput::Confirm) => {
@@ -353,8 +387,14 @@ impl OnlineScreen {
                     return Some(Transition::ValueChanged);
                 }
                 (4, MenuInput::Confirm | MenuInput::Start) => {
-                    self.actions.push(OnlineAction::Host {
-                        port: self.port, public: self.public, wired_only: self.wired_only, kind: self.host_kind,
+                    self.actions.push(match self.visibility {
+                        Visibility::Internet => OnlineAction::HostInternet {
+                            wired_only: self.wired_only, kind: self.host_kind,
+                        },
+                        visibility => OnlineAction::Host {
+                            port: self.port, public: visibility == Visibility::Public,
+                            wired_only: self.wired_only, kind: self.host_kind,
+                        },
                     });
                     self.notice = "OPENING ROOM...".into();
                     return Some(Transition::ValueChanged);
