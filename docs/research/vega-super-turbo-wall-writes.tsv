@@ -1,0 +1,129 @@
+fixture	loadout	release_direction	release_button	gap	phase	follow_up	follow_display_offset	defender_input	launch_hold	start_display	start_tick	latch	latch_xy	rebound	rebound_xy	follow_sample	strike	first_attack_box	attack_id_x_y_rx_ry	izuna_grab	izuna_grab_vega_xy	izuna_grab_ken_xy	izuna_release	contact	damage	freeze_vega	freeze_clear_vega	freeze_ken	freeze_clear_ken	first_ground_contact	vega_neutral	ken_reaction_exit
+Barcelona no follow-up	new	u	lk	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	new	u	mk	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	new	u	hk	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona left wall	new	ul	lk	90	0	none	0	none	bootleft	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona right wall	new	ur	lk	90	0	none	0	none	bootright	2203	24	27	853,100	31	845,100		72													72	91	
+Barcelona swapped positions	new	u	lk	-90	0	none	0	none	none	2203	25	37	287,96	41	296,96		82													82	101	
+Sky High Claw	new	u	lp	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		84	51	49,-62,62,33,10											104	116	
+Barcelona strike	new	u	lk	90	0	lp	62	none	none	2203	24	46	336,76	50	339,76	76	76	79	10,13,40,86,18					83	29	83	97	83	98	106	125	217
+Sky High Claw	new	u	mp	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	127	139	102
+Barcelona strike	new	u	lk	90	0	mp	62	none	none	2203	24	46	336,76	50	339,76	76	76	79	22,13,40,86,18					83	31	83	97	83	98	106	125	217
+Sky High Claw	new	u	hp	90	0	none	0	none	none	2203	24	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	125	137	102
+Barcelona strike	new	u	lk	90	0	hp	62	none	none	2203	24	46	336,76	50	339,76	76	76	79	24,13,40,86,18					83	33	83	97	83	98	106	125	217
+Barcelona guard control	new	u	lk	90	0	lp	62	lateback	none	2203	24	46	336,76	50	339,76	76	76	79	10,13,40,86,18					83	6	83	97	83	98	106	125	119
+Sky High Claw guard control	new	u	hp	90	0	none	0	lateback	none	2203	24	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	3	66	80	66	81	125	137	102
+Barcelona guard control	new	u	lk	90	0	lp	62	latelow	none	2203	24	46	336,76	50	339,76	76	76	79	10,13,40,86,18											92	117	
+Sky High Claw guard control	new	u	hp	90	0	none	0	latelow	none	2203	24	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	3	65	79	65	80	124	136	101
+Barcelona guard control	new	u	lk	90	0	lp	62	crouch	none	2203	24	46	336,76	50	339,76	77	77	80	10,13,40,86,18											92	117	
+Sky High Claw guard control	new	u	hp	90	0	none	0	crouch	none	2203	24	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	14	65	79	65	80	124	136	101
+Barcelona follow-up comparison	new	u	lk	90	0	rlp	69	none	none	2203	24	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	24	88	102	88	103	106	125	222
+Barcelona follow-up comparison	new	u	lk	90	0	rlp	70	none	none	2203	24	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	0	rlp	71	none	none	2203	24	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	0	rlp	72	none	none	2203	24	46	336,76	50	339,76	89	89			89	613,59	648,40	133	133	34					133	159	236
+Barcelona follow-up comparison	new	u	lk	90	0	rmp	70	none	none	2203	24	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	0	rhp	70	none	none	2203	24	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	0	llp	70	none	none	2203	24	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	0	lp	70	none	none	2203	24	46	336,76	50	339,76	87	87	90	10,13,40,86,18					90	27	90	104	90	105	106	125	224
+Barcelona follow-up comparison	new	u	lk	90	0	lk	62	none	none	2203	24	46	336,76	50	339,76	76	91													91	110	
+Barcelona no follow-up	new	u	lk	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	new	u	mk	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	new	u	hk	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona left wall	new	ul	lk	90	1	none	0	none	bootleft	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona right wall	new	ur	lk	90	1	none	0	none	bootright	2204	26	27	853,100	31	845,100		72													72	91	
+Barcelona swapped positions	new	u	lk	-90	1	none	0	none	none	2204	26	37	287,96	41	296,96		82													82	101	
+Sky High Claw	new	u	lp	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		84	51	49,-62,62,33,10											104	116	
+Barcelona strike	new	u	lk	90	1	lp	62	none	none	2204	26	46	336,76	50	339,76	75	75	78	10,13,40,86,18					83	28	83	97	83	98	106	125	217
+Sky High Claw	new	u	mp	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	127	139	102
+Barcelona strike	new	u	lk	90	1	mp	62	none	none	2204	26	46	336,76	50	339,76	75	75	78	22,13,40,86,18					83	30	83	97	83	98	106	125	217
+Sky High Claw	new	u	hp	90	1	none	0	none	none	2204	26	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	125	137	102
+Barcelona strike	new	u	lk	90	1	hp	62	none	none	2204	26	46	336,76	50	339,76	75	75	78	24,13,40,86,18					83	32	83	97	83	98	106	125	217
+Barcelona guard control	new	u	lk	90	1	lp	62	lateback	none	2204	26	46	336,76	50	339,76	75	75	78	10,13,40,86,18					83	6	83	97	83	98	106	125	119
+Sky High Claw guard control	new	u	hp	90	1	none	0	lateback	none	2204	26	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	3	66	80	66	81	125	137	102
+Barcelona guard control	new	u	lk	90	1	lp	62	latelow	none	2204	26	46	336,76	50	339,76	75	75	78	10,13,40,86,18											92	117	
+Sky High Claw guard control	new	u	hp	90	1	none	0	latelow	none	2204	26	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	3	65	79	65	80	124	136	101
+Barcelona guard control	new	u	lk	90	1	lp	62	crouch	none	2204	26	46	336,76	50	339,76	76	76	79	10,13,40,86,18											92	117	
+Sky High Claw guard control	new	u	hp	90	1	none	0	crouch	none	2204	26	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	15	65	79	65	80	124	136	101
+Barcelona follow-up comparison	new	u	lk	90	1	rlp	69	none	none	2204	26	46	336,76	50	339,76	84	84	87	10,13,40,86,18					87	24	87	101	87	102	106	125	221
+Barcelona follow-up comparison	new	u	lk	90	1	rlp	70	none	none	2204	26	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	27	88	102	88	103	106	125	222
+Barcelona follow-up comparison	new	u	lk	90	1	rlp	71	none	none	2204	26	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	1	rlp	72	none	none	2204	26	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	new	u	lk	90	1	rmp	70	none	none	2204	26	46	336,76	50	339,76	85	85	88	22,13,40,86,18					88	28	88	102	88	103	106	125	222
+Barcelona follow-up comparison	new	u	lk	90	1	rhp	70	none	none	2204	26	46	336,76	50	339,76	85	85	88	24,13,40,86,18					88	30	88	102	88	103	106	125	222
+Barcelona follow-up comparison	new	u	lk	90	1	llp	70	none	none	2204	26	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	27	88	102	88	103	106	125	222
+Barcelona no follow-up	old	u	lk	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	old	u	mk	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	old	u	hk	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona left wall	old	ul	lk	90	0	none	0	none	bootleft	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona right wall	old	ur	lk	90	0	none	0	none	bootright	2203	23	27	853,100	31	845,100		72													72	91	
+Barcelona swapped positions	old	u	lk	-90	0	none	0	none	none	2203	24	37	287,96	41	296,96		82													82	101	
+Sky High Claw	old	u	lp	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		84	51	49,-62,62,33,10											104	116	
+Barcelona strike	old	u	lk	90	0	lp	62	none	none	2203	23	46	336,76	50	339,76	75	75	78	10,13,40,86,18					83	27	83	97	83	98	106	125	217
+Sky High Claw	old	u	mp	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	17	66	80	66	81	127	139	102
+Barcelona strike	old	u	lk	90	0	mp	62	none	none	2203	23	46	336,76	50	339,76	75	75	78	22,13,40,86,18					83	29	83	97	83	98	106	125	217
+Sky High Claw	old	u	hp	90	0	none	0	none	none	2203	23	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	17	66	80	66	81	125	137	102
+Barcelona strike	old	u	lk	90	0	hp	62	none	none	2203	23	46	336,76	50	339,76	75	75	78	24,13,40,86,18					83	31	83	97	83	98	106	125	217
+Barcelona guard control	old	u	lk	90	0	lp	62	lateback	none	2203	23	46	336,76	50	339,76	75	75	78	10,13,40,86,18					83	6	83	97	83	98	106	125	119
+Sky High Claw guard control	old	u	hp	90	0	none	0	lateback	none	2203	23	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	3	66	80	66	81	125	137	102
+Barcelona guard control	old	u	lk	90	0	lp	62	latelow	none	2203	23	46	336,76	50	339,76	75	75	78	10,13,40,86,18											92	117	
+Sky High Claw guard control	old	u	hp	90	0	none	0	latelow	none	2203	23	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	3	65	79	65	80	124	136	101
+Barcelona guard control	old	u	lk	90	0	lp	62	crouch	none	2203	23	46	336,76	50	339,76	78	78	81	10,13,40,86,18											92	117	
+Sky High Claw guard control	old	u	hp	90	0	none	0	crouch	none	2203	23	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	15	65	79	65	80	124	136	101
+Barcelona follow-up comparison	old	u	lk	90	0	rlp	69	none	none	2203	23	46	336,76	50	339,76	84	84	87	10,13,40,86,18					87	21	87	101	87	102	106	125	221
+Barcelona follow-up comparison	old	u	lk	90	0	rlp	70	none	none	2203	23	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	27	88	102	88	103	106	125	222
+Barcelona follow-up comparison	old	u	lk	90	0	rlp	71	none	none	2203	23	46	336,76	50	339,76	86	86			86	597,83	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	0	rlp	72	none	none	2203	23	46	336,76	50	339,76	87	87			87	604,75	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	0	rmp	70	none	none	2203	23	46	336,76	50	339,76	85	85	88	22,13,40,86,18					88	28	88	102	88	103	106	125	222
+Barcelona follow-up comparison	old	u	lk	90	0	rhp	70	none	none	2203	23	46	336,76	50	339,76	85	85	88	24,13,40,86,18					88	30	88	102	88	103	106	125	222
+Barcelona follow-up comparison	old	u	lk	90	0	llp	70	none	none	2203	23	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	27	88	102	88	103	106	125	222
+Barcelona follow-up comparison	old	u	lk	90	0	lp	70	none	none	2203	23	46	336,76	50	339,76	85	85	88	10,13,40,86,18					88	27	88	102	88	103	106	125	222
+Barcelona follow-up comparison	old	u	lk	90	0	lk	62	none	none	2203	23	46	336,76	50	339,76	75	91													91	110	
+Barcelona no follow-up	old	u	lk	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	old	u	mk	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona no follow-up	old	u	hk	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona left wall	old	ul	lk	90	1	none	0	none	bootleft	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona right wall	old	ur	lk	90	1	none	0	none	bootright	2204	25	27	853,100	31	845,100		72													72	91	
+Barcelona swapped positions	old	u	lk	-90	1	none	0	none	none	2204	26	37	287,96	41	296,96		82													82	101	
+Sky High Claw	old	u	lp	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		84	51	49,-62,62,33,10											104	116	
+Barcelona strike	old	u	lk	90	1	lp	62	none	none	2204	25	46	336,76	50	339,76	77	77	80	10,13,40,86,18					83	27	83	97	83	98	106	125	217
+Sky High Claw	old	u	mp	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	127	139	102
+Barcelona strike	old	u	lk	90	1	mp	62	none	none	2204	25	46	336,76	50	339,76	77	77	80	22,13,40,86,18					83	28	83	97	83	98	106	125	217
+Sky High Claw	old	u	hp	90	1	none	0	none	none	2204	25	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	16	66	80	66	81	125	137	102
+Barcelona strike	old	u	lk	90	1	hp	62	none	none	2204	25	46	336,76	50	339,76	77	77	80	24,13,40,86,18					83	30	83	97	83	98	106	125	217
+Barcelona guard control	old	u	lk	90	1	lp	62	lateback	none	2204	25	46	336,76	50	339,76	77	77	80	10,13,40,86,18					83	6	83	97	83	98	106	125	119
+Sky High Claw guard control	old	u	hp	90	1	none	0	lateback	none	2204	25	46	336,76	50	339,76		81	51	49,-62,62,33,10					66	3	66	80	66	81	125	137	102
+Barcelona guard control	old	u	lk	90	1	lp	62	latelow	none	2204	25	46	336,76	50	339,76	77	77	80	10,13,40,86,18											92	117	
+Sky High Claw guard control	old	u	hp	90	1	none	0	latelow	none	2204	25	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	3	65	79	65	80	124	136	101
+Barcelona guard control	old	u	lk	90	1	lp	62	crouch	none	2204	25	46	336,76	50	339,76	77	77	80	10,13,40,86,18											92	117	
+Sky High Claw guard control	old	u	hp	90	1	none	0	crouch	none	2204	25	46	336,76	50	339,76		80	51	49,-62,62,33,10					65	15	65	79	65	80	124	136	101
+Barcelona follow-up comparison	old	u	lk	90	1	rlp	69	none	none	2204	25	46	336,76	50	339,76	86	86			86	597,83	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	1	rlp	70	none	none	2204	25	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	1	rlp	71	none	none	2204	25	46	336,76	50	339,76	89	89			89	613,59	648,40	133	133	34					133	159	236
+Barcelona follow-up comparison	old	u	lk	90	1	rlp	72	none	none	2204	25	46	336,76	50	339,76	90	90			90	617,50	652,40	135	135	34					135	161	237
+Barcelona follow-up comparison	old	u	lk	90	1	rmp	70	none	none	2204	25	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	1	rhp	70	none	none	2204	25	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona follow-up comparison	old	u	lk	90	1	llp	70	none	none	2204	25	46	336,76	50	339,76	88	88			88	612,67	642,40	125	125	34					125	151	227
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto2	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto3	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto4	2203	24	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto5	2203	24	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto6	2203	24	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	new	ur	lk	90	0	none	0	none	rightto7	2203	24	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto2	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto3	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto4	2204	26	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto5	2204	26	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto6	2204	26	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	new	ur	lk	90	1	none	0	none	rightto7	2204	26	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto2	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto3	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto4	2203	23	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto5	2203	23	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto6	2203	23	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	0	none	0	none	rightto7	2203	23	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto2	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto3	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto4	2204	25	46	336,76	50	339,76		91													91	110	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto5	2204	25	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto6	2204	25	27	853,100	31	845,100		72													72	91	
+Barcelona wall choice	old	ur	lk	90	1	none	0	none	rightto7	2204	25	27	853,100	31	845,100		72													72	91	

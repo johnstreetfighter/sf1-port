@@ -1,0 +1,149 @@
+group	ken_loadout	direction	button	scheduled_display	fixture_gap	reply_delay_display	reply_direction	observed_gap_before_input	capture_display	capture_game_tick_mod_256	capture_gap	ken_first_animation	ryu_reply_tick	ryu_release_tick	ken_ready_tick	ryu_ready_tick	damage_ticks	damage_packets	ken_last_x	ryu_last_x
+backsoft	new	back	hk	2200	38	10	back	38	2201	65	38	0x133618	13	62	109	122	62	16	808	984
+backsoft	new	back	hk	2200	38	10	forward	38	2201	65	38	0x133618	13	62	109	122	62	16	808	984
+backsoft	new	back	hk	2200	38	11	back	38	2201	65	38	0x133618	14	62	109	162	101	32	808	984
+backsoft	new	back	hk	2200	38	11	forward	38	2201	65	38	0x133618	14	62	109	162	101	32	808	984
+backsoft	new	back	mp	2200	38	10	back	38	2201	65	38	0x133490	13	44	74	100	44	16	681	906
+backsoft	new	back	mp	2200	38	10	forward	38	2201	65	38	0x133490	13	44	74	100	44	16	681	906
+backsoft	new	back	mp	2200	38	11	back	38	2201	65	38	0x133490	14	44	74	159	85	32	681	977
+backsoft	new	back	mp	2200	38	11	forward	38	2201	65	38	0x133490	14	44	74	159	85	32	681	977
+backsoft	old	back	hk	2200	38	10	back	38	2201	67	38	0x1c7c9a	13	62	109	122	62	16	808	984
+backsoft	old	back	hk	2200	38	10	forward	38	2201	67	38	0x1c7c9a	13	62	109	122	62	16	808	984
+backsoft	old	back	hk	2200	38	11	back	38	2201	67	38	0x1c7c9a	15	62	109	162	101	32	808	984
+backsoft	old	back	hk	2200	38	11	forward	38	2201	67	38	0x1c7c9a	15	62	109	162	101	32	808	984
+backsoft	old	back	mp	2200	38	10	back	38	2201	67	38	0x1c7b12	13	44	74	100	44	16	681	906
+backsoft	old	back	mp	2200	38	10	forward	38	2201	67	38	0x1c7b12	13	44	74	100	44	16	681	906
+backsoft	old	back	mp	2200	38	11	back	38	2201	67	38	0x1c7b12	15	44	74	159	85	32	681	977
+backsoft	old	back	mp	2200	38	11	forward	38	2201	67	38	0x1c7b12	15	44	74	159	85	32	681	977
+basic	new	forward	hk	2200	38			38	2201	65	38	0x133618		62	109	156	95	32	546	296
+basic	new	forward	hk	2201	38			38	2202	66	38	0x133618		62	109	156	95	32	546	296
+basic	new	forward	hp	2200	38			38	2201	65	38	0x133490		44	74	153	79	32	688	391
+basic	new	forward	hp	2201	38			38	2202	66	38	0x133490		44	74	153	79	32	688	391
+basic	new	forward	mk	2200	38			38	2201	65	38	0x131308		179	179		14,48,82,116,150	26,4,4,4,4	688	570
+basic	new	forward	mk	2201	38			38	2202	66	38	0x131308		179	179		14,48,82,116,150	26,4,4,4,4	688	574
+basic	new	forward	mp	2200	38			38	2201	65	38	0x133490		44	74	153	79	32	688	391
+basic	new	forward	mp	2201	38			38	2202	66	38	0x133490		44	74	153	79	32	688	391
+basic	new	back	hk	2200	38			38	2201	65	38	0x133618		62	109	162	101	32	808	984
+basic	new	back	hk	2201	38			38	2202	66	38	0x133618		62	109	162	101	32	808	984
+basic	new	back	hp	2200	38			38	2201	65	38	0x133490		44	74	159	85	32	681	977
+basic	new	back	hp	2201	38			38	2202	66	38	0x133490		44	74	159	85	32	681	977
+basic	new	back	mk	2200	38			38	2201	65	38	0x131308		179	179		14,48,82,116,150	26,4,4,4,4	688	568
+basic	new	back	mk	2201	38			38	2202	66	38	0x131308		179	179		14,48,82,116,150	26,4,4,4,4	688	572
+basic	new	back	mp	2200	38			38	2201	65	38	0x133490		44	74	159	85	32	681	977
+basic	new	back	mp	2201	38			38	2202	66	38	0x133490		44	74	159	85	32	681	977
+basic	old	forward	hk	2200	38			38	2201	67	38	0x1c7c9a		62	109	156	95	32	546	296
+basic	old	forward	hk	2201	38			38	2202	68	38	0x1c7c9a		62	109	156	95	32	546	296
+basic	old	forward	hp	2200	38			38	2201	67	38	0x1c7b12		44	74	153	79	32	688	391
+basic	old	forward	hp	2201	38			38	2202	68	38	0x1c7b12		44	74	153	79	32	688	391
+basic	old	forward	mk	2200	38			38	2201	67	38	0x1c7c9a		62	109	156	95	32	546	296
+basic	old	forward	mk	2201	38			38	2202	68	38	0x1c7c9a		62	109	156	95	32	546	296
+basic	old	forward	mp	2200	38			38	2201	67	38	0x1c7b12		44	74	153	79	32	688	391
+basic	old	forward	mp	2201	38			38	2202	68	38	0x1c7b12		44	74	153	79	32	688	391
+basic	old	back	hk	2200	38			38	2201	67	38	0x1c7c9a		62	109	162	101	32	808	984
+basic	old	back	hk	2201	38			38	2202	68	38	0x1c7c9a		62	109	162	101	32	808	984
+basic	old	back	hp	2200	38			38	2201	67	38	0x1c7b12		44	74	159	85	32	681	977
+basic	old	back	hp	2201	38			38	2202	68	38	0x1c7b12		44	74	159	85	32	681	977
+basic	old	back	mk	2200	38			38	2201	67	38	0x1c7c9a		62	109	162	101	32	808	984
+basic	old	back	mk	2201	38			38	2202	68	38	0x1c7c9a		62	109	162	101	32	808	984
+basic	old	back	mp	2200	38			38	2201	67	38	0x1c7b12		44	74	159	85	32	681	977
+basic	old	back	mp	2201	38			38	2202	68	38	0x1c7b12		44	74	159	85	32	681	977
+hold	new	forward	mk	2200	38			38	2201	65	38	0x131308		179	179	229	14,48,82,116,150	26,4,4,4,4	688	566
+hold	new	forward	mk	2201	38			38	2202	66	38	0x131308		179	179	229	14,48,82,116,150	26,4,4,4,4	688	566
+hold	new	back	mk	2200	38			38	2201	65	38	0x131308		179	179	229	14,48,82,116,150	26,4,4,4,4	688	566
+hold	new	back	mk	2201	38			38	2202	66	38	0x131308		179	179	229	14,48,82,116,150	26,4,4,4,4	688	566
+range	new	forward	hk	2200	76			76	2201	65		0x133618							582	303
+range	new	forward	hk	2200	77			77	2201	65		0x133618							583	304
+range	new	forward	hk	2200	78			78												
+range	new	forward	hk	2200	80			80												
+range	new	forward	hk	2200	84			84												
+range	new	forward	mk	2200	76			76	2201	65		0x131308							726	608
+range	new	forward	mk	2200	77			77	2201	65		0x131308							727	609
+range	new	forward	mk	2200	78			78												
+range	new	forward	mk	2200	80			80												
+range	new	forward	mk	2200	84			84												
+range	new	forward	mp	2200	76			76	2201	65		0x133490							726	429
+range	new	forward	mp	2200	77			77	2201	65		0x133490							727	430
+range	new	forward	mp	2200	78			78												
+range	new	forward	mp	2200	80			80												
+range	new	forward	mp	2200	84			84												
+range	new	back	hk	2200	76			76	2201	65		0x133618							846	984
+range	new	back	hk	2200	77			77	2201	65		0x133618							847	984
+range	new	back	hk	2200	78			78												
+range	new	back	hk	2200	80			80												
+range	new	back	hk	2200	84			84												
+range	new	back	mk	2200	76			76	2201	65		0x131308							726	606
+range	new	back	mk	2200	77			77	2201	65		0x131308							727	607
+range	new	back	mk	2200	78			78												
+range	new	back	mk	2200	80			80												
+range	new	back	mk	2200	84			84												
+range	new	back	mp	2200	76			76	2201	65		0x133490							719	984
+range	new	back	mp	2200	77			77	2201	65		0x133490							720	984
+range	new	back	mp	2200	78			78												
+range	new	back	mp	2200	80			80												
+range	new	back	mp	2200	84			84												
+range	old	forward	hk	2200	76			76	2201	67		0x1c7c9a							582	303
+range	old	forward	hk	2200	77			77	2201	67		0x1c7c9a							583	304
+range	old	forward	hk	2200	78			78												
+range	old	forward	hk	2200	80			80												
+range	old	forward	hk	2200	84			84												
+range	old	forward	mk	2200	76			76	2201	67		0x1c7c9a							582	303
+range	old	forward	mk	2200	77			77	2201	67		0x1c7c9a							583	304
+range	old	forward	mk	2200	78			78												
+range	old	forward	mk	2200	80			80												
+range	old	forward	mk	2200	84			84												
+range	old	forward	mp	2200	76			76	2201	67		0x1c7b12							726	429
+range	old	forward	mp	2200	77			77	2201	67		0x1c7b12							727	430
+range	old	forward	mp	2200	78			78												
+range	old	forward	mp	2200	80			80												
+range	old	forward	mp	2200	84			84												
+range	old	back	hk	2200	76			76	2201	67		0x1c7c9a							846	984
+range	old	back	hk	2200	77			77	2201	67		0x1c7c9a							847	984
+range	old	back	hk	2200	78			78												
+range	old	back	hk	2200	80			80												
+range	old	back	hk	2200	84			84												
+range	old	back	mk	2200	76			76	2201	67		0x1c7c9a							846	984
+range	old	back	mk	2200	77			77	2201	67		0x1c7c9a							847	984
+range	old	back	mk	2200	78			78												
+range	old	back	mk	2200	80			80												
+range	old	back	mk	2200	84			84												
+range	old	back	mp	2200	76			76	2201	67		0x1c7b12							719	984
+range	old	back	mp	2200	77			77	2201	67		0x1c7b12							720	984
+range	old	back	mp	2200	78			78												
+range	old	back	mp	2200	80			80												
+range	old	back	mp	2200	84			84												
+soft	new	forward	hk	2200	38	10	forward	38	2201	65	38	0x133618	13	62	109	117	62	16	546	332
+soft	new	forward	hk	2200	38	11	forward	38	2201	65	38	0x133618	14	62	109	156	95	32	546	296
+soft	new	forward	hk	2200	38	12	forward	38	2201	65	38	0x133618	16	62	109	156	95	32	546	296
+soft	new	forward	hk	2200	38	13	forward	38	2201	65	38	0x133618	17	62	109	156	95	32	546	296
+soft	new	forward	hk	2200	38	6	forward	38	2201	65	38	0x133618	8	62	109	117	62	16	546	332
+soft	new	forward	hk	2200	38	9	forward	38	2201	65	38	0x133618	12	62	109	117	62	16	546	332
+soft	new	forward	mk	2200	38	10	forward	38	2201	65	38	0x131308	13	179	179		14,48,82,116,150	26,4,4,4,4	688	566
+soft	new	forward	mk	2200	38	11	forward	38	2201	65	38	0x131308	15	179	179		14,48,82,116,150	26,4,4,4,4	688	566
+soft	new	forward	mk	2200	38	12	forward	38	2201	65	38	0x131308	16	179	179		14,48,82,116,150	26,4,4,4,4	688	570
+soft	new	forward	mk	2200	38	13	forward	38	2201	65	38	0x131308	17	179	179		14,48,82,116,150	26,4,4,4,4	688	570
+soft	new	forward	mk	2200	38	6	forward	38	2201	65	38	0x131308	8	179	179		14,48,82,116,150	26,4,4,4,4	688	568
+soft	new	forward	mk	2200	38	9	forward	38	2201	65	38	0x131308	12	179	179		14,48,82,116,150	26,4,4,4,4	688	568
+soft	new	forward	mp	2200	38	10	forward	38	2201	65	38	0x133490	13	44	74	100	44	16	688	463
+soft	new	forward	mp	2200	38	11	forward	38	2201	65	38	0x133490	14	44	74	153	79	32	688	391
+soft	new	forward	mp	2200	38	12	forward	38	2201	65	38	0x133490	16	44	74	153	79	32	688	391
+soft	new	forward	mp	2200	38	13	forward	38	2201	65	38	0x133490	17	44	74	153	79	32	688	391
+soft	new	forward	mp	2200	38	6	forward	38	2201	65	38	0x133490	8	44	74	100	44	16	688	463
+soft	new	forward	mp	2200	38	9	forward	38	2201	65	38	0x133490	12	44	74	100	44	16	688	463
+soft	old	forward	hk	2200	38	10	forward	38	2201	67	38	0x1c7c9a	13	62	109	117	62	16	546	332
+soft	old	forward	hk	2200	38	11	forward	38	2201	67	38	0x1c7c9a	15	62	109	156	95	32	546	296
+soft	old	forward	hk	2200	38	12	forward	38	2201	67	38	0x1c7c9a	16	62	109	156	95	32	546	296
+soft	old	forward	hk	2200	38	13	forward	38	2201	67	38	0x1c7c9a	17	62	109	156	95	32	546	296
+soft	old	forward	hk	2200	38	6	forward	38	2201	67	38	0x1c7c9a	8	62	109	117	62	16	546	332
+soft	old	forward	hk	2200	38	9	forward	38	2201	67	38	0x1c7c9a	12	62	109	117	62	16	546	332
+soft	old	forward	mk	2200	38	10	forward	38	2201	67	38	0x1c7c9a	13	62	109	117	62	16	546	332
+soft	old	forward	mk	2200	38	11	forward	38	2201	67	38	0x1c7c9a	15	62	109	156	95	32	546	296
+soft	old	forward	mk	2200	38	12	forward	38	2201	67	38	0x1c7c9a	16	62	109	156	95	32	546	296
+soft	old	forward	mk	2200	38	13	forward	38	2201	67	38	0x1c7c9a	17	62	109	156	95	32	546	296
+soft	old	forward	mk	2200	38	6	forward	38	2201	67	38	0x1c7c9a	8	62	109	117	62	16	546	332
+soft	old	forward	mk	2200	38	9	forward	38	2201	67	38	0x1c7c9a	12	62	109	117	62	16	546	332
+soft	old	forward	mp	2200	38	10	forward	38	2201	67	38	0x1c7b12	13	44	74	100	44	16	688	463
+soft	old	forward	mp	2200	38	11	forward	38	2201	67	38	0x1c7b12	15	44	74	153	79	32	688	391
+soft	old	forward	mp	2200	38	12	forward	38	2201	67	38	0x1c7b12	16	44	74	153	79	32	688	391
+soft	old	forward	mp	2200	38	13	forward	38	2201	67	38	0x1c7b12	17	44	74	153	79	32	688	391
+soft	old	forward	mp	2200	38	6	forward	38	2201	67	38	0x1c7b12	8	44	74	100	44	16	688	463
+soft	old	forward	mp	2200	38	9	forward	38	2201	67	38	0x1c7b12	12	44	74	100	44	16	688	463

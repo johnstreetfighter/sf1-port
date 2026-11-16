@@ -7,7 +7,7 @@ use crate::config::{EvilRyuPlaytest, MatchConfig};
 use crate::data_bank::{ALPHA_SUPER_SECOND_SLOT, ALPHA_SUPER_THIRD_SLOT};
 use crate::era::{EraFamily, GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
 use crate::fight_reader::player_struct;
-use crate::fighter::{Bus, CPU_STRUCT, GAME_MODE};
+use crate::fighter::{Bus, CPU_STRUCT, GAME_MODE, RNG_STATE};
 use crate::alpha::Stance;
 use crate::moves::{ButtonClass, CHARGE_FRAMES, Dir, MoveKind};
 use crate::roster::{PlayMode, TournamentFighter};
@@ -16,6 +16,9 @@ pub const SUB_HP_PER_POINT: u16 = 20;
 pub const FULL_SUB_HP: u16 = 48 * SUB_HP_PER_POINT;
 pub use crate::data_bank::{SF2_SPECIAL_SLOT as SF2_EXTRA_SPECIAL, SF2_SUPER_SLOT as SF2_SUPER};
 pub const SUPER_FREEZE_FRAMES: u8 = 28;
+pub const ST_RYU_SHINKU_FREEZE: u8 = 18;
+pub const ST_KEN_SHORYUREPPA_FREEZE: u8 = 18;
+pub const ST_SAGAT_GENOCIDE_FREEZE: u8 = 18;
 const PROJECTILE_SLOTS: usize = 12;
 const GUARD_POWER_STANDARD: u8 = 60;
 const GUARD_POWER_X_ISM: u8 = 72;
@@ -31,11 +34,24 @@ pub(crate) const DOUBLE_QUARTER_CIRCLE: &[Dir] = &[
 const DOUBLE_QUARTER_CIRCLE_BACK: &[Dir] = &[
     Dir::Down, Dir::DownBack, Dir::Back, Dir::Down, Dir::DownBack, Dir::Back,
 ];
-const SHORT_DOUBLE_QUARTER_CIRCLE: &[Dir] = &[
+pub(crate) const SHORT_DOUBLE_QUARTER_CIRCLE: &[Dir] = &[
     Dir::Down, Dir::DownForward, Dir::Forward, Dir::Down, Dir::DownForward,
+];
+const ST_SAGAT_GENOCIDE_FINISH_WINDOW: u8 = 12;
+// World 940223 adds eight ticks to each draw from the table at 0x08db00.
+const ST_SAGAT_GENOCIDE_STAGE_WINDOWS: [u8; 32] = [
+    8, 15, 9, 8, 10, 12, 8, 8, 9, 8, 8, 10, 8, 8, 11, 13,
+    10, 8, 8, 11, 8, 8, 9, 8, 11, 8, 9, 8, 14, 12, 8, 10,
 ];
 const HALF_CIRCLE: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down, Dir::DownForward, Dir::Forward];
 const TIGER_KNEE: &[Dir] = &[Dir::Down, Dir::DownForward, Dir::Forward, Dir::UpForward];
+pub(crate) const ST_TIGER_KNEE: &[Dir] = &[Dir::Down, Dir::Forward, Dir::UpForward];
+const ST_TIGER_KNEE_FINISH_WINDOW: u8 = 12;
+// World 940223 uses this table at 0x08dc6c and 0x0a10d6.
+const ST_TIGER_KNEE_STAGE_WINDOWS: [u8; 32] = [
+    10, 8, 8, 11, 8, 8, 9, 8, 9, 8, 8, 10, 8, 8, 11, 13,
+    8, 15, 9, 8, 10, 12, 8, 8, 11, 8, 9, 8, 14, 12, 8, 10,
+];
 const ALPHA_COUNTER_MOTION: &[Dir] = &[Dir::Back, Dir::DownBack, Dir::Down];
 
 mod alpha_moves;
@@ -61,6 +77,8 @@ pub(crate) enum SpecialContext {
 const ALPHA_MOTION_SLOTS: usize = 10;
 const PUNCH_MASK: u8 = 0b000111;
 const KICK_MASK: u8 = 0b111000;
+
+pub(crate) mod st_ken_kicks;
 
 const ALPHA_REVISIONS: &[Revision] = &[Revision::Sfz1, Revision::Sfz2, Revision::Sfz2A, Revision::Sfz3];
 const ALPHA_3: &[Revision] = &[Revision::Sfz3];
@@ -138,6 +156,10 @@ crate::canonical::canonical_struct!(MotionTracker, "EraMotionTracker.v2", {
 
 impl MotionTracker {
     fn step(&mut self, direction: u8, pattern: &[Dir]) {
+        self.step_with_finish_window(direction, pattern, 6);
+    }
+
+    fn step_with_finish_window(&mut self, direction: u8, pattern: &[Dir], finish_window: u8) {
         let Some(first) = pattern.first().copied() else { return };
         if pattern == alpha_moves::SPIN {
             self.step_spin(direction);
@@ -169,11 +191,53 @@ impl MotionTracker {
             if position == 0 {
                 self.remaining = 32;
             } else if usize::from(self.position) == pattern.len() {
-                self.remaining = 6;
+                self.remaining = finish_window;
             }
         } else if !first.is_charge() && direction == first.bits() {
             self.position = 1;
             self.remaining = 32;
+        }
+    }
+
+    fn step_st_tiger_knee(&mut self, direction: u8, random: u8) {
+        if self.position != 0 {
+            self.remaining = self.remaining.saturating_sub(1);
+            if self.remaining == 0 {
+                self.position = 0;
+                return;
+            }
+        }
+        if ST_TIGER_KNEE.get(usize::from(self.position)).map(|dir| dir.bits()) == Some(direction) {
+            self.position += 1;
+            self.remaining = if self.completed(ST_TIGER_KNEE) {
+                ST_TIGER_KNEE_FINISH_WINDOW
+            } else {
+                ST_TIGER_KNEE_STAGE_WINDOWS[usize::from(random & 31)]
+            };
+        }
+    }
+
+    fn st_tiger_knee_ready(self, strength: u8) -> bool {
+        self.completed(ST_TIGER_KNEE)
+            && self.remaining != 0
+            && self.remaining >= (strength - 1) * 2
+    }
+
+    fn step_st_sagat_genocide(&mut self, direction: u8, random: u8) {
+        if self.position != 0 {
+            self.remaining = self.remaining.saturating_sub(1);
+            if self.remaining == 0 {
+                self.position = 0;
+                return;
+            }
+        }
+        if SHORT_DOUBLE_QUARTER_CIRCLE.get(usize::from(self.position)).map(|dir| dir.bits()) == Some(direction) {
+            self.position += 1;
+            self.remaining = if self.completed(SHORT_DOUBLE_QUARTER_CIRCLE) {
+                ST_SAGAT_GENOCIDE_FINISH_WINDOW
+            } else {
+                ST_SAGAT_GENOCIDE_STAGE_WINDOWS[usize::from(random & 31)] + 8
+            };
         }
     }
 
@@ -414,6 +478,8 @@ pub struct EraFighterState {
     what_if: bool,
     super_motion: MotionTracker,
     extra_motion: MotionTracker,
+    st_ken_kick_motions: [MotionTracker; st_ken_kicks::MOTIONS.len()],
+    st_ken_heel_requested: bool,
     alpha_counter_motion: MotionTracker,
     custom_frames: u8,
     pub(crate) sf3: sf3::Sf3State,
@@ -441,17 +507,19 @@ pub struct EraFighterState {
     guard_power: GuardPower,
     pub(crate) move_hits: u8,
     pub(crate) juggle_count: u8,
+    pub(crate) st_ryu_air_reaction: bool,
     pub(crate) attack_reached_active: bool,
     tour: world_tour::TourFighter,
     evil_ryu_kit: EvilRyuKit,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v10", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v12", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
-    super_motion, extra_motion, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
+    super_motion, extra_motion, st_ken_kick_motions, st_ken_heel_requested, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
-    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, attack_reached_active, tour, evil_ryu_kit,
+    active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, st_ryu_air_reaction,
+    attack_reached_active, tour, evil_ryu_kit,
 });
 
 impl EraFighterState {
@@ -832,11 +900,104 @@ impl EraFighterState {
     }
 
     pub(crate) fn super_ready(&self) -> bool {
-        self.super_stock_full() && self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
+        self.super_stock_full() && if self.st_ken() {
+            self.st_ken_shoryureppa_motion() && self.super_motion.remaining >= 2
+        } else {
+            self.super_motion.completed(DOUBLE_QUARTER_CIRCLE)
+        }
+    }
+
+    fn st_ken(&self) -> bool {
+        self.fighter == Some(TournamentFighter::Ken) && self.style.revision == Revision::St
+    }
+
+    pub(crate) fn st_new_ken_kicks(&self) -> bool {
+        self.st_ken() && self.style.loadout == Loadout::Standard
+    }
+
+    pub(crate) fn st_ken_kick_command(&self) -> Option<(u8, u8)> {
+        if !self.st_new_ken_kicks() {
+            return None;
+        }
+        let pressed = self.alpha_buttons & !self.alpha_previous_buttons & KICK_MASK;
+        let released = self.alpha_previous_buttons & !self.alpha_buttons & KICK_MASK;
+        let edges = if pressed == 0 { released } else { pressed };
+        if edges == 0 {
+            return None;
+        }
+        let strength = (edges >> 3).trailing_zeros() as u8 + 1;
+        self.st_ken_kick_motions.iter().zip(st_ken_kicks::MOTIONS).find_map(|(tracker, (slot, motion))| {
+            (tracker.completed(motion) && tracker.remaining >= 2).then_some((slot, strength))
+        })
+    }
+
+    pub(crate) fn st_ken_kick_progress(&self, motion: &[Dir]) -> (u8, u8) {
+        st_ken_kicks::MOTIONS.iter().position(|(_, pattern)| *pattern == motion)
+            .map(|i| self.st_ken_kick_motions[i])
+            .map_or((0, 0), |tracker| (tracker.position, tracker.remaining))
+    }
+
+    pub(crate) fn st_ken_heel_requested(&self) -> bool {
+        self.st_ken_heel_requested
+    }
+
+    fn st_ken_shoryureppa_motion(&self) -> bool {
+        self.st_ken() && self.super_motion.completed(SHORT_DOUBLE_QUARTER_CIRCLE)
+    }
+
+    pub(crate) fn st_ken_shoryureppa_fallback(&self) -> bool {
+        self.st_ken_shoryureppa_motion()
+            && (self.style.loadout == Loadout::Old || self.super_motion.remaining == 1)
+            && (self.super_motion.previous == Dir::DownForward.bits()
+                || self.super_motion.previous == Dir::Forward.bits())
     }
 
     pub(crate) fn super_stock_full(&self) -> bool {
-        self.st_new() && self.super_capacity > 0 && self.super_meter >= self.meter_cost(self.super_capacity)
+        let cost = self.meter_cost(self.super_capacity);
+        self.st_new() && self.super_capacity > 0 && if self.st_sagat() && !self.unified_gauge {
+            self.super_meter == cost
+        } else {
+            self.super_meter >= cost
+        }
+    }
+
+    pub(crate) fn st_sagat_genocide_strength(&self, kick: bool) -> Option<u8> {
+        if !self.st_sagat() || !self.super_stock_full()
+            || !self.super_motion.completed(SHORT_DOUBLE_QUARTER_CIRCLE)
+            || kick != self.st_sagat_genocide_kick_tick()
+        {
+            return None;
+        }
+        let (mask, shift) = if kick { (KICK_MASK, 3) } else { (PUNCH_MASK, 0) };
+        let pressed = self.alpha_buttons & !self.alpha_previous_buttons & mask;
+        let released = self.alpha_previous_buttons & !self.alpha_buttons & mask;
+        let edges = (if pressed == 0 { released } else { pressed }) >> shift;
+        (edges != 0).then(|| edges.trailing_zeros() as u8 + 1)
+    }
+
+    fn st_sagat_genocide_kick_tick(&self) -> bool {
+        self.super_motion.remaining == ST_SAGAT_GENOCIDE_FINISH_WINDOW
+    }
+
+    pub(crate) fn st_sagat_genocide_progress(&self, kick: bool) -> (u8, u8) {
+        let (stage, remaining) = self.command_progress(true);
+        if !self.super_motion.completed(SHORT_DOUBLE_QUARTER_CIRCLE) {
+            return (stage, remaining);
+        }
+        match (kick, self.st_sagat_genocide_kick_tick()) {
+            (true, true) => (stage, 1),
+            (true, false) => (0, 0),
+            (false, true) => (stage, remaining),
+            (false, false) => (stage + 1, remaining),
+        }
+    }
+
+    pub(crate) fn st_sagat_genocide_fallback(&self) -> bool {
+        self.st_sagat()
+            && self.super_motion.completed(SHORT_DOUBLE_QUARTER_CIRCLE)
+            && [Dir::Forward, Dir::DownForward].iter().any(|dir| self.super_motion.previous == dir.bits())
+            && (self.style.loadout == Loadout::Old || !self.super_stock_full()
+                || self.super_motion.remaining == ST_SAGAT_GENOCIDE_FINISH_WINDOW)
     }
 
     fn spend_super_stock(&mut self) {
@@ -858,13 +1019,20 @@ impl EraFighterState {
     }
 
     pub(crate) fn extra_ready(&self) -> bool {
-        match self.fighter {
-            Some(TournamentFighter::Ryu) => {
-                matches!(self.style.revision, Revision::Super | Revision::St)
-                    && self.extra_motion.completed(HALF_CIRCLE)
-            }
-            Some(TournamentFighter::Sagat) => self.extra_motion.completed(TIGER_KNEE),
-            _ => false,
+        self.fighter == Some(TournamentFighter::Ryu)
+            && matches!(self.style.revision, Revision::Super | Revision::St)
+            && self.extra_motion.completed(HALF_CIRCLE)
+    }
+
+    pub(crate) fn st_sagat(&self) -> bool {
+        self.style.revision == Revision::St && self.fighter == Some(TournamentFighter::Sagat)
+    }
+
+    pub(crate) fn tiger_knee_ready(&self, strength: u8) -> bool {
+        if self.st_sagat() {
+            self.extra_motion.st_tiger_knee_ready(strength)
+        } else {
+            self.extra_motion.completed(TIGER_KNEE)
         }
     }
 
@@ -932,13 +1100,82 @@ pub struct EraProjectileState {
     pub unblockable: bool,
     pub sf4_scale: u8,
     pub(crate) modern_scaled: bool,
+    pub(crate) st_ryu_red: Option<StRyuRedHadoken>,
+    pub(crate) st_standard_hadoken: Option<StStandardHadoken>,
+    pub(crate) st_tiger_shot: Option<StTigerShot>,
+    pub(crate) st_ryu_shinku_age: Option<u8>,
     hit_wait: u8,
     clash_wait: u8,
 }
 
-crate::canonical::canonical_struct!(EraProjectileState, "EraProjectileState.v3", {
-    move_id, hits_remaining, crimson, alpha_super_level, family_hits, unblockable, sf4_scale, modern_scaled, hit_wait, clash_wait,
+crate::canonical::canonical_struct!(EraProjectileState, "EraProjectileState.v9", {
+    move_id, hits_remaining, crimson, alpha_super_level, family_hits, unblockable, sf4_scale, modern_scaled,
+    st_ryu_red, st_standard_hadoken, st_tiger_shot, st_ryu_shinku_age, hit_wait, clash_wait,
 });
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct StStandardHadoken {
+    pub fighter: TournamentFighter,
+    pub strength: u8,
+    pub age: u8,
+}
+
+crate::canonical::canonical_struct!(StStandardHadoken, "StStandardHadoken.v1", { fighter, strength, age });
+
+impl StStandardHadoken {
+    pub(crate) fn speed(self) -> u16 {
+        u16::from(self.strength) + 2
+    }
+
+    pub(crate) fn ken_damage(self, blocked: bool) -> Option<u16> {
+        if self.fighter != TournamentFighter::Ken {
+            return None;
+        }
+        // World 940223 at full life, on the sampled 104-pixel contact.
+        let hp = if blocked { 4 } else { [16, 17, 19][usize::from(self.strength - 1)] };
+        Some((hp * FULL_SUB_HP + 72) / 144)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct StTigerShot {
+    pub(crate) strength: u8,
+    pub(crate) low: bool,
+    pub(crate) age: u8,
+}
+
+crate::canonical::canonical_struct!(StTigerShot, "StTigerShot.v1", { strength, low, age });
+
+impl StTigerShot {
+    pub(crate) fn speed(self) -> u16 {
+        1 + 2 * u16::from(self.strength)
+    }
+
+    pub(crate) fn height(self) -> u16 {
+        if self.low { 38 } else { 78 }
+    }
+
+    pub(crate) fn damage(self, blocked: bool) -> u16 {
+        let index = usize::from(self.strength.saturating_sub(1).min(2));
+        let hp = match (self.low, blocked) {
+            (false, false) => [16, 17, 19][index],
+            (true, false) => [15, 16, 17][index],
+            (false, true) => 4,
+            (true, true) => [3, 4, 4][index],
+        };
+        (hp * FULL_SUB_HP + 72) / 144
+    }
+}
+
+/// Strength and flight age are fixed to the projectile, including when
+/// Ryu recovers, moves away or switches sides before the hit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct StRyuRedHadoken {
+    pub(crate) strength: u8,
+    pub(crate) age: u8,
+}
+
+crate::canonical::canonical_struct!(StRyuRedHadoken, "StRyuRedHadoken.v1", { strength, age });
 
 impl EraProjectileState {
     pub(crate) fn hit_limit(self) -> u8 {
@@ -946,7 +1183,7 @@ impl EraProjectileState {
             self.family_hits
         } else if self.alpha_super_level != 0 {
             alpha_super_hit_limit(self.alpha_super_level)
-        } else if self.crimson {
+        } else if self.crimson && self.st_ryu_red.is_none() {
             3
         } else if self.move_id == SF2_SUPER {
             5
@@ -994,7 +1231,7 @@ impl crate::canonical::Canonical for EraCombatState {
 }
 
 impl Bus<'_> {
-    fn era_player_slots(&self) -> [Option<u32>; 3] {
+    pub(crate) fn era_player_slots(&self) -> [Option<u32>; 3] {
         if self.dramatic_rules().is_some() {
             return crate::fighter::DRAMATIC_PLAYERS.map(Some);
         }
@@ -1174,6 +1411,7 @@ impl Bus<'_> {
                 fighter.set_gauge_mode(GaugeMode::NoGauges);
                 fighter.super_motion = MotionTracker::default();
                 fighter.extra_motion = MotionTracker::default();
+                fighter.st_ken_kick_motions.fill(MotionTracker::default());
             } else {
                 if !was_enabled && fighter.max_sub_hp != 0 {
                     fighter.sub_hp = (native_points * SUB_HP_PER_POINT).min(fighter.max_sub_hp);
@@ -1230,14 +1468,32 @@ impl Bus<'_> {
         let Some(side) = self.era_side(ps) else { return false };
         let original = self.toggle_state.era.fighters[side];
         let buttons = crate::control::shortcut_buttons(entry.input.button, strength);
-        let motion = MotionTracker::shortcut(entry.input.motion);
+        let mut motion = MotionTracker::shortcut(entry.input.motion);
         let state = &mut self.toggle_state.era.fighters[side];
         state.alpha_buttons = buttons;
         state.alpha_previous_buttons = 0;
 
         let staged = match entry.recognizer {
             Recognizer::EraMotion { super_move } => {
-                if super_move { state.super_motion = motion; } else { state.extra_motion = motion; }
+                if super_move {
+                    if state.st_sagat() {
+                        motion.position = SHORT_DOUBLE_QUARTER_CIRCLE.len() as u8;
+                        motion.remaining = ST_SAGAT_GENOCIDE_FINISH_WINDOW - u8::from(!entry.input.button.kick());
+                    }
+                    state.super_motion = motion;
+                } else {
+                    if let Some(index) = st_ken_kicks::MOTIONS.iter().position(|(slot, motion)| {
+                        *slot == entry.produces && *motion == entry.input.motion
+                    }).filter(|_| state.st_new_ken_kicks()) {
+                        motion.remaining = st_ken_kicks::FINISH_WINDOW;
+                        state.st_ken_kick_motions[index] = motion;
+                    } else {
+                        if state.st_sagat() && entry.input.motion == ST_TIGER_KNEE {
+                            motion.remaining = ST_TIGER_KNEE_FINISH_WINDOW;
+                        }
+                        state.extra_motion = motion;
+                    }
+                }
                 true
             }
             Recognizer::Tracker(crate::moves::Tracker1987::Shoryuken) if entry.produces == SF2_EXTRA_SPECIAL => true,
@@ -1367,6 +1623,21 @@ impl Bus<'_> {
             });
         let sf4_scale = era.sf4_projectile_scale(move_id);
         let crimson = era.is_sf2() && era.fighter == Some(TournamentFighter::Ryu) && move_id == SF2_EXTRA_SPECIAL;
+        let st_ryu_red = (crimson && era.style.revision == Revision::St
+            && matches!(era.style.loadout, Loadout::Standard | Loadout::Old)
+            && self.evil_ryu_profile(ps).is_none())
+            .then_some(StRyuRedHadoken { strength, age: 0 });
+        let st_standard_hadoken = era.fighter.filter(|fighter| move_id == 0x1a
+            && era.style.revision == Revision::St
+            && matches!((fighter, strength), (TournamentFighter::Ryu, 1) | (TournamentFighter::Ken, 1..=3))
+            && matches!(era.style.loadout, Loadout::Standard | Loadout::Old)
+            && self.evil_ryu_profile(ps).is_none())
+            .map(|fighter| StStandardHadoken { fighter, strength, age: 0 });
+        let st_ryu_shinku_age = (move_id == SF2_SUPER && era.fighter == Some(TournamentFighter::Ryu)
+            && era.st_new() && self.evil_ryu_profile(ps).is_none()).then_some(0);
+        let st_tiger_shot = (era.st_sagat()
+            && matches!(move_id, 0x1a | 0x1b))
+            .then_some(StTigerShot { strength, low: move_id == 0x1b, age: 0 });
         if let Some(state) = self.era_projectile_mut(slot) {
             *state = EraProjectileState {
                 move_id,
@@ -1375,6 +1646,10 @@ impl Bus<'_> {
                 family_hits,
                 sf4_scale,
                 modern_scaled,
+                st_ryu_red,
+                st_standard_hadoken,
+                st_tiger_shot,
+                st_ryu_shinku_age,
                 unblockable: sf3.is_some_and(|projectile| projectile.unblockable),
                 ..EraProjectileState::default()
             };
@@ -1391,7 +1666,7 @@ impl Bus<'_> {
             return true;
         }
         state.hits_remaining = state.hits_remaining.saturating_sub(1);
-        state.hit_wait = 3;
+        state.hit_wait = if state.st_ryu_shinku_age.is_some() { 10 } else { 3 };
         state.hits_remaining == 0
     }
 
@@ -1422,10 +1697,39 @@ impl Bus<'_> {
         }
     }
 
+    pub(crate) fn advance_st_ryu_red(&mut self, slot: u16) -> Option<StRyuRedHadoken> {
+        let red = self.era_projectile_mut(slot)?.st_ryu_red.as_mut()?;
+        red.age = red.age.saturating_add(1);
+        Some(*red)
+    }
+
+    pub(crate) fn advance_st_standard_projectile(&mut self, slot: u16) {
+        if let Some(projectile) = self.era_projectile_mut(slot) {
+            if let Some(shot) = &mut projectile.st_standard_hadoken {
+                shot.age = shot.age.saturating_add(1);
+            }
+            if let Some(shot) = &mut projectile.st_tiger_shot {
+                shot.age = shot.age.saturating_add(1);
+            }
+        }
+    }
+
+    pub(crate) fn advance_st_ryu_shinku(&mut self, slot: u16) -> bool {
+        let Some(projectile) = self.era_projectile_mut(slot) else { return true };
+        let Some(age) = projectile.st_ryu_shinku_age.as_mut() else { return true };
+        if projectile.hit_wait != 0 {
+            return false;
+        }
+        *age = age.saturating_add(1);
+        true
+    }
+
     pub(crate) fn era_track_motion(&mut self, ps: u32, relative_direction: u8) {
         let Some(index) = self.era_side(ps) else {
             return;
         };
+        // Sample the port's deterministic RNG. The CPS2 RNG has a different sequence.
+        let random = self.rb(RNG_STATE);
         let state = &mut self.toggle_state.era.fighters[index];
         if state.is_alpha() {
             state.track_alpha_buttons();
@@ -1439,12 +1743,30 @@ impl Bus<'_> {
         if !state.is_sf2() {
             return;
         }
-        state
-            .super_motion
-            .step(relative_direction, DOUBLE_QUARTER_CIRCLE);
+        if state.st_new_ken_kicks() {
+            for (tracker, (_, pattern)) in state.st_ken_kick_motions.iter_mut().zip(st_ken_kicks::MOTIONS) {
+                tracker.step_st_ken_kick(relative_direction, pattern, random);
+            }
+        }
+        let shinku = state.fighter == Some(TournamentFighter::Ryu) && state.st_new()
+            && state.evil_ryu_kit == EvilRyuKit::Standard;
+        let (motion, window) = if state.st_ken() {
+            (SHORT_DOUBLE_QUARTER_CIRCLE, 12)
+        } else {
+            (DOUBLE_QUARTER_CIRCLE, if shinku { 11 } else { 6 })
+        };
+        if state.st_sagat() {
+            state.super_motion.step_st_sagat_genocide(relative_direction, random);
+            state.super_motion.previous = relative_direction;
+        } else {
+            state.super_motion.step_with_finish_window(relative_direction, motion, window);
+        }
         match state.fighter {
             Some(TournamentFighter::Ryu) => {
                 state.extra_motion.step(relative_direction, HALF_CIRCLE)
+            }
+            Some(TournamentFighter::Sagat) if state.st_sagat() => {
+                state.extra_motion.step_st_tiger_knee(relative_direction, random)
             }
             Some(TournamentFighter::Sagat) => {
                 state.extra_motion.step(relative_direction, TIGER_KNEE)
@@ -1454,14 +1776,24 @@ impl Bus<'_> {
     }
 
     pub(crate) fn era_spend_super(&mut self, ps: u32) {
+        self.era_spend_super_with_freeze(ps, SUPER_FREEZE_FRAMES);
+    }
+
+    pub(crate) fn era_spend_super_with_freeze(&mut self, ps: u32, freeze: u8) {
         let Some(index) = self.era_side(ps) else {
             return;
         };
         let state = &mut self.toggle_state.era.fighters[index];
         state.spend_super_stock();
-        self.toggle_state.era.freeze = SUPER_FREEZE_FRAMES;
+        self.toggle_state.era.freeze = freeze;
         self.toggle_state.era.super_events[index] = state.fighter;
         self.era_share_gauge(index);
+    }
+
+    pub(crate) fn era_consume_super_motion(&mut self, ps: u32) {
+        if let Some(index) = self.era_side(ps) {
+            self.toggle_state.era.fighters[index].super_motion = MotionTracker::default();
+        }
     }
 
     pub(crate) fn try_spend_demon_super(&mut self, ps: u32) -> bool {
@@ -1511,7 +1843,7 @@ impl Bus<'_> {
     pub(crate) fn era_read_buttons(&mut self, ps: u32, buttons: u8) {
         if let Some(side) = self.era_side(ps).filter(|&i| {
             let state = &self.toggle_state.era.fighters[i];
-            state.is_alpha() || state.uses_family_bank()
+            state.is_alpha() || state.uses_family_bank() || state.st_sagat() || state.st_new_ken_kicks()
         }) {
             let state = &mut self.toggle_state.era.fighters[side];
             state.alpha_buttons = buttons;
@@ -1524,6 +1856,24 @@ impl Bus<'_> {
         if let Some(side) = self.era_side(ps) {
             let state = &mut self.toggle_state.era.fighters[side];
             state.alpha_previous_buttons = state.alpha_buttons;
+        }
+    }
+
+    pub(crate) fn era_consume_st_ken_kick(&mut self, ps: u32, slot: u8) {
+        if let Some(side) = self.era_side(ps) {
+            let state = &mut self.toggle_state.era.fighters[side];
+            for (tracker, (move_id, _)) in state.st_ken_kick_motions.iter_mut().zip(st_ken_kicks::MOTIONS) {
+                if move_id == slot {
+                    *tracker = MotionTracker::default();
+                }
+            }
+        }
+    }
+
+    pub(crate) fn era_sample_st_ken_heel(&mut self, ps: u32) {
+        if let Some(side) = self.era_side(ps) {
+            let state = &mut self.toggle_state.era.fighters[side];
+            state.st_ken_heel_requested = state.alpha_buttons & KICK_MASK != 0;
         }
     }
 
@@ -1887,6 +2237,7 @@ impl Bus<'_> {
                 }
                 if self.eb(entity, 9) & 3 != 1 {
                     self.toggle_state.era.fighters[index].juggle_count = 0;
+                    self.toggle_state.era.fighters[index].st_ryu_air_reaction = false;
                 }
                 if self.era_rules.fill_meters && !was_custom
                     && self.eb(entity, 9) & 0xc1 == 0
@@ -1930,6 +2281,174 @@ impl EraCombatState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn st_tiger_knee_waits_for_exact_directions_and_expires_before_advancing() {
+        let mut motion = MotionTracker::default();
+        motion.step_st_tiger_knee(Dir::DownForward.bits(), 0);
+        assert_eq!(motion.position, 0);
+
+        motion.step_st_tiger_knee(Dir::Down.bits(), 1);
+        assert_eq!(motion.remaining, 8);
+        for dir in [Dir::Down, Dir::DownForward, Dir::Neutral, Dir::UpForward] {
+            motion.step_st_tiger_knee(dir.bits(), 0);
+            assert_eq!(motion.position, 1);
+        }
+        motion.step_st_tiger_knee(Dir::Forward.bits(), 17);
+        assert_eq!((motion.position, motion.remaining), (2, 15));
+        motion.step_st_tiger_knee(Dir::DownForward.bits(), 0);
+        motion.step_st_tiger_knee(Dir::UpForward.bits(), 0);
+        assert_eq!((motion.position, motion.remaining), (3, 12));
+
+        let mut motion = MotionTracker::default();
+        motion.step_st_tiger_knee(Dir::Down.bits(), 1);
+        for _ in 1..8 {
+            motion.step_st_tiger_knee(Dir::Down.bits(), 0);
+        }
+        motion.step_st_tiger_knee(Dir::Forward.bits(), 0);
+        assert_eq!((motion.position, motion.remaining), (0, 0));
+    }
+
+    #[test]
+    fn st_tiger_knee_has_a_strength_specific_kick_window() {
+        let mut motion = MotionTracker::default();
+        for dir in ST_TIGER_KNEE {
+            motion.step_st_tiger_knee(dir.bits(), 0);
+        }
+
+        for tick in 0..=12 {
+            for (strength, last_tick) in [(1, 11), (2, 10), (3, 8)] {
+                assert_eq!(motion.st_tiger_knee_ready(strength), tick <= last_tick);
+            }
+            motion.step_st_tiger_knee(Dir::Neutral.bits(), 0);
+        }
+    }
+
+    #[test]
+    fn st_tiger_knee_move_list_matches_both_loadouts() {
+        use crate::config::RulesetPreset;
+
+        let fighter = TournamentFighter::Sagat;
+        for (revision, loadout, pattern) in [
+            (Revision::St, Loadout::Standard, ST_TIGER_KNEE),
+            (Revision::St, Loadout::Old, ST_TIGER_KNEE),
+            (Revision::Super, Loadout::Standard, TIGER_KNEE),
+        ] {
+            let state = EraFighterState {
+                style: StylePick::for_revision(revision, loadout),
+                fighter: Some(fighter),
+                max_sub_hp: FULL_SUB_HP,
+                ..EraFighterState::default()
+            };
+            let knee = crate::moves::live_move_list(fighter, RulesetPreset::DefinitiveOverhaul, true, &state)
+                .into_iter()
+                .find(|entry| entry.name == "TIGER KNEE")
+                .expect("Sagat's Tiger Knee command is listed");
+            assert_eq!(knee.input.motion, pattern);
+        }
+    }
+
+    #[test]
+    fn st_sagat_genocide_button_edges_are_separate_on_the_two_paths() {
+        let mut state = EraFighterState {
+            style: StylePick::for_revision(Revision::St, Loadout::Standard),
+            fighter: Some(TournamentFighter::Sagat),
+            max_sub_hp: FULL_SUB_HP,
+            super_capacity: STOCK_AT,
+            super_meter: STOCK_AT,
+            ..EraFighterState::default()
+        };
+        for direction in SHORT_DOUBLE_QUARTER_CIRCLE {
+            state.super_motion.step_st_sagat_genocide(direction.bits(), 0);
+        }
+        assert_eq!(state.super_motion.remaining, 12);
+
+        // Presses take priority over releases, then light takes priority over
+        // medium and heavy among the buttons on the same edge.
+        state.alpha_previous_buttons = 0b001000;
+        state.alpha_buttons = 0b110001;
+        assert_eq!(state.st_sagat_genocide_strength(true), Some(2));
+        assert_eq!(state.st_sagat_genocide_strength(false), None);
+        assert_eq!(state.st_sagat_genocide_progress(true), (5, 1));
+        assert_eq!(state.st_sagat_genocide_progress(false), (5, 12));
+
+        state.alpha_previous_buttons = state.alpha_buttons;
+        state.alpha_buttons = 0;
+        state.super_motion.step_st_sagat_genocide(Dir::Back.bits(), 0);
+        assert_eq!(state.st_sagat_genocide_strength(false), Some(1));
+        assert_eq!(state.st_sagat_genocide_strength(true), None);
+        assert_eq!(state.st_sagat_genocide_progress(true), (0, 0));
+        assert_eq!(state.st_sagat_genocide_progress(false), (6, 11));
+
+        for _ in 1..11 {
+            state.super_motion.step_st_sagat_genocide(Dir::Neutral.bits(), 0);
+        }
+        state.alpha_previous_buttons = 0;
+        state.alpha_buttons = 0b000100;
+        assert_eq!(state.st_sagat_genocide_strength(false), Some(3));
+        state.super_motion.step_st_sagat_genocide(Dir::Forward.bits(), 0);
+        assert_eq!(state.st_sagat_genocide_strength(false), None);
+    }
+
+    #[test]
+    fn st_sagat_genocide_requires_new_sagat_and_full_stock() {
+        let mut state = EraFighterState {
+            style: StylePick::for_revision(Revision::St, Loadout::Standard),
+            fighter: Some(TournamentFighter::Sagat),
+            max_sub_hp: FULL_SUB_HP,
+            super_capacity: STOCK_AT,
+            alpha_buttons: 1,
+            ..EraFighterState::default()
+        };
+        for direction in SHORT_DOUBLE_QUARTER_CIRCLE {
+            state.super_motion.step_st_sagat_genocide(direction.bits(), 0);
+        }
+        state.super_motion.step_st_sagat_genocide(Dir::Forward.bits(), 0);
+        state.super_motion.previous = Dir::Forward.bits();
+
+        for stock in [0, STOCK_AT - 1, STOCK_AT, STOCK_AT + 1] {
+            state.super_meter = stock;
+            assert_eq!(state.st_sagat_genocide_strength(false).is_some(), stock == STOCK_AT);
+        }
+        state.style.loadout = Loadout::Old;
+        state.super_meter = STOCK_AT;
+        assert_eq!(state.st_sagat_genocide_strength(false), None);
+        assert!(state.st_sagat_genocide_fallback());
+    }
+
+    #[test]
+    fn st_sagat_genocide_move_list_demonstrates_both_inputs() {
+        use crate::config::RulesetPreset;
+        use crate::moves::Strength;
+
+        let fighter = TournamentFighter::Sagat;
+        let mut state = EraFighterState {
+            style: StylePick::for_revision(Revision::St, Loadout::Standard),
+            fighter: Some(fighter),
+            max_sub_hp: FULL_SUB_HP,
+            super_capacity: STOCK_AT,
+            ..EraFighterState::default()
+        };
+        let entries = |state: &EraFighterState| {
+            crate::moves::live_move_list(fighter, RulesetPreset::DefinitiveOverhaul, true, state)
+                .into_iter()
+                .filter(|entry| entry.produces == SF2_SUPER)
+                .collect::<Vec<_>>()
+        };
+        let moves = entries(&state);
+        assert_eq!(moves.len(), 2);
+        for (entry, kick) in moves.iter().zip([false, true]) {
+            assert_eq!(entry.input.button.kick(), kick);
+            let frames = entry.input.frames(true, Strength::Medium);
+            let start = frames.iter().position(|frame| frame.buttons.iter().any(|&down| down)).unwrap();
+            let direction = if kick { Dir::DownForward } else { Dir::Forward };
+            assert_eq!(Dir::from_stick(frames[start].directions, true), Some(direction));
+            assert_eq!(frames[start - 1].directions == frames[start].directions, !kick);
+        }
+
+        state.style.loadout = Loadout::Old;
+        assert!(entries(&state).is_empty());
+    }
 
     #[test]
     fn guard_power_recovers_only_after_time_unguarded() {

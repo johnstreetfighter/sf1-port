@@ -152,7 +152,14 @@ impl VSystem {
             *self = Self::default();
             return;
         }
-        self.capacity = STOCK_AT * if second_trigger(style.loadout) { 3 } else { 2 };
+        let second = second_trigger(style.loadout);
+        let stocks = match (fighter, second) {
+            (Some(Ken | Sagat), false) => 3,
+            (Some(Ken | Sagat), true) => 2,
+            (_, false) => 2,
+            (_, true) => 3,
+        };
+        self.capacity = STOCK_AT * stocks;
         self.meter = self.meter.min(self.capacity);
     }
 
@@ -401,21 +408,23 @@ fn skill(fighter: TournamentFighter, loadout: Loadout) -> (u8, &'static str) {
     (if second { SKILL_TWO } else { SKILL_ONE }, name)
 }
 
-fn trigger(fighter: TournamentFighter, loadout: Loadout) -> (&'static str, u16) {
+fn trigger(fighter: TournamentFighter, style: StylePick) -> (&'static str, u16) {
+    let second = second_trigger(style.loadout);
     if !canonical(fighter) {
         if let Some(kit) = super::what_if::kit(fighter, EraFamily::Sf5, false) {
-            return (kit.v_triggers[usize::from(second_trigger(loadout))], 720);
+            return (kit.v_triggers[usize::from(second)], 720);
         }
     }
-    match (fighter, second_trigger(loadout)) {
+    match (fighter, second) {
         (Ryu, false) => ("DENJIN RENKI", 1000),
         (Ryu, true) => ("KAKKO FUBATSU", 1500),
-        (Ken, false) => ("HEAT RUSH", 800),
-        (Ken, true) => ("SHINRYUKEN", 540),
+        (Ken, false) => ("HEAT RUSH", 1200),
+        (Ken, true) => ("SHINRYUKEN", 3000),
         (Birdie, false) => ("ENJOY TIME", 900),
         (Birdie, true) => ("BIRDIE TIME", 800),
-        (Sagat, false) => ("TIGER CHARGE", 720),
-        (Sagat, true) => ("TIGER ASSAULT", 720),
+        (Sagat, false) if style.revision == Revision::Sf5Ae => ("TIGER CHARGE", 2400),
+        (Sagat, false) => ("TIGER CHARGE", 3000),
+        (Sagat, true) => ("TIGER ASSAULT", 2400),
         (_, false) => ("V-TRIGGER I", 720),
         (_, true) => ("V-TRIGGER II", 720),
     }
@@ -504,7 +513,7 @@ impl EraFighterState {
         } else if self.is_kage() {
             ("TAIGYAKU MUDO", KAGE_TRIGGER_DURATION)
         } else {
-            trigger(fighter, self.style.loadout)
+            trigger(fighter, self.style)
         }
     }
 
@@ -596,6 +605,15 @@ impl EraFighterState {
     pub(crate) fn sf5_vt_charged_senha(&self) -> bool {
         self.alpha_move_active(SKILL_ONE)
             && matches!(self.evil_ryu_kit, EvilRyuKit::Kage { v } if v.senha_vt_charged)
+    }
+
+    pub(crate) fn sf5_powered_special(&self, slot: u8) -> bool {
+        self.sf5.charged_move == slot
+            || (self.sf5.warm()
+                && !self.is_kage()
+                && (!second_trigger(self.style.loadout) || self.what_if_active())
+                && matches!(slot, 0x19..=0x1b | UPPERCUT | CRITICAL_ART)
+                && self.fighter != Some(Sagat))
     }
 
     pub(crate) fn sf5_active_moves(&self) -> Vec<MoveEntry> {
@@ -1013,11 +1031,13 @@ impl Bus<'_> {
                 state.sf5.counter_returns_strike = true;
                 state.sf5.trigger_left = state.sf5.trigger_left.saturating_sub(150);
             }
-            Action::TriggerFollowUp(_) => {
-                state.sf5.trigger_left = state
-                    .sf5
-                    .trigger_left
-                    .saturating_sub(state.sf5.trigger_total / 2);
+            Action::TriggerFollowUp(slot) => {
+                let cost = match (fighter, slot) {
+                    (Ken, TRIGGER_ATTACK) => 2000,
+                    (Sagat, TRIGGER_ATTACK | TRIGGER_FORWARD) => 800,
+                    _ => state.sf5.trigger_total / 2,
+                };
+                state.sf5.trigger_left = state.sf5.trigger_left.saturating_sub(cost);
             }
             Action::Skill(SKILL_ONE) if state.is_kage() => {
                 if let EvilRyuKit::Kage { v } = &mut state.evil_ryu_kit {
@@ -1034,9 +1054,6 @@ impl Bus<'_> {
                 state.sf5.counter_returns_strike = true;
             }
             Action::Skill(slot) if fighter == Sagat => {
-                if state.sf5.skill_charge == 0 {
-                    state.award_v_meter(12);
-                }
                 state.sf5.skill_charge = if slot == SKILL_ONE { UPPERCUT } else { 0x19 };
             }
             Action::Skill(SKILL_ONE) if fighter == Birdie => state.award_v_meter(16),
@@ -1198,8 +1215,10 @@ fn sf5_action(
 ) -> Option<Action> {
     let gauge = state.sf5.capacity != 0;
     if blockstun {
+        let reversal_chord = chord(held, pressed, KICKS)
+            || (fighter != Ken && chord(held, pressed, PUNCHES));
         return (relative == Dir::Forward.bits()
-            && (chord(held, pressed, PUNCHES) || chord(held, pressed, KICKS))
+            && reversal_chord
             && state.can_spend_v(mode, STOCK_AT))
         .then_some(Action::Reversal);
     }
@@ -1318,13 +1337,7 @@ impl Bus<'_> {
                     damage = 72;
                 }
                 recoverable = authored && slot == REVERSAL;
-                let powered = state.sf5.charged_move == slot
-                    || (state.sf5.warm()
-                        && !state.is_kage()
-                        && (!second_trigger(state.style.loadout) || state.what_if_active())
-                        && matches!(slot, 0x19..=0x1b | UPPERCUT | CRITICAL_ART)
-                        && state.fighter != Some(Sagat));
-                if powered && !chip {
+                if !chip && state.sf5_powered_special(slot) {
                     damage = damage.saturating_add(damage / 4);
                 }
                 let kage_meterless = state.is_kage()

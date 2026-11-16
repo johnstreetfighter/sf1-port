@@ -1,0 +1,103 @@
+loadout	button	requested_gap	ken_posture	entry_axis_gap	first_animation	sagat_exit	contact_action_ticks	clean_damage_cumulative	ken_reaction_exit_action_tick	ken_displacement	capture
+new	hp	140	whiff	140	15b91e	37					new-lp-140-0-whiff-standhp-0-0
+new	lp	140	whiff	140	15b75e	13					new-lp-140-0-whiff-standlp-0-0
+new	mp	140	whiff	140	15b826	19					new-lp-140-0-whiff-standmp-0-0
+new	hk	40	whiff	40	15bb3a	33					new-lp-40-0-whiff-standhk-0-0
+new	hp	40	whiff	40	15b8ba	23					new-lp-40-0-whiff-standhp-0-0
+new	lk	40	whiff	40	15b9b2	15					new-lp-40-0-whiff-standlk-0-0
+new	lp	40	whiff	40	15b6fa	12					new-lp-40-0-whiff-standlp-0-0
+new	mk	40	whiff	40	15ba76	21					new-lp-40-0-whiff-standmk-0-0
+new	mp	40	whiff	40	15b7c2	17					new-lp-40-0-whiff-standmp-0-0
+old	hp	140	whiff	140	1ed0d0	37					old-lp-140-0-whiff-standhp-0-0
+old	lp	140	whiff	140	1ecf10	13					old-lp-140-0-whiff-standlp-0-0
+old	mp	140	whiff	140	1ecfd8	19					old-lp-140-0-whiff-standmp-0-0
+old	hk	40	whiff	40	1ed2ec	33					old-lp-40-0-whiff-standhk-0-0
+old	hp	40	whiff	40	1ed06c	26					old-lp-40-0-whiff-standhp-0-0
+old	lk	40	whiff	40	1ed164	15					old-lp-40-0-whiff-standlk-0-0
+old	lp	40	whiff	40	1eceac	12					old-lp-40-0-whiff-standlp-0-0
+old	mk	40	whiff	40	1ed228	21					old-lp-40-0-whiff-standmk-0-0
+old	mp	40	whiff	40	1ecf74	18					old-lp-40-0-whiff-standmp-0-0
+new	mp	68	whiff	68	15b7c2	17					new-lp-68-0-whiff-standmp-0-0
+new	mp	69	whiff	69	15b826	19					new-lp-69-0-whiff-standmp-0-0
+new	lp	81	whiff	81	15b6fa	12					new-lp-81-0-whiff-standlp-0-0
+new	lp	82	whiff	82	15b75e	13					new-lp-82-0-whiff-standlp-0-0
+new	hp	92	whiff	92	15b8ba	23					new-lp-92-0-whiff-standhp-0-0
+new	hp	93	whiff	93	15b91e	37					new-lp-93-0-whiff-standhp-0-0
+old	mp	68	whiff	68	1ecf74	18					old-lp-68-0-whiff-standmp-0-0
+old	mp	69	whiff	69	1ecfd8	19					old-lp-69-0-whiff-standmp-0-0
+old	lp	81	whiff	81	1eceac	12					old-lp-81-0-whiff-standlp-0-0
+old	lp	82	whiff	82	1ecf10	13					old-lp-82-0-whiff-standlp-0-0
+old	hp	92	whiff	92	1ed06c	26					old-lp-92-0-whiff-standhp-0-0
+old	hp	93	whiff	93	1ed0d0	37					old-lp-93-0-whiff-standhp-0-0
+new	hp	40	cg	40	15b8ba	23					new-lp-40-0-cg-standhp-0-0
+new	lp	40	cg	40	15b6fa	26	4		31	30	new-lp-40-0-cg-standlp-0-0
+new	mp	40	cg	40	15b7c2	31	4		36	54	new-lp-40-0-cg-standmp-0-0
+new	hp	40	sg	40	15b8ba	37	4		40	78	new-lp-40-0-sg-standhp-0-0
+new	lp	40	sg	40	15b6fa	26	4		31	30	new-lp-40-0-sg-standlp-0-0
+new	mp	40	sg	40	15b7c2	31	4		36	54	new-lp-40-0-sg-standmp-0-0
+new	hp	40	sn	40	15b8ba	37	4	23	40	78	new-lp-40-0-sn-standhp-0-0
+new	lp	40	sn	40	15b6fa	26	4	11	31	30	new-lp-40-0-sn-standlp-0-0
+new	mp	40	sn	40	15b7c2	31	4	19	36	54	new-lp-40-0-sn-standmp-0-0
+new	mp	69	cg	69	15b826	19					new-lp-69-0-cg-standmp-0-0
+new	mp	69	sg	69	15b826	33	6		38	54	new-lp-69-0-sg-standmp-0-0
+new	mp	69	sn	69	15b826	33	6	19	38	54	new-lp-69-0-sn-standmp-0-0
+new	lp	82	cg	82	15b75e	13					new-lp-82-0-cg-standlp-0-0
+new	lp	82	sg	82	15b75e	27	4		31	30	new-lp-82-0-sg-standlp-0-0
+new	lp	82	sn	82	15b75e	27	4	11	31	30	new-lp-82-0-sn-standlp-0-0
+new	hp	93	cg	93	15b91e	37					new-lp-93-0-cg-standhp-0-0
+new	hp	93	sg	93	15b91e	51	8		44	78	new-lp-93-0-sg-standhp-0-0
+new	hp	93	sn	93	15b91e	51	8	21	44	78	new-lp-93-0-sn-standhp-0-0
+old	hp	40	cg	40	1ed06c	26					old-lp-40-0-cg-standhp-0-0
+old	lp	40	cg	40	1eceac	26	4		31	30	old-lp-40-0-cg-standlp-0-0
+old	mp	40	cg	40	1ecf74	32	5		37	54	old-lp-40-0-cg-standmp-0-0
+old	hp	40	sg	40	1ed06c	40	7		43	78	old-lp-40-0-sg-standhp-0-0
+old	lp	40	sg	40	1eceac	26	4		31	30	old-lp-40-0-sg-standlp-0-0
+old	mp	40	sg	40	1ecf74	32	5		37	54	old-lp-40-0-sg-standmp-0-0
+old	hp	40	sn	40	1ed06c	40	7	24	43	78	old-lp-40-0-sn-standhp-0-0
+old	lp	40	sn	40	1eceac	26	4	11	31	30	old-lp-40-0-sn-standlp-0-0
+old	mp	40	sn	40	1ecf74	32	5	19	37	54	old-lp-40-0-sn-standmp-0-0
+old	mp	69	cg	69	1ecfd8	19					old-lp-69-0-cg-standmp-0-0
+old	mp	69	sg	69	1ecfd8	33	6		38	54	old-lp-69-0-sg-standmp-0-0
+old	mp	69	sn	69	1ecfd8	33	6	22	38	54	old-lp-69-0-sn-standmp-0-0
+old	lp	82	cg	82	1ecf10	13					old-lp-82-0-cg-standlp-0-0
+old	lp	82	sg	82	1ecf10	27	4		31	30	old-lp-82-0-sg-standlp-0-0
+old	lp	82	sn	82	1ecf10	27	4	11	31	30	old-lp-82-0-sn-standlp-0-0
+old	hp	93	cg	93	1ed0d0	37					old-lp-93-0-cg-standhp-0-0
+old	hp	93	sg	93	1ed0d0	51	8		44	78	old-lp-93-0-sg-standhp-0-0
+old	hp	93	sn	93	1ed0d0	51	8	27	44	78	old-lp-93-0-sn-standhp-0-0
+new	hk	100	cg	100	15bb3a	33					new-lp-100-0-cg-standhk-0-0
+new	lk	100	cg	100	15b9b2	29	6		33	30	new-lp-100-0-cg-standlk-0-0
+new	mk	100	cg	100	15ba76	21					new-lp-100-0-cg-standmk-0-0
+new	hk	100	sg	100	15bb3a	47	7		43	78	new-lp-100-0-sg-standhk-0-0
+new	lk	100	sg	100	15b9b2	29	6		33	30	new-lp-100-0-sg-standlk-0-0
+new	mk	100	sg	100	15ba76	35	6		38	54	new-lp-100-0-sg-standmk-0-0
+new	hk	100	sn	100	15bb3a	47	7	20	43	78	new-lp-100-0-sn-standhk-0-0
+new	lk	100	sn	100	15b9b2	29	6	11	33	30	new-lp-100-0-sn-standlk-0-0
+new	mk	100	sn	100	15ba76	35	6	16	38	54	new-lp-100-0-sn-standmk-0-0
+new	hk	40	cg	40	15bb3a	47	4		40	78	new-lp-40-0-cg-standhk-0-0
+new	lk	40	cg	40	15b9b2	43	4,20		46	34	new-lp-40-0-cg-standlk-0-0
+new	mk	40	cg	40	15ba76	35	4		36	54	new-lp-40-0-cg-standmk-0-0
+new	hk	40	sg	40	15bb3a	47	4		40	78	new-lp-40-0-sg-standhk-0-0
+new	lk	40	sg	40	15b9b2	43	4,20	11,22	46	34	new-lp-40-0-sg-standlk-0-0
+new	mk	40	sg	40	15ba76	49	4,20		51	60	new-lp-40-0-sg-standmk-0-0
+new	hk	40	sn	40	15bb3a	47	4	14	40	78	new-lp-40-0-sn-standhk-0-0
+new	lk	40	sn	40	15b9b2	43	4,20	11,22	46	34	new-lp-40-0-sn-standlk-0-0
+new	mk	40	sn	40	15ba76	49	4,20	12,28	51	60	new-lp-40-0-sn-standmk-0-0
+old	hk	100	cg	100	1ed2ec	33					old-lp-100-0-cg-standhk-0-0
+old	lk	100	cg	100	1ed164	29	6		33	30	old-lp-100-0-cg-standlk-0-0
+old	mk	100	cg	100	1ed228	21					old-lp-100-0-cg-standmk-0-0
+old	hk	100	sg	100	1ed2ec	47	7		43	78	old-lp-100-0-sg-standhk-0-0
+old	lk	100	sg	100	1ed164	29	6		33	30	old-lp-100-0-sg-standlk-0-0
+old	mk	100	sg	100	1ed228	35	6		38	54	old-lp-100-0-sg-standmk-0-0
+old	hk	100	sn	100	1ed2ec	47	7	19	43	78	old-lp-100-0-sn-standhk-0-0
+old	lk	100	sn	100	1ed164	29	6	11	33	30	old-lp-100-0-sn-standlk-0-0
+old	mk	100	sn	100	1ed228	35	6	18	38	54	old-lp-100-0-sn-standmk-0-0
+old	hk	40	cg	40	1ed2ec	47	4		40	78	old-lp-40-0-cg-standhk-0-0
+old	lk	40	cg	40	1ed164	43	4,20		46	34	old-lp-40-0-cg-standlk-0-0
+old	mk	40	cg	40	1ed228	35	4		36	54	old-lp-40-0-cg-standmk-0-0
+old	hk	40	sg	40	1ed2ec	47	4		40	78	old-lp-40-0-sg-standhk-0-0
+old	lk	40	sg	40	1ed164	43	4,20	11,22	46	34	old-lp-40-0-sg-standlk-0-0
+old	mk	40	sg	40	1ed228	49	4,20		51	60	old-lp-40-0-sg-standmk-0-0
+old	hk	40	sn	40	1ed2ec	47	4	14	40	78	old-lp-40-0-sn-standhk-0-0
+old	lk	40	sn	40	1ed164	43	4,20	11,22	46	34	old-lp-40-0-sn-standlk-0-0
+old	mk	40	sn	40	1ed228	49	4,20	11,26	51	60	old-lp-40-0-sn-standmk-0-0

@@ -218,9 +218,16 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
     let mut total_poses = 0;
     for fighter in fighters {
         let mut headers = BTreeMap::<u32, Vec<String>>::new();
+        let mut binds_frame = BTreeMap::<u32, bool>::new();
         for slot in 0..PLAYER_MOVES {
             for family in FAMILIES {
                 if let Some(header) = bank.era_move_header(fighter, family, slot) {
+                    let holds_frame = DataBank::era_slot_holds_frame(fighter, family, slot);
+                    assert_eq!(
+                        *binds_frame.entry(header).or_insert(holds_frame),
+                        holds_frame,
+                        "{fighter:?} {header:#x} is bound as both a frame and a header"
+                    );
                     headers
                         .entry(header)
                         .or_default()
@@ -247,7 +254,12 @@ fn later_era_move_frames_use_visible_art_for_their_own_fighter() {
             };
             let own = &rom_shapes[&(owner as u8)];
             let catalogue = &catalogue_shapes[&(owner as u8)];
-            let (frames, errors) = bank_frames(&program, header);
+            let (frames, errors) = if binds_frame.get(&header) == Some(&true) {
+                let frame = FrameRecord::from_stream(&program, header).expect("valid era stream frame");
+                (vec![frame], Vec::new())
+            } else {
+                bank_frames(&program, header)
+            };
             for (stream, end) in errors {
                 failures.push(format!(
                     "{fighter:?} {slots:?} {header:#x} -> {stream:#x}: {end:?}"

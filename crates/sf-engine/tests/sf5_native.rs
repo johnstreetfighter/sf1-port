@@ -11,7 +11,7 @@ use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::{Fight, FightFrame};
 use sf_engine::front::{FrameInputs, GameSession, PlayerInputs};
 use sf_engine::netplay::{encode_inputs, RollbackEngine};
-use sf_engine::roster::TournamentFighter::{self, Birdie, Ryu, Sagat};
+use sf_engine::roster::TournamentFighter::{self, Birdie, Ken, Ryu, Sagat};
 use sf_video::announcer::AnnouncerLine;
 use sf_video::era_hud::{EraGauge, Fill, GaugeRow, GaugeState};
 use sf_video::romset::Assets;
@@ -19,6 +19,7 @@ use sf_video::romset::Assets;
 const LP: usize = 0;
 const MP: usize = 1;
 const HP: usize = 2;
+const LK: usize = 3;
 const MK: usize = 4;
 const HK: usize = 5;
 const STOCK: u8 = 48;
@@ -43,19 +44,17 @@ fn training_show_evades_an_attack_before_v_shift_break() {
 
 #[test]
 fn training_fills_and_coaches_each_canonical_v_system_loadout() {
-    use TournamentFighter::Ken;
-
-    for (fighter, first, second) in [
-        (Ryu, "DENJIN RENKI", ("KAKKO FUBATSU", 0x2a)),
-        (Ken, "HEAT RUSH", ("SHINRYUKEN", 0x24)),
-        (Birdie, "ENJOY TIME", ("BIRDIE TIME", 0x2a)),
-        (Sagat, "TIGER CHARGE", ("TIGER ASSAULT", 0x2a)),
+    for (fighter, first, second, first_stocks, second_stocks) in [
+        (Ryu, "DENJIN RENKI", ("KAKKO FUBATSU", 0x2a), 2, 3),
+        (Ken, "HEAT RUSH", ("SHINRYUKEN", 0x24), 3, 2),
+        (Birdie, "ENJOY TIME", ("BIRDIE TIME", 0x2a), 2, 3),
+        (Sagat, "TIGER CHARGE", ("TIGER ASSAULT", 0x2a), 3, 2),
     ] {
         for (loadout, (name, slot), stocks) in [
-            (Loadout::Skill1Trigger1, (first, 0x2a), 2),
-            (Loadout::Skill1Trigger2, second, 3),
-            (Loadout::Skill2Trigger1, (first, 0x2a), 2),
-            (Loadout::Skill2Trigger2, second, 3),
+            (Loadout::Skill1Trigger1, (first, 0x2a), first_stocks),
+            (Loadout::Skill1Trigger2, second, second_stocks),
+            (Loadout::Skill2Trigger1, (first, 0x2a), first_stocks),
+            (Loadout::Skill2Trigger2, second, second_stocks),
         ] {
             let Some(mut session) = training_fight_with_fighter(fighter, Revision::Sf5Ce, loadout)
             else {
@@ -119,6 +118,13 @@ fn v_gauge(fight: &Fight) -> GaugeRow {
         .unwrap()
         .second
         .unwrap()
+}
+
+fn draining_v_gauge(stocks: u8, timer: u32, remaining: u32) -> GaugeRow {
+    let points = (u32::from(stocks * STOCK) * remaining).div_ceil(timer) as u16;
+    let stock = u16::from(STOCK);
+    GaugeRow::stock(stocks, (points / stock) as u8, Fill::of(points % stock, stock))
+        .with_state(GaugeState::Draining)
 }
 
 fn command(fight: &mut Fight, assets: &Assets, motion: &[u8], buttons: &[usize]) -> FightFrame {
@@ -248,20 +254,149 @@ fn unified_v_trigger_two_costs_two_stocks() {
 }
 
 #[test]
+fn ken_native_v_triggers_match_stock_timer_and_shinryuken_cost() {
+    for (revision, loadout, stocks, timer, slot) in [
+        (Revision::Sf5, Loadout::Skill1Trigger1, 3, 1200, 0x2a),
+        (Revision::Sf5Ae, Loadout::Skill1Trigger2, 2, 3000, 0x24),
+        (Revision::Sf5Ce, Loadout::Skill2Trigger1, 3, 1200, 0x2a),
+        (Revision::Sf5Ce, Loadout::Skill2Trigger2, 2, 3000, 0x24),
+    ] {
+        let Some(session) = training_fight_with_fighter(Ken, revision, loadout) else {
+            return;
+        };
+        let assets = session.assets();
+        let mut fight = session.fight().unwrap().clone();
+        wait(&mut fight, assets, 1);
+        fight.set_fill_meters(false);
+        assert_eq!(v_gauge(&fight), GaugeRow::stock(stocks, stocks, Fill::EMPTY));
+
+        step(&mut fight, assets, input(0, &[HP, HK]));
+        assert_eq!(move_id(&fight), slot);
+        assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, timer));
+
+        // The activation frame consumes the first of the port's 15 freeze ticks.
+        wait(&mut fight, assets, 14 + 120);
+        assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, timer - 120));
+        step(&mut fight, assets, input(0, &[HP, HK]));
+        if slot == 0x24 {
+            assert_eq!(move_id(&fight), slot);
+            assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, timer - 120 - 2000 - 1));
+        } else {
+            assert_ne!(move_id(&fight), slot, "Heat Rush has no heavy-pair follow-up");
+            assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, timer - 120 - 1));
+        }
+    }
+}
+
+#[test]
+fn unified_ken_heat_rush_costs_two_shared_stocks() {
+    let Some(select) = local_select_with_fighter(
+        GaugeMode::Unified,
+        Ken,
+        Revision::Sf5,
+        Loadout::Skill1Trigger1,
+    ) else {
+        return;
+    };
+    let session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+    let base = session.fight().unwrap();
+    for (stocks, expected_move, remaining) in [(1, false, 1), (2, true, 0), (3, true, 1)] {
+        let mut fight = base.clone();
+        set_ex(&mut fight, stocks * STOCK);
+        step(&mut fight, session.assets(), input(0, &[HP, HK]));
+        assert_eq!(move_id(&fight) == 0x2a, expected_move);
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, remaining * STOCK);
+    }
+}
+
+#[test]
 fn ae_sagat_uses_the_style_card_for_his_revision_and_real_uppercut() {
     let Some((session, mut fight)) = bout(Sagat, Revision::Sf5Ae, Loadout::Skill1Trigger2) else {
         return;
     };
     assert_eq!(
         v_gauge(&fight),
-        GaugeRow::stock(3, 0, Fill::of(0, STOCK.into()))
+        GaugeRow::stock(2, 0, Fill::of(0, STOCK.into()))
     );
     let assets = session.assets();
     step(&mut fight, assets, input(0, &[MP, MK]));
     assert_eq!(move_id(&fight), 0x2b);
     wait(&mut fight, assets, 45);
+    assert_eq!(v_gauge(&fight), GaugeRow::stock(2, 0, Fill::of(0, STOCK.into())));
     command(&mut fight, assets, &[RIGHT, DOWN, DOWN | RIGHT], &[HP]);
     assert_eq!(move_id(&fight), 0x1f, "Tiger Uppercut");
+}
+
+#[test]
+fn sagat_hanuman_charge_does_not_fill_v_gauge() {
+    let Some((session, mut fight)) = bout(Sagat, Revision::Sf5Ce, Loadout::Skill2Trigger1) else {
+        return;
+    };
+    let assets = session.assets();
+    let empty = GaugeRow::stock(3, 0, Fill::of(0, STOCK.into()));
+    for _ in 0..2 {
+        step(&mut fight, assets, input(0, &[MP, MK]));
+        assert_eq!(move_id(&fight), 0x2c, "Hanuman Charge");
+        assert_eq!(v_gauge(&fight), empty);
+        wait(&mut fight, assets, 60);
+        assert_eq!(v_gauge(&fight), empty);
+    }
+}
+
+#[test]
+fn sagat_native_v_triggers_use_revision_and_follow_up_timers() {
+    for (revision, loadout, stocks, timer, follow_up, cost, direction) in [
+        (Revision::Sf5Ae, Loadout::Skill1Trigger1, 3, 2400, 0x26, 1200, 0),
+        (Revision::Sf5Ce, Loadout::Skill2Trigger1, 3, 3000, 0x26, 1500, 0),
+        (Revision::Sf5Ae, Loadout::Skill1Trigger2, 2, 2400, 0x24, 800, 0),
+        (Revision::Sf5Ce, Loadout::Skill2Trigger2, 2, 2400, 0x25, 800, RIGHT),
+    ] {
+        let Some(session) = training_fight_with_fighter(Sagat, revision, loadout) else {
+            return;
+        };
+        let assets = session.assets();
+        let mut fight = session.fight().unwrap().clone();
+        wait(&mut fight, assets, 1);
+        fight.set_fill_meters(false);
+        assert_eq!(v_gauge(&fight), GaugeRow::stock(stocks, stocks, Fill::EMPTY));
+        step(&mut fight, assets, input(0, &[HP, HK]));
+        assert_eq!(move_id(&fight), 0x2a);
+        assert_eq!(
+            v_gauge(&fight),
+            GaugeRow::stock(stocks, stocks, Fill::EMPTY).with_state(GaugeState::Draining)
+        );
+
+        // The activation frame uses one of the port's 15 freeze ticks.
+        let activation_freeze_left = 14;
+        let elapsed = 120;
+        wait(&mut fight, assets, activation_freeze_left + elapsed);
+        let remaining = timer - u32::try_from(elapsed).unwrap();
+        assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, remaining), "{revision:?} {loadout:?}");
+        step(&mut fight, assets, input(direction, &[HP, HK]));
+        assert_eq!(move_id(&fight), follow_up);
+        assert_eq!(v_gauge(&fight), draining_v_gauge(stocks, timer, remaining - cost - 1));
+    }
+}
+
+#[test]
+fn unified_sagat_tiger_charge_still_costs_two_shared_stocks() {
+    let Some(select) = local_select_with_fighter(
+        GaugeMode::Unified,
+        Sagat,
+        Revision::Sf5Ce,
+        Loadout::Skill1Trigger1,
+    ) else {
+        return;
+    };
+    let session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+    let base = session.fight().unwrap();
+    for (stocks, expected_move, remaining) in [(1, false, 1), (2, true, 0), (3, true, 1)] {
+        let mut fight = base.clone();
+        set_ex(&mut fight, stocks * STOCK);
+        step(&mut fight, session.assets(), input(0, &[HP, HK]));
+        assert_eq!(move_id(&fight) == 0x2a, expected_move);
+        assert_eq!(fight.machine().era_fighters()[0].super_meter, remaining * STOCK);
+    }
 }
 
 #[test]
@@ -451,6 +586,55 @@ fn v_reversal_requires_real_blockstun_spends_v_and_deals_recoverable_damage() {
 }
 
 #[test]
+fn ken_v_reversal_requires_three_kicks() {
+    let Some((session, mut base)) = bout(Ken, Revision::Sf5Ce, Loadout::Skill1Trigger1) else {
+        return;
+    };
+    let assets = session.assets();
+    let full_training = training_fight_with_fighter(Ken, Revision::Sf5Ce, Loadout::Skill1Trigger1)
+        .expect("same local assets");
+    let mut training_fight = full_training.fight().unwrap().clone();
+    wait(&mut training_fight, assets, 1);
+    // Seed a full meter from the same Style Card's Training refill. The
+    // local fight accepts controller input from both sides for the guard.
+    let mut snapshot = base.save_netplay_snapshot(0);
+    snapshot.machine.toggle_state.era.fighters[0] = training_fight.machine().era_fighters()[0];
+    base.restore_netplay_snapshot(&snapshot);
+    for _ in 0..48 {
+        base.step(assets, pad(RIGHT, None), pad(LEFT, None), false);
+    }
+    wait(&mut base, assets, 5);
+    let blocked = (0..22).any(|tick| {
+        let p2 = if tick == 0 { input(0, &[HP]) } else { PlayerInputs::default() };
+        base.step(assets, pad(LEFT, None), p2, false);
+        base.fight_read().fighters[0].blockstun
+    });
+    assert!(blocked, "opponent's heavy punch enters real blockstun");
+    assert_eq!(v_gauge(&base), GaugeRow::stock(3, 3, Fill::EMPTY));
+
+    let mut punches = base.clone();
+    step(&mut punches, assets, input(RIGHT, &[LP, MP, HP]));
+    assert_ne!(move_id(&punches), 0x2d);
+    assert_eq!(v_gauge(&punches), v_gauge(&base));
+
+    step(&mut base, assets, input(RIGHT, &[LK, MK, HK]));
+    assert_eq!(move_id(&base), 0x2d);
+    assert_eq!(v_gauge(&base), GaugeRow::stock(3, 2, Fill::of(0, STOCK.into())));
+}
+
+#[test]
+fn training_shows_ken_v_reversal_with_three_kicks() {
+    let Some(mut session) = training_fight_with_fighter(Ken, Revision::Sf5Ce, Loadout::Skill1Trigger1) else {
+        return;
+    };
+    alpha::assert_training_show(&mut session, "SENPU NATAOTOSHI", 0x2d);
+    assert_eq!(
+        session.coach().unwrap().entry().input.button,
+        sf_engine::moves::ButtonClass::TripleKick
+    );
+}
+
+#[test]
 fn a_designated_heavy_counter_hit_announces_crush_counter() {
     let Some((session, mut base)) = bout(Ryu, Revision::Sf5Ce, Loadout::Skill1Trigger1) else {
         return;
@@ -504,14 +688,13 @@ fn v_trigger_and_v_gauge_reset_while_ex_carries_into_the_next_round() {
 
 #[test]
 fn champion_edition_ken_uses_ryusenkyaku_and_a_kick_critical_art() {
-    use TournamentFighter::Ken;
     let Some((session, mut fight)) = bout(Ken, Revision::Sf5Ce, Loadout::Skill2Trigger2) else {
         return;
     };
     let assets = session.assets();
     assert_eq!(
         v_gauge(&fight),
-        GaugeRow::stock(3, 0, Fill::of(0, STOCK.into()))
+        GaugeRow::stock(2, 0, Fill::of(0, STOCK.into()))
     );
     step(&mut fight, assets, input(0, &[MP, MK]));
     assert_eq!(move_id(&fight), 0x2c, "Ryusenkyaku");
