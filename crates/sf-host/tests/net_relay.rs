@@ -1,5 +1,4 @@
 //! The host transport against a real relay on localhost (#124).
-use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 
 use sf_engine::config::MatchConfig;
@@ -10,47 +9,11 @@ use sf_engine::netplay::{
     RoomKind, SyncedMatchRules,
 };
 use sf_engine::roster::{StagePick, TournamentFighter};
-use sf_host::net::{HostNetDriver, NetDriverConfig};
-use sf_relay::client::Roots;
-use sf_relay::rooms::Limits;
-use sf_relay::service::{RelayService, ServiceConfig};
+use sf_host::net::HostNetDriver;
 
-struct TestRelay {
-    service: RelayService,
-    certificate: Vec<u8>,
-}
-
-impl TestRelay {
-    fn start() -> Self {
-        let signed = rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_owned()]).unwrap();
-        let certificate = signed.cert.der().to_vec();
-        let service = RelayService::start(ServiceConfig {
-            listen: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
-            certificates: vec![certificate.clone()],
-            private_key: signed.signing_key.serialize_der(),
-            limits: Limits::default(),
-        })
-        .unwrap();
-        Self { service, certificate }
-    }
-
-    fn address(&self) -> String {
-        self.service.local_addr().to_string()
-    }
-
-    fn driver(&self) -> HostNetDriver {
-        let mut driver = HostNetDriver::with_config(NetDriverConfig {
-            bind_ip: Ipv4Addr::LOCALHOST,
-            link_override: Some(Link::Ethernet),
-            discovery_port: 0,
-            discovery_targets: Vec::new(),
-            relay_roots: Roots::Only(vec![self.certificate.clone()]),
-            ..NetDriverConfig::default()
-        });
-        driver.set_relay(Some(self.address()));
-        driver
-    }
-}
+#[path = "support/relay.rs"]
+mod relay;
+use relay::TestRelay;
 
 fn announcement(in_match: bool) -> RoomAnnouncement {
     let rules = SyncedMatchRules::new(
