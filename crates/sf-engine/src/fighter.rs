@@ -6628,6 +6628,13 @@ impl Bus<'_> {
             self.input_tail(me, ps);
             return;
         }
+        // Like a bank jump, Ken's banked free jump stays busy through its
+        // grounded crouch phases (0x82), which would otherwise restart it.
+        if self.is_player_driven(ps) && state & 0x80 != 0 && self.st_ken_jump_header(ps, mv).is_some() {
+            self.record_recovery_buffer_frame(ps, me, d0);
+            self.input_tail(me, ps);
+            return;
+        }
         let interruptible_walk = (self.toggles.interruptible_walk_cycle || self.st_ground_walk(ps, mv).is_some()
             || (self.toggles.standard_high_low_block && self.is_guard_interrupt(me, other, d0)))
             && (self.eb(me, 9) & 0x80) != 0

@@ -1008,7 +1008,7 @@ fn st_shinku_airborne_hit_freezes_and_replays_across_projectile_rehit() {
     let mut fight = initial;
     // Start Ken's jump early enough to finish his World ST prejump before contact.
     for tick in 1..28 {
-        fight.step(&assets, idle, pad(if (2..5).contains(&tick) { 8 } else { 0 }, false), false);
+        fight.step(&assets, idle, pad(if tick == 4 { 8 } else { 0 }, false), false);
     }
     assert_eq!(fight.fight_read().fighters[1].state & 3, 1);
     let mut snapshot = None;

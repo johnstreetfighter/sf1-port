@@ -127,6 +127,40 @@ fn ken_free_jumps_replay_world_arcade_trajectories_and_rollback() {
 }
 
 #[test]
+fn held_jump_input_follows_the_tapped_trajectory() {
+    let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, Loadout::Standard)
+    else {
+        return;
+    };
+    for loadout in [Loadout::Standard, Loadout::Old] {
+        let session = local_fight(&select, Revision::St, loadout);
+        let mut base = session.fight().unwrap().clone();
+        let idle = pad(0, None);
+        for _ in 0..94 {
+            base.step(session.assets(), idle, idle, false);
+        }
+        place_axes(&mut base, [132, 335]);
+        for direction in [UP, UP | LEFT, UP | RIGHT] {
+            let (mut tapped, mut held) = (base.clone(), base.clone());
+            for tick in 0..60 {
+                let tap = if tick == 0 { pad(direction, None) } else { idle };
+                tapped.step(session.assets(), idle, tap, false);
+                held.step(session.assets(), idle, pad(direction, None), false);
+                let ken = |fight: &Fight| {
+                    let ken = fight.machine().diagnostic_telemetry().p2;
+                    (ken.move_id, height(fight, ken), world_x(fight, ken))
+                };
+                let (move_id, ..) = ken(&tapped);
+                if !matches!(move_id, 9..=0x0b) {
+                    break;
+                }
+                assert_eq!(ken(&held), ken(&tapped), "{loadout:?} {direction} +{tick}");
+            }
+        }
+    }
+}
+
+#[test]
 fn ken_free_jumps_can_still_branch_to_jump_normals_and_air_tatsumaki() {
     let Some(select) = local_select_with_p1(GaugeMode::EraDefault, Revision::St, Loadout::Standard)
     else {
