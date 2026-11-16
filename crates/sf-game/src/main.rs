@@ -594,6 +594,7 @@ impl Driver for Game {
                 }
                 session.type_keys(typed);
                 play.net.set_lobby_url(session.settings().lobby_url.clone());
+                play.net.set_relay(session.settings().relay.clone());
                 session.set_net_time_ms(play.net.now_ms());
                 let out = session.step(inputs);
                 #[cfg(windows)]
