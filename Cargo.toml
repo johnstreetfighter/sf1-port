@@ -13,3 +13,11 @@ crc32fast = "1"
 sha1 = "0.10"
 png = "0.17"
 clap = { version = "4", features = ["derive"] }
+
+# The full test suite emulates whole fights, which is many times slower
+# unoptimized. `cargo suite` (.cargo/config.toml) builds it with this profile
+# into target/suite; overflow checks and debug assertions stay on from dev.
+[profile.suite]
+inherits = "dev"
+opt-level = 2
+debug = 0
