@@ -624,6 +624,14 @@ fn real_ryu_sf2_trial_counts_a_native_super_cancel() {
     ] {
         step(&mut fight, dir, button);
     }
+    // World Super Turbo selects the Super during the opener's hit freeze and
+    // spends the stock at the flash, nine ticks after that freeze releases.
+    for _ in 0..30 {
+        if fight.machine().era_fighters()[0].super_meter == 0 {
+            break;
+        }
+        step(&mut fight, 0, None);
+    }
     assert_eq!(
         fight.machine().era_fighters()[0].super_meter,
         0,
