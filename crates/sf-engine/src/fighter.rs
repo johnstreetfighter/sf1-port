@@ -3167,7 +3167,15 @@ impl Bus<'_> {
         // Cancels (SP18): a cancelable normal that connected, hit or
         // guarded, opens its cancel window.
         if self.era_offense_flag(owner, self.toggles.cancels) && self.eb(me, 0xf) & 0x80 == 0 {
-            let guarded = self.era_side(owner).is_some_and(|side| self.toggle_state.era.guard_contacts[side]);
+            // `guard_contacts` is kept per P1/P2 side (`record_guard_contact`),
+            // not per Era slot: Dramatic Battle's slots run P1, the boss, then
+            // the second ally, so slot 2 has no guard-contact entry.
+            let mode = self.rb(GAME_MODE);
+            let guarded = self.era_side(owner).is_some()
+                && sf_video::callouts::Side::BOTH.into_iter().any(|side| {
+                    owner == crate::fight_reader::player_struct(side, mode)
+                        && self.toggle_state.era.guard_contacts[side.index()]
+                });
             self.cancel_open(me, guarded);
         }
     }
