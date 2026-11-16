@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -44,7 +44,18 @@ struct State {
     rooms: Mutex<Registry>,
     connections: Mutex<HashMap<ConnId, quinn::Connection>>,
     next: AtomicU64,
+    /// Connections still handshaking or waiting on their request.
+    admitting: AtomicUsize,
     max_connections: usize,
+}
+
+/// Counts one connection as admitting until it is seated or gone.
+struct Admitting(Arc<State>);
+
+impl Drop for Admitting {
+    fn drop(&mut self) {
+        self.0.admitting.fetch_sub(1, Ordering::Relaxed);
+    }
 }
 
 impl RelayService {
@@ -55,6 +66,7 @@ impl RelayService {
             rooms: Mutex::new(Registry::new(limits, random_index()?)),
             connections: Mutex::new(HashMap::new()),
             next: AtomicU64::new(1),
+            admitting: AtomicUsize::new(0),
             // Every seat of every room, plus headroom for joins in flight.
             max_connections: limits.max_rooms.saturating_mul(crate::rooms::SEATS).min(64 * 1024) + 256,
         });
@@ -117,12 +129,13 @@ async fn serve(endpoint: quinn::Endpoint, state: Arc<State>, mut stopped: onesho
         tokio::select! {
             incoming = endpoint.accept() => {
                 let Some(incoming) = incoming else { break };
-                let full = state.connections.lock().map_or(true, |c| c.len() >= state.max_connections);
-                if full {
+                let seated = state.connections.lock().map_or(usize::MAX, |c| c.len());
+                if seated.saturating_add(state.admitting.load(Ordering::Relaxed)) >= state.max_connections {
                     incoming.refuse();
                     continue;
                 }
-                tokio::spawn(handle(incoming, state.clone()));
+                state.admitting.fetch_add(1, Ordering::Relaxed);
+                tokio::spawn(handle(incoming, Admitting(state.clone())));
             }
             _ = expiry.tick() => expire(&state),
             _ = &mut stopped => break,
@@ -147,7 +160,8 @@ fn expire(state: &State) {
     }
 }
 
-async fn handle(incoming: quinn::Incoming, state: Arc<State>) {
+async fn handle(incoming: quinn::Incoming, admitting: Admitting) {
+    let state = admitting.0.clone();
     let Ok(Ok(connection)) = tokio::time::timeout(REQUEST_TIMEOUT, incoming).await else { return };
     let id = state.next.fetch_add(1, Ordering::Relaxed);
     let from = canonical(connection.remote_address().ip());
@@ -171,10 +185,11 @@ async fn handle(incoming: quinn::Incoming, state: Arc<State>) {
             connections.insert(id, connection.clone());
         }
     }
+    drop(admitting);
     let delivered = send.write_all(&reply.encode()).await.is_ok() && send.finish().is_ok();
     if refused {
         // Let the reply arrive; the client closes once it has read it.
-        let _ = tokio::time::timeout(REQUEST_TIMEOUT, connection.closed()).await;
+        let _ = tokio::time::timeout(Duration::from_secs(1), connection.closed()).await;
         connection.close(close::REFUSED.into(), b"refused");
         return;
     }

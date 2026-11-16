@@ -1404,7 +1404,8 @@ impl SettingsScreen {
                 self.settings.netplay_hud = first.netplay_hud;
                 self.settings.netplay_port = first.netplay_port;
                 self.settings.lobby_url = first.lobby_url;
-                self.settings.relay = first.relay;
+                // The relay has no menu row yet (#128), so a reset keeps the
+                // one set in settings.toml.
             }
         }
     }

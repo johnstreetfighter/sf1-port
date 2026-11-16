@@ -449,13 +449,8 @@ impl HostNetDriver {
                 })?;
             }
             Command::SendPacket { to_peer, bytes } if self.relay_link.is_some() => {
-                if bytes.len() > MAX_PACKET_BYTES || NetPacket::from_bytes(bytes).is_none() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "INVALID OUTGOING PACKET",
-                    ));
-                }
-                let known = if self.hosting { *to_peer != 0 } else { *to_peer == 0 };
+                check_outgoing(bytes)?;
+                let known = self.relay_seat_is_peer(*to_peer);
                 let link = self.relay_link.as_ref().filter(|_| known).ok_or_else(|| {
                     io::Error::new(io::ErrorKind::NotConnected, "UNKNOWN NETWORK PEER")
                 })?;
@@ -480,12 +475,7 @@ impl HostNetDriver {
                     .ok_or_else(|| {
                         io::Error::new(io::ErrorKind::NotConnected, "UNKNOWN NETWORK PEER")
                     })?;
-                if bytes.len() > MAX_PACKET_BYTES || NetPacket::from_bytes(bytes).is_none() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "INVALID OUTGOING PACKET",
-                    ));
-                }
+                check_outgoing(bytes)?;
                 if self.outgoing.len() >= QUEUE_LIMIT {
                     return Err(io::Error::new(
                         io::ErrorKind::WouldBlock,
@@ -621,8 +611,7 @@ impl HostNetDriver {
                     }
                 }
                 ClientEvent::Datagram { from, bytes } => {
-                    let expected = if self.hosting { from != 0 } else { from == 0 };
-                    if !expected
+                    if !self.relay_seat_is_peer(from)
                         || bytes.len() > MAX_PACKET_BYTES
                         || NetPacket::from_bytes(&bytes).is_none()
                         || self.events.len() >= QUEUE_LIMIT
@@ -664,6 +653,11 @@ impl HostNetDriver {
                 }
             }
         }
+    }
+
+    /// A host's peers are guest seats; a guest's only peer is the host's seat 0.
+    fn relay_seat_is_peer(&self, seat: u8) -> bool {
+        if self.hosting { seat != 0 } else { seat == 0 }
     }
 
     /// Relay play goes ahead when the link cannot be classified; only a
@@ -1275,6 +1269,16 @@ impl HostNetDriver {
             }
         }
     }
+}
+
+fn check_outgoing(bytes: &[u8]) -> io::Result<()> {
+    if bytes.len() > MAX_PACKET_BYTES || NetPacket::from_bytes(bytes).is_none() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "INVALID OUTGOING PACKET",
+        ));
+    }
+    Ok(())
 }
 
 fn valid_announcement(room: &RoomAnnouncement) -> bool {

@@ -1349,10 +1349,7 @@ impl GameSession {
             art_pack_hash: rules.art_pack_hash, protocol_hash: rules.protocol_hash,
         };
         if self.net_host(rules, room.clone(), binding) {
-            self.net_commands.push(match binding {
-                HostBinding::Port(port) => NetTransportCommand::BindHost { port, room },
-                HostBinding::Internet => NetTransportCommand::HostInternetRoom { room },
-            });
+            self.net_commands.push(binding.command(room));
         }
     }
 

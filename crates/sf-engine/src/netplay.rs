@@ -22,7 +22,7 @@ pub use sf_relay::RoomCode;
 /// Where a typed or pasted Direct Join entry points.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum JoinTarget {
-    /// An `SF1-` address code or a raw `IP:PORT`.
+    /// A LAN address code (`SF1-…`) or a raw `IP:PORT`.
     Address { ip: [u8; 4], port: u16 },
     /// A room on the configured Internet relay.
     Internet(RoomCode),

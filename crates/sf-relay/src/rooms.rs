@@ -94,6 +94,15 @@ impl Bucket {
     fn is_full(&self) -> bool {
         self.tokens >= self.capacity
     }
+
+    /// Spend `cost` if it is all there.
+    fn take(&mut self, cost: f64) -> bool {
+        let enough = self.tokens >= cost;
+        if enough {
+            self.tokens -= cost;
+        }
+        enough
+    }
 }
 
 struct Room {
@@ -187,12 +196,10 @@ impl Registry {
         let member = self.members.get_mut(&conn)?;
         member.datagrams.refill(now, SECOND);
         member.bytes.refill(now, SECOND);
-        let bytes = len as f64;
-        if member.datagrams.tokens < 1.0 || member.bytes.tokens < bytes {
+        if member.bytes.tokens < len as f64 || !member.datagrams.take(1.0) {
             return None;
         }
-        member.datagrams.tokens -= 1.0;
-        member.bytes.tokens -= bytes;
+        member.bytes.take(len as f64);
         let (code, from) = (member.code, member.seat);
         let room = self.rooms.get_mut(&code)?;
         let target = match (from, to) {
@@ -254,12 +261,17 @@ impl Registry {
                 Some((code, conns))
             })
             .collect();
+        self.forget_recovered(now);
+        closed
+    }
+
+    /// Drop throttle entries whose allowances have fully refilled.
+    fn forget_recovered(&mut self, now: Instant) {
         self.throttles.retain(|_, throttle| {
             throttle.creates.refill(now, MINUTE);
             throttle.joins.refill(now, MINUTE);
             !(throttle.creates.is_full() && throttle.joins.is_full())
         });
-        closed
     }
 
     fn seat(&mut self, conn: ConnId, code: RoomCode, seat: Seat, now: Instant) {
@@ -278,8 +290,13 @@ impl Registry {
         bucket: fn(&mut Throttle) -> &mut Bucket,
         period: Duration,
     ) -> Result<(), Refusal> {
+        let from = throttle_key(from);
         if !self.throttles.contains_key(&from) && self.throttles.len() >= self.limits.max_tracked_addresses {
-            return Err(Refusal::Throttled);
+            // Only an address flood still under way keeps the table full.
+            self.forget_recovered(now);
+            if self.throttles.len() >= self.limits.max_tracked_addresses {
+                return Err(Refusal::Throttled);
+            }
         }
         let limits = self.limits;
         let throttle = self.throttles.entry(from).or_insert_with(|| Throttle {
@@ -288,10 +305,18 @@ impl Registry {
         });
         let bucket = bucket(throttle);
         bucket.refill(now, period);
-        if bucket.tokens < 1.0 {
-            return Err(Refusal::Throttled);
+        if bucket.take(1.0) { Ok(()) } else { Err(Refusal::Throttled) }
+    }
+}
+
+/// IPv6 hosts usually hold a whole /64, so they share one allowance.
+fn throttle_key(from: IpAddr) -> IpAddr {
+    match from {
+        IpAddr::V6(v6) => {
+            let mut octets = v6.octets();
+            octets[8..].fill(0);
+            IpAddr::V6(octets.into())
         }
-        bucket.tokens -= 1.0;
-        Ok(())
+        v4 => v4,
     }
 }

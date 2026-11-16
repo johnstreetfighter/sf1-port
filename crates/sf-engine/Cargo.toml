@@ -8,7 +8,8 @@ license = "MIT"
 [dependencies]
 sf-video = { path = "../sf-video" }
 sf-compare = { path = "../sf-compare" }
-# Internet room codes only; the relay service and client stay in sf-host.
+# Internet room codes only. The QUIC service and client sit behind
+# sf-relay's `net` feature, which only sf-host turns on.
 sf-relay = { path = "../sf-relay" }
 crc32fast = { workspace = true }
 serde_json = { workspace = true }

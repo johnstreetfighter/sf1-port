@@ -99,6 +99,16 @@ pub(crate) enum HostBinding {
     Internet,
 }
 
+impl HostBinding {
+    /// The transport command that opens, or re-announces, this room.
+    pub(crate) fn command(self, room: RoomAnnouncement) -> NetTransportCommand {
+        match self {
+            HostBinding::Port(port) => NetTransportCommand::BindHost { port, room },
+            HostBinding::Internet => NetTransportCommand::HostInternetRoom { room },
+        }
+    }
+}
+
 /// A room connection, separate from the Fight and its rollback bookkeeping.
 #[derive(Clone, Debug)]
 pub(crate) struct Connection {
@@ -812,10 +822,7 @@ impl Connection {
         room.bank_hash = self.rules.bank_hash;
         room.art_pack_hash = self.rules.art_pack_hash;
         room.protocol_hash = self.rules.protocol_hash;
-        let command = match *binding {
-            HostBinding::Port(port) => NetTransportCommand::BindHost { port, room: room.clone() },
-            HostBinding::Internet => NetTransportCommand::HostInternetRoom { room: room.clone() },
-        };
+        let command = binding.command(room.clone());
         self.command(command);
     }
 

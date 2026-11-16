@@ -183,3 +183,40 @@ fn a_full_relay_refuses_new_rooms_and_codes_never_collide() {
     assert_eq!(rooms.create(9, AWAY, now), Err(Refusal::Capacity));
     assert_eq!(rooms.open_rooms(), 3);
 }
+
+#[test]
+fn ipv6_clients_share_an_allowance_per_64_prefix() {
+    let now = Instant::now();
+    let limits = Limits::default();
+    let mut rooms = registry();
+    let address = |host: u16| IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 1, 2, 0, 0, 0, host));
+    for conn in 0..u64::from(limits.creates_per_minute) {
+        rooms.create(conn, address(conn as u16 + 1), now).unwrap();
+        rooms.leave(conn);
+    }
+    assert_eq!(rooms.create(900, address(999), now), Err(Refusal::Throttled));
+    let elsewhere = IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 1, 3, 0, 0, 0, 1));
+    assert!(rooms.create(901, elsewhere, now).is_ok());
+}
+
+#[test]
+fn a_full_address_table_makes_room_by_forgetting_recovered_addresses() {
+    let start = Instant::now();
+    let limits = Limits { max_tracked_addresses: 4, ..Limits::default() };
+    let mut rooms = Registry::new(limits, {
+        let mut next = 0;
+        move || {
+            next += 1;
+            next * 7_919
+        }
+    });
+    let wrong = RoomCode::parse("K7Q-MPX").unwrap();
+    for host in 1..=4 {
+        rooms.join(host, IpAddr::V4(Ipv4Addr::new(10, 9, 0, host as u8)), wrong, start).unwrap_err();
+    }
+    // While all four are still recovering, a fifth address waits its turn.
+    assert_eq!(rooms.join(5, AWAY, wrong, start), Err(Refusal::Throttled));
+    // A minute later they have recovered and are forgotten on demand.
+    let later = start + Duration::from_secs(61);
+    assert_eq!(rooms.join(5, AWAY, wrong, later), Err(Refusal::NotFound));
+}
