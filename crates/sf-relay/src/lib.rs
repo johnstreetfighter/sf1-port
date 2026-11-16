@@ -2,5 +2,6 @@
 //! and (with `net`) the QUIC relay service and its client.
 
 pub mod code;
+pub mod rooms;
 
 pub use code::RoomCode;
