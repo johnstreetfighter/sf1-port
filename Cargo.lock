@@ -3082,6 +3082,7 @@ dependencies = [
  "png 0.17.16",
  "serde_json",
  "sf-compare",
+ "sf-relay",
  "sf-video",
 ]
 
@@ -3130,6 +3131,10 @@ version = "1.5.25"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "sf-relay"
+version = "1.5.25"
 
 [[package]]
 name = "sf-video"

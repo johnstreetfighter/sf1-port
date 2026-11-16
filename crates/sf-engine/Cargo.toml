@@ -8,6 +8,8 @@ license = "MIT"
 [dependencies]
 sf-video = { path = "../sf-video" }
 sf-compare = { path = "../sf-compare" }
+# Internet room codes only; the relay service and client stay in sf-host.
+sf-relay = { path = "../sf-relay" }
 crc32fast = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }

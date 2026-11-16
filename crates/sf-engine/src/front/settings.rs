@@ -101,6 +101,9 @@ pub struct Settings {
     pub netplay_port: u16,
     /// An optional community room directory; absent for LAN/direct play.
     pub lobby_url: Option<String>,
+    /// The Internet room relay as `host` or `host:port`; absent hides
+    /// Internet rooms.
+    pub relay: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -375,6 +378,7 @@ impl Default for Settings {
             netplay_hud: NetplayHudMode::Compact,
             netplay_port: 7000,
             lobby_url: None,
+            relay: None,
         }
     }
 }
@@ -501,7 +505,8 @@ impl Settings {
              wired_only = {}\n\
              netplay_hud = \"{}\"\n\
              netplay_port = {}\n\
-             lobby_url = {}\n",
+             lobby_url = {}\n\
+             relay = {}\n",
             self.scale,
             self.fullscreen,
             self.vsync,
@@ -530,6 +535,7 @@ impl Settings {
             self.netplay_hud.slug(),
             self.netplay_port,
             escaped(self.lobby_url.as_deref().unwrap_or("")),
+            escaped(self.relay.as_deref().unwrap_or("")),
         ) + &MENU_KEYS
             .iter()
             .zip(self.menu_positions)
@@ -696,6 +702,11 @@ impl Settings {
                     let url = unquoted(v)
                         .ok_or_else(|| format!("line {n}: expected a quoted lobby URL"))?;
                     s.lobby_url = (!url.is_empty()).then_some(url);
+                }
+                "relay" => {
+                    let relay = unquoted(v)
+                        .ok_or_else(|| format!("line {n}: expected a quoted relay host"))?;
+                    s.relay = (!relay.is_empty()).then_some(relay);
                 }
                 "rom_folder" => {
                     let inner = unquoted(v).ok_or_else(|| format!("line {n}: expected a quoted folder"))?;
@@ -1393,6 +1404,7 @@ impl SettingsScreen {
                 self.settings.netplay_hud = first.netplay_hud;
                 self.settings.netplay_port = first.netplay_port;
                 self.settings.lobby_url = first.lobby_url;
+                self.settings.relay = first.relay;
             }
         }
     }

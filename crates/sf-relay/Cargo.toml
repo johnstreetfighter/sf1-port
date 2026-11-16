@@ -1,0 +1,13 @@
+[package]
+name = "sf-relay"
+version.workspace = true
+edition.workspace = true
+description = "Internet room relay: room codes, the relay wire format and the QUIC relay service"
+
+[features]
+# Codes and the wire format are dependency-free so the pure engine can parse
+# what a player types. `net` adds the QUIC relay service and its client.
+default = []
+net = []
+
+[dependencies]

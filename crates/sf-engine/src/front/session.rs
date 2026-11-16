@@ -51,7 +51,7 @@ use crate::run::PowerOnMachine;
 use crate::replay::{MatchReplay, ReplayCommand, ReplayMode, ReplayPlayback};
 use crate::netplay::{Link, NetTransportCommand, NetTransportEvent, RoomAnnouncement, RoomKind, SyncedMatchRules};
 use crate::netplay::protocol::tag_from_str;
-use crate::netplay::connection::{Connection, ConnectionEvent};
+use crate::netplay::connection::{Connection, ConnectionEvent, HostBinding};
 use crate::netplay::RejectReason;
 use crate::canonical::{Canonical, CanonicalHasher};
 use crate::world_tour::native::WorldTourProfile;
@@ -1315,35 +1315,53 @@ impl GameSession {
             match action {
                 OnlineAction::Refresh => self.net_commands.push(NetTransportCommand::RefreshRooms),
                 OnlineAction::Host { port, public, wired_only, kind } => {
-                    if kind == RoomKind::Dramatic && self.config.preset == RulesetPreset::Faithful1987 {
-                        if let Some(Screen::Online(screen)) = self.stack.last_mut() {
-                            screen.set_notice("DRAMATIC BATTLE REQUIRES SF1+");
-                        }
-                        continue;
-                    }
-                    let rules = self.online_rules(kind);
-                    let room = RoomAnnouncement {
-                        host: tag_from_str(&self.settings.player_tag).unwrap_or(*b"PLAYER\0\0\0\0\0\0"),
-                        kind, link: Link::Wifi, wired_only, public,
-                        preset: rules.config.preset, in_match: false,
-                        max_rollback: self.settings.netplay_max_rollback.clamp(1, 8), spectators: 0,
-                        config_hash: rules.config_hash(), bank_hash: rules.bank_hash,
-                        art_pack_hash: rules.art_pack_hash, protocol_hash: rules.protocol_hash,
-                    };
-                    if self.net_host(rules, room.clone(), port) {
-                        self.net_commands.push(NetTransportCommand::BindHost { port, room });
-                    }
+                    self.online_host(HostBinding::Port(port), public, wired_only, kind)
+                }
+                OnlineAction::HostInternet { wired_only, kind } => {
+                    self.online_host(HostBinding::Internet, false, wired_only, kind)
                 }
                 OnlineAction::Join { addr, kind } => {
-                    let rules = self.online_rules(RoomKind::Versus);
-                    self.net_request = self.net_request.wrapping_add(1).max(1);
-                    let request = (u64::from(self.frames) << 32) ^ self.net_request;
-                    let tag = tag_from_str(&self.settings.player_tag).unwrap_or(*b"PLAYER\0\0\0\0\0\0");
-                    self.net_connection = Some(Connection::join(rules, tag, kind, request));
+                    self.online_join(kind);
                     self.net_commands.push(NetTransportCommand::ConnectPeer { addr });
+                }
+                OnlineAction::JoinInternet { code, kind } => {
+                    self.online_join(kind);
+                    self.net_commands.push(NetTransportCommand::JoinInternetRoom { code });
                 }
             }
         }
+    }
+
+    fn online_host(&mut self, binding: HostBinding, public: bool, wired_only: bool, kind: RoomKind) {
+        if kind == RoomKind::Dramatic && self.config.preset == RulesetPreset::Faithful1987 {
+            if let Some(Screen::Online(screen)) = self.stack.last_mut() {
+                screen.set_notice("DRAMATIC BATTLE REQUIRES SF1+");
+            }
+            return;
+        }
+        let rules = self.online_rules(kind);
+        let room = RoomAnnouncement {
+            host: tag_from_str(&self.settings.player_tag).unwrap_or(*b"PLAYER\0\0\0\0\0\0"),
+            kind, link: Link::Wifi, wired_only, public,
+            preset: rules.config.preset, in_match: false,
+            max_rollback: self.settings.netplay_max_rollback.clamp(1, 8), spectators: 0,
+            config_hash: rules.config_hash(), bank_hash: rules.bank_hash,
+            art_pack_hash: rules.art_pack_hash, protocol_hash: rules.protocol_hash,
+        };
+        if self.net_host(rules, room.clone(), binding) {
+            self.net_commands.push(match binding {
+                HostBinding::Port(port) => NetTransportCommand::BindHost { port, room },
+                HostBinding::Internet => NetTransportCommand::HostInternetRoom { room },
+            });
+        }
+    }
+
+    fn online_join(&mut self, kind: RoomKind) {
+        let rules = self.online_rules(RoomKind::Versus);
+        self.net_request = self.net_request.wrapping_add(1).max(1);
+        let request = (u64::from(self.frames) << 32) ^ self.net_request;
+        let tag = tag_from_str(&self.settings.player_tag).unwrap_or(*b"PLAYER\0\0\0\0\0\0");
+        self.net_connection = Some(Connection::join(rules, tag, kind, request));
     }
 
     /// The answer to a save: the new look's id, or why it failed. A saved
@@ -2160,7 +2178,8 @@ impl GameSession {
                         MenuItem::Local => Some(Screen::Select(self.select_for(FightKind::Local))),
                         MenuItem::Online => {
                             self.net_commands.push(NetTransportCommand::RefreshRooms);
-                            Some(Screen::Online(Box::new(OnlineScreen::open(self.settings.wired_only, self.settings.netplay_port))))
+                            Some(Screen::Online(Box::new(OnlineScreen::open(self.settings.wired_only, self.settings.netplay_port)
+                                .with_relay(self.settings.relay.is_some()))))
                         }
                         MenuItem::Arcade => Some(Screen::Select(self.select_for(FightKind::Arcade))),
                         MenuItem::TrainingCpu => Some(Screen::Select(self.select_for(FightKind::TrainingCpu))),

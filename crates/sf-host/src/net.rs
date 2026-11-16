@@ -455,6 +455,12 @@ impl HostNetDriver {
                 self.publish_rooms(true);
                 self.directory_fetch = true;
             }
+            Command::HostInternetRoom { .. } | Command::JoinInternetRoom { .. } => {
+                return Err(io::Error::new(
+                    io::ErrorKind::Unsupported,
+                    "NO INTERNET RELAY CONFIGURED",
+                ));
+            }
             Command::Close => {
                 // Dispatch a final forfeit/leave before releasing the socket.
                 // This remains best effort and bounded; WouldBlock never waits.

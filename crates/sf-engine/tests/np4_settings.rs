@@ -27,6 +27,7 @@ fn old_settings_get_netplay_defaults_and_new_settings_round_trip_through_the_fil
     assert_eq!(settings.netplay_hud, NetplayHudMode::Compact);
     assert_eq!(settings.netplay_port, 7000);
     assert_eq!(settings.lobby_url, None);
+    assert_eq!(settings.relay, None, "no relay means no Internet rooms");
 
     settings.player_tag = "RYU_87".to_owned();
     settings.netplay_input_delay = InputDelaySetting::Frames(3);
@@ -35,6 +36,7 @@ fn old_settings_get_netplay_defaults_and_new_settings_round_trip_through_the_fil
     settings.netplay_hud = NetplayHudMode::Full;
     settings.netplay_port = 9000;
     settings.lobby_url = Some("https://rooms.example.test/sf1".to_owned());
+    settings.relay = Some("relay.example.test:7443".to_owned());
     assert_eq!(settings.netplay_input_delay.frames(), Some(3));
     assert_eq!(Settings::from_toml(&settings.to_toml()).unwrap(), settings);
 
