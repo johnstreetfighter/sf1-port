@@ -17,6 +17,20 @@ pub(crate) fn slot(button: u8, directional: bool, old: bool) -> u8 {
     }
 }
 
+/// Every authored jump attack as `(button, directional, old)`; old Sagat
+/// only has a directional medium kick of his own.
+fn attacks() -> impl Iterator<Item = (u8, bool, bool)> {
+    [(false, false), (true, false), (true, true)]
+        .into_iter()
+        .flat_map(|(directional, old)| (0..6).map(move |button| (button, directional, old)))
+        .filter(|&(button, _, old)| !old || button == 4)
+}
+
+/// The SF2 era slots holding a jump attack's single stream frame.
+pub(crate) fn frame_slots() -> impl Iterator<Item = u8> {
+    attacks().map(|(button, directional, old)| slot(button, directional, old))
+}
+
 pub(crate) fn active(button: u8, directional: bool, age: u8) -> bool {
     let (first, end) = match button {
         0 => (3, if directional { 27 } else { u8::MAX }),
@@ -90,49 +104,47 @@ pub(super) fn build(rom: &[u8], region: &mut Region, catalogue: &Catalogue) -> R
         [67, 60, 38, 13],
     ];
     let palette = rom_w(rom, TournamentFighter::Sagat.move_table() + 0x32) & 0xff;
-    for (directional, old) in [(false, false), (true, false), (true, true)] {
-        let bounds = if directional { DIRECTIONAL } else { NEUTRAL };
-        for (button, mut strike) in bounds.into_iter().enumerate() {
-            if old && button != 4 {
-                continue;
-            }
-            if old {
-                strike = [65, 65, 35, 8];
-            }
-            let name = match (directional, button) {
-                (false, 0..=2) => "jump_punch",
-                (true, 0..=2) => "jump_punch_down",
-                (false, 3..=4) => "jump_kick",
-                (false, _) => "jump_kick_high",
-                (true, _) => "jump_kick_down",
-            };
-            let pose = catalogue_pose(catalogue, name, palette)?;
-            let mut boxes = boxes_named(&sagat::BOXES, name).bytes(&pose);
-            let [x, y, rx, ry] = strike;
-            boxes[12..16].copy_from_slice(&[
-                (i32::from(y) - pose.half().1) as u8,
-                ry,
-                (i32::from(x) - i32::from(pose.x_offset())) as u8,
-                rx,
-            ]);
-            let mut reaction = [0; 12];
-            for (offset, byte) in reaction[..8].iter_mut().enumerate() {
-                *byte = rom_b(rom, 0x45c88 + offset as u32);
-            }
-            reaction[1] = [12, 21, 27, 14, 21, 21][button];
-            reaction[8..12].copy_from_slice(&strike);
-            let reaction = region.put(&reaction);
-            let mut frame = still(pose, 1, boxes);
-            frame.flags = 0x80;
-            frame.hit = reaction;
-            let address = region.put(&frame.bytes());
-            bind_era_header(
-                region,
-                EraFamily::Sf2,
-                slot(button as u8, directional, old),
-                address,
-            );
+    for (button, directional, old) in attacks() {
+        let strike = if old {
+            [65, 65, 35, 8]
+        } else if directional {
+            DIRECTIONAL[usize::from(button)]
+        } else {
+            NEUTRAL[usize::from(button)]
+        };
+        let name = match (directional, button) {
+            (false, 0..=2) => "jump_punch",
+            (true, 0..=2) => "jump_punch_down",
+            (false, 3..=4) => "jump_kick",
+            (false, _) => "jump_kick_high",
+            (true, _) => "jump_kick_down",
+        };
+        let pose = catalogue_pose(catalogue, name, palette)?;
+        let mut boxes = boxes_named(&sagat::BOXES, name).bytes(&pose);
+        let [x, y, rx, ry] = strike;
+        boxes[12..16].copy_from_slice(&[
+            (i32::from(y) - pose.half().1) as u8,
+            ry,
+            (i32::from(x) - i32::from(pose.x_offset())) as u8,
+            rx,
+        ]);
+        let mut reaction = [0; 12];
+        for (offset, byte) in reaction[..8].iter_mut().enumerate() {
+            *byte = rom_b(rom, 0x45c88 + offset as u32);
         }
+        reaction[1] = [12, 21, 27, 14, 21, 21][usize::from(button)];
+        reaction[8..12].copy_from_slice(&strike);
+        let reaction = region.put(&reaction);
+        let mut frame = still(pose, 1, boxes);
+        frame.flags = 0x80;
+        frame.hit = reaction;
+        let address = region.put(&frame.bytes());
+        bind_era_header(
+            region,
+            EraFamily::Sf2,
+            slot(button, directional, old),
+            address,
+        );
     }
     Ok(())
 }

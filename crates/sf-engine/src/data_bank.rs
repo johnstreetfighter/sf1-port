@@ -498,6 +498,15 @@ impl DataBank {
         )
     }
 
+    /// Whether an era slot binds one stream frame rather than a move header.
+    /// ST Sagat's jump attacks are loaded straight into the frame
+    /// (`fighter/st_sagat_air.rs`), so audits must not read them as headers.
+    pub fn era_slot_holds_frame(fighter: TournamentFighter, family: EraFamily, slot: u8) -> bool {
+        fighter == TournamentFighter::Sagat
+            && family == EraFamily::Sf2
+            && st_sagat_air::frame_slots().any(|frame_slot| frame_slot == slot)
+    }
+
     /// Resolve a family-specific header without replacing the SF1+ or Alpha slot.
     pub fn era_move_header(&self, fighter: TournamentFighter, family: EraFamily, slot: u8) -> Option<u32> {
         let table = table_address(fighter);
