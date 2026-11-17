@@ -642,7 +642,17 @@ impl Bus<'_> {
         };
         if elapsed == 0 {
             self.step_st_ryu_throw_animation(fighter);
-        } else if elapsed == lift || elapsed == turn || elapsed == landing && !motion.softened {
+        } else if elapsed == landing && !motion.softened {
+            // Ryu's throws and Ken's shoulder throw put him on his back.
+            if matches!(
+                motion.family,
+                StRyuThrowFamily::Shoulder | StRyuThrowFamily::KenShoulder | StRyuThrowFamily::Flip
+            ) {
+                self.load_st_ryu_lying_pose(fighter);
+            } else {
+                self.load_st_ryu_thrown_pose(fighter);
+            }
+        } else if elapsed == lift || elapsed == turn {
             self.load_st_ryu_thrown_pose(fighter);
         } else if motion.softened && elapsed == landing {
             self.start_move(fighter, player, 1);
@@ -709,6 +719,30 @@ impl Bus<'_> {
         if self.rb(pose) < 0xfd {
             self.load_frame(fighter, pose);
         }
+    }
+
+    /// Load the lying pose: the record after the thrown stream's slam call.
+    /// A catalogue's airborne poses take one record or two, so it cannot be
+    /// counted to.
+    fn load_st_ryu_lying_pose(&mut self, fighter: u16) {
+        let mut at = self.el(fighter, 0x2c);
+        for _ in 0..16 {
+            match self.rb(at) {
+                0xff => {
+                    let routine = self.rl(at + 2);
+                    if crate::data_bank::in_bank(routine)
+                        && self.rb(routine) == crate::data_bank::ROUTINE_THROW_SLAM
+                    {
+                        self.load_frame(fighter, at + 6);
+                        return;
+                    }
+                    at += 6;
+                }
+                0xfd | 0xfe => break,
+                _ => at += 0x20,
+            }
+        }
+        self.load_st_ryu_thrown_pose(fighter);
     }
 
     fn set_st_ryu_throw_facing(&mut self, fighter: u16, leftward: bool) {

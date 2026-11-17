@@ -63,7 +63,7 @@ fn key(side: usize, directions: u8, button: Option<usize>) -> FrameInputs {
 
 /// Ryu against Ryu, both sides, every throw button, forward and back, New
 /// and Old: the thrower's feet never leave the mat, and the thrown fighter
-/// comes to rest on it.
+/// comes to rest on it, lying on his back.
 #[test]
 fn st_ryu_throws_keep_the_thrower_on_the_mat_and_land_the_thrown_on_it() {
     for loadout in [Loadout::Standard, Loadout::Old] {
@@ -81,6 +81,9 @@ fn st_ryu_throws_keep_the_thrower_on_the_mat_and_land_the_thrown_on_it() {
         for _ in 0..20 {
             close.step(FrameInputs::default());
         }
+        let lying = *art.catalogue("ryu").unwrap().move_poses("thrown").unwrap().last().unwrap();
+        let lying_codes = [lying.grid.code, lying.grid.code + 2 * u16::from(lying.grid.cols)];
+        assert!(lying.grid.large && lying.name == "lying");
         let mat = opaque_bottom(&tiles, &close, 0);
         assert_eq!(opaque_bottom(&tiles, &close, 1), mat, "both stand on the mat");
         for side in 0..2 {
@@ -113,7 +116,16 @@ fn st_ryu_throws_keep_the_thrower_on_the_mat_and_land_the_thrown_on_it() {
                                 (mat - 1..=mat).contains(&ink),
                                 "{at}: the thrown fighter rests at {ink}, the mat is {mat}, tick {tick}"
                             );
-                            rested += 1;
+                            let o = &s.fight_machine().unwrap().state.objectram;
+                            let e = entity(&s, 1 - side);
+                            let code = u16::from_be_bytes([o[e], o[e + 1]]);
+                            if read.fighters[1 - side].move_id != 1 {
+                                assert!(
+                                    lying_codes.contains(&code),
+                                    "{at}: the thrown fighter lies on his back at tick {tick}, not {code:#x}"
+                                );
+                                rested += 1;
+                            }
                         }
                     }
                     assert!(thrown && rested > 0, "{at}: the throw connected");
