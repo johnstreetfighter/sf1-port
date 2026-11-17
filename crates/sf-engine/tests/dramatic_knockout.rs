@@ -1,6 +1,7 @@
 //! George's Dramatic Battle playtest notes, 2026-11-17: a knocked-out boss
-//! stays on the screen instead of flying past its edge. Driven through the
-//! front end's Fight on the native three-fighter slots. Local ROMs only.
+//! stays on the screen instead of flying past its edge, and both living
+//! allies strike the victory pose. Driven through the front end's Fight on
+//! the native three-fighter slots. Local ROMs only.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 const FIGHT_LOOP: u32 = 0x3eafa;
 /// The winner's victory pose playing out.
 const VICTORY_LOOP: u32 = 0x3ec0e;
+const VICTORY_POSE: u8 = 0x0c;
 
 fn ready_fight(boss: TournamentFighter, lifebar: LifebarMode) -> Option<(Assets, Fight)> {
     if !Path::new(ROMS).is_dir() {
@@ -66,6 +68,12 @@ fn step(fight: &mut Fight, assets: &Assets) {
 
 fn health(fight: &Fight) -> [u16; 3] {
     fight.machine().toggle_state().dramatic.health
+}
+
+fn set_health(fight: &mut Fight, slot: usize, hp: u16) {
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    snapshot.machine.toggle_state.dramatic.health[slot] = hp;
+    fight.restore_netplay_snapshot(&snapshot);
 }
 
 /// Walk in and throw a heavy punch every 50 frames.
@@ -152,4 +160,38 @@ fn a_knocked_out_boss_stays_on_the_screen() {
         }
         assert!(fight.machine().unrecovered().is_empty());
     }
+}
+
+#[test]
+fn both_living_allies_strike_the_victory_pose() {
+    let Some((assets, mut fight)) = ready_fight(TournamentFighter::Geki, LifebarMode::Independent) else { return };
+    knock_out_the_boss(&mut fight, &assets, [true, true]);
+    for _ in 0..600 {
+        if flow_position(fight.machine()) == VICTORY_LOOP {
+            break;
+        }
+        step(&mut fight, &assets);
+    }
+    assert_eq!(flow_position(fight.machine()), VICTORY_LOOP, "the victory loop");
+    let telemetry = fight.machine().diagnostic_telemetry();
+    assert_eq!(telemetry.p1.move_id, VICTORY_POSE, "ally 1");
+    assert_eq!(telemetry.ally2.unwrap().move_id, VICTORY_POSE, "ally 2");
+}
+
+#[test]
+fn a_fallen_ally_does_not_pose_and_the_survivor_does() {
+    let Some((assets, mut fight)) = ready_fight(TournamentFighter::Geki, LifebarMode::Independent) else { return };
+    // Ally 1 is out; the fight goes on, and ally 2 finishes the boss.
+    set_health(&mut fight, 0, 0);
+    knock_out_the_boss(&mut fight, &assets, [false, true]);
+    for _ in 0..600 {
+        if flow_position(fight.machine()) == VICTORY_LOOP {
+            break;
+        }
+        step(&mut fight, &assets);
+    }
+    assert_eq!(flow_position(fight.machine()), VICTORY_LOOP, "the victory loop");
+    let telemetry = fight.machine().diagnostic_telemetry();
+    assert_eq!(telemetry.ally2.unwrap().move_id, VICTORY_POSE, "the survivor");
+    assert_ne!(telemetry.p1.move_id, VICTORY_POSE, "the fallen ally stays down");
 }

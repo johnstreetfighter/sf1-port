@@ -6246,7 +6246,8 @@ fn attract_demo_end(scheduler: &mut Scheduler, bus: &mut Bus, at: &mut Flow) -> 
 /// wins count up and its round markers are drawn; the round result (scene
 /// event 7) is requested with the winner recorded (0xff8e38); the winner
 /// starts its victory pose (move 0x0c, 0x441b0), a human winner's input
-/// handler running once; then the victory loop (0x3ebf0).
+/// handler running once; then the victory loop (0x3ebf0). When Dramatic
+/// Battle's allies win, each one still standing poses.
 fn record_win(
     scheduler: &mut Scheduler,
     bus: &mut Bus,
@@ -6262,17 +6263,19 @@ fn record_win(
     bus.wb(SCENE_MODE, bus.rb(SCENE_MODE) | 0x20);
     bus.wb(0xff8e36, 7);
     bus.wl(WINNER, winner);
-    let pose = if bus.dramatic_rules().is_some()
-        && winner == P1_STRUCT && bus.toggle_state.dramatic.health[0] == 0
-    {
-        P2_STRUCT
+    // Dramatic Battle's winning team: every ally still standing poses.
+    let posers = if bus.dramatic_rules().is_some() && winner == P1_STRUCT {
+        let [ally1, _, ally2] = bus.toggle_state.dramatic.health;
+        [(ally1 != 0).then_some(P1_STRUCT), (ally2 != 0).then_some(P2_STRUCT)]
     } else {
-        winner
+        [Some(winner), None]
     };
-    let me = bus.rw(pose + 0x10);
-    bus.start_move(me, pose, 0x0c);
-    if (pose != CPU_STRUCT || bus.rl(CPU_STRUCT + 0x12) == 0x1605c) && !bus.boss_on_struct(pose) {
-        bus.input_handler(pose);
+    for pose in posers.into_iter().flatten() {
+        let me = bus.rw(pose + 0x10);
+        bus.start_move(me, pose, 0x0c);
+        if (pose != CPU_STRUCT || bus.rl(CPU_STRUCT + 0x12) == 0x1605c) && !bus.boss_on_struct(pose) {
+            bus.input_handler(pose);
+        }
     }
     *at = Flow::Victory;
     settle_frame(bus, io)
