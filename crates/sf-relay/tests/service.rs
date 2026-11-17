@@ -157,3 +157,20 @@ fn an_unreachable_relay_fails_without_blocking() {
     assert!(started.elapsed() < Duration::from_millis(100), "opening never waits for the network");
     assert!(matches!(next(&client), ClientEvent::Failed(_)));
 }
+
+#[test]
+fn a_health_check_passes_only_for_a_reachable_relay_with_a_trusted_certificate() {
+    let relay = TestRelay::start();
+    let trusted = ClientConfig { relay: relay.address(), roots: Roots::Only(vec![relay.certificate.clone()]) };
+    assert_eq!(sf_relay::client::check(&trusted), Ok(relay.service.local_addr()));
+    assert_eq!((relay.service.open_rooms(), relay.service.connections()), (0, 0), "a check takes no room or seat");
+
+    let stranger = rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_owned()]).unwrap();
+    let untrusted = ClientConfig { relay: relay.address(), roots: Roots::Only(vec![stranger.cert.der().to_vec()]) };
+    let message = sf_relay::client::check(&untrusted).unwrap_err();
+    assert!(message.to_ascii_lowercase().contains("certificate"), "{message}");
+
+    drop(relay);
+    let message = sf_relay::client::check(&trusted).unwrap_err();
+    assert!(message.starts_with("RELAY "), "{message}");
+}

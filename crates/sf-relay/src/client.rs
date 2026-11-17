@@ -179,16 +179,38 @@ enum Outcome {
     Failed(String),
 }
 
-async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Outcome> {
-    let failed = |what: &str, error: &dyn std::fmt::Display| Outcome::Failed(format!("RELAY {what}: {error}"));
-    let (host, port) = split_host(&config.relay).ok_or_else(|| {
-        Outcome::Failed(format!("INVALID RELAY ADDRESS {}", config.relay))
-    })?;
+/// A health check: reach `config.relay`, verify its certificate and the
+/// relay protocol, and leave without asking for a room. Returns the address
+/// that answered. It blocks for up to the connect timeout.
+pub fn check(config: &ClientConfig) -> Result<SocketAddr, String> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| format!("RELAY CLIENT: {error}"))?;
+    runtime.block_on(async {
+        match tokio::time::timeout(CONNECT_TIMEOUT, dial(config)).await {
+            Ok(Ok((endpoint, connection))) => {
+                let address = connection.remote_address();
+                connection.close(close::LEFT.into(), b"check");
+                let _ = tokio::time::timeout(Duration::from_secs(1), endpoint.wait_idle()).await;
+                Ok(address)
+            }
+            Ok(Err(message)) => Err(message),
+            Err(_) => Err(format!("RELAY {} DID NOT ANSWER", config.relay.trim())),
+        }
+    })
+}
+
+/// Connect and verify the relay, before any request.
+async fn dial(config: &ClientConfig) -> Result<(quinn::Endpoint, quinn::Connection), String> {
+    let failed = |what: &str, error: &dyn std::fmt::Display| failure(config, what, error);
+    let (host, port) = crate::endpoint::split(&config.relay)
+        .ok_or_else(|| format!("INVALID RELAY ADDRESS {}", config.relay))?;
     let address = tokio::net::lookup_host((host.as_str(), port))
         .await
         .map_err(|error| failed("LOOKUP", &error))?
         .min_by_key(|address| !address.is_ipv4())
-        .ok_or_else(|| Outcome::Failed(format!("RELAY {host} HAS NO ADDRESS")))?;
+        .ok_or_else(|| format!("RELAY {host} HAS NO ADDRESS"))?;
     let bind: SocketAddr = if address.is_ipv4() { ([0, 0, 0, 0], 0).into() } else { ([0u16; 8], 0).into() };
     let endpoint = quinn::Endpoint::client(bind).map_err(|error| failed("SOCKET", &error))?;
     let connection = endpoint
@@ -196,6 +218,17 @@ async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Out
         .map_err(|error| failed("CONNECT", &error))?
         .await
         .map_err(|error| failed("CONNECT", &error))?;
+    Ok((endpoint, connection))
+}
+
+/// Every failure names the relay it was looking at.
+fn failure(config: &ClientConfig, what: &str, error: &dyn std::fmt::Display) -> String {
+    format!("RELAY {} {what}: {error}", config.relay.trim())
+}
+
+async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Outcome> {
+    let failed = |what: &str, error: &dyn std::fmt::Display| Outcome::Failed(failure(config, what, error));
+    let (endpoint, connection) = dial(config).await.map_err(Outcome::Failed)?;
     let (mut send, mut recv) = connection.open_bi().await.map_err(|error| failed("STREAM", &error))?;
     send.write_all(&request.encode()).await.map_err(|error| failed("REQUEST", &error))?;
     let mut reply = [0; wire::MESSAGE];
@@ -215,21 +248,7 @@ async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Out
     Ok(Session { endpoint, connection, code, seat })
 }
 
-fn split_host(relay: &str) -> Option<(String, u16)> {
-    let relay = relay.trim();
-    if relay.is_empty() {
-        return None;
-    }
-    if let Ok(address) = relay.parse::<SocketAddr>() {
-        return Some((address.ip().to_string(), address.port()));
-    }
-    match relay.rsplit_once(':') {
-        Some((host, port)) if !host.contains(':') => Some((host.to_owned(), port.parse().ok()?)),
-        _ => Some((relay.trim_matches(['[', ']']).to_owned(), wire::DEFAULT_PORT)),
-    }
-}
-
-fn client_config(roots: &Roots) -> Result<quinn::ClientConfig, Outcome> {
+fn client_config(roots: &Roots) -> Result<quinn::ClientConfig, String> {
     let mut store = rustls::RootCertStore::empty();
     match roots {
         Roots::Web => store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned()),
@@ -237,18 +256,18 @@ fn client_config(roots: &Roots) -> Result<quinn::ClientConfig, Outcome> {
             for certificate in certificates {
                 store
                     .add(CertificateDer::from(certificate.clone()))
-                    .map_err(|error| Outcome::Failed(format!("RELAY CERTIFICATE: {error}")))?;
+                    .map_err(|error| format!("RELAY CERTIFICATE: {error}"))?;
             }
         }
     }
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let mut tls = rustls::ClientConfig::builder_with_provider(provider)
         .with_protocol_versions(&[&rustls::version::TLS13])
-        .map_err(|error| Outcome::Failed(format!("RELAY TLS: {error}")))?
+        .map_err(|error| format!("RELAY TLS: {error}"))?
         .with_root_certificates(store)
         .with_no_client_auth();
     tls.alpn_protocols = vec![wire::ALPN.to_vec()];
-    let crypto = QuicClientConfig::try_from(tls).map_err(|error| Outcome::Failed(format!("RELAY TLS: {error}")))?;
+    let crypto = QuicClientConfig::try_from(tls).map_err(|error| format!("RELAY TLS: {error}"))?;
     let mut config = quinn::ClientConfig::new(Arc::new(crypto));
     config.transport_config(Arc::new(crate::transport()));
     Ok(config)
@@ -263,20 +282,5 @@ fn closed(error: &quinn::ConnectionError) -> Closed {
             _ => Closed::Lost(error.to_string()),
         },
         other => Closed::Lost(other.to_string()),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::split_host;
-
-    #[test]
-    fn relay_addresses_take_an_optional_port() {
-        assert_eq!(split_host("relay.example.net"), Some(("relay.example.net".into(), 7443)));
-        assert_eq!(split_host(" relay.example.net:9000 "), Some(("relay.example.net".into(), 9000)));
-        assert_eq!(split_host("127.0.0.1:7443"), Some(("127.0.0.1".into(), 7443)));
-        assert_eq!(split_host("[::1]:7443"), Some(("::1".into(), 7443)));
-        assert_eq!(split_host("relay.example.net:port"), None);
-        assert_eq!(split_host(""), None);
     }
 }

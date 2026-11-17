@@ -6,6 +6,13 @@
 //!
 //! The key must be PKCS #8 (`BEGIN PRIVATE KEY`). The relay logs only its
 //! address and its room and connection counts, never codes or payloads.
+//!
+//! ```text
+//! sf-relay --check relay.example.net
+//! ```
+//!
+//! A health check: connect the way the game does, verify the certificate
+//! against the public web authorities, and exit 0 if the relay answered.
 
 use std::net::SocketAddr;
 use std::process::ExitCode;
@@ -13,6 +20,7 @@ use std::time::Duration;
 
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use sf_relay::client::{ClientConfig, Roots};
 use sf_relay::rooms::Limits;
 use sf_relay::service::{RelayService, ServiceConfig};
 
@@ -36,7 +44,8 @@ fn run() -> Result<(), String> {
             "--listen" => listen = value()?.parse().map_err(|error| format!("--listen: {error}"))?,
             "--cert" => cert = Some(value()?),
             "--key" => key = Some(value()?),
-            _ => return Err(format!("unknown argument {arg}; use --listen, --cert and --key")),
+            "--check" => return check(value()?),
+            _ => return Err(format!("unknown argument {arg}; use --listen, --cert and --key, or --check")),
         }
     }
     let cert = cert.ok_or("--cert is required")?;
@@ -58,4 +67,10 @@ fn run() -> Result<(), String> {
         std::thread::sleep(Duration::from_secs(60));
         println!("rooms {} connections {}", relay.open_rooms(), relay.connections());
     }
+}
+
+fn check(relay: String) -> Result<(), String> {
+    let address = sf_relay::client::check(&ClientConfig { relay: relay.clone(), roots: Roots::Web })?;
+    println!("sf-relay: {} answered at {address} with a trusted certificate", relay.trim());
+    Ok(())
 }

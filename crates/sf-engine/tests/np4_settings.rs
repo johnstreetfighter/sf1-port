@@ -93,7 +93,7 @@ fn sixth_tab_edits_network_choices_and_resets_only_its_own_settings() {
     }
     assert_eq!(screen.tab(), Tab::Netplay);
     let labels: Vec<_> = rows(Tab::Netplay).into_iter().map(|row| screen.label(row)).collect();
-    assert_eq!(labels, ["PLAYER TAG", "INPUT DELAY", "MAX ROLLBACK", "WIRED ONLY", "NETPLAY HUD", "UDP PORT", "RESET TAB"]);
+    assert_eq!(labels, ["PLAYER TAG", "INPUT DELAY", "MAX ROLLBACK", "WIRED ONLY", "NETPLAY HUD", "UDP PORT", "RELAY", "RESET TAB"]);
     assert_eq!(screen.row(), Row::PlayerTag);
     assert_eq!(screen.value(screen.row()), "PLAYER");
     let tiles = vec![0xff; 0x4000];
@@ -138,6 +138,8 @@ fn sixth_tab_edits_network_choices_and_resets_only_its_own_settings() {
     screen.apply(MenuInput::Right);
     assert_eq!(screen.settings().netplay_port, 7001);
 
+    screen.apply(MenuInput::Down);
+    assert_eq!(screen.row(), Row::Relay);
     screen.apply(MenuInput::Down);
     assert_eq!(screen.row(), Row::ResetTab);
     screen.apply(MenuInput::Confirm);

@@ -2,6 +2,7 @@
 //! and (with `net`) the QUIC relay service and its client.
 
 pub mod code;
+pub mod endpoint;
 pub mod rooms;
 pub mod wire;
 #[cfg(feature = "net")]

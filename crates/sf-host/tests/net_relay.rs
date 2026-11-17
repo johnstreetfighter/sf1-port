@@ -231,3 +231,59 @@ fn lan_hosting_still_works_after_an_internet_room() {
         std::thread::sleep(Duration::from_millis(5));
     }
 }
+
+// #128: a community relay beside the default one.
+
+#[test]
+fn a_join_is_looked_up_only_on_the_selected_relay_and_names_it_on_failure() {
+    let (default, community) = (TestRelay::start(), TestRelay::start());
+    let mut host = default.driver();
+    let code = host_room(&mut host);
+
+    // The guest has the community relay selected; the code lives on the default.
+    let mut guest = community.driver_trusting(&[&default, &community]);
+    let message = error(&mut guest, &[Command::JoinInternetRoom { code: code.clone() }]);
+    assert_eq!(message, format!("ROOM CODE NOT FOUND ON {}", community.address()));
+    std::thread::sleep(Duration::from_millis(150));
+    assert_eq!(default.service.connections(), 1, "the default relay seated the host and no one else");
+    assert!(!host.poll(&[]).iter().any(|event| matches!(event, Event::PacketReceived { .. })));
+
+    // Switching back to the default relay finds the room.
+    guest.set_relay(Some(default.address()));
+    assert_eq!(join(&mut guest, &code), code);
+    assert_eq!(default.service.connections(), 2);
+    assert_eq!(community.service.connections(), 0);
+}
+
+#[test]
+fn a_community_relay_carries_a_room_while_the_default_relay_is_down() {
+    let (default, community) = (TestRelay::start(), TestRelay::start());
+    let default_address = default.address();
+    drop(default);
+
+    let mut host = community.driver();
+    let code = host_room(&mut host);
+    let mut guest = community.driver();
+    join(&mut guest, &code);
+    let ping = NetPacket::Ping { seq: 1, sent_ms: 5, link: Link::Ethernet };
+    send(&mut guest, 0, &ping);
+    assert_eq!(packet(&mut host), (1, ping));
+
+    // The relay that is down fails by name, and the next room can go elsewhere.
+    let mut other = community.driver();
+    other.set_relay(Some(default_address.clone()));
+    let message = error(&mut other, &[Command::HostInternetRoom { room: announcement(false) }]);
+    assert!(message.starts_with(&format!("RELAY {default_address} ")), "{message}");
+    other.set_relay(Some(community.address()));
+    assert_ne!(host_room(&mut other), code);
+}
+
+#[test]
+fn a_relay_whose_certificate_is_not_trusted_is_refused_by_name() {
+    let (trusted, imposter) = (TestRelay::start(), TestRelay::start());
+    let mut host = imposter.driver_trusting(&[&trusted]);
+    let message = error(&mut host, &[Command::HostInternetRoom { room: announcement(false) }]);
+    assert!(message.starts_with(&format!("RELAY {} CONNECT", imposter.address())), "{message}");
+    assert_eq!(imposter.service.open_rooms(), 0);
+    assert_eq!(imposter.service.connections(), 0);
+}

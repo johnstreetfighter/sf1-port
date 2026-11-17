@@ -126,6 +126,8 @@ struct DiscoverySend {
 struct RelayLink {
     client: RelayClient,
     code: Option<RoomCode>,
+    /// The relay this room is on; the setting may change under it.
+    relay: String,
 }
 
 struct RoomTiming {
@@ -540,7 +542,7 @@ impl HostNetDriver {
                 return;
             };
             self.events.push(Event::Bound {
-                local_addr: self.relay.clone().unwrap_or_default(),
+                local_addr: link.relay.clone(),
                 room_code: code.to_string(),
                 link: adapter,
             });
@@ -577,10 +579,10 @@ impl HostNetDriver {
             io::Error::new(io::ErrorKind::NotFound, "NO INTERNET RELAY SET")
         })?;
         let client = RelayClient::open(
-            ClientConfig { relay, roots: self.config.relay_roots.clone() },
+            ClientConfig { relay: relay.clone(), roots: self.config.relay_roots.clone() },
             request,
         )?;
-        self.relay_link = Some(RelayLink { client, code: None });
+        self.relay_link = Some(RelayLink { client, code: None, relay });
         self.pending_bound = true;
         Ok(())
     }
@@ -625,7 +627,7 @@ impl HostNetDriver {
                     });
                 }
                 ClientEvent::Refused(refusal) => {
-                    let relay = self.relay.clone().unwrap_or_default();
+                    let relay = self.relay_link.as_ref().map(|link| link.relay.clone()).unwrap_or_default();
                     self.close();
                     self.error(match refusal {
                         Refusal::NotFound => format!("ROOM CODE NOT FOUND ON {relay}"),

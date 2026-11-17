@@ -17,6 +17,7 @@ pub mod bus;
 pub use protocol::{AfterMatchChoice, NetPacket, RejectReason, SyncedMatchRules};
 pub use rollback::{RollbackEngine, RollbackEvent, MAX_ROLLBACK_FRAMES};
 pub use transport::{NetTransportCommand, NetTransportEvent, RoomAnnouncement};
+pub use sf_relay::endpoint::DEFAULT_RELAY;
 pub use sf_relay::RoomCode;
 
 /// Where a typed or pasted Direct Join entry points.

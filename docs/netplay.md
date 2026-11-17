@@ -61,29 +61,42 @@ round-trip time: one frame per 34 milliseconds, capped at four frames.
 
 ## Internet rooms
 
-With a relay set in `settings.toml`, for example
-`relay = "relay.example.net"` or `relay = "relay.example.net:7443"`,
-**Host Match** offers **VISIBILITY → INTERNET CODE** first. Opening the room
-connects to the relay, and the room code appears only once the relay has the
-room ready. An Internet room code has six letters and digits, such as
-`K7Q-MPX`. It never uses 0, O, 1, I or L, so it cannot be mistaken for a
-LAN address code. Guests enter or paste it in **Direct Join** in any case,
-with or without the dash.
+**Host Match** offers **VISIBILITY → INTERNET CODE** first when a relay is
+selected. Opening the room connects to the relay, and the room code appears
+only once the relay has the room ready. An Internet room code has six letters
+and digits, such as `K7Q-MPX`. It never uses 0, O, 1, I or L, so it cannot be
+mistaken for a LAN address code. Guests enter or paste it in **Direct Join**
+in any case, with or without the dash.
 
 Both players connect out to the relay over QUIC on UDP, so neither needs port
 forwarding. The game checks the relay's certificate against the public web
-authorities. The relay forwards the same rollback packets between the members
-of one room only. The host keeps the same room and code through fighter
-select, the match, Rematch and Reselect. Leaving closes the room and expires
-its code. Both players must use the same relay; a code is looked up only on
-the relay you set.
+authorities and refuses a relay it cannot verify. The relay forwards the same
+rollback packets between the members of one room only. The host keeps the
+same room and code through fighter select, the match, Rematch and Reselect.
+Leaving closes the room and expires its code.
+
+### Choosing a relay
+
+**Settings → Netplay → RELAY** shows the selected relay. A fresh install uses
+the project's default relay. No default relay runs yet (#130), so the row
+shows `NONE` and Internet rooms stay hidden until you set a relay.
+
+To use a community relay, confirm on **RELAY**, type its host name with an
+optional port (`RELAY.EXAMPLE.NET` or `RELAY.EXAMPLE.NET:9000`) and confirm.
+The port defaults to 7443. To restore the default, save an empty entry or use
+**RESET TAB**. The setting is saved as `relay = "relay.example.net"` in
+`settings.toml`.
+
+A code belongs to the relay that issued it, so both players must select the
+same relay. The game looks a code up only on the selected relay and never
+tries another one. When a lookup or connection fails, the message names the
+relay that was asked. A change of relay applies to the next room.
 
 The relay limits each room to the host and fifteen guests. It closes rooms
 after 15 idle minutes or 12 hours, throttles room creation and joins per
-address (failed joins count), and budgets each connection's traffic. Run it
-with `sf-relay --listen 0.0.0.0:7443 --cert fullchain.pem --key privkey.pem`;
-the key must be PKCS #8. It logs room and connection counts, never codes or
-gameplay.
+address (failed joins count), and budgets each connection's traffic. It logs
+room and connection counts, never codes or gameplay. To run your own, follow
+[Running a relay](relay-deployment.md).
 
 ## Optional community directory
 

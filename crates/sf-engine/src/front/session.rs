@@ -2176,7 +2176,7 @@ impl GameSession {
                         MenuItem::Online => {
                             self.net_commands.push(NetTransportCommand::RefreshRooms);
                             Some(Screen::Online(Box::new(OnlineScreen::open(self.settings.wired_only, self.settings.netplay_port)
-                                .with_relay(self.settings.relay.is_some()))))
+                                .with_relay(self.settings.relay_endpoint().is_some()))))
                         }
                         MenuItem::Arcade => Some(Screen::Select(self.select_for(FightKind::Arcade))),
                         MenuItem::TrainingCpu => Some(Screen::Select(self.select_for(FightKind::TrainingCpu))),

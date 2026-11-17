@@ -34,12 +34,17 @@ impl TestRelay {
 
     /// A localhost driver that trusts only this relay's certificate.
     pub fn driver(&self) -> HostNetDriver {
+        self.driver_trusting(&[self])
+    }
+
+    /// A driver set to this relay that trusts only `trusted`' certificates.
+    pub fn driver_trusting(&self, trusted: &[&TestRelay]) -> HostNetDriver {
         let mut driver = HostNetDriver::with_config(NetDriverConfig {
             bind_ip: Ipv4Addr::LOCALHOST,
             link_override: Some(Link::Ethernet),
             discovery_port: 0,
             discovery_targets: Vec::new(),
-            relay_roots: Roots::Only(vec![self.certificate.clone()]),
+            relay_roots: Roots::Only(trusted.iter().map(|relay| relay.certificate.clone()).collect()),
             ..NetDriverConfig::default()
         });
         driver.set_relay(Some(self.address()));
