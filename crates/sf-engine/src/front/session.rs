@@ -1238,6 +1238,15 @@ impl GameSession {
                     // The font has capitals only; a lower-case relay host
                     // or system error text would draw as a gap.
                     let message = message.to_uppercase();
+                    // A join still waiting in the lobby ends here. Left
+                    // running, its handshake timeout would replace this
+                    // message with PEER LEFT ROOM.
+                    let joining = self.net_connection.as_ref().is_some_and(|connection| !connection.is_host())
+                        && matches!(self.stack.last(), Some(Screen::Online(_)));
+                    if joining {
+                        self.net_return_online(&message);
+                        continue;
+                    }
                     if let Some(Screen::Online(screen)) = self.stack.last_mut() { screen.set_notice(&message); }
                     self.notice = Some(message);
                 }

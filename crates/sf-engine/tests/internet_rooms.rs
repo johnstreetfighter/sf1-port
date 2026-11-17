@@ -190,3 +190,30 @@ fn a_relay_failure_names_the_relay_in_letters_the_font_can_draw() {
     session.step(FrameInputs::default());
     assert_eq!(session.notice(), Some("RELAY RELAY.ALMAMOTO.COM DID NOT ANSWER"));
 }
+
+/// #171: a join that fails at the relay stays reported as the relay's
+/// failure. The join's own handshake timeout used to replace the message
+/// with PEER LEFT ROOM a few seconds later.
+#[test]
+fn a_failed_internet_join_keeps_the_relay_failure_on_screen() {
+    let mut session = online_session(Settings::default());
+    pulse(&mut session, MenuInput::Left);
+    pulse(&mut session, MenuInput::Down);
+    session.paste_room_code(Some("k7q-mpx"));
+    pulse(&mut session, MenuInput::Confirm);
+    assert_eq!(
+        session.drain_net_commands(),
+        [NetTransportCommand::JoinInternetRoom { code: "K7Q-MPX".into() }]
+    );
+    session.push_net_events(&[NetTransportEvent::TransportError {
+        message: "RELAY relay.almamoto.com DID NOT ANSWER".into(),
+    }]);
+    let mut ms = 0;
+    for _ in 0..60 * 30 {
+        ms += 17;
+        session.set_net_time_ms(ms);
+        session.step(FrameInputs::default());
+    }
+    assert_eq!(session.screen(), "online");
+    assert_eq!(session.notice(), Some("RELAY RELAY.ALMAMOTO.COM DID NOT ANSWER"));
+}
