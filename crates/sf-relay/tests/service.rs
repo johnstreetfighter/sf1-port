@@ -279,8 +279,7 @@ fn an_address_is_throttled_after_its_minute_of_joins_and_creates() {
 
     let wrong = RoomCode::parse("AAA-AAA").unwrap();
     for _ in 0..2 {
-        let guess = relay.client(Request::Join(wrong));
-        assert!(matches!(next(&guess), ClientEvent::Refused(Refusal::NotFound) | ClientEvent::Ready { .. }));
+        assert_eq!(refused(&relay.client(Request::Join(wrong))), Refusal::NotFound);
     }
     assert_eq!(refused(&relay.client(Request::Join(code))), Refusal::Throttled, "even the right code waits");
 }

@@ -47,5 +47,9 @@ pub enum NetTransportEvent {
     Bound { local_addr: String, room_code: String, link: Link },
     PacketReceived { from_peer: u8, addr: String, bytes: Vec<u8> },
     RoomsDiscovered { rooms: Vec<Room> },
+    /// Something failed; the transport is still open and may recover.
     TransportError { message: String },
+    /// The transport closed the room or the join for the reason in
+    /// `message`: a relay refusal, a closed or expired room, a lost relay.
+    TransportClosed { message: String },
 }

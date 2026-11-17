@@ -430,6 +430,13 @@ impl GameSession {
         self.notice = Some(notice.into());
     }
 
+    /// The measured ping and jitter to the other player in milliseconds, as
+    /// the netplay HUD shows them; `None` until a ping has been answered.
+    pub fn net_ping_and_jitter_ms(&self) -> Option<(u32, u32)> {
+        let info = self.net_connection.as_ref()?.player_info().filter(|info| info.rtt_ms != 0)?;
+        Some((info.rtt_ms, info.jitter_ms))
+    }
+
     pub(super) fn net_hud(&self, frame: &mut Frame) {
         let Some(rollback) = self.play.as_ref().and_then(|play| play.netplay.as_ref()) else {
             return;

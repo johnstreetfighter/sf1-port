@@ -180,6 +180,23 @@ fn every_packet_variant_has_a_stable_tag_and_rejects_noncanonical_buffers() {
     }
 }
 
+/// #127: a peer that started the fight a few frames late acknowledges
+/// inputs well past its own frame. Seen through a real relay on a slow
+/// link: the guest was at frame 65 and had the host's inputs to frame 71.
+/// The parser used to reject that packet, so the host heard nothing from
+/// the guest until the gap closed.
+#[test]
+fn an_input_packet_may_acknowledge_a_peer_that_is_running_ahead() {
+    let behind = |ack_frame| NetPacket::Input { current_frame: 65, start_frame: 64, count: 5,
+        bits: [0; 9], ack_frame, frame_advantage: -7, checksum_frame: 64, checksum: 0xbab0_44db_981c };
+    for ack_frame in [71, 65 + 16] {
+        let packet = behind(ack_frame);
+        assert_eq!(NetPacket::from_bytes(&packet.to_bytes()), Some(packet), "ack {ack_frame}");
+    }
+    // Further ahead than input delay and the rollback window allow is noise.
+    assert_eq!(NetPacket::from_bytes(&behind(65 + 17).to_bytes()), None);
+}
+
 #[test]
 fn redundant_inputs_keep_the_exact_fifty_byte_wire_layout() {
     let packet = NetPacket::Input { current_frame: 7, start_frame: 0, count: 9,

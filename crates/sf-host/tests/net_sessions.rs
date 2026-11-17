@@ -72,7 +72,7 @@ fn transport(session: &mut GameSession, driver: &mut HostNetDriver) -> Vec<NetPa
     assert!(
         !events
             .iter()
-            .any(|event| matches!(event, Event::TransportError { .. })),
+            .any(|event| matches!(event, Event::TransportError { .. } | Event::TransportClosed { .. })),
         "{events:?}"
     );
     session.push_net_events(&events);
@@ -419,7 +419,7 @@ fn two_real_game_sessions_fight_rematch_and_reselect_through_an_internet_room() 
     let deadline = Instant::now() + Duration::from_secs(6);
     let closed = 'heard: loop {
         for event in drivers[1].poll(&[]) {
-            if let Event::TransportError { message } = event {
+            if let Event::TransportClosed { message } = event {
                 break 'heard message;
             }
         }

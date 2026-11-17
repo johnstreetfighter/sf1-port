@@ -51,7 +51,7 @@ fn until(driver: &mut HostNetDriver, commands: &[Command], want: impl Fn(&Event)
             if want(&event) {
                 return event;
             }
-            assert!(!matches!(event, Event::TransportError { .. }), "{event:?}");
+            assert!(!matches!(event, Event::TransportError { .. } | Event::TransportClosed { .. }), "{event:?}");
         }
         assert!(Instant::now() < deadline, "the relay did not answer in time");
         std::thread::sleep(Duration::from_millis(2));
@@ -63,7 +63,7 @@ fn error(driver: &mut HostNetDriver, commands: &[Command]) -> String {
     let mut commands = commands.to_vec();
     loop {
         for event in driver.poll(&std::mem::take(&mut commands)) {
-            if let Event::TransportError { message } = event {
+            if let Event::TransportError { message } | Event::TransportClosed { message } = event {
                 return message;
             }
         }
@@ -105,7 +105,7 @@ fn packet(driver: &mut HostNetDriver) -> (u8, NetPacket) {
 
 fn send(driver: &mut HostNetDriver, to_peer: u8, packet: &NetPacket) {
     let events = driver.poll(&[Command::SendPacket { to_peer, bytes: packet.to_bytes() }]);
-    assert!(events.iter().all(|event| !matches!(event, Event::TransportError { .. })), "{events:?}");
+    assert!(events.iter().all(|event| !matches!(event, Event::TransportError { .. } | Event::TransportClosed { .. })), "{events:?}");
 }
 
 #[test]
@@ -386,4 +386,48 @@ fn lan_discovery_and_direct_joins_work_while_the_relay_is_down() {
     let pong = NetPacket::Pong { seq: 3, echo_ms: 55, link: Link::Ethernet };
     send(&mut host, from, &pong);
     assert_eq!(packet(&mut guest), (0, pong));
+}
+
+/// #127: what the relay says about a dead or full room reaches the player
+/// in words, as a closed transport, not a passing error.
+#[test]
+fn an_expired_room_and_a_full_room_are_named_to_the_player() {
+    use sf_relay::rooms::Limits;
+    let closed = |driver: &mut HostNetDriver, commands: &[Command]| {
+        let deadline = Instant::now() + Duration::from_secs(8);
+        let mut commands = commands.to_vec();
+        loop {
+            for event in driver.poll(&std::mem::take(&mut commands)) {
+                match event {
+                    Event::TransportClosed { message } => return message,
+                    Event::TransportError { message } => panic!("a closure arrived as an error: {message}"),
+                    _ => {}
+                }
+            }
+            assert!(Instant::now() < deadline, "expected the transport to close");
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    };
+
+    let relay = TestRelay::start_limited(Limits { max_idle: Duration::from_millis(300), ..Limits::default() });
+    let mut host = relay.driver();
+    let code = host_room(&mut host);
+    assert_eq!(closed(&mut host, &[]), "ROOM CODE EXPIRED");
+    let mut late = relay.driver();
+    assert!(closed(&mut late, &[Command::JoinInternetRoom { code }]).starts_with("ROOM CODE NOT FOUND ON"));
+
+    let relay = TestRelay::start_limited(Limits { joins_per_minute: 100, ..Limits::default() });
+    let mut host = relay.driver();
+    let code = host_room(&mut host);
+    let mut seated: Vec<HostNetDriver> = (0..15)
+        .map(|_| {
+            let mut guest = relay.driver();
+            join(&mut guest, &code);
+            guest
+        })
+        .collect();
+    let mut extra = relay.driver();
+    assert_eq!(closed(&mut extra, &[Command::JoinInternetRoom { code: code.clone() }]), "ROOM IS FULL");
+    // Keep the seated guests alive until the refusal has been heard.
+    seated.iter_mut().for_each(|guest| drop(guest.poll(&[])));
 }

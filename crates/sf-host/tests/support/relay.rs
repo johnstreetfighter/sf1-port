@@ -16,13 +16,18 @@ pub struct TestRelay {
 
 impl TestRelay {
     pub fn start() -> Self {
+        Self::start_limited(Limits::default())
+    }
+
+    #[allow(dead_code)]
+    pub fn start_limited(limits: Limits) -> Self {
         let signed = rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_owned()]).unwrap();
         let certificate = signed.cert.der().to_vec();
         let service = RelayService::start(ServiceConfig {
             listen: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
             certificates: vec![certificate.clone()],
             private_key: signed.signing_key.serialize_der(),
-            limits: Limits::default(),
+            limits,
         })
         .expect("the test relay starts");
         Self { service, certificate }

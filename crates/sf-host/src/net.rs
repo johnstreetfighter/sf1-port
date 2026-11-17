@@ -365,6 +365,15 @@ impl HostNetDriver {
         }
     }
 
+    /// The room or join is over; unlike [`Self::error`], nothing is left open.
+    fn closed(&mut self, message: impl Into<String>) {
+        if self.events.len() < QUEUE_LIMIT {
+            self.events.push(Event::TransportClosed {
+                message: message.into().chars().take(256).collect(),
+            });
+        }
+    }
+
     fn close(&mut self) {
         self.withdraw_directory();
         self.socket = None;
@@ -633,7 +642,7 @@ impl HostNetDriver {
                 ClientEvent::Refused(refusal) => {
                     let relay = self.relay_link.as_ref().map(|link| link.relay.clone()).unwrap_or_default();
                     self.close();
-                    self.error(match refusal {
+                    self.closed(match refusal {
                         Refusal::NotFound => format!("ROOM CODE NOT FOUND ON {relay}"),
                         Refusal::Full => "ROOM IS FULL".into(),
                         Refusal::Throttled => "TOO MANY TRIES, WAIT A MINUTE".into(),
@@ -644,7 +653,7 @@ impl HostNetDriver {
                 }
                 ClientEvent::Closed(closed) => {
                     self.close();
-                    self.error(match closed {
+                    self.closed(match closed {
                         Closed::RoomClosed => "ROOM CLOSED".into(),
                         Closed::RoomExpired => "ROOM CODE EXPIRED".into(),
                         Closed::Shutdown => "RELAY SHUT DOWN".into(),
@@ -654,7 +663,7 @@ impl HostNetDriver {
                 }
                 ClientEvent::Failed(message) => {
                     self.close();
-                    self.error(message);
+                    self.closed(message);
                     return;
                 }
             }

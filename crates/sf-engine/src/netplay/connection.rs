@@ -386,6 +386,7 @@ impl Connection {
                 }
             }
             NetTransportEvent::TransportError { .. }
+            | NetTransportEvent::TransportClosed { .. }
             | NetTransportEvent::RoomsDiscovered { .. } => {}
         }
     }

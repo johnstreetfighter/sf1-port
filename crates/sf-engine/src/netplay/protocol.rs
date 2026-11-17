@@ -542,10 +542,14 @@ impl NetPacket {
                 // sender's simulation tip. MAX is reserved for absent ACK/hash.
                 let last = start_frame.checked_add(u32::from(count) - 1)?;
                 let future_tip = current_frame.saturating_add(4).min(u32::MAX - 1);
+                // The acknowledged inputs are the peer's, and the peer may be
+                // ahead: by the rollback window (8) with its own delayed inputs
+                // (4) beyond that, on top of this sender's own delay (4).
+                let ack_tip = current_frame.saturating_add(16).min(u32::MAX - 1);
                 if last > future_tip
                     || !bits[..usize::from(count)].iter().all(|b| *b <= 0x03ff || *b == 0x8000)
                     || bits[usize::from(count)..].iter().any(|b| *b != 0)
-                    || (ack_frame != u32::MAX && ack_frame > future_tip)
+                    || (ack_frame != u32::MAX && ack_frame > ack_tip)
                     || (checksum_frame == u32::MAX && checksum != 0)
                     || (checksum_frame != u32::MAX && checksum_frame > current_frame)
                 { return None; }

@@ -89,17 +89,32 @@ struct Room {
     drivers: Vec<HostNetDriver>,
     /// Every packet a peer handed its transport, with the sender's index.
     sent: Vec<(usize, NetPacket)>,
+    /// The routes each peer addressed packets to.
+    routes: Vec<std::collections::BTreeSet<u8>>,
     /// What each peer's transport reported as failed.
     errors: Vec<Vec<String>>,
     code: String,
+    /// Real time given to each frame. A session counts its timeouts in
+    /// frames, so a room on the faulty link runs at game speed.
+    pace: Duration,
 }
 
 impl Room {
     fn host(kind: RoomKind) -> Self {
-        Self::host_with(kind, false, false)
+        Self::open(kind, false, false)
     }
 
-    fn host_with(kind: RoomKind, wired_only: bool, lossy: bool) -> Self {
+    /// A Versus room that asks every challenger for verified Ethernet.
+    fn host_wired_only() -> Self {
+        Self::open(RoomKind::Versus, true, false)
+    }
+
+    /// A Versus room whose every peer reaches the relay over a faulty link.
+    fn host_over_a_faulty_link() -> Self {
+        Self::open(RoomKind::Versus, false, true)
+    }
+
+    fn open(kind: RoomKind, wired_only: bool, lossy: bool) -> Self {
         let relay = relay::TestRelay::start();
         let link = lossy.then(|| lossy::LossyLink::start(relay.service.local_addr()));
         let settings = Settings { relay: Some(relay.address()), ..Settings::default() };
@@ -111,8 +126,10 @@ impl Room {
             relay,
             link,
             sent: Vec::new(),
+            routes: vec![Default::default()],
             errors: vec![Vec::new()],
             code: String::new(),
+            pace: Duration::from_millis(if lossy { 16 } else { 1 }),
         };
         let driver = room.driver(Link::Ethernet);
         room.drivers.push(driver);
@@ -160,6 +177,7 @@ impl Room {
         let driver = self.driver(link);
         self.drivers.push(driver);
         self.errors.push(Vec::new());
+        self.routes.push(Default::default());
         let peer = &mut self.peers[id];
         online(peer);
         pulse(peer, MenuInput::Left);
@@ -178,13 +196,17 @@ impl Room {
     fn exchange(&mut self, id: usize) {
         let commands = self.peers[id].drain_net_commands();
         for command in &commands {
-            if let Command::SendPacket { bytes, .. } = command {
-                self.sent.push((id, NetPacket::from_bytes(bytes).expect("engine emitted malformed packet")));
+            if let Command::SendPacket { to_peer, bytes } = command {
+                self.routes[id].insert(*to_peer);
+                let packet = NetPacket::from_bytes(bytes).unwrap_or_else(|| {
+                    panic!("peer {id} emitted a packet its parser rejects, to route {to_peer}: {} bytes {:02x?}", bytes.len(), &bytes[..bytes.len().min(48)])
+                });
+                self.sent.push((id, packet));
             }
         }
         let events = self.drivers[id].poll(&commands);
         for event in &events {
-            if let Event::TransportError { message } = event {
+            if let Event::TransportError { message } | Event::TransportClosed { message } = event {
                 self.errors[id].push(message.clone());
             }
         }
@@ -203,7 +225,7 @@ impl Room {
             self.peers[id].step(inputs(id));
             self.exchange(id);
         }
-        std::thread::sleep(Duration::from_millis(1));
+        std::thread::sleep(self.pace);
     }
 
     fn press(&mut self, id: usize, input: MenuInput) {
@@ -241,6 +263,40 @@ impl Room {
         self.wait("the fight starts for both players", 3_000, |room| {
             room.peers[..2].iter().all(|peer| peer.fight().is_some_and(|fight| !fight.driving()))
         });
+    }
+
+    /// Step with `inputs` until both combatants see the result screen.
+    fn fight_to_the_end(&mut self, inputs: impl Fn(usize, u32) -> FrameInputs) {
+        for frame in 0..40_000_u32 {
+            if self.peers[..2].iter().all(|peer| peer.screen() == "after match") {
+                return;
+            }
+            self.step_all(|id| inputs(id, frame));
+        }
+        panic!(
+            "the relayed match should finish: {:?} {:?}",
+            self.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>(),
+            self.errors
+        );
+    }
+
+    fn assert_no_desync(&self) {
+        assert!(self.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    }
+
+    /// Step only `ids` until each is back on the Online screen.
+    fn wait_for_the_lobby(&mut self, ids: &[usize], limit: Duration) {
+        let started = Instant::now();
+        while ids.iter().any(|&id| self.peers[id].screen() != "online") {
+            assert!(started.elapsed() < limit, "the room's end should reach every guest within {limit:?}: {:?}",
+                self.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>());
+            for &id in ids {
+                self.peers[id].set_net_time_ms(self.drivers[id].now_ms());
+                self.peers[id].step(FrameInputs::default());
+                self.exchange(id);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     fn sent_by(&self, id: usize, matches: impl Fn(&NetPacket) -> bool) -> bool {
@@ -281,8 +337,12 @@ fn spectators_join_an_internet_room_before_and_during_the_match() {
     }
     assert!(room.sent_by(challenger, |packet| matches!(packet, NetPacket::Input { .. })));
     assert_eq!(room.relay.service.open_rooms(), 1, "every role shares the one room");
-    assert_eq!(room.relay.service.connections(), 4, "each participant has its own route to the relay");
-    assert!(room.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    assert_eq!(room.relay.service.connections(), 4, "each participant has its own connection to the relay");
+    assert_eq!(room.routes[0].iter().copied().collect::<Vec<_>>(), [1, 2, 3], "the host addresses each guest by its own route");
+    for guest in [challenger, early, late] {
+        assert_eq!(room.routes[guest].iter().copied().collect::<Vec<_>>(), [0], "a guest only ever addresses the host");
+    }
+    room.assert_no_desync();
 }
 
 #[test]
@@ -312,6 +372,7 @@ fn four_spectators_fill_an_internet_room_and_the_fifth_is_refused() {
 fn a_dramatic_battle_runs_to_its_end_through_an_internet_room_with_a_late_spectator() {
     let mut room = Room::host(RoomKind::Dramatic);
     let ally = room.join(Role::Ally);
+    let early = room.join(Role::Spectator);
     room.wait("the host reaches Dramatic Battle setup", 3_000, |room| room.peers[0].screen() == "dramatic setup");
     for input in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Right,
         MenuInput::Down, MenuInput::Confirm] {
@@ -328,23 +389,15 @@ fn a_dramatic_battle_runs_to_its_end_through_an_internet_room_with_a_late_specta
     assert!(configs[0].dramatic.is_some(), "the co-op rules crossed the relay");
 
     let watcher = room.join(Role::Spectator);
-    let mut ended = false;
-    for frame in 0..40_000_u32 {
-        if room.peers[..2].iter().all(|peer| peer.screen() == "after match") {
-            ended = true;
-            break;
-        }
-        // Both allies walk in and attack; each drives its own fighter.
-        room.step_all(|id| if id < 2 { attack(frame + 30 * id as u32) } else { FrameInputs::default() });
-    }
-    assert!(ended, "the relayed Dramatic Battle should finish: {:?} {:?}",
-        room.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>(), room.errors);
+    // Both allies walk in and attack; each drives its own fighter.
+    room.fight_to_the_end(|id, frame| if id < 2 { attack(frame + 30 * id as u32) } else { FrameInputs::default() });
+    assert!(room.peers[early].spectator_frame().is_some_and(|frame| frame > 0), "the early spectator watched it");
     assert!(room.peers[watcher].spectator_frame().is_some_and(|frame| frame > 0), "the late spectator watched it");
     assert!(room.errors.iter().all(Vec::is_empty), "{:?}", room.errors);
     assert!(room.sent_by(ally, |packet| matches!(packet, NetPacket::Input { .. })));
     assert!(!room.sent_by(watcher, |packet| matches!(packet, NetPacket::Input { .. })));
-    assert_eq!(room.relay.service.connections(), 3, "host, ally and spectator each hold a route");
-    assert!(room.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    assert_eq!(room.relay.service.connections(), 4, "host, ally and both spectators each hold a connection");
+    room.assert_no_desync();
 }
 
 #[test]
@@ -359,17 +412,7 @@ fn a_host_who_leaves_mid_match_returns_everyone_to_a_lobby_that_works() {
 
     // The host's game goes away without a goodbye to its peers.
     room.drivers[0].poll(&[Command::Close]);
-    let left = Instant::now();
-    while [challenger, watcher].iter().any(|&id| room.peers[id].screen() != "online") {
-        assert!(left.elapsed() < Duration::from_secs(6), "the room's end reaches every guest within seconds: {:?}",
-            room.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>());
-        for id in [challenger, watcher] {
-            room.peers[id].set_net_time_ms(room.drivers[id].now_ms());
-            room.peers[id].step(FrameInputs::default());
-            room.exchange(id);
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
+    room.wait_for_the_lobby(&[challenger, watcher], Duration::from_secs(6));
     for id in [challenger, watcher] {
         assert_eq!(room.peers[id].notice(), Some("ROOM CLOSED"));
     }
@@ -394,7 +437,7 @@ fn a_host_who_leaves_mid_match_returns_everyone_to_a_lobby_that_works() {
 /// Wi-Fi, so it is turned away there and welcome in an ordinary room.
 #[test]
 fn a_wired_only_internet_room_admits_ethernet_and_refuses_an_unverified_link() {
-    let mut room = Room::host_with(RoomKind::Versus, true, false);
+    let mut room = Room::host_wired_only();
     let wireless = room.join_linked(Role::Player, Link::Wifi);
     room.wait("the unverified link is turned away", 3_000, |room| {
         room.peers[wireless].notice() == Some("WIRED ONLY REQUIRES ETHERNET")
@@ -423,22 +466,28 @@ fn an_ordinary_internet_room_admits_an_unverified_link() {
 #[test]
 fn a_match_survives_loss_duplication_and_reordering_on_the_way_to_the_relay() {
     use std::sync::atomic::Ordering;
-    let mut room = Room::host_with(RoomKind::Versus, false, true);
+    let mut room = Room::host_over_a_faulty_link();
     let challenger = room.join(Role::Player);
     let watcher = room.join(Role::Spectator);
     room.start_versus();
-    let mut ended = false;
-    for frame in 0..40_000_u32 {
-        if room.peers[..2].iter().all(|peer| peer.screen() == "after match") {
-            ended = true;
-            break;
-        }
+    // The link adds 10 ms each way on each side of the relay, so the two
+    // players are about 40 ms apart, and its held packets make that uneven.
+    room.wait("both players measure the link between them", 6_000, |room| {
+        room.peers[..2].iter().all(|peer| peer.net_ping_and_jitter_ms().is_some())
+    });
+    for frame in 0..600 {
         room.step_all(|id| if id == 0 { attack(frame) } else { FrameInputs::default() });
     }
-    assert!(ended, "the match should finish over the faulty link: {:?} {:?}",
-        room.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>(), room.errors);
+    // Three fighting sessions already take about a frame's time per step.
+    room.pace = Duration::from_millis(1);
+    for peer in &room.peers[..2] {
+        let (ping, jitter) = peer.net_ping_and_jitter_ms().unwrap();
+        assert!((30..200).contains(&ping), "ping is measured end to end across the relay: {ping} ms");
+        assert!(jitter > 0, "the uneven link shows up as jitter");
+    }
+    room.fight_to_the_end(|id, frame| if id == 0 { attack(frame) } else { FrameInputs::default() });
     assert!(room.errors.iter().all(Vec::is_empty), "{:?}", room.errors);
-    assert!(room.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    room.assert_no_desync();
     assert!(room.sent_by(challenger, |packet| matches!(packet, NetPacket::Input { .. })));
     assert!(room.peers[watcher].spectator_frame().is_some_and(|frame| frame > 0), "the spectator kept watching");
 
@@ -446,4 +495,27 @@ fn a_match_survives_loss_duplication_and_reordering_on_the_way_to_the_relay() {
     for (what, count) in [("dropped", &counts.dropped), ("duplicated", &counts.duplicated), ("delayed", &counts.delayed)] {
         assert!(count.load(Ordering::Relaxed) > 100, "{what}: {}", count.load(Ordering::Relaxed));
     }
+}
+
+/// #127: a host whose machine vanishes closes nothing. The relay times its
+/// connection out, drops the room and tells the guests, within a bound.
+#[test]
+fn a_host_that_vanishes_is_cleaned_up_within_a_bound() {
+    let mut room = Room::host_over_a_faulty_link();
+    let challenger = room.join(Role::Player);
+    let watcher = room.join(Role::Spectator);
+    room.start_versus();
+    room.wait("the spectator watches the fight", 3_000, |room| {
+        room.peers[watcher].spectator_frame().is_some_and(|frame| frame >= 30)
+    });
+
+    // The host was the link's first client: from here it is simply gone.
+    room.link.as_ref().unwrap().cut_first_client();
+    room.wait_for_the_lobby(&[challenger, watcher], Duration::from_secs(20));
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while room.relay.service.open_rooms() != 0 {
+        assert!(Instant::now() < deadline, "the relay should drop a room whose host went silent");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!room.relay.can_join(&room.code));
 }

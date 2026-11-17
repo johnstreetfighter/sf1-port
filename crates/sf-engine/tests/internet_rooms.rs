@@ -310,7 +310,7 @@ fn every_relay_refusal_leaves_a_usable_lobby_that_can_retry() {
         let mut session = online_session_with_relay();
         join_by_code(&mut session);
         session.drain_net_commands();
-        session.push_net_events(&[NetTransportEvent::TransportError { message: message.into() }]);
+        session.push_net_events(&[NetTransportEvent::TransportClosed { message: message.into() }]);
         idle_for_30_seconds(&mut session);
         assert_eq!(session.screen(), "online", "{message}");
         assert_eq!(session.notice(), Some(message));
@@ -339,7 +339,7 @@ fn a_host_whose_relay_fails_can_host_again_from_the_lobby() {
     session.step(FrameInputs::default());
     session.drain_net_commands();
 
-    session.push_net_events(&[NetTransportEvent::TransportError {
+    session.push_net_events(&[NetTransportEvent::TransportClosed {
         message: "RELAY CONNECTION LOST: timed out".into(),
     }]);
     idle_for_30_seconds(&mut session);
@@ -355,4 +355,25 @@ fn a_host_whose_relay_fails_can_host_again_from_the_lobby() {
     pulse(&mut session, MenuInput::Confirm);
     let commands = session.drain_net_commands();
     assert!(matches!(commands.as_slice(), [NetTransportCommand::HostInternetRoom { .. }]), "{commands:?}");
+}
+
+/// #127: a transport error that closed nothing leaves an Internet room open.
+/// Only the transport saying the room is closed ends it.
+#[test]
+fn a_recoverable_transport_error_leaves_an_internet_room_open() {
+    let mut session = online_session_with_relay();
+    host_internet_room(&mut session);
+    session.push_net_events(&[NetTransportEvent::Bound {
+        local_addr: "relay.example.test".into(),
+        room_code: "K7Q-MPX".into(),
+        link: Link::Ethernet,
+    }]);
+    session.step(FrameInputs::default());
+    session.drain_net_commands();
+
+    session.push_net_events(&[NetTransportEvent::TransportError { message: "NETWORK SEND QUEUE FULL".into() }]);
+    session.step(FrameInputs::default());
+    assert_eq!(session.notice(), Some("NETWORK SEND QUEUE FULL"));
+    assert_eq!(session.room_code_for_copy(), Some("K7Q-MPX"), "the room and its code carry on");
+    assert!(!session.drain_net_commands().contains(&NetTransportCommand::Close));
 }
