@@ -9,7 +9,7 @@ use sf_engine::netplay::{
     RoomKind, SyncedMatchRules,
 };
 use sf_engine::roster::{StagePick, TournamentFighter};
-use sf_host::net::{AdapterInfo, AdapterQuery, HostNetDriver};
+use sf_host::net::{AdapterInfo, AdapterQuery, HostNetDriver, NetDriverConfig};
 
 #[path = "support/relay.rs"]
 mod relay;
@@ -327,4 +327,63 @@ fn an_internet_room_opens_on_an_unknown_link_and_reports_it_as_wifi() {
     let mut guest = relay.driver_probing(no_adapter_answer);
     let event = until(&mut guest, &[Command::JoinInternetRoom { code }], |event| matches!(event, Event::Bound { .. }));
     assert_eq!(bound(event).1, Link::Wifi);
+}
+
+/// #127: with the relay down, an Internet room fails with its reason, and the
+/// same two transports still find each other on the LAN and play by address.
+#[test]
+fn lan_discovery_and_direct_joins_work_while_the_relay_is_down() {
+    let relay = TestRelay::start();
+    let down = relay.address();
+    drop(relay);
+    let local = NetDriverConfig {
+        bind_ip: std::net::Ipv4Addr::LOCALHOST,
+        link_override: Some(Link::Ethernet),
+        discovery_port: 0,
+        discovery_targets: Vec::new(),
+        ..NetDriverConfig::default()
+    };
+    let mut host = HostNetDriver::with_config(local.clone());
+    host.set_relay(Some(down.clone()));
+    let message = error(&mut host, &[Command::HostInternetRoom { room: announcement(false) }]);
+    assert!(message.starts_with("RELAY"), "{message}");
+
+    // The same transport hosts a public LAN room straight afterwards.
+    let mut public = announcement(false);
+    public.public = true;
+    let (code, _) = bound(until(&mut host, &[Command::BindHost { port: 0, room: public }], |event| {
+        matches!(event, Event::Bound { .. })
+    }));
+    let discovery = host.discovery_addr().expect("a public room listens for LAN probes");
+    let mut guest = HostNetDriver::with_config(NetDriverConfig { discovery_targets: vec![discovery], ..local });
+    guest.set_relay(Some(down));
+    let message = error(&mut guest, &[Command::JoinInternetRoom { code: "K7Q-MPX".into() }]);
+    assert!(message.starts_with("RELAY"), "{message}");
+
+    guest.poll(&[Command::RefreshRooms]);
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let found = loop {
+        host.poll(&[]);
+        let rooms = guest.poll(&[]).into_iter().find_map(|event| match event {
+            Event::RoomsDiscovered { rooms } if !rooms.is_empty() => Some(rooms),
+            _ => None,
+        });
+        if let Some(rooms) = rooms {
+            break rooms;
+        }
+        assert!(Instant::now() < deadline, "LAN discovery should find the room while the relay is down");
+        std::thread::sleep(Duration::from_millis(1));
+    };
+    assert_eq!(found[0].code, code);
+
+    // A direct join by address carries packets both ways.
+    let addr = host.local_addr().unwrap().to_string();
+    until(&mut guest, &[Command::ConnectPeer { addr }], |event| matches!(event, Event::Bound { .. }));
+    let ping = NetPacket::Ping { seq: 3, sent_ms: 55, link: Link::Ethernet };
+    send(&mut guest, 0, &ping);
+    let (from, heard) = packet(&mut host);
+    assert_eq!(heard, ping);
+    let pong = NetPacket::Pong { seq: 3, echo_ms: 55, link: Link::Ethernet };
+    send(&mut host, from, &pong);
+    assert_eq!(packet(&mut guest), (0, pong));
 }

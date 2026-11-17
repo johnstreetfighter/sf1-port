@@ -12,6 +12,8 @@ use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
 use sf_video::background_bank::BackgroundBank;
 
+#[path = "support/lossy.rs"]
+mod lossy;
 #[path = "support/relay.rs"]
 mod relay;
 
@@ -80,6 +82,8 @@ enum Role {
 /// One Internet room on a real relay; peer 0 hosts it.
 struct Room {
     relay: relay::TestRelay,
+    /// When set, every peer reaches the relay through this faulty link.
+    link: Option<lossy::LossyLink>,
     template: GameSession,
     peers: Vec<GameSession>,
     drivers: Vec<HostNetDriver>,
@@ -92,22 +96,26 @@ struct Room {
 
 impl Room {
     fn host(kind: RoomKind) -> Self {
-        Self::host_with(kind, false)
+        Self::host_with(kind, false, false)
     }
 
-    fn host_with(kind: RoomKind, wired_only: bool) -> Self {
+    fn host_with(kind: RoomKind, wired_only: bool, lossy: bool) -> Self {
         let relay = relay::TestRelay::start();
+        let link = lossy.then(|| lossy::LossyLink::start(relay.service.local_addr()));
         let settings = Settings { relay: Some(relay.address()), ..Settings::default() };
         let template = session(kind).with_settings(settings);
         let mut room = Self {
             peers: vec![template.clone()],
-            drivers: vec![relay.driver()],
+            drivers: Vec::new(),
             template,
             relay,
+            link,
             sent: Vec::new(),
             errors: vec![Vec::new()],
             code: String::new(),
         };
+        let driver = room.driver(Link::Ethernet);
+        room.drivers.push(driver);
         let host = &mut room.peers[0];
         online(host);
         pulse(host, MenuInput::Right);
@@ -132,6 +140,14 @@ impl Room {
         room
     }
 
+    fn driver(&self, link: Link) -> HostNetDriver {
+        let mut driver = self.relay.driver_linked(link);
+        if let Some(faulty) = &self.link {
+            driver.set_relay(Some(faulty.address()));
+        }
+        driver
+    }
+
     /// A new peer joins by the room's code; returns its index.
     fn join(&mut self, role: Role) -> usize {
         self.join_linked(role, Link::Ethernet)
@@ -141,7 +157,8 @@ impl Room {
     fn join_linked(&mut self, role: Role, link: Link) -> usize {
         let id = self.peers.len();
         self.peers.push(self.template.clone());
-        self.drivers.push(self.relay.driver_linked(link));
+        let driver = self.driver(link);
+        self.drivers.push(driver);
         self.errors.push(Vec::new());
         let peer = &mut self.peers[id];
         online(peer);
@@ -377,7 +394,7 @@ fn a_host_who_leaves_mid_match_returns_everyone_to_a_lobby_that_works() {
 /// Wi-Fi, so it is turned away there and welcome in an ordinary room.
 #[test]
 fn a_wired_only_internet_room_admits_ethernet_and_refuses_an_unverified_link() {
-    let mut room = Room::host_with(RoomKind::Versus, true);
+    let mut room = Room::host_with(RoomKind::Versus, true, false);
     let wireless = room.join_linked(Role::Player, Link::Wifi);
     room.wait("the unverified link is turned away", 3_000, |room| {
         room.peers[wireless].notice() == Some("WIRED ONLY REQUIRES ETHERNET")
@@ -399,4 +416,34 @@ fn an_ordinary_internet_room_admits_an_unverified_link() {
         room.peers[0].screen() == "select" && room.peers[wireless].screen() == "select"
     });
     assert!(room.errors.iter().all(Vec::is_empty), "{:?}", room.errors);
+}
+
+/// #127: loss, duplication and reordering on the path to the real relay.
+/// QUIC keeps the connections up and rollback keeps both fights identical.
+#[test]
+fn a_match_survives_loss_duplication_and_reordering_on_the_way_to_the_relay() {
+    use std::sync::atomic::Ordering;
+    let mut room = Room::host_with(RoomKind::Versus, false, true);
+    let challenger = room.join(Role::Player);
+    let watcher = room.join(Role::Spectator);
+    room.start_versus();
+    let mut ended = false;
+    for frame in 0..40_000_u32 {
+        if room.peers[..2].iter().all(|peer| peer.screen() == "after match") {
+            ended = true;
+            break;
+        }
+        room.step_all(|id| if id == 0 { attack(frame) } else { FrameInputs::default() });
+    }
+    assert!(ended, "the match should finish over the faulty link: {:?} {:?}",
+        room.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>(), room.errors);
+    assert!(room.errors.iter().all(Vec::is_empty), "{:?}", room.errors);
+    assert!(room.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    assert!(room.sent_by(challenger, |packet| matches!(packet, NetPacket::Input { .. })));
+    assert!(room.peers[watcher].spectator_frame().is_some_and(|frame| frame > 0), "the spectator kept watching");
+
+    let counts = &room.link.as_ref().unwrap().counts;
+    for (what, count) in [("dropped", &counts.dropped), ("duplicated", &counts.duplicated), ("delayed", &counts.delayed)] {
+        assert!(count.load(Ordering::Relaxed) > 100, "{what}: {}", count.load(Ordering::Relaxed));
+    }
 }

@@ -33,11 +33,13 @@ impl TestRelay {
     }
 
     /// A localhost driver that trusts only this relay's certificate.
+    #[allow(dead_code)]
     pub fn driver(&self) -> HostNetDriver {
         self.driver_trusting(&[self])
     }
 
     /// A driver set to this relay that trusts only `trusted`' certificates.
+    #[allow(dead_code)]
     pub fn driver_trusting(&self, trusted: &[&TestRelay]) -> HostNetDriver {
         self.driver_with(trusted, Some(Link::Ethernet), None)
     }
