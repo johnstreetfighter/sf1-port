@@ -612,7 +612,14 @@ impl Bus<'_> {
         } else {
             ken::attacker_position(motion)
         };
-        self.set_st_ryu_throw_position(fighter, motion.origin_x, position);
+        // A catalogue throw picture stands on its own floor line, which its
+        // artist may draw above the grid's last row (Ryu's turn and heave
+        // stand 7 and 16 pixels up). The other families' poses fill theirs.
+        let own_floor = matches!(
+            motion.family,
+            StRyuThrowFamily::Shoulder | StRyuThrowFamily::KenShoulder | StRyuThrowFamily::Sagat
+        );
+        self.set_st_ryu_throw_position(fighter, motion.origin_x, position, own_floor);
     }
 
     fn run_st_ryu_throw_victim(&mut self, fighter: u16, attacker: u16, motion: StRyuThrow) {
@@ -671,7 +678,7 @@ impl Bus<'_> {
             self.set_eb(fighter, 0xa, THROWN_MOVE);
         }
         self.set_eb(fighter, 0xf, 0x08);
-        self.set_st_ryu_throw_position(fighter, motion.origin_x, position);
+        self.set_st_ryu_throw_position(fighter, motion.origin_x, position, false);
         if let Some(damage_hp) = motion.damage_hp() {
             self.apply_st_ryu_throw_damage(fighter, attacker, motion, damage_hp);
         }
@@ -724,7 +731,16 @@ impl Bus<'_> {
         self.shift_grid_x(fighter, axis.wrapping_sub(self.fighter_axis_x(fighter)));
     }
 
-    fn set_st_ryu_throw_position(&mut self, fighter: u16, origin_x: u16, pos: ThrowPosition) {
+    /// Put the fighter at `pos` from the throw's origin. Its height is
+    /// measured from the grid's last row, or with `own_floor` from the floor
+    /// line the pose's pushbox gives (`write_throw_pair`'s ground extent).
+    fn set_st_ryu_throw_position(
+        &mut self,
+        fighter: u16,
+        origin_x: u16,
+        pos: ThrowPosition,
+        own_floor: bool,
+    ) {
         let camera = self.rw(CAMERA);
         let target_x = i32::from(origin_x) + i32::from(pos.x_offset) - i32::from(camera);
         let current_x = i32::from(self.fighter_axis_x(fighter));
@@ -734,9 +750,13 @@ impl Bus<'_> {
         let x = target_x.max(left);
         self.shift_grid_x(fighter, (x - current_x) as u16);
         let tile_height = if self.is_big(fighter) { 32 } else { 16 };
-        let grid_bottom = self
-            .ew(fighter, 4)
-            .wrapping_add((u16::from(self.eb(fighter, 0xc)) + 1) * tile_height);
+        let grid_bottom = if own_floor {
+            self.center_y(fighter)
+                .wrapping_add(u16::from(self.eb(fighter, 0x17)))
+        } else {
+            self.ew(fighter, 4)
+                .wrapping_add((u16::from(self.eb(fighter, 0xc)) + 1) * tile_height)
+        };
         let bottom = crate::data_bank::GROUND as u16 - u16::from(pos.height);
         self.shift_grid_y(fighter, bottom.wrapping_sub(grid_bottom));
         self.set_eb(fighter, 0x15, (target_x - current_x).clamp(-127, 127) as u8);

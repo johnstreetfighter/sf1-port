@@ -135,6 +135,45 @@ fn session_with_art(gauge_mode: GaugeMode, fighter: TournamentFighter) -> Option
     Some(session)
 }
 
+/// Ryu on P1 with the given style on the Local select, with the whole
+/// cast's approved art bound: the shipped game's poses, not the ROM fallback.
+#[allow(dead_code)]
+pub fn local_select_with_shoto_art(
+    revision: Revision,
+    loadout: Loadout,
+) -> Option<(GameSession, Art)> {
+    if !Path::new(ROMS).is_dir() || !Path::new(ART_PACK).is_dir() {
+        eprintln!("skipping: local ROM set or art pack not present");
+        return None;
+    }
+    let assets = load_assets(ROMS, MANIFEST).expect("local ROMs assemble");
+    let texts = [
+        "ryu", "ken", "retsu", "geki", "joe", "mike", "lee", "gen", "birdie", "eagle", "adon",
+        "sagat",
+    ]
+    .map(|slug| {
+        [
+            std::fs::read_to_string(format!("../../art/recipes/{slug}.json")).expect("recipe"),
+            std::fs::read_to_string(format!("../../art/review/{slug}.json")).expect("review"),
+        ]
+    });
+    let pack = ArtPack::open(Path::new(ART_PACK)).expect("local art pack opens");
+    let art = load_art_from(
+        &assets,
+        &ArtSources {
+            recipes: &texts.each_ref().map(|text| text[0].as_str()),
+            reviews: Some(&texts.each_ref().map(|text| text[1].as_str())),
+            pack: Ok(&pack),
+        },
+    )
+    .expect("local art loads");
+    let session = GameSession::new(assets, MatchConfig::definitive())
+        .with_sprite_bank(&art.bank)
+        .with_player_tables(&art.catalogues);
+    let select = select_p1(session, TournamentFighter::Ryu, revision, loadout);
+    Some((select, art))
+}
+
 pub fn load_fighter_art(assets: &Assets, fighter: TournamentFighter) -> Art {
     let slug = fighter.name().to_ascii_lowercase();
     let recipe =
