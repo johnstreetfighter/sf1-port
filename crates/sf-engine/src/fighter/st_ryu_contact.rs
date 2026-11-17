@@ -280,6 +280,21 @@ impl Bus<'_> {
         StRyuPushback { elapsed: 0, direction, kind: StRyuRecoil::Heavy }
     }
 
+    /// Ken's Shoryuken gives New Ryu the heavy grounded recoil. A strike
+    /// that lands during the previous reaction reloads it one tick earlier.
+    pub(super) fn st_ken_shoryuken_recoil(&self, attacker: u16, defender: u16) -> StRyuPushback {
+        let direction = if self.fighter_axis_x(defender) < self.fighter_axis_x(attacker) { -1 } else { 1 };
+        let reacting = self.st_ryu_reacting(defender);
+        StRyuPushback { elapsed: u8::from(reacting), direction, kind: StRyuRecoil::Heavy }
+    }
+
+    /// The defender is still in the stun of an earlier hit or guard.
+    pub(super) fn st_ryu_reacting(&self, defender: u16) -> bool {
+        let slot = self.combo_slot(defender);
+        let combo = &self.toggle_state.combo;
+        combo.hitstun[slot] != 0 || combo.blockstun[slot] != 0
+    }
+
     pub(super) fn st_sagat_melee_recoil(
         &self, attacker: u16, defender: u16, phase: u8, blocked: bool,
     ) -> StRyuPushback {

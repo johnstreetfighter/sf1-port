@@ -64,6 +64,11 @@ const KEN_HEAVY_RECOIL_LATE: [ArcadeBox; 3] = [
     ArcadeBox::new(-9, 51, 21, 20),
     ArcadeBox::new(-3, 18, 23, 18),
 ];
+const RYU_SHORYUKEN_RECOIL: [ArcadeBox; 3] = [
+    ArcadeBox::new(-8, 57, 14, 9),
+    ArcadeBox::new(-16, 43, 19, 15),
+    ArcadeBox::new(-13, 16, 21, 17),
+];
 const RYU_TATSUMAKI_RECOIL_LATE: [ArcadeBox; 3] = [
     ArcadeBox::new(-4, 80, 10, 10),
     ArcadeBox::new(-16, 52, 20, 23),
@@ -254,6 +259,34 @@ impl Bus<'_> {
         // guard push. Allow for rounding at the grounded final strike.
         let rx = rx + u16::from(phase == 5 && height == 0 && stance == 4);
         let strike = ArcadeBox::new(x, y + height, rx, ry);
+        Some(self.st_arcade_normal_overlap(attacker, defender, &strike, hurtboxes))
+    }
+
+    pub(super) fn st_ken_shoryuken_reaches_ryu(
+        &self, attacker: u16, defender: u16, phase: u8, loadout: Loadout,
+    ) -> Option<bool> {
+        if !self.st_new_ryu(self.el(defender, 0x38)) || self.era_airborne(defender) {
+            return None;
+        }
+        let hurtboxes = match self.eb(defender, 0xa) {
+            1..=4 => &KEN_STANDING,
+            5..=8 => &KEN_CROUCHING,
+            0x31 => {
+                // World's contacts bound the heavy recoil's body. The upper
+                // strike lands at a 63 px gap on the first recoil tick. From
+                // the second it lands at 56 px and misses at 63 px.
+                let recoil = self.toggle_state.combo.st_ryu_pushback[self.combo_slot(defender)]?;
+                match recoil.kind {
+                    crate::combo::StRyuRecoil::Light => &KEN_LIGHT_RECOIL,
+                    crate::combo::StRyuRecoil::Medium => &KEN_MEDIUM_RECOIL,
+                    crate::combo::StRyuRecoil::Heavy if recoil.elapsed <= 2 => &KEN_STANDING,
+                    crate::combo::StRyuRecoil::Heavy => &RYU_SHORYUKEN_RECOIL,
+                }
+            }
+            _ => return None,
+        };
+        let (x, y, rx, ry) = crate::data_bank::st_ken_shoryuken::attack_box(phase, loadout)?;
+        let strike = ArcadeBox::new(x, y + self.st_ryu_height_above_floor(attacker), rx, ry);
         Some(self.st_arcade_normal_overlap(attacker, defender, &strike, hurtboxes))
     }
 

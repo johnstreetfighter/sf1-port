@@ -111,6 +111,7 @@ pub(crate) mod st_sagat_standing;
 pub(crate) mod st_ken_kicks;
 pub(crate) mod st_ken_jump;
 pub(crate) mod st_ken_air_normals;
+pub(crate) mod st_ken_shoryuken;
 pub(crate) mod st_ken_tatsumaki;
 mod st_ken_throws;
 
@@ -539,6 +540,11 @@ impl DataBank {
         self.authored_header(table_address(TournamentFighter::Ken), st_ken_throws::header_offset(family)?)
     }
 
+    /// New Ryu's knockdown from Ken's Shoryuken, at the contact freeze.
+    pub(crate) fn st_ken_shoryuken_knockdown(&self, heavy: bool) -> Option<u32> {
+        self.authored_header(table_address(TournamentFighter::Ken), st_ken_shoryuken::knockdown_offset(heavy))
+    }
+
     pub(crate) fn st_ken_air_normal(&self, old: bool, directional: bool, button: u8) -> Option<u32> {
         self.authored_header(
             table_address(TournamentFighter::Ken),
@@ -672,6 +678,7 @@ impl DataBank {
                     st_ken_jump::build(rom, &mut region);
                     st_ken_air_normals::build(rom, &mut region);
                     st_ken_tatsumaki::build(rom, &mut region);
+                    st_ken_shoryuken::build(rom, &mut region);
                     st_ken_throws::build(rom, &mut region);
                 }
                 if rom.len() >= 0x40000 || entry.is_some() {
@@ -2266,7 +2273,7 @@ fn new_slot(fighter: TournamentFighter) -> Region {
     if fighter == TournamentFighter::Ryu {
         region.put(&[0; (RYU_JAB_TIMINGS.len() + st_ryu_air::HEADERS + st_ryu_air::JUMP_MP_STREAMS + 2) * 4]);
     } else if fighter == TournamentFighter::Ken {
-        region.put(&[0; st_ken_throws::POINTER_BYTES + st_ken_air_normals::POINTER_BYTES]);
+        region.put(&[0; st_ken_throws::POINTER_BYTES + st_ken_air_normals::POINTER_BYTES + st_ken_shoryuken::POINTER_BYTES]);
     }
     region
 }

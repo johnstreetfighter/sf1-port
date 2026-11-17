@@ -161,7 +161,7 @@ The probes used port v1.5.8 built from the working tree based on `0e336743`, wit
 | Crouching LK at 32 px | Clean New / Old deal 4 / 6 HP. Clean and guard start with 14 freeze per fighter and move Ryu back 30 px. | Clean New / Old both deal 3 HP at +6 from kick press and move Ryu 24 px. Hitstun is 18 / 22 ticks. Guard has 12 blockstun ticks for both and no pushback. All port samples have zero ordinary freeze. |
 | Crouching MK at 32 px | Both leave Ryu grounded and push him back 54 px. | Both deal 4 HP at +6 from kick press, launch Ryu in reaction `0x33`, and move him back 140 px over the reaction. |
 | Far LK near 90 px | New hits at 90 px, Old whiffs. | Both whiff at the nearest sampled 92 px. The two-pixel spacing difference keeps this probe from identifying the exact reach difference. |
-| `623HP` near 55 px | Both hit twice at 55 px. | Both start Shoryuken (`0x19`) and whiff at 52 px. The port two-hit ceiling needs an in-range contact test. |
+| `623HP` near 55 px | Both hit twice at 55 px. | Both started Shoryuken (`0x19`) and whiffed at 52 px in the audited build. The later port replay hits at +2 and +18 from 55 px. See the [Shoryuken port replay](ken-super-turbo-shoryuken.md#port-replay). |
 
 ### Crouching kick into LP Hadoken
 
@@ -263,4 +263,5 @@ The Local Versus replay checks all six free jump paths through both facings usin
 - Measure Hadoken air-hit outcomes and clashes across spacing and document damage RNG variance. Check exact close/far thresholds and pair jump-normal and Air Tatsumaki reactions at matched heights and distances.
 - Extend the [throw follow-up](ken-super-turbo-throws.md) to exact mash parity, corner paths and additional defender profiles.
 - Extend the [command kick follow-up](ken-super-turbo-command-kicks.md) to the spacing-dependent follow-up contacts and defender reactions.
-- Extend the Shoryureppa tests to corner and airborne routes. Replay the measured Shoryuken paths and spacing-dependent contacts in the port. [Source sweep](ken-super-turbo-shoryuken.md)
+- Extend the Shoryureppa tests to corner and airborne routes.
+- The port now replays the measured Shoryuken flights, strike phases, crouch-guard contacts and New Ryu's reactions. Standing guard, the 95 px controls, airborne targets, damage rolls and other defenders remain. [Port replay and open items](ken-super-turbo-shoryuken.md#port-replay)

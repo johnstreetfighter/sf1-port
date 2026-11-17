@@ -905,6 +905,7 @@ impl Bus<'_> {
         let ken_kick = self.st_ken_kick_header(ps, mv);
         let ken_jump = self.st_ken_jump_header(ps, mv);
         let ken_tatsu = self.st_ken_ground_tatsumaki_header(ps, mv, self.eb(e, 0x34));
+        let ken_dp = self.st_ken_shoryuken_header(ps, mv, self.eb(e, 0x34));
         let family_move = self.era_state(ps)
             .filter(|state| {
                 state.alpha_move_active(mv) && (state.uses_family_bank()
@@ -912,7 +913,7 @@ impl Bus<'_> {
             });
         let src = if let Some(state) = family_move {
             self.family_move_header(state, e, mv)
-        } else if let Some(header) = paced_jab.or(st_crouching).or(ken_crouching).or(shinku).or(shoryureppa).or(sagat_special).or(sagat_normal).or(ken_kick).or(ken_jump).or(ken_tatsu)
+        } else if let Some(header) = paced_jab.or(st_crouching).or(ken_crouching).or(shinku).or(shoryureppa).or(sagat_special).or(sagat_normal).or(ken_kick).or(ken_jump).or(ken_tatsu).or(ken_dp)
             .or_else(|| self.st_ryu_standing_header(ps, e, mv))
         {
             Some(header)
@@ -994,7 +995,7 @@ impl Bus<'_> {
         if self.toggles.balanced_roster {
             self.apply_balanced_move_start(e, table, mv);
         }
-        let authored_startup = [paced_jab, st_crouching, ken_crouching, shinku, shoryureppa, sagat_special, sagat_normal, ken_kick, ken_tatsu].contains(&Some(src));
+        let authored_startup = [paced_jab, st_crouching, ken_crouching, shinku, shoryureppa, sagat_special, sagat_normal, ken_kick, ken_tatsu, ken_dp].contains(&Some(src));
         self.era_move_started(e, ps, mv, authored_startup);
         if self.toggles.anytime_jump_attacks
             && self.toggles.fast_prejump_crouch
@@ -1146,9 +1147,10 @@ impl Bus<'_> {
         let move_id = self.eb(e, 0xa);
         let sagat_melee = self.st_sagat_melee_loadout(self.el(e, 0x38), move_id).is_some();
         let ken_tatsu = self.st_ken_ground_tatsumaki_entry(e).is_some();
+        let ken_dp = self.st_ken_shoryuken_loadout(self.el(e, 0x38), move_id).is_some();
         let alpha3_counter = move_id == crate::data_bank::ALPHA_COUNTER_SLOT
             && self.evil_ryu_alpha3(self.el(e, 0x38));
-        if self.toggles.balanced_roster && !sagat_melee && !ken_tatsu
+        if self.toggles.balanced_roster && !sagat_melee && !ken_tatsu && !ken_dp
             && (matches!(move_id, 0x19 | 0x1b) || alpha3_counter)
         {
             let slot = self.player_slot_index(self.el(e, 0x38)).unwrap_or(1);
@@ -1163,7 +1165,7 @@ impl Bus<'_> {
         {
             self.combo_load_frame(e, a1);
         }
-        if (sagat_melee || ken_tatsu) && crate::data_bank::in_bank(self.el(e, 0x28)) {
+        if (sagat_melee || ken_tatsu || ken_dp) && crate::data_bank::in_bank(self.el(e, 0x28)) {
             let phase = self.rb(self.el(e, 0x28) + 8);
             let mask = 1_u8.checked_shl(u32::from(phase.wrapping_sub(1))).unwrap_or(0);
             if self.toggle_state.combo.st_melee_phases[self.combo_slot(e)] & mask != 0 {
@@ -2612,7 +2614,9 @@ impl Bus<'_> {
     fn clamp_y(&mut self, me: u16) {
         let owner = self.el(me, 0x38);
         let move_id = self.eb(me, 0xa);
-        if self.st_ken_shoryureppa(owner, move_id) || self.st_sagat_melee_loadout(owner, move_id).is_some() {
+        if self.st_ken_shoryureppa(owner, move_id) || self.st_sagat_melee_loadout(owner, move_id).is_some()
+            || self.st_ken_shoryuken_loadout(owner, move_id).is_some()
+        {
             // The authored path reaches the mat and includes the source's
             // full high arc. The native 1987 landing clamp truncates it.
             return;
@@ -2825,9 +2829,12 @@ impl Bus<'_> {
         let sagat_melee = self.st_sagat_melee_loadout(owner, move_id);
         let ken_kick = self.st_ken_kick_header(owner, move_id).is_some();
         let ken_tatsu = self.st_ken_ground_tatsumaki_entry(me);
-        let phase_entry = (shoryureppa || sagat_melee.is_some() || sagat_standing.is_some() || ken_kick || ken_tatsu.is_some())
+        let ken_dp = self.st_ken_shoryuken_loadout(owner, move_id);
+        let phase_entry = (shoryureppa || sagat_melee.is_some() || sagat_standing.is_some() || ken_kick || ken_tatsu.is_some()
+            || ken_dp.is_some())
             && crate::data_bank::in_bank(self.el(me, 0x28));
         let shoryureppa_hit = phase_entry && shoryureppa;
+        let ken_dp_hit = phase_entry && ken_dp.is_some();
         let sagat_melee_hit = phase_entry && sagat_melee.is_some();
         let phase = sagat_standing.map_or_else(
             || if phase_entry { self.rb(self.el(me, 0x28) + 8) } else { 0 },
@@ -2852,6 +2859,8 @@ impl Bus<'_> {
                 else { 1 }
             } else if ken_tatsu.is_some() {
                 6
+            } else if ken_dp.is_some() {
+                3
             } else if ken_kick || (sagat_standing.is_some() && matches!(move_id, 0x14 | 0x15))
                 || self.st_ryu_command_normal(owner, move_id)
                 || self.st_ryu_close_hk(owner, move_id)
@@ -2870,6 +2879,10 @@ impl Bus<'_> {
         } else {
             hit_limit
         };
+        if ken_dp.is_some() && spent_phases != 0 && self.airborne_reaction(other) {
+            // Super Turbo's Shoryuken cannot hit an opponent it has knocked down.
+            return;
+        }
         let juggle = if st_jump_mp == Some(crate::era::Loadout::Standard) && self.st_new_ken(other) {
             self.st_ryu_air_juggle_allowed(other, 3)
         } else {
@@ -2914,6 +2927,7 @@ impl Bus<'_> {
                 .or_else(|| if sagat_normal { self.st_sagat_normal_reaches_ken(me, other, move_id) } else { None })
                 .or_else(|| if sagat_melee_hit { self.st_sagat_melee_reaches_ken(me, other, move_id, phase) } else { None })
                 .or_else(|| ken_tatsu.and_then(|entry| self.st_ken_tatsumaki_reaches_ryu(me, other, self.rb(entry + 10))))
+                .or_else(|| ken_dp.filter(|_| ken_dp_hit).and_then(|loadout| self.st_ken_shoryuken_reaches_ryu(me, other, phase, loadout)))
         };
         if !source_contact.unwrap_or_else(|| {
             !apart(dx_loose, ax, aw.wrapping_add(loose_w))
@@ -3079,11 +3093,20 @@ impl Bus<'_> {
                     self.eb(other, 9) == 0x22 || self.eb(other, 0xa) == 4
                 } else if close_lk || (sagat_normal && low) {
                     self.eb(other, 9) == 0x24 || self.eb(other, 0xa) == 8
+                } else if ken_dp_hit && phase == crate::data_bank::st_ken_shoryuken::OPENER && self.eb(other, 0xa) == 7
+                    && self.st_new_ryu(self.el(other, 0x38)) && self.incoming_attack(other, me, true)
+                {
+                    // The heavy opener is live on the entry tick. World puts a
+                    // New Ryu who holds down-back into crouch guard on that
+                    // tick, where his own input would next tick.
+                    let defender = self.el(other, 0x38);
+                    self.start_unless_current(other, defender, 8);
+                    true
                 } else {
                     self.eb(other, 9) & 0x20 != 0 || matches!(self.eb(other, 0xa), 4 | 8)
                 };
                 if (air_block || guard) && !self.era_sf4_focus_unblockable(owner, move_id) {
-                    if shoryureppa_hit || sagat_melee_hit {
+                    if shoryureppa_hit || sagat_melee_hit || ken_dp_hit {
                         self.damage_with_chip(me, 1, true);
                     } else if ken_kick || ken_tatsu.is_some() {
                         self.damage_with_chip(me, self.rb(f + 9), true);
@@ -3091,6 +3114,7 @@ impl Bus<'_> {
                         let chip = self.rb(f + 1).div_ceil(4);
                         self.damage_with_chip(me, chip, true);
                     }
+                    let ken_dp_recoil = ken_dp_hit.then(|| self.st_ken_shoryuken_recoil(me, other));
                     self.block_contact(other);
                     self.combo_blocked(me, other);
                     if shoryureppa_hit && !air_block && self.st_new_ryu(defender)
@@ -3102,6 +3126,12 @@ impl Bus<'_> {
                         && self.defender_alive(defender)
                     {
                         self.start_st_sagat_melee_guard(me, other, phase);
+                    }
+                    if let Some(pushback) = ken_dp_recoil
+                        .filter(|_| !air_block && self.st_new_ryu(defender) && self.defender_alive(defender))
+                    {
+                        self.toggle_state.combo.blockstun[self.combo_slot(other)] = pushback.stun();
+                        self.start_st_ryu_reaction(other, Some(pushback));
                     }
                     if ken_tatsu.is_some() && !air_block && self.st_new_ryu(defender)
                         && self.defender_alive(defender)
@@ -3145,7 +3175,7 @@ impl Bus<'_> {
                 self.toggle_state.combo.contact_freeze[combo_slot] = 6;
             } else if sagat_melee_hit && self.st_new_ken(other) {
                 self.toggle_state.combo.contact_freeze[combo_slot] = 14;
-            } else if ken_kick || ken_tatsu.is_some() {
+            } else if ken_kick || ken_tatsu.is_some() || ken_dp_hit {
                 self.toggle_state.combo.contact_freeze[combo_slot] = 14;
                 if ken_kick {
                     self.toggle_state.combo.contact_freeze[self.combo_slot(other)] = 14;
@@ -3552,6 +3582,10 @@ impl Bus<'_> {
                 damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
             } else if let Some(hp) = self.st_sagat_melee_damage(me, owner, move_id, is_chip) {
                 damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
+            } else if let Some(hp) = self.st_ken_shoryuken_phase(me).and_then(|(_, phase)| {
+                crate::data_bank::st_ken_shoryuken::arcade_hp(crate::combo::level(self.eb(me, 0x34)), phase, is_chip)
+            }) {
+                damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
             } else if let Some(hp) = self.st_sagat_normal_damage(me, owner, move_id).filter(|_| !is_chip) {
                 damage = (hp * crate::era_fight::FULL_SUB_HP + 72) / 144;
             } else if let Some(hp) = self.st_ken_air_normal_damage(me, self.rw(ps + 0x10)).filter(|_| !is_chip) {
@@ -3880,6 +3914,18 @@ impl Bus<'_> {
         let sagat_contact = (src == HitSource::Melee && self.st_new_ken(other) && crate::data_bank::in_bank(entry))
             .then(|| self.st_sagat_melee_loadout(self.el(me, 0x38), self.eb(me, 0xa))).flatten()
             .map(|loadout| (loadout, self.rb(entry + 8)));
+        // Each strike leaves any grounded defender standing or knocks him
+        // down. The measured recoil and knockdown belong to New Ryu.
+        let ken_dp = (src == HitSource::Melee).then(|| self.st_ken_shoryuken_phase(me)).flatten()
+            .map(|(_, phase)| crate::data_bank::st_ken_shoryuken::grounds(crate::combo::level(self.eb(me, 0x34)), phase)
+                && !self.era_airborne(other));
+        let ken_dp_measured = ken_dp.filter(|_| self.st_new_ryu(self.el(other, 0x38)));
+        let ken_dp_recoil = (ken_dp_measured == Some(true)).then(|| self.st_ken_shoryuken_recoil(me, other));
+        let ken_dp_knockdown = (ken_dp_measured == Some(false) && !self.era_airborne(other)).then(|| {
+            let stream = self.data_bank?.st_ken_shoryuken_knockdown(crate::combo::level(self.eb(me, 0x34)) == 3)?;
+            let rehit = if self.st_ryu_reacting(other) { crate::data_bank::st_ken_shoryuken::KNOCKDOWN_REHIT } else { 0 };
+            Some(stream + rehit)
+        }).flatten();
         let sagat_super = self.st_sagat_genocide(self.el(me, 0x38), self.eb(me, 0xa));
         let sagat_new_hp_air = sagat_contact.is_some_and(|(loadout, phase)| {
             loadout == crate::era::Loadout::Standard
@@ -3957,6 +4003,8 @@ impl Bus<'_> {
                 first_grounds && phase == 1
             };
             lo = if grounded && !self.era_airborne(other) { 0x31 } else { 0x33 };
+        } else if let Some(grounded) = ken_dp {
+            lo = if grounded { 0x31 } else { 0x33 };
         } else if shinku_air {
             lo = 0x33;
         } else if let Some((launches, _)) = st_projectile_ground {
@@ -4061,6 +4109,10 @@ impl Bus<'_> {
             if let Some(stream) = jump_mp_reaction.or(shinku_air_reaction) {
                 self.load_frame(other, stream);
             }
+            if let Some(stream) = ken_dp_knockdown {
+                self.load_frame(other, stream);
+                self.set_st_ryu_knockdown_height(other, u16::from(crate::data_bank::st_ken_shoryuken::KNOCKDOWN_START));
+            }
             if let Some((height, already_launched)) = sagat_launch.filter(|_| shinku_air_reaction.is_some()) {
                 self.set_st_ryu_knockdown_height(other, height);
                 if already_launched {
@@ -4091,6 +4143,11 @@ impl Bus<'_> {
                         let attacker = self.combo_slot(me);
                         self.toggle_state.combo.st_ryu_air_cancel[attacker] = 16;
                     }
+                } else if ken_dp_measured.is_some() {
+                    if let Some(pushback) = ken_dp_recoil {
+                        self.toggle_state.combo.hitstun[slot] = pushback.stun();
+                    }
+                    self.start_st_ryu_reaction(other, ken_dp_recoil);
                 } else if ken_super.is_some() || shinku_air {
                     self.start_st_ryu_reaction(other, None);
                 } else if let Some((_, phase)) = sagat_contact {
@@ -7122,6 +7179,30 @@ impl Bus<'_> {
         self.data_bank?.era_move_header(Ken, crate::era::EraFamily::Sf2, slot)
     }
 
+    fn st_ken_shoryuken_loadout(&self, ps: u32, move_id: u8) -> Option<crate::era::Loadout> {
+        let era = self.sf2_state(ps)?;
+        (move_id == crate::data_bank::st_ken_shoryuken::MOVE
+            && era.fighter == Some(crate::roster::TournamentFighter::Ken)
+            && era.style.revision == crate::era::Revision::St)
+            .then_some(era.style.loadout)
+    }
+
+    fn st_ken_shoryuken_header(&self, ps: u32, move_id: u8, strength: u8) -> Option<u32> {
+        let loadout = self.st_ken_shoryuken_loadout(ps, move_id)?;
+        let slot = crate::data_bank::st_ken_shoryuken::slot(crate::combo::level(strength), loadout)?;
+        self.data_bank?.era_move_header(crate::roster::TournamentFighter::Ken, crate::era::EraFamily::Sf2, slot)
+    }
+
+    /// The loadout and current strike phase of Ken's authored Shoryuken.
+    fn st_ken_shoryuken_phase(&self, entity: u16) -> Option<(crate::era::Loadout, u8)> {
+        let entry = self.el(entity, 0x28);
+        if !crate::data_bank::in_bank(entry) {
+            return None;
+        }
+        let loadout = self.st_ken_shoryuken_loadout(self.el(entity, 0x38), self.eb(entity, 0xa))?;
+        Some((loadout, self.rb(entry + 8)))
+    }
+
     fn st_ken_ground_tatsumaki_entry(&self, entity: u16) -> Option<u32> {
         let entry = self.el(entity, 0x28);
         if !crate::data_bank::in_bank(entry) {
@@ -7670,6 +7751,7 @@ impl Bus<'_> {
                     || self.st_ken_grounded_kick(entity).is_some()
                     || self.st_sagat_shot_loadout(owner, move_id).is_some()
                     || self.st_sagat_melee_loadout(owner, move_id).is_some()
+                    || self.st_ken_shoryuken_loadout(owner, move_id).is_some()
                     || self.st_sagat_authored_normal(owner, move_id, self.eb(entity, 0x34))
                     || self.st_ryu_air_tatsumaki(owner, move_id)))
         {
