@@ -384,6 +384,8 @@ pub struct GameSession {
     net_commands: Vec<NetTransportCommand>,
     net_connection: Option<Connection>,
     net_setup: Option<NetplaySetup>,
+    /// Whether the current room runs through the relay, not a LAN socket.
+    net_internet: bool,
     net_epoch_cursor: netplay::EpochCursor,
     net_saved_config: Option<MatchConfig>,
     net_request: u64,
@@ -455,6 +457,7 @@ impl GameSession {
             net_commands: Vec::new(),
             net_connection: None,
             net_setup: None,
+            net_internet: false,
             net_epoch_cursor: netplay::EpochCursor::default(),
             net_saved_config: None,
             net_request: 0,
@@ -1269,7 +1272,10 @@ impl GameSession {
                     // message with PEER LEFT ROOM.
                     let joining = self.net_connection.as_ref().is_some_and(|connection| !connection.is_host())
                         && matches!(self.stack.last(), Some(Screen::Online(_)));
-                    if joining {
+                    // An Internet room cannot outlive its relay connection:
+                    // the transport has already closed it, for host and guest.
+                    let relay_lost = self.net_connection.is_some() && self.net_internet;
+                    if joining || relay_lost {
                         self.net_return_online(&message);
                         continue;
                     }
@@ -1353,16 +1359,20 @@ impl GameSession {
             match action {
                 OnlineAction::Refresh => self.net_commands.push(NetTransportCommand::RefreshRooms),
                 OnlineAction::Host { port, public, wired_only, kind } => {
+                    self.net_internet = false;
                     self.online_host(HostBinding::Port(port), public, wired_only, kind)
                 }
                 OnlineAction::HostInternet { wired_only, kind } => {
+                    self.net_internet = true;
                     self.online_host(HostBinding::Internet, false, wired_only, kind)
                 }
                 OnlineAction::Join { addr, kind } => {
+                    self.net_internet = false;
                     self.online_join(kind);
                     self.net_commands.push(NetTransportCommand::ConnectPeer { addr });
                 }
                 OnlineAction::JoinInternet { code, kind } => {
+                    self.net_internet = true;
                     self.online_join(kind);
                     self.net_commands.push(NetTransportCommand::JoinInternetRoom { code });
                 }
@@ -2251,6 +2261,12 @@ impl GameSession {
                     break;
                 }
                 Transition::Back => {
+                    // Back first cancels a room or join still waiting in the
+                    // lobby; with nothing pending it leaves the lobby.
+                    if self.net_connection.is_some() && matches!(self.stack.last(), Some(Screen::Online(_))) {
+                        self.net_return_online("CANCELLED");
+                        break;
+                    }
                     if self.net_dramatic_editing() && matches!(self.stack.last(), Some(Screen::DramaticSetup(_))) {
                         self.net_return_online("ROOM CLOSED");
                         break;

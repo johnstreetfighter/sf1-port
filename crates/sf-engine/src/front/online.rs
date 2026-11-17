@@ -129,6 +129,8 @@ impl OnlineScreen {
         self.editing = false;
         self.notice = "WAITING FOR CHALLENGER...".into();
     }
+    /// The room this screen was hosting is gone, and its code with it.
+    pub fn clear_room(&mut self) { self.room_code = None; }
     pub fn set_notice(&mut self, notice: impl Into<String>) { self.notice = notice.into(); }
     pub fn drain_actions(&mut self) -> Vec<OnlineAction> { std::mem::take(&mut self.actions) }
 

@@ -78,6 +78,7 @@ fn pulse(session: &mut GameSession, key: MenuInput) {
         MenuInput::Right => input.p1.directions[0] = true,
         MenuInput::Confirm => input.menu.confirm = true,
         MenuInput::Start => input.menu.start = true,
+        MenuInput::Back => input.menu.back = true,
         _ => panic!("unsupported test key"),
     }
     session.step(input);
@@ -216,4 +217,142 @@ fn a_failed_internet_join_keeps_the_relay_failure_on_screen() {
     }
     assert_eq!(session.screen(), "online");
     assert_eq!(session.notice(), Some("RELAY RELAY.ALMAMOTO.COM DID NOT ANSWER"));
+}
+
+fn join_by_code(session: &mut GameSession) {
+    pulse(session, MenuInput::Left);
+    pulse(session, MenuInput::Down);
+    session.paste_room_code(Some("k7q-mpx"));
+    pulse(session, MenuInput::Confirm);
+}
+
+fn host_internet_room(session: &mut GameSession) {
+    pulse(session, MenuInput::Right);
+    for _ in 0..4 {
+        pulse(session, MenuInput::Down);
+    }
+    pulse(session, MenuInput::Confirm);
+}
+
+fn idle_for_30_seconds(session: &mut GameSession) {
+    let mut ms = 0;
+    for _ in 0..60 * 30 {
+        ms += 17;
+        session.set_net_time_ms(ms);
+        session.step(FrameInputs::default());
+    }
+}
+
+/// #127: Back cancels a join still waiting on the relay and leaves the
+/// player in the lobby, where the same join can be tried again.
+#[test]
+fn back_cancels_a_pending_internet_join_and_keeps_the_lobby() {
+    let mut session = online_session_with_relay();
+    join_by_code(&mut session);
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::JoinInternetRoom { code: "K7Q-MPX".into() }]);
+
+    pulse(&mut session, MenuInput::Back);
+    assert_eq!(session.screen(), "online", "the first Back only cancels");
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::Close]);
+    assert_eq!(session.notice(), Some("CANCELLED"));
+
+    // The lobby still works: the same code joins again at once.
+    pulse(&mut session, MenuInput::Confirm);
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::JoinInternetRoom { code: "K7Q-MPX".into() }]);
+
+    pulse(&mut session, MenuInput::Back);
+    pulse(&mut session, MenuInput::Back);
+    assert_ne!(session.screen(), "online", "with nothing pending, Back leaves the lobby");
+}
+
+/// #127: Back closes a host's waiting room and keeps the host in the lobby.
+#[test]
+fn back_closes_a_waiting_internet_room_and_keeps_the_lobby() {
+    let mut session = online_session_with_relay();
+    host_internet_room(&mut session);
+    session.push_net_events(&[NetTransportEvent::Bound {
+        local_addr: "relay.example.test".into(),
+        room_code: "K7Q-MPX".into(),
+        link: Link::Ethernet,
+    }]);
+    session.step(FrameInputs::default());
+    session.drain_net_commands();
+
+    pulse(&mut session, MenuInput::Back);
+    assert_eq!(session.screen(), "online");
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::Close]);
+    assert_eq!(session.room_code_for_copy(), None, "the closed room's code is gone");
+
+    // The cursor is back on the lobby's top row; walk down to OPEN ROOM.
+    for _ in 0..4 {
+        pulse(&mut session, MenuInput::Down);
+    }
+    pulse(&mut session, MenuInput::Confirm);
+    let commands = session.drain_net_commands();
+    assert!(matches!(commands.as_slice(), [NetTransportCommand::HostInternetRoom { .. }]), "{commands:?}");
+}
+
+/// #127: every way the relay refuses or drops a guest leaves its own message
+/// on screen, the dead connection cleaned up, and the join ready to retry.
+#[test]
+fn every_relay_refusal_leaves_a_usable_lobby_that_can_retry() {
+    for message in [
+        "ROOM CODE NOT FOUND ON RELAY.EXAMPLE.TEST",
+        "ROOM IS FULL",
+        "ROOM CODE EXPIRED",
+        "ROOM CLOSED",
+        "TOO MANY TRIES, WAIT A MINUTE",
+        "RELAY RELAY.EXAMPLE.TEST IS FULL",
+        "RELAY SHUT DOWN",
+        "RELAY CONNECTION LOST: TIMED OUT",
+        "RELAY RELAY.EXAMPLE.TEST DID NOT ANSWER",
+    ] {
+        let mut session = online_session_with_relay();
+        join_by_code(&mut session);
+        session.drain_net_commands();
+        session.push_net_events(&[NetTransportEvent::TransportError { message: message.into() }]);
+        idle_for_30_seconds(&mut session);
+        assert_eq!(session.screen(), "online", "{message}");
+        assert_eq!(session.notice(), Some(message));
+        assert_eq!(session.drain_net_commands(), [NetTransportCommand::Close], "{message}");
+
+        pulse(&mut session, MenuInput::Confirm);
+        assert_eq!(
+            session.drain_net_commands(),
+            [NetTransportCommand::JoinInternetRoom { code: "K7Q-MPX".into() }],
+            "{message}"
+        );
+    }
+}
+
+/// #127: a host whose relay goes away gets the reason, a closed room and a
+/// lobby that can host again. The dead room used to linger with its code.
+#[test]
+fn a_host_whose_relay_fails_can_host_again_from_the_lobby() {
+    let mut session = online_session_with_relay();
+    host_internet_room(&mut session);
+    session.push_net_events(&[NetTransportEvent::Bound {
+        local_addr: "relay.example.test".into(),
+        room_code: "K7Q-MPX".into(),
+        link: Link::Ethernet,
+    }]);
+    session.step(FrameInputs::default());
+    session.drain_net_commands();
+
+    session.push_net_events(&[NetTransportEvent::TransportError {
+        message: "RELAY CONNECTION LOST: timed out".into(),
+    }]);
+    idle_for_30_seconds(&mut session);
+    assert_eq!(session.screen(), "online");
+    assert_eq!(session.notice(), Some("RELAY CONNECTION LOST: TIMED OUT"));
+    assert_eq!(session.room_code_for_copy(), None, "the lost room's code is gone");
+    assert_eq!(session.drain_net_commands(), [NetTransportCommand::Close]);
+
+    // The cursor is back on the lobby's top row; walk down to OPEN ROOM.
+    for _ in 0..4 {
+        pulse(&mut session, MenuInput::Down);
+    }
+    pulse(&mut session, MenuInput::Confirm);
+    let commands = session.drain_net_commands();
+    assert!(matches!(commands.as_slice(), [NetTransportCommand::HostInternetRoom { .. }]), "{commands:?}");
 }

@@ -421,6 +421,7 @@ impl GameSession {
         self.stack
             .retain(|screen| matches!(screen, Screen::Menu(_) | Screen::Online(_)));
         if let Some(Screen::Online(screen)) = self.stack.last_mut() {
+            screen.clear_room();
             screen.set_notice(notice);
         }
         if let Some(config) = self.net_saved_config.take() {
