@@ -317,3 +317,46 @@ fn a_dramatic_battle_runs_to_its_end_through_an_internet_room_with_a_late_specta
     assert_eq!(room.relay.service.connections(), 3, "host, ally and spectator each hold a route");
     assert!(room.peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
 }
+
+#[test]
+fn a_host_who_leaves_mid_match_returns_everyone_to_a_lobby_that_works() {
+    let mut room = Room::host(RoomKind::Versus);
+    let challenger = room.join(Role::Player);
+    let watcher = room.join(Role::Spectator);
+    room.start_versus();
+    room.wait("the spectator watches the fight", 3_000, |room| {
+        room.peers[watcher].spectator_frame().is_some_and(|frame| frame >= 30)
+    });
+
+    // The host's game goes away without a goodbye to its peers.
+    room.drivers[0].poll(&[Command::Close]);
+    let left = Instant::now();
+    while [challenger, watcher].iter().any(|&id| room.peers[id].screen() != "online") {
+        assert!(left.elapsed() < Duration::from_secs(6), "the room's end reaches every guest within seconds: {:?}",
+            room.peers.iter().map(|peer| (peer.screen(), peer.notice())).collect::<Vec<_>>());
+        for id in [challenger, watcher] {
+            room.peers[id].set_net_time_ms(room.drivers[id].now_ms());
+            room.peers[id].step(FrameInputs::default());
+            room.exchange(id);
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    for id in [challenger, watcher] {
+        assert_eq!(room.peers[id].notice(), Some("ROOM CLOSED"));
+    }
+    assert_eq!(room.relay.service.open_rooms(), 0, "the relay dropped the room with its host");
+    assert!(!room.relay.can_join(&room.code));
+
+    // The challenger's lobby still works: JOIN asks the relay again, and
+    // the relay answers that the code now names no room.
+    pulse(&mut room.peers[challenger], MenuInput::Confirm);
+    let deadline = Instant::now() + Duration::from_secs(6);
+    while !room.peers[challenger].notice().is_some_and(|notice| notice.starts_with("ROOM CODE NOT FOUND ON")) {
+        assert!(Instant::now() < deadline, "a retry should reach the relay: {:?} {:?}",
+            (room.peers[challenger].screen(), room.peers[challenger].notice()), room.errors[challenger]);
+        room.peers[challenger].step(FrameInputs::default());
+        room.exchange(challenger);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(room.peers[challenger].screen(), "online");
+}

@@ -21,6 +21,14 @@ impl TestRelay {
     /// A relay whose certificate expires after `days`, or rcgen's far-off
     /// default.
     fn start_valid_for(days: Option<u64>) -> Self {
+        Self::start_with(days, Limits::default())
+    }
+
+    fn start_limited(limits: Limits) -> Self {
+        Self::start_with(None, limits)
+    }
+
+    fn start_with(days: Option<u64>, limits: Limits) -> Self {
         let mut params = rcgen::CertificateParams::new(vec!["127.0.0.1".to_owned()]).unwrap();
         if let Some(days) = days {
             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
@@ -32,7 +40,7 @@ impl TestRelay {
             listen: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
             certificates: vec![certificate.clone()],
             private_key: signing_key.serialize_der(),
-            limits: Limits::default(),
+            limits,
         })
         .expect("the test relay starts");
         Self { service, certificate }
@@ -202,4 +210,100 @@ fn a_health_check_can_require_days_of_certificate_lifetime() {
         }
         assert_eq!((relay.service.open_rooms(), relay.service.connections()), (0, 0), "{days:?}: no room or seat");
     }
+}
+
+fn refused(client: &RelayClient) -> Refusal {
+    match next(client) {
+        ClientEvent::Refused(refusal) => refusal,
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+}
+
+fn closed(client: &RelayClient) -> Closed {
+    match next(client) {
+        ClientEvent::Closed(closed) => closed,
+        other => panic!("expected the connection to close, got {other:?}"),
+    }
+}
+
+/// #127: a room nobody uses expires; everyone in it is told, and the code
+/// then names no room.
+#[test]
+fn an_idle_room_expires_for_everyone_in_it_and_its_code_dies() {
+    let relay = TestRelay::start_limited(Limits { max_idle: Duration::from_millis(300), ..Limits::default() });
+    let host = relay.client(Request::Create);
+    let (code, ..) = ready(&host);
+    let guest = relay.client(Request::Join(code));
+    ready(&guest);
+
+    assert!(matches!(closed(&host), Closed::RoomExpired));
+    assert!(matches!(closed(&guest), Closed::RoomExpired));
+    assert_eq!(relay.service.open_rooms(), 0);
+    assert_eq!(refused(&relay.client(Request::Join(code))), Refusal::NotFound);
+}
+
+/// #127: sixteen seats to a room; the seventeenth participant is refused and
+/// a freed seat can be taken again.
+#[test]
+fn a_full_room_refuses_the_next_guest_until_a_seat_frees() {
+    let relay = TestRelay::start_limited(Limits { joins_per_minute: 100, ..Limits::default() });
+    let host = relay.client(Request::Create);
+    let (code, ..) = ready(&host);
+    let mut guests: Vec<RelayClient> = (0..15)
+        .map(|_| {
+            let guest = relay.client(Request::Join(code));
+            ready(&guest);
+            guest
+        })
+        .collect();
+    assert_eq!(refused(&relay.client(Request::Join(code))), Refusal::Full);
+
+    drop(guests.pop());
+    let deadline = Instant::now() + Duration::from_secs(6);
+    while relay.service.connections() > 15 {
+        assert!(Instant::now() < deadline, "the relay should notice the guest leaving");
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let late = relay.client(Request::Join(code));
+    assert_eq!(ready(&late).1, 15, "the freed seat is reused");
+    quiet(&host);
+}
+
+/// #127: one address cannot guess codes, or open rooms, without limit.
+#[test]
+fn an_address_is_throttled_after_its_minute_of_joins_and_creates() {
+    let relay = TestRelay::start_limited(Limits { joins_per_minute: 2, creates_per_minute: 1, ..Limits::default() });
+    let host = relay.client(Request::Create);
+    let (code, ..) = ready(&host);
+    assert_eq!(refused(&relay.client(Request::Create)), Refusal::Throttled);
+
+    let wrong = RoomCode::parse("AAA-AAA").unwrap();
+    for _ in 0..2 {
+        let guess = relay.client(Request::Join(wrong));
+        assert!(matches!(next(&guess), ClientEvent::Refused(Refusal::NotFound) | ClientEvent::Ready { .. }));
+    }
+    assert_eq!(refused(&relay.client(Request::Join(code))), Refusal::Throttled, "even the right code waits");
+}
+
+/// #127: a relay holding its limit of rooms says so.
+#[test]
+fn a_relay_at_its_room_limit_refuses_a_new_room() {
+    let relay = TestRelay::start_limited(Limits { max_rooms: 1, ..Limits::default() });
+    let host = relay.client(Request::Create);
+    ready(&host);
+    assert_eq!(refused(&relay.client(Request::Create)), Refusal::Capacity);
+}
+
+/// #127: stopping the relay tells every participant it shut down.
+#[test]
+fn a_relay_that_stops_tells_everyone_it_shut_down() {
+    let relay = TestRelay::start();
+    let host = relay.client(Request::Create);
+    let (code, ..) = ready(&host);
+    let guest = relay.client(Request::Join(code));
+    ready(&guest);
+
+    drop(relay);
+    assert!(matches!(closed(&host), Closed::Shutdown));
+    assert!(matches!(closed(&guest), Closed::Shutdown));
 }

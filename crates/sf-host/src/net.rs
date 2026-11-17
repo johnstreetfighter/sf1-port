@@ -468,6 +468,10 @@ impl HostNetDriver {
                     }
                 })?;
             }
+            // A closed transport has no peers. Packets a session queued
+            // before it heard of the close are dropped, not reported: the
+            // reason for the close is the message the player should keep.
+            Command::SendPacket { .. } if self.socket.is_none() => {}
             Command::SendPacket { to_peer, bytes } => {
                 let addr = self
                     .routes
