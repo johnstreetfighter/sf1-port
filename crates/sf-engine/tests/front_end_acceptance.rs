@@ -136,6 +136,9 @@ fn p1_attacks(f: u32) -> FrameInputs {
 /// own frame is the last stepped: a box that closes holds the fight on it,
 /// so a restarted round is still exactly at its snapshot.
 fn pause_row(s: &mut GameSession, row: usize) -> FrameOutput {
+    // The box opens only while a round is being fought: a reset round
+    // is first let back into its fight loop.
+    to_fight_loop(s);
     assert_eq!(s.step(start()).transition, Some(Transition::Paused));
     s.step(idle());
     for _ in 0..row {

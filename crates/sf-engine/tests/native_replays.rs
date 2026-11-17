@@ -339,8 +339,9 @@ fn replay_applies_a_pause_menu_restart_before_the_next_recorded_pad() {
     let theme = session.fight().unwrap().selected_theme().unwrap();
     assert_eq!(theme.id, ThemeId::Gouken);
     for frame in 0..550 {
-        if frame >= 180 && restart_at.is_none() && session.fight().unwrap().round_start().is_some()
-        {
+        // The pause box opens only in the fight loop (`0x3eafa`).
+        let fighting = session.fight_machine().map(sf_engine::front::cabinet::flow_position) == Some(0x3eafa);
+        if frame >= 180 && restart_at.is_none() && fighting {
             assert_eq!(
                 tap(&mut session, input(|i| i.menu.start = true)).transition,
                 Some(Transition::Paused)

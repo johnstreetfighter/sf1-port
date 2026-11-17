@@ -1635,7 +1635,8 @@ impl GameSession {
 
     /// Inputs while a fight is up: the after-match box's, the pause box's,
     /// or the keys that open the pause box (keyboard Start or Esc, either
-    /// player's Start; not during the hidden drive, nor on Arcade's
+    /// player's Start; only while a round is being fought, so not during
+    /// the hidden drive, a walk-in, a knockout, a victory pose or Arcade's
     /// continue countdown, where Start continues).
     fn play_input(&mut self, prev: &FrameInputs, now: &FrameInputs, events: &[MenuInput]) -> Option<Transition> {
         self.play.as_ref()?;
@@ -1651,7 +1652,8 @@ impl GameSession {
             return None;
         }
         let training = matches!(play.fight.setup().kind, FightKind::TrainingCpu | FightKind::TrainingDummy);
-        let can_pause = !play.fight.driving() && !play.fight.in_continue();
+        // Only while the round is being fought (George, 2026-11-17).
+        let can_pause = play.fight.round_live();
         // A lost pad pauses the fight with a notice, at once or as soon as
         // the fight can pause; a box already up takes the notice.
         if let Some(side) = (0..2).find(|&s| now.pad_lost[s]).or(self.lost_pad) {

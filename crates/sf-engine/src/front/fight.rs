@@ -1173,6 +1173,13 @@ impl Fight {
             && self.machine.try_alpha2_feint(input.directions)
     }
 
+    /// Whether a round is being fought: the hidden drive is over and the
+    /// ROM is in its fight loop, where the round timer runs. Not the
+    /// walk-in, the round call, the knockout or the victory pose.
+    pub fn round_live(&self) -> bool {
+        !self.over && !self.driving() && flow_position(&self.machine) == FIGHT_LOOP
+    }
+
     /// Whether the ROM's continue countdown is running (`0x3f162`).
     pub fn in_continue(&self) -> bool {
         flow_position(&self.machine) == CONTINUE_LOOP
