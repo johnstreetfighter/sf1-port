@@ -14,6 +14,9 @@ install -m 0640 -o root -g sf-relay "$RENEWED_LINEAGE/fullchain.pem" "/etc/$name
 umask 027
 openssl pkcs8 -topk8 -nocrypt -in "$RENEWED_LINEAGE/privkey.pem" -out "/etc/$name/privkey.pem.new"
 chgrp sf-relay "/etc/$name/privkey.pem.new"
+# openssl writes a private key as 0600 whatever the umask; the relay reads
+# it through its group.
+chmod 0640 "/etc/$name/privkey.pem.new"
 mv "/etc/$name/privkey.pem.new" "/etc/$name/privkey.pem"
 # The relay reads its certificate at start. A restart closes the open rooms.
 # try-restart leaves a relay that is not running yet alone.
