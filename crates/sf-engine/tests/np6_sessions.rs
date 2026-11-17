@@ -104,7 +104,8 @@ impl RoomTest {
         pulse(&mut room.peers[0], MenuInput::Down);
         if kind == RoomKind::Dramatic { pulse(&mut room.peers[0], MenuInput::Right); }
         pulse(&mut room.peers[0], MenuInput::Down);
-        if !public { pulse(&mut room.peers[0], MenuInput::Right); }
+        // VISIBILITY opens on INTERNET CODE; PUBLIC and PRIVATE follow it.
+        for _ in 0..if public { 1 } else { 2 } { pulse(&mut room.peers[0], MenuInput::Right); }
         for _ in 0..2 { pulse(&mut room.peers[0], MenuInput::Down); }
         pulse(&mut room.peers[0], MenuInput::Confirm);
         room.dispatch(0);

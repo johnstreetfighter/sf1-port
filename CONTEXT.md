@@ -399,6 +399,68 @@ _Avoid_: room directory, match host
 An independently operated relay that players select in Netplay settings to host and join Internet rooms together.
 _Avoid_: community directory, match host
 
+## Matchmaking
+
+**Matchmaking**:
+Finding a player an opponent without a room or a code: the player joins the Ranked or Unranked queue and is given a person or, when none is found, a CPU opponent. Rooms never depend on it.
+_Avoid_: lobby, room browser, quick play
+
+**Matchmaking service**:
+The project-operated server that holds matchmaking accounts, ratings and the queues. It is separate from the relay, which carries the fight.
+_Avoid_: relay, match host, lobby server
+
+**Matchmaking account**:
+A player's name, password and recovery code on a matchmaking service, needed for the queues and for nothing else.
+_Avoid_: profile (the World Tour profile is campaign state), player tag (the account-free name shown in rooms), login
+
+**Ranked**:
+The queue whose matches move the player's rating and rank.
+_Avoid_: competitive, league
+
+**Unranked**:
+The queue whose matches show and change no rank.
+_Avoid_: casual, quick match
+
+**Match**:
+One fight to its winner: best of three rounds.
+_Avoid_: game, bout, round (a match holds two or three)
+
+**Set**:
+The matches two matched opponents play in a row. A Ranked set ends when one side has won two matches or either side declines the rematch.
+_Avoid_: series, pairing, session
+
+**Rating**:
+The number the matchmaking service keeps for how strong a player is. It moves after each Ranked match.
+_Avoid_: points, score (the 1987 game's score), ELO
+
+**Rank**:
+A player's tier and step as shown to players, read from their rating: Bronze, Silver, Gold, Platinum, Diamond or Master. A player has one, not one per fighter.
+_Avoid_: league, level (a CPU's difficulty level), ranking (the 1987 score table)
+
+**Placement**:
+A new account's first Ranked matches, during which it shows no rank.
+_Avoid_: calibration, provisional
+
+**Leaderboard**:
+The standings of Ranked players by rating. It lists people only.
+_Avoid_: ladder (the one-player opponent sequence), ranking (the 1987 score table)
+
+**CPU entry**:
+One tournament fighter played by the Fair CPU at one difficulty level, with a private rating of its own that the maintainer reviews to improve the Fair CPU.
+_Avoid_: bot, CPU player, AI rank
+
+**CPU ceiling**:
+The rating past which a win over a CPU entry no longer raises a player: the top of Gold.
+_Avoid_: bot cap, rank lock
+
+**Drop**:
+A player's connection going silent during a Ranked match against a person. The player who dropped takes the loss.
+_Avoid_: rage quit (the cause is not known), disconnect (bare), forfeit
+
+**Recording checker**:
+The maintainer's tool that takes the recording of a match against a CPU entry and shows whether the CPU in it played as the real Fair CPU would have.
+_Avoid_: anti-cheat, replay verifier (nothing is verified on the server)
+
 ## Training
 
 **Training**:

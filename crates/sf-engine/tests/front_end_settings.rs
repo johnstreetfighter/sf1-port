@@ -92,7 +92,8 @@ fn every_live_row_changes_and_reads_back() {
             // REBIND rows open the walk (`pad_play.rs`); TUNE CRT LOOK opens the tuning screen
             // (`tuning_screen.rs`); JUKEBOX opens the Jukebox screen
             // (`jukebox_screen.rs`).
-            if matches!(row, Row::Greyed(_) | Row::Heading(_) | Row::ResetTab | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag) {
+            // RELAY is a typed entry (`relay_setting.rs`).
+            if matches!(row, Row::Greyed(_) | Row::Heading(_) | Row::ResetTab | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Relay) {
                 continue;
             }
             let mut s = at(t, i);

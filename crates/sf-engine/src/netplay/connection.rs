@@ -92,6 +92,23 @@ impl Member {
     }
 }
 
+/// Where a host's room lives: a local UDP port, or the configured relay.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum HostBinding {
+    Port(u16),
+    Internet,
+}
+
+impl HostBinding {
+    /// The transport command that opens, or re-announces, this room.
+    pub(crate) fn command(self, room: RoomAnnouncement) -> NetTransportCommand {
+        match self {
+            HostBinding::Port(port) => NetTransportCommand::BindHost { port, room },
+            HostBinding::Internet => NetTransportCommand::HostInternetRoom { room },
+        }
+    }
+}
+
 /// A room connection, separate from the Fight and its rollback bookkeeping.
 #[derive(Clone, Debug)]
 pub(crate) struct Connection {
@@ -99,7 +116,7 @@ pub(crate) struct Connection {
     kind: RoomKind,
     rules: SyncedMatchRules,
     tag: [u8; 12],
-    announcement: Option<(u16, RoomAnnouncement)>,
+    announcement: Option<(HostBinding, RoomAnnouncement)>,
     input_delay: Option<u8>,
     max_rollback: u8,
     generation: u32,
@@ -126,7 +143,7 @@ impl Connection {
     pub(crate) fn host(
         rules: SyncedMatchRules,
         announcement: RoomAnnouncement,
-        port: u16,
+        binding: HostBinding,
         input_delay: Option<u8>,
     ) -> Self {
         Self {
@@ -135,7 +152,7 @@ impl Connection {
             rules,
             tag: announcement.host,
             max_rollback: announcement.max_rollback.clamp(1, 8),
-            announcement: Some((port, announcement)),
+            announcement: Some((binding, announcement)),
             input_delay: input_delay.map(|f| f.min(4)),
             generation: 0,
             frame_base: 0,
@@ -795,7 +812,7 @@ impl Connection {
             return;
         }
         let spectators = self.spectator_peers().len() as u8;
-        let Some((port, room)) = self.announcement.as_mut() else {
+        let Some((binding, room)) = self.announcement.as_mut() else {
             return;
         };
         room.link = self.local_link;
@@ -805,10 +822,7 @@ impl Connection {
         room.bank_hash = self.rules.bank_hash;
         room.art_pack_hash = self.rules.art_pack_hash;
         room.protocol_hash = self.rules.protocol_hash;
-        let command = NetTransportCommand::BindHost {
-            port: *port,
-            room: room.clone(),
-        };
+        let command = binding.command(room.clone());
         self.command(command);
     }
 

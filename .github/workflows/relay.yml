@@ -1,0 +1,110 @@
+name: Relay
+
+# Builds the Internet room relay for Linux and checks the Default relay.
+# The binary is a workflow artifact only; it is never attached to a GitHub
+# Release. See docs/relay-deployment.md.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      health-check:
+        description: Check relay.almamoto.com after the build
+        type: boolean
+        default: true
+  # Every six hours, for the health check (#170). GitHub pauses schedules
+  # after 60 days without repository activity.
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    if: github.event_name != 'push' || !github.event.deleted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: '1.96.0'
+      RELAY: relay.almamoto.com
+      MIN_DAYS: '14'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      # A scheduled run only checks the relay, so it reuses the binary a
+      # previous run built from the same relay sources. A tag or manual run
+      # always builds.
+      - name: Restore the relay binary for a scheduled check
+        id: binary
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: relay-bin
+          key: relay-bin-${{ runner.os }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'crates/sf-relay/**') }}
+
+      - name: Install the release Rust toolchain
+        if: github.event_name != 'schedule' || steps.binary.outputs.cache-hit != 'true'
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: github.event_name != 'schedule' || steps.binary.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: relay-${{ runner.os }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build the relay
+        if: github.event_name != 'schedule' || steps.binary.outputs.cache-hit != 'true'
+        run: cargo build --release --locked -p sf-relay --features net
+
+      - name: Name the binary and write its checksum
+        if: github.event_name != 'schedule' || steps.binary.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p relay-bin
+          cp target/release/sf-relay relay-bin/sf-relay-linux-x86_64
+          cd relay-bin
+          sha256sum sf-relay-linux-x86_64 > sf-relay-linux-x86_64.sha256
+
+      - name: Run the binary on Ubuntu 24.04
+        # It starts and refuses a check that names no host.
+        run: |
+          cd relay-bin
+          sha256sum -c sf-relay-linux-x86_64.sha256
+          ./sf-relay-linux-x86_64 --check 2>&1 | grep -q 'needs a relay host'
+
+      - name: Keep the relay binary
+        if: github.event_name != 'schedule'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: sf-relay-linux-x86_64-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            relay-bin/sf-relay-linux-x86_64
+            relay-bin/sf-relay-linux-x86_64.sha256
+          if-no-files-found: error
+
+      # GitHub emails a failed scheduled run to whoever last changed the
+      # schedule. Three attempts keep one lost UDP packet from raising an alert.
+      - name: Check the Default relay and its certificate lifetime
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.health-check)
+        run: |
+          for attempt in 1 2 3; do
+            if relay-bin/sf-relay-linux-x86_64 --check --min-days "$MIN_DAYS" "$RELAY"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 10
+            fi
+          done
+          echo "::error::$RELAY failed the health check three times"
+          exit 1

@@ -27,6 +27,7 @@ fn old_settings_get_netplay_defaults_and_new_settings_round_trip_through_the_fil
     assert_eq!(settings.netplay_hud, NetplayHudMode::Compact);
     assert_eq!(settings.netplay_port, 7000);
     assert_eq!(settings.lobby_url, None);
+    assert_eq!(settings.relay, None, "no custom relay: the default relay is used");
 
     settings.player_tag = "RYU_87".to_owned();
     settings.netplay_input_delay = InputDelaySetting::Frames(3);
@@ -35,6 +36,7 @@ fn old_settings_get_netplay_defaults_and_new_settings_round_trip_through_the_fil
     settings.netplay_hud = NetplayHudMode::Full;
     settings.netplay_port = 9000;
     settings.lobby_url = Some("https://rooms.example.test/sf1".to_owned());
+    settings.relay = Some("relay.example.test:7443".to_owned());
     assert_eq!(settings.netplay_input_delay.frames(), Some(3));
     assert_eq!(Settings::from_toml(&settings.to_toml()).unwrap(), settings);
 
@@ -91,7 +93,7 @@ fn sixth_tab_edits_network_choices_and_resets_only_its_own_settings() {
     }
     assert_eq!(screen.tab(), Tab::Netplay);
     let labels: Vec<_> = rows(Tab::Netplay).into_iter().map(|row| screen.label(row)).collect();
-    assert_eq!(labels, ["PLAYER TAG", "INPUT DELAY", "MAX ROLLBACK", "WIRED ONLY", "NETPLAY HUD", "UDP PORT", "RESET TAB"]);
+    assert_eq!(labels, ["PLAYER TAG", "INPUT DELAY", "MAX ROLLBACK", "WIRED ONLY", "NETPLAY HUD", "UDP PORT", "RELAY", "RESET TAB"]);
     assert_eq!(screen.row(), Row::PlayerTag);
     assert_eq!(screen.value(screen.row()), "PLAYER");
     let tiles = vec![0xff; 0x4000];
@@ -136,6 +138,8 @@ fn sixth_tab_edits_network_choices_and_resets_only_its_own_settings() {
     screen.apply(MenuInput::Right);
     assert_eq!(screen.settings().netplay_port, 7001);
 
+    screen.apply(MenuInput::Down);
+    assert_eq!(screen.row(), Row::Relay);
     screen.apply(MenuInput::Down);
     assert_eq!(screen.row(), Row::ResetTab);
     screen.apply(MenuInput::Confirm);

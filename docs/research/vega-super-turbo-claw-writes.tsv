@@ -1,0 +1,154 @@
+fixture	loadout	move	gap	phase	equipped	reactions	count_after	drop_contact	drop_display	drop_tick	pickup_display	pickup_tick	attack_box	hits	neutral	walk_step	poses
+repeated guard	new	hk	32			20	8	14	2833	65							-
+repeated hit	new	hk	32			20	8										-
+repeated guard	new	hp	32			20	8										-
+repeated hit	new	hp	32			20	8										-
+repeated guard	new	lk	32			20	8	15	2878	120							-
+repeated hit	new	lk	32			20	8	20	3119	174							-
+repeated guard	new	lp	32			20	8										-
+repeated hit	new	lp	32			20	8										-
+repeated guard	new	mp	32			20	8										-
+repeated hit	new	mp	32			20	8										-
+repeated guard	old	hk	32			20	8	11	2688	144							-
+repeated hit	old	hk	32			20	8	13	2784	14							-
+repeated guard	old	hp	32			20	8	16	2925	177							-
+repeated hit	old	hp	32			20	8	10	2637	68							-
+repeated guard	old	lk	32			20	8	11	2686	139							-
+repeated hit	old	lk	32			20	8	9	2590	14							-
+repeated guard	old	lp	32			20	8	18	3020	55							-
+repeated hit	old	lp	32			20	8	12	2732	198							-
+repeated guard	old	mp	32			20	8	9	2589	5							-
+repeated hit	old	mp	32			20	8	12	2733	200							-
+pickup place	new	hk	32				0		2833	65	2880	126					-
+pickup wait	new	hk	32				8		2833	65							-
+pickup walk	new	hk	32				0		2833	65	2896	146					-
+pickup place	old	mp	32				8		2589	5							-
+pickup wait	old	mp	32				8		2589	5							-
+attack	new	bar	90	0	0								10,-1,40,73,18	83:21	125		0:1698f6,1:16990e,3:169926,17:16993e
+attack	new	bar	90	0	1								10,13,40,86,18	83:29	125		0:1698f6,1:16990e,3:169926,17:16993e
+attack	new	bar	90	1	0								10,-1,40,73,18	83:19	125		0:1698f6,1:16990e,3:169926,17:16993e
+attack	new	bar	90	1	1								10,13,40,86,18	83:28	125		0:1698f6,1:16990e,3:169926,17:16993e
+attack	new	cmp	80	0	0								12,-90,53,42,4	4:14	32		1:16887e,2:168896,3:1688ae,4:1688c6
+attack	new	cmp	80	0	1								12,-100,54,58,7	4:16	32		1:16887e,2:168896,3:1688ae,4:1688c6
+attack	new	cmp	80	1	0								12,-90,53,42,4	4:14	32		1:16887e,2:168896,3:1688ae,4:1688c6
+attack	new	cmp	80	1	1								12,-100,54,58,7	4:16	32		1:16887e,2:168896,3:1688ae,4:1688c6
+attack	new	hp	100	0	0								48,-46,57,31,10	12:21	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	100	0	1								48,-46,57,31,10	12:22	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	100	1	0								48,-46,57,31,10	12:22	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	100	1	1								48,-46,57,31,10	12:24	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	120	0	0								48,-46,57,31,10	12:21	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	120	0	1								48,-46,57,31,10	12:22	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	120	1	0								48,-46,57,31,10	12:22	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	hp	120	1	1								48,-46,57,31,10	12:24	45		1:168396,5:1683ae,9:1683c6,12:1683de
+attack	new	lk	48	0	0								32,-31,47,25,19	5:4	28		1:168442,5:16845a,23:168472,27:16848a
+attack	new	lk	48	0	1								32,-31,47,25,19	5:4	28		1:168442,5:16845a,23:168472,27:16848a
+attack	new	lk	48	1	0								32,-31,47,25,19	5:4	28		1:168442,5:16845a,23:168472,27:16848a
+attack	new	lk	48	1	1								32,-31,47,25,19	5:4	28		1:168442,5:16845a,23:168472,27:16848a
+attack	new	mp	100	0	0								29,-80,67,51,6	8:16	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	100	0	1								29,-96,67,59,6	8:17	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	100	1	0								29,-80,67,51,6	8:16	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	100	1	1								29,-96,67,59,6	8:17	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	120	0	0								29,-80,67,51,6	8:16	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	120	0	1								29,-96,67,59,6	8:17	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	120	1	0								29,-80,67,51,6	8:16	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	mp	120	1	1								29,-96,67,59,6	8:17	38		1:168256,4:16826e,8:168286,28:16829e
+attack	new	roll	90	0	0								25,-15,32,17,18	20:4,50:4,81:22	108		0:1696fa,5:169712,10:16972a,14:169742
+attack	new	roll	90	0	1								25,-15,32,17,18	20:4,50:4,81:29	108		0:1696fa,5:169712,10:16972a,14:169742
+attack	new	roll	90	1	0								25,-15,32,17,18	20:4,50:4,81:21	108		0:1696fa,5:169712,10:16972a,14:169742
+attack	new	roll	90	1	1								25,-15,32,17,18	20:4,50:4,81:29	108		0:1696fa,5:169712,10:16972a,14:169742
+attack	new	sky	90	0	0								49,-62,62,33,10	66:14	137		0:1699d2,1:1699ea,3:169a02,17:169a1a
+attack	new	sky	90	0	1								49,-62,62,33,10	66:16	137		0:1699d2,1:1699ea,3:169a02,17:169a1a
+attack	new	sky	90	1	0								49,-62,62,33,10	66:13	137		0:1699d2,1:1699ea,3:169a02,17:169a1a
+attack	new	sky	90	1	1								49,-62,62,33,10	66:16	137		0:1699d2,1:1699ea,3:169a02,17:169a1a
+attack	old	bar	90	0	0								10,-1,40,73,18	83:19	125		0:1fa44a,1:1fa462,3:1fa47a,17:1fa492
+attack	old	bar	90	0	1								10,13,40,86,18	83:27	125		0:1fa44a,1:1fa462,3:1fa47a,17:1fa492
+attack	old	bar	90	1	0								10,-1,40,73,18	83:22	125		0:1fa44a,1:1fa462,3:1fa47a,17:1fa492
+attack	old	bar	90	1	1								10,13,40,86,18	83:27	125		0:1fa44a,1:1fa462,3:1fa47a,17:1fa492
+attack	old	cmp	80	0	0								12,-90,53,42,4	4:14	32		1:1f93d2,2:1f93ea,3:1f9402,4:1f941a
+attack	old	cmp	80	0	1								12,-100,54,58,7	4:15	32		1:1f93d2,2:1f93ea,3:1f9402,4:1f941a
+attack	old	cmp	80	1	0								12,-90,53,42,4	4:14	32		1:1f93d2,2:1f93ea,3:1f9402,4:1f941a
+attack	old	cmp	80	1	1								12,-100,54,58,7	4:16	32		1:1f93d2,2:1f93ea,3:1f9402,4:1f941a
+attack	old	hp	100	0	0								48,-46,57,31,10	12:21	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	100	0	1								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	100	1	0								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	100	1	1								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	120	0	0								48,-46,57,31,10	12:21	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	120	0	1								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	120	1	0								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	hp	120	1	1								48,-46,57,31,10	12:22	45		1:1f8eea,5:1f8f02,9:1f8f1a,12:1f8f32
+attack	old	lk	48	0	0								32,-31,47,25,19	5:4	28		1:1f8f96,5:1f8fae,23:1f8fc6,27:1f8fde
+attack	old	lk	48	0	1								32,-31,47,25,19	5:3	28		1:1f8f96,5:1f8fae,23:1f8fc6,27:1f8fde
+attack	old	lk	48	1	0								32,-31,47,25,19	5:4	28		1:1f8f96,5:1f8fae,23:1f8fc6,27:1f8fde
+attack	old	lk	48	1	1								32,-31,47,25,19	5:4	28		1:1f8f96,5:1f8fae,23:1f8fc6,27:1f8fde
+attack	old	mp	100	0	0								29,-80,67,51,6	8:16	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	100	0	1								29,-96,67,59,6	8:17	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	100	1	0								29,-80,67,51,6	8:16	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	100	1	1								29,-96,67,59,6	8:17	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	120	0	0								29,-80,67,51,6	8:16	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	120	0	1								29,-96,67,59,6	8:17	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	120	1	0								29,-80,67,51,6	8:16	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	mp	120	1	1								29,-96,67,59,6	8:17	38		1:1f8daa,4:1f8dc2,8:1f8dda,28:1f8df2
+attack	old	roll	90	0	0								25,-15,32,17,18	20:4,50:4,81:21	108		0:1fa24e,5:1fa266,10:1fa27e,14:1fa296
+attack	old	roll	90	0	1								25,-15,32,17,18	20:6,50:4,81:32	108		0:1fa24e,5:1fa266,10:1fa27e,14:1fa296
+attack	old	roll	90	1	0								25,-15,32,17,18	20:4,50:4,81:21	108		0:1fa24e,5:1fa266,10:1fa27e,14:1fa296
+attack	old	roll	90	1	1								25,-15,32,17,18	20:4,50:4,81:29	108		0:1fa24e,5:1fa266,10:1fa27e,14:1fa296
+attack	old	sky	90	0	0								49,-62,62,33,10	66:13	137		0:1fa526,1:1fa53e,3:1fa556,17:1fa56e
+attack	old	sky	90	0	1								49,-62,62,33,10	66:17	137		0:1fa526,1:1fa53e,3:1fa556,17:1fa56e
+attack	old	sky	90	1	0								49,-62,62,33,10	66:13	137		0:1fa526,1:1fa53e,3:1fa556,17:1fa56e
+attack	old	sky	90	1	1								49,-62,62,33,10	66:16	137		0:1fa526,1:1fa53e,3:1fa556,17:1fa56e
+walk	new	bwalk	150	0	0											-3.25	-
+walk	new	bwalk	150	0	1											-3.25	-
+walk	new	bwalk	150	1	0											-3.25	-
+walk	new	bwalk	150	1	1											-3.25	-
+walk	new	fwalk	150	0	0											4.125	-
+walk	new	fwalk	150	0	1											4.125	-
+walk	new	fwalk	150	1	0											4.125	-
+walk	new	fwalk	150	1	1											4.125	-
+attack	new	hp	80	0	0									7:21	37		1:1682ea,3:168302,5:16831a,7:168332
+attack	new	hp	80	0	1									7:22	37		1:1682ea,3:168302,5:16831a,7:168332
+attack	new	hp	80	1	0									7:21	37		1:1682ea,3:168302,5:16831a,7:168332
+attack	new	hp	80	1	1									7:22	37		1:1682ea,3:168302,5:16831a,7:168332
+attack	new	lk	80	0	0										14		1:168442,5:16845a,9:168472,13:16848a
+attack	new	lk	80	0	1										14		1:168442,5:16845a,9:168472,13:16848a
+attack	new	lk	80	1	0										14		1:168442,5:16845a,9:168472,13:16848a
+attack	new	lk	80	1	1										14		1:168442,5:16845a,9:168472,13:16848a
+attack	new	lp	80	0	0									5:4	28		1:1680e2,3:1680fa,5:168112,23:16812a
+attack	new	lp	80	0	1									5:4	28		1:1680e2,3:1680fa,5:168112,23:16812a
+attack	new	lp	80	1	0									5:4	28		1:1680e2,3:1680fa,5:168112,23:16812a
+attack	new	lp	80	1	1									5:4	28		1:1680e2,3:1680fa,5:168112,23:16812a
+attack	new	mp	80	0	0									6:16	33		1:1681da,3:1681f2,6:16820a,24:168222
+attack	new	mp	80	0	1									6:17	33		1:1681da,3:1681f2,6:16820a,24:168222
+attack	new	mp	80	1	0									6:16	33		1:1681da,3:1681f2,6:16820a,24:168222
+attack	new	mp	80	1	1									6:17	33		1:1681da,3:1681f2,6:16820a,24:168222
+attack	new	toggle	90	0	0									5:4	28		1:16815e,3:168176,5:16818e,23:1681a6
+attack	new	toggle	90	0	1									5:4	28		1:16815e,3:168176,5:16818e,23:1681a6
+attack	new	toggle	90	1	0									5:4	28		1:16815e,3:168176,5:16818e,23:1681a6
+attack	new	toggle	90	1	1									5:4	28		1:16815e,3:168176,5:16818e,23:1681a6
+walk	old	bwalk	150	0	0											-3.25	-
+walk	old	bwalk	150	0	1											-3.25	-
+walk	old	bwalk	150	1	0											-3.25	-
+walk	old	bwalk	150	1	1											-3.25	-
+walk	old	fwalk	150	0	0											4.125	-
+walk	old	fwalk	150	0	1											4.125	-
+walk	old	fwalk	150	1	0											4.125	-
+walk	old	fwalk	150	1	1											4.125	-
+attack	old	hp	80	0	0									7:21	37		1:1f8e3e,3:1f8e56,5:1f8e6e,7:1f8e86
+attack	old	hp	80	0	1									7:22	37		1:1f8e3e,3:1f8e56,5:1f8e6e,7:1f8e86
+attack	old	hp	80	1	0									7:21	37		1:1f8e3e,3:1f8e56,5:1f8e6e,7:1f8e86
+attack	old	hp	80	1	1									7:22	37		1:1f8e3e,3:1f8e56,5:1f8e6e,7:1f8e86
+attack	old	lk	80	0	0										14		1:1f8f96,5:1f8fae,9:1f8fc6,13:1f8fde
+attack	old	lk	80	0	1										14		1:1f8f96,5:1f8fae,9:1f8fc6,13:1f8fde
+attack	old	lk	80	1	0										14		1:1f8f96,5:1f8fae,9:1f8fc6,13:1f8fde
+attack	old	lk	80	1	1										14		1:1f8f96,5:1f8fae,9:1f8fc6,13:1f8fde
+attack	old	lp	80	0	0									5:4	28		1:1f8c36,3:1f8c4e,5:1f8c66,23:1f8c7e
+attack	old	lp	80	0	1									5:3	28		1:1f8c36,3:1f8c4e,5:1f8c66,23:1f8c7e
+attack	old	lp	80	1	0									5:4	28		1:1f8c36,3:1f8c4e,5:1f8c66,23:1f8c7e
+attack	old	lp	80	1	1									5:4	28		1:1f8c36,3:1f8c4e,5:1f8c66,23:1f8c7e
+attack	old	mp	80	0	0									6:16	33		1:1f8d2e,3:1f8d46,6:1f8d5e,24:1f8d76
+attack	old	mp	80	0	1									6:17	33		1:1f8d2e,3:1f8d46,6:1f8d5e,24:1f8d76
+attack	old	mp	80	1	0									6:16	33		1:1f8d2e,3:1f8d46,6:1f8d5e,24:1f8d76
+attack	old	mp	80	1	1									6:17	33		1:1f8d2e,3:1f8d46,6:1f8d5e,24:1f8d76
+attack	old	toggle	90	0	0									5:4	28		1:1f8cb2,3:1f8cca,5:1f8ce2,23:1f8cfa
+attack	old	toggle	90	0	1									5:4	28		1:1f8cb2,3:1f8cca,5:1f8ce2,23:1f8cfa
+attack	old	toggle	90	1	0									5:4	28		1:1f8cb2,3:1f8cca,5:1f8ce2,23:1f8cfa
+attack	old	toggle	90	1	1									5:4	28		1:1f8cb2,3:1f8cca,5:1f8ce2,23:1f8cfa

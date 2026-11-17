@@ -1,0 +1,3 @@
+[alias]
+# Run the full workspace suite optimized; see [profile.suite] in Cargo.toml.
+suite = "test --profile suite --workspace --locked --no-fail-fast -j 4"

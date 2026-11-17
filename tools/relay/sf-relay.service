@@ -1,0 +1,38 @@
+# Example systemd unit for the Internet room relay.
+# Install as /etc/systemd/system/sf-relay.service; see docs/relay-deployment.md.
+[Unit]
+Description=sf1-port Internet room relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=sf-relay
+Group=sf-relay
+ExecStart=/usr/local/bin/sf-relay --listen 0.0.0.0:7443 --cert /etc/sf-relay/fullchain.pem --key /etc/sf-relay/privkey.pem
+Restart=on-failure
+RestartSec=5
+
+# Resource ceilings. Raise them only after measuring your own load.
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=4096
+CPUQuota=100%
+
+# The relay needs its certificate files and one UDP socket, nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

@@ -29,7 +29,10 @@ fn two_sessions_measure_the_link_adopt_host_rules_and_reach_fighter_select() {
     online(&mut peers[0]);
     peers[0].drain_net_commands();
     pulse(&mut peers[0], MenuInput::Right);
-    for _ in 0..4 { pulse(&mut peers[0], MenuInput::Down); }
+    // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+    for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+        pulse(&mut peers[0], key);
+    }
     pulse(&mut peers[0], MenuInput::Confirm);
     bus.submit(0, &peers[0].drain_net_commands());
     online(&mut peers[1]);
@@ -79,7 +82,10 @@ fn a_lost_handshake_reply_does_not_turn_retry_wait_into_input_delay() {
     online(&mut peers[0]);
     peers[0].drain_net_commands();
     pulse(&mut peers[0], MenuInput::Right);
-    for _ in 0..4 { pulse(&mut peers[0], MenuInput::Down); }
+    // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+    for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+        pulse(&mut peers[0], key);
+    }
     pulse(&mut peers[0], MenuInput::Confirm);
     bus.submit(0, &peers[0].drain_net_commands());
     online(&mut peers[1]);
@@ -192,7 +198,10 @@ fn opening_a_room_advertises_real_rule_and_asset_compatibility() {
         online(&mut session);
         session.drain_net_commands();
         pulse(&mut session, MenuInput::Right);
-        for _ in 0..4 { pulse(&mut session, MenuInput::Down); }
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut session, key);
+        }
         pulse(&mut session, MenuInput::Confirm);
         let commands = session.drain_net_commands();
         let [NetTransportCommand::BindHost { port, room }] = commands.as_slice() else {
@@ -242,7 +251,10 @@ fn actual_session_handshakes_reject_wifi_changed_art_and_wrong_engine_identity()
         online(&mut peers[0]);
         peers[0].drain_net_commands();
         pulse(&mut peers[0], MenuInput::Right);
-        for _ in 0..4 { pulse(&mut peers[0], MenuInput::Down); }
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut peers[0], key);
+        }
         pulse(&mut peers[0], MenuInput::Confirm);
         bus.submit(0, &peers[0].drain_net_commands());
         online(&mut peers[1]);

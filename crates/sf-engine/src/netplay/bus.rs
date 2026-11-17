@@ -121,6 +121,10 @@ impl VirtualNetBus {
                     } else { Vec::new() };
                     self.emit(peer, NetTransportEvent::RoomsDiscovered { rooms });
                 }
+                NetTransportCommand::HostInternetRoom { .. }
+                | NetTransportCommand::JoinInternetRoom { .. } => {
+                    self.error(peer, "NO INTERNET RELAY ON THE VIRTUAL BUS")
+                }
                 NetTransportCommand::Close => self.close(peer),
             }
         }

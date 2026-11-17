@@ -7,7 +7,12 @@ use sf_engine::netplay::{
     Link, NetPacket, NetTransportCommand as Command, NetTransportEvent as Event,
 };
 use sf_engine::roster::MenuInput;
+use sf_engine::front::settings::Settings;
+use sf_engine::netplay::AfterMatchChoice;
 use sf_host::net::HostNetDriver;
+
+#[path = "support/relay.rs"]
+mod relay;
 
 fn session(config: MatchConfig) -> GameSession {
     let assets = sf_video::romset::load_assets(
@@ -88,8 +93,9 @@ fn two_real_game_sessions_adopt_host_rules_and_run_a_matching_fight_over_udp() {
     online(&mut peers[0]);
     peers[0].drain_net_commands();
     pulse(&mut peers[0], MenuInput::Right);
-    for _ in 0..4 {
-        pulse(&mut peers[0], MenuInput::Down);
+    // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+    for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+        pulse(&mut peers[0], key);
     }
     pulse(&mut peers[0], MenuInput::Confirm);
     transport(&mut peers[0], &mut drivers[0]);
@@ -252,4 +258,174 @@ fn step_pair(
     }
     std::thread::sleep(Duration::from_millis(1));
     packets
+}
+
+/// Step both peers until every one shows `screen`, failing after `limit` steps.
+fn wait_for(
+    peers: &mut [GameSession; 2],
+    drivers: &mut [HostNetDriver; 2],
+    screen: &str,
+    limit: usize,
+    seen: &mut Vec<(usize, NetPacket)>,
+) {
+    for _ in 0..limit {
+        if peers.iter().all(|peer| peer.screen() == screen) {
+            return;
+        }
+        seen.extend(step_pair(peers, drivers, [FrameInputs::default(); 2]));
+    }
+    panic!(
+        "both peers should reach {screen}: {:?}",
+        peers.each_ref().map(|peer| (peer.screen(), peer.notice()))
+    );
+}
+
+/// Player 1's fighter walks in and attacks until both peers see the result.
+fn fight_to_the_end(
+    peers: &mut [GameSession; 2],
+    drivers: &mut [HostNetDriver; 2],
+    seen: &mut Vec<(usize, NetPacket)>,
+) {
+    for _ in 0..3_000 {
+        if peers.iter().all(|peer| peer.fight().is_some_and(|fight| !fight.driving())) {
+            break;
+        }
+        seen.extend(step_pair(peers, drivers, [FrameInputs::default(); 2]));
+    }
+    for frame in 0..20_000_u32 {
+        if peers.iter().all(|peer| peer.screen() == "after match") {
+            return;
+        }
+        let phase = frame % 120;
+        let mut attack = FrameInputs::default();
+        attack.p1.directions[0] = phase < 40;
+        if phase >= 40 && phase % 10 < 3 {
+            attack.p1.buttons[((frame / 10) % 6) as usize] = true;
+        }
+        seen.extend(step_pair(peers, drivers, [attack, FrameInputs::default()]));
+    }
+    panic!(
+        "the relayed match should finish: {:?}",
+        peers.each_ref().map(|peer| (peer.screen(), peer.notice()))
+    );
+}
+
+#[test]
+fn two_real_game_sessions_fight_rematch_and_reselect_through_an_internet_room() {
+    let relay = relay::TestRelay::start();
+    let settings = Settings { relay: Some(relay.address()), ..Settings::default() };
+    let mut peers = [
+        session(MatchConfig::definitive()).with_settings(settings.clone()),
+        session(MatchConfig::definitive()).with_settings(settings),
+    ];
+    let mut drivers = [relay.driver(), relay.driver()];
+    let mut seen = Vec::new();
+
+    // Host Match opens an Internet room by default once a relay is set.
+    online(&mut peers[0]);
+    peers[0].drain_net_commands();
+    pulse(&mut peers[0], MenuInput::Right);
+    for _ in 0..4 {
+        pulse(&mut peers[0], MenuInput::Down);
+    }
+    pulse(&mut peers[0], MenuInput::Confirm);
+    let deadline = Instant::now() + Duration::from_secs(6);
+    let code = loop {
+        transport(&mut peers[0], &mut drivers[0]);
+        peers[0].step(FrameInputs::default());
+        if let Some(code) = peers[0].room_code_for_copy() {
+            break code.to_owned();
+        }
+        assert!(Instant::now() < deadline, "the host should show its Internet room code");
+        std::thread::sleep(Duration::from_millis(2));
+    };
+    assert!(sf_engine::netplay::RoomCode::parse(&code).is_some(), "{code}");
+
+    // The guest pastes it in lower case and joins.
+    online(&mut peers[1]);
+    peers[1].drain_net_commands();
+    pulse(&mut peers[1], MenuInput::Left);
+    pulse(&mut peers[1], MenuInput::Down);
+    peers[1].paste_room_code(Some(&code.to_ascii_lowercase()));
+    pulse(&mut peers[1], MenuInput::Confirm);
+    transport(&mut peers[1], &mut drivers[1]);
+    wait_for(&mut peers, &mut drivers, "select", 3_000, &mut seen);
+    assert!(
+        seen.iter().any(|(side, packet)| *side == 1 && matches!(packet, NetPacket::Hello { .. })),
+        "the guest's Hello crossed the relay"
+    );
+    assert!(
+        seen.iter().any(|(side, packet)| *side == 0 && matches!(packet, NetPacket::Welcome { accepted: true, .. })),
+        "the host's compatibility check accepted the guest through the relay"
+    );
+
+    // Fighters, stage and the first fight.
+    let lock_fighters = |peers: &mut [GameSession; 2], drivers: &mut [HostNetDriver; 2]| {
+        pulse(&mut peers[1], MenuInput::Confirm);
+        pulse(&mut peers[1], MenuInput::Confirm);
+        transport(&mut peers[1], &mut drivers[1]);
+        pulse(&mut peers[0], MenuInput::Confirm);
+        pulse(&mut peers[0], MenuInput::Confirm);
+        transport(&mut peers[0], &mut drivers[0]);
+    };
+    lock_fighters(&mut peers, &mut drivers);
+    wait_for(&mut peers, &mut drivers, "stage select", 3_000, &mut seen);
+    pulse(&mut peers[0], MenuInput::Confirm);
+    transport(&mut peers[0], &mut drivers[0]);
+    fight_to_the_end(&mut peers, &mut drivers, &mut seen);
+
+    // Both vote Rematch; the room and its code carry on.
+    pulse(&mut peers[1], MenuInput::Confirm);
+    pulse(&mut peers[0], MenuInput::Confirm);
+    for side in 0..2 {
+        seen.extend(transport(&mut peers[side], &mut drivers[side]).into_iter().map(|packet| (side, packet)));
+    }
+    wait_for(&mut peers, &mut drivers, "stage select", 3_000, &mut seen);
+    assert!(seen.iter().any(|(_, packet)| matches!(packet,
+        NetPacket::AfterMatchVote { choice: AfterMatchChoice::Rematch, .. })));
+    assert!(relay.can_join(&code), "the code still opens the room after a rematch");
+    // The rematch's stage pick belongs to the side the host's Welcome names.
+    let picker = seen
+        .iter()
+        .rev()
+        .find_map(|(_, packet)| match packet {
+            NetPacket::Welcome { accepted: true, picker, .. } => Some(usize::from(*picker)),
+            _ => None,
+        })
+        .expect("the rematch epoch arrives in a Welcome");
+    pulse(&mut peers[picker], MenuInput::Confirm);
+    transport(&mut peers[picker], &mut drivers[picker]);
+    fight_to_the_end(&mut peers, &mut drivers, &mut seen);
+
+    // Reselect returns both to fighter select in the same room.
+    for peer in 0..2 {
+        pulse(&mut peers[peer], MenuInput::Down);
+        pulse(&mut peers[peer], MenuInput::Confirm);
+        transport(&mut peers[peer], &mut drivers[peer]);
+    }
+    wait_for(&mut peers, &mut drivers, "select", 3_000, &mut seen);
+    assert!(relay.can_join(&code), "the code still opens the room after a reselect");
+
+    // Peer timing ran end to end over the relay the whole time.
+    for side in 0..2 {
+        assert!(seen.iter().any(|(from, packet)| *from == side && matches!(packet, NetPacket::Ping { .. })));
+        assert!(seen.iter().any(|(from, packet)| *from == side && matches!(packet, NetPacket::Pong { .. })));
+    }
+    assert!(peers.iter().all(|peer| !peer.notice().is_some_and(|notice| notice.contains("DESYNC"))));
+    assert_eq!(relay.service.open_rooms(), 1, "one room, one code, for the whole session");
+
+    // Closing the host ends the room: the guest hears it and the code is dead.
+    drivers[0].poll(&[Command::Close]);
+    let deadline = Instant::now() + Duration::from_secs(6);
+    let closed = 'heard: loop {
+        for event in drivers[1].poll(&[]) {
+            if let Event::TransportError { message } = event {
+                break 'heard message;
+            }
+        }
+        assert!(Instant::now() < deadline, "the guest should hear the room close");
+        std::thread::sleep(Duration::from_millis(2));
+    };
+    assert_eq!(closed, "ROOM CLOSED");
+    assert!(!relay.can_join(&code));
 }

@@ -184,7 +184,7 @@ impl GameSession {
         &mut self,
         rules: SyncedMatchRules,
         room: RoomAnnouncement,
-        port: u16,
+        binding: HostBinding,
     ) -> bool {
         let reservation = self
             .net_epoch_cursor
@@ -201,7 +201,7 @@ impl GameSession {
         let mut connection = Connection::host(
             rules,
             room,
-            port,
+            binding,
             self.settings.netplay_input_delay.frames(),
         );
         if !connection.set_epoch(generation, frame_base) {

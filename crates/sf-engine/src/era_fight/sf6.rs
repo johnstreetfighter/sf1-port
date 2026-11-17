@@ -149,8 +149,8 @@ fn available(fighter: Option<TournamentFighter>) -> bool {
 fn arts(fighter: TournamentFighter) -> [(&'static str, ButtonClass, usize); 3] {
     match fighter {
         Ken => [
-            ("DRAGONLASH FLAME", Kick, 0),
-            ("SHIPPU JINRAIKYAKU", Kick, 1),
+            ("DRAGONLASH FLAME", Kick, 1),
+            ("SHIPPU JINRAIKYAKU", Kick, 0),
             ("SHINRYU REPPA", Punch, 0),
         ],
         Retsu => [

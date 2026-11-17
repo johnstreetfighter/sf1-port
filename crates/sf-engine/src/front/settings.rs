@@ -102,6 +102,17 @@ pub struct Settings {
     pub netplay_port: u16,
     /// An optional community room directory; absent for LAN/direct play.
     pub lobby_url: Option<String>,
+    /// A custom Internet room relay as `host` or `host:port`; absent uses
+    /// the default relay ([`Settings::relay_endpoint`]).
+    pub relay: Option<String>,
+}
+
+impl Settings {
+    /// The relay Internet rooms use: the custom one, or else the shipped
+    /// default. `None` hides Internet rooms.
+    pub fn relay_endpoint(&self) -> Option<&str> {
+        self.relay.as_deref().or(sf_relay::endpoint::DEFAULT_RELAY)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -376,6 +387,7 @@ impl Default for Settings {
             netplay_hud: NetplayHudMode::Compact,
             netplay_port: 7000,
             lobby_url: None,
+            relay: None,
         }
     }
 }
@@ -502,7 +514,8 @@ impl Settings {
              wired_only = {}\n\
              netplay_hud = \"{}\"\n\
              netplay_port = {}\n\
-             lobby_url = {}\n",
+             lobby_url = {}\n\
+             relay = {}\n",
             self.scale,
             self.fullscreen,
             self.vsync,
@@ -531,6 +544,7 @@ impl Settings {
             self.netplay_hud.slug(),
             self.netplay_port,
             escaped(self.lobby_url.as_deref().unwrap_or("")),
+            escaped(self.relay.as_deref().unwrap_or("")),
         ) + &MENU_KEYS
             .iter()
             .zip(self.menu_positions)
@@ -697,6 +711,11 @@ impl Settings {
                     let url = unquoted(v)
                         .ok_or_else(|| format!("line {n}: expected a quoted lobby URL"))?;
                     s.lobby_url = (!url.is_empty()).then_some(url);
+                }
+                "relay" => {
+                    let relay = unquoted(v)
+                        .ok_or_else(|| format!("line {n}: expected a quoted relay host"))?;
+                    s.relay = (!relay.is_empty()).then_some(relay);
                 }
                 "rom_folder" => {
                     let inner = unquoted(v).ok_or_else(|| format!("line {n}: expected a quoted folder"))?;
@@ -874,6 +893,8 @@ pub enum Row {
     WiredOnly,
     NetplayHud,
     UdpPort,
+    /// The Internet room relay: the default, or a custom host.
+    Relay,
     /// A row whose project has not landed: drawn dim and skipped.
     Greyed(&'static str),
     /// A group's name over its rows (the Video tab's): skipped.
@@ -938,7 +959,7 @@ pub fn rows(tab: Tab) -> Vec<Row> {
             Row::Rebind(MenuItem::RebindP2),
             Row::Rebind(MenuItem::RebindMenu),
         ],
-        Tab::Netplay => vec![Row::PlayerTag, Row::InputDelay, Row::MaxRollback, Row::WiredOnly, Row::NetplayHud, Row::UdpPort],
+        Tab::Netplay => vec![Row::PlayerTag, Row::InputDelay, Row::MaxRollback, Row::WiredOnly, Row::NetplayHud, Row::UdpPort, Row::Relay],
     };
     rows.push(Row::ResetTab);
     rows
@@ -965,11 +986,19 @@ struct NetplayEntry {
 
 impl NetplayEntry {
     fn limit(&self) -> usize {
-        if self.row == Row::UdpPort { 5 } else { 12 }
+        match self.row {
+            Row::UdpPort => 5,
+            Row::Relay => sf_relay::endpoint::MAX_LEN,
+            _ => 12,
+        }
     }
 
     fn alphabet(&self) -> &'static str {
-        if self.row == Row::UdpPort { "0123456789" } else { PLAYER_TAG_CHARS }
+        match self.row {
+            Row::UdpPort => "0123456789",
+            Row::Relay => "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.:",
+            _ => PLAYER_TAG_CHARS,
+        }
     }
 }
 
@@ -1164,6 +1193,7 @@ impl SettingsScreen {
             Row::WiredOnly => "WIRED ONLY",
             Row::NetplayHud => "NETPLAY HUD",
             Row::UdpPort => "UDP PORT",
+            Row::Relay => "RELAY",
             Row::Greyed(name) | Row::Heading(name) => name,
             Row::ResetTab => "RESET TAB",
         }
@@ -1178,9 +1208,28 @@ impl SettingsScreen {
     /// The row's value as drawn: cut with `..` past [`Self::value_cells`]
     /// (a long drop-in's name, or an id the look list does not hold).
     pub fn value(&self, row: Row) -> String {
-        let text = self.entry.as_ref().filter(|entry| entry.row == row)
+        let full: String = self.entry.as_ref().filter(|entry| entry.row == row)
             .map_or_else(|| self.full_value(row), |entry| entry.text.iter().collect());
-        super::draw::fit(&text, self.value_cells(row))
+        let cells = self.value_cells(row);
+        match self.entry_start(row) {
+            // An entry longer than its cells scrolls to keep the caret in view.
+            Some(start) if start > 0 || full.chars().count() > cells => full.chars().skip(start).take(cells).collect(),
+            // A long relay keeps both ends, so its port stays in view.
+            _ if row == Row::Relay && full.chars().count() > cells && cells > 12 => {
+                let tail = full.chars().count() - 10;
+                let head: String = full.chars().take(cells - 12).collect();
+                format!("{head}..{}", full.chars().skip(tail).collect::<String>())
+            }
+            _ => super::draw::fit(&full, cells),
+        }
+    }
+
+    /// The first character drawn of the entry on `row`, if it is being edited.
+    fn entry_start(&self, row: Row) -> Option<usize> {
+        let entry = self.entry.as_ref().filter(|entry| entry.row == row)?;
+        // The caret sits under its character, or one past the end of the text.
+        let under = usize::from(entry.at < entry.text.len());
+        Some((entry.at + under).saturating_sub(self.value_cells(row)))
     }
 
     /// The stored row value, before clipping or inline edits.
@@ -1231,6 +1280,7 @@ impl SettingsScreen {
             Row::WiredOnly => on(self.settings.wired_only),
             Row::NetplayHud => self.settings.netplay_hud.label().to_owned(),
             Row::UdpPort => self.settings.netplay_port.to_string(),
+            Row::Relay => self.settings.relay_endpoint().map_or("NONE".to_owned(), str::to_ascii_uppercase),
             Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::Greyed(_) | Row::Heading(_) | Row::ResetTab => String::new(),
         }
     }
@@ -1343,7 +1393,7 @@ impl SettingsScreen {
                 self.settings.netplay_hud = all[(at + delta).rem_euclid(all.len() as i32) as usize];
             }
             Row::UdpPort => self.settings.netplay_port = step(i32::from(self.settings.netplay_port), 1024, 65535) as u16,
-            Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Greyed(_) | Row::Heading(_) | Row::ResetTab => {}
+            Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Relay | Row::Greyed(_) | Row::Heading(_) | Row::ResetTab => {}
         }
     }
 
@@ -1405,6 +1455,7 @@ impl SettingsScreen {
                 self.settings.netplay_hud = first.netplay_hud;
                 self.settings.netplay_port = first.netplay_port;
                 self.settings.lobby_url = first.lobby_url;
+                self.settings.relay = first.relay;
             }
         }
     }
@@ -1431,7 +1482,11 @@ impl SettingsScreen {
     }
 
     fn begin_entry(&mut self, row: Row) {
-        let text: Vec<char> = self.full_value(row).chars().collect();
+        let text: Vec<char> = match row {
+            // Only a custom relay is edited; the default is never copied in.
+            Row::Relay => self.settings.relay.as_deref().unwrap_or("").to_ascii_uppercase().chars().collect(),
+            _ => self.full_value(row).chars().collect(),
+        };
         self.entry = Some(NetplayEntry { row, at: text.len(), text, problem: None });
     }
 
@@ -1502,6 +1557,14 @@ impl SettingsScreen {
                     return None;
                 };
                 self.settings.netplay_port = port;
+            } else if entry.row == Row::Relay {
+                // An empty entry goes back to the default relay.
+                let relay = sf_relay::endpoint::normalize(&text);
+                if relay.is_none() && !text.trim().is_empty() {
+                    entry.problem = Some("USE A HOST NAME, OPTIONALLY WITH :PORT".to_owned());
+                    return None;
+                }
+                self.settings.relay = relay;
             } else {
                 let tag = text.trim();
                 if tag_from_str(tag).is_none() {
@@ -1560,7 +1623,7 @@ impl SettingsScreen {
             }
             MenuInput::Left | MenuInput::Right => {
                 let row = self.row();
-                if matches!(row, Row::ResetTab | Row::Greyed(_) | Row::Heading(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag)
+                if matches!(row, Row::ResetTab | Row::Greyed(_) | Row::Heading(_) | Row::Rebind(_) | Row::TuneLook | Row::Jukebox | Row::PlayerTag | Row::Relay)
                     || self.dim(row)
                 {
                     return None;
@@ -1569,7 +1632,7 @@ impl SettingsScreen {
                 Some(Transition::ValueChanged)
             }
             MenuInput::Confirm => match self.row() {
-                row @ (Row::PlayerTag | Row::UdpPort) => {
+                row @ (Row::PlayerTag | Row::UdpPort | Row::Relay) => {
                     self.begin_entry(row);
                     Some(Transition::CursorMoved)
                 }
@@ -1707,7 +1770,7 @@ impl SettingsScreen {
                 }
             }
             if let Some(entry) = self.entry.as_ref().filter(|entry| entry.row == *row) {
-                let x = (VALUE_END_COL.saturating_sub(value.chars().count()) + entry.at) * 8;
+                let x = (VALUE_END_COL.saturating_sub(value.chars().count()) + entry.at - self.entry_start(*row).unwrap_or(0)) * 8;
                 let y = r * 8 + 7;
                 for px in x..x + 7 {
                     if px < WIDTH && y < HEIGHT {
@@ -1720,8 +1783,16 @@ impl SettingsScreen {
             let hint = entry.problem.as_deref().unwrap_or("TYPE OR UP/DOWN CHANGE  LEFT/RIGHT MOVE");
             font.text_centred(argb, NOTICE_ROW - 1, hint, ink::YELLOW);
             font.text_centred(argb, NOTICE_ROW, "START DELETE  CONFIRM SAVE  BACK CANCEL", ink::YELLOW);
-        } else if self.tab() == Tab::Netplay && matches!(self.row(), Row::PlayerTag | Row::UdpPort) {
-            let hint = if self.row() == Row::PlayerTag { "CONFIRM TO EDIT PLAYER TAG" } else { "CONFIRM TO EDIT UDP PORT" };
+        } else if self.tab() == Tab::Netplay && matches!(self.row(), Row::PlayerTag | Row::UdpPort | Row::Relay) {
+            let hint = match self.row() {
+                Row::PlayerTag => "CONFIRM TO EDIT PLAYER TAG",
+                Row::UdpPort => "CONFIRM TO EDIT UDP PORT",
+                _ if self.settings.relay.is_some() => {
+                    font.text_centred(argb, NOTICE_ROW - 1, "CUSTOM RELAY  BOTH PLAYERS SET THE SAME ONE", ink::YELLOW);
+                    "CONFIRM TO EDIT  SAVE IT EMPTY FOR DEFAULT"
+                }
+                _ => "DEFAULT RELAY  CONFIRM TO SET A CUSTOM ONE",
+            };
             font.text_centred(argb, NOTICE_ROW, hint, ink::YELLOW);
         } else if self.tab() == Tab::Video {
             match &self.notice {

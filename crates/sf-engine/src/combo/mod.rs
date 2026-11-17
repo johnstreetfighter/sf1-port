@@ -97,12 +97,98 @@ pub struct ComboState {
     pub hits: [u8; 3],
     /// This fighter's attack connected (hit or guarded) since its move began.
     pub connected: [bool; 3],
+    /// Remaining ordinary contact hitstop, independent of Super freeze.
+    pub contact_freeze: [u8; 3],
+    pub(crate) st_ryu_pushback: [Option<StRyuPushback>; 3],
+    pub(crate) st_red_launch: [Option<StRedLaunch>; 3],
+    pub(crate) st_ryu_sweep: [Option<StRyuSweep>; 3],
+    pub(crate) st_sagat_jump: [Option<StSagatJump>; 3],
+    pub(crate) st_ken_jump_attack: [Option<StKenJumpAttack>; 3],
+    pub(crate) st_ryu_air_cancel: [u8; 3],
+    pub(crate) st_grounded_super_cancel: [u8; 3],
+    pub(crate) st_melee_phases: [u8; 3],
+    pub(crate) frozen_cancel: [Option<FrozenCancel>; 3],
 }
 
 // Canonical gameplay schema: explicit tags and exhaustive fields (NP1).
-crate::canonical::canonical_struct!(ComboState, "ComboState.v2", {
-    hitstun, fresh, blockstun, hits, connected,
+crate::canonical::canonical_struct!(ComboState, "ComboState.v11", {
+    hitstun, fresh, blockstun, hits, connected, contact_freeze, st_ryu_pushback, st_red_launch,
+    st_ryu_sweep, st_sagat_jump, st_ken_jump_attack, st_ryu_air_cancel, st_grounded_super_cancel,
+    st_melee_phases, frozen_cancel,
 });
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StKenJumpAttack {
+    pub direction: u8,
+    pub button: u8,
+    pub started: u8,
+}
+
+crate::canonical::canonical_struct!(StKenJumpAttack, "StKenJumpAttack.v1", {
+    direction, button, started,
+});
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StSagatJump {
+    pub direction: u8,
+    pub facing_left: bool,
+    pub tick: u8,
+    pub attack: Option<(u8, u8)>,
+}
+
+crate::canonical::canonical_struct!(StSagatJump, "StSagatJump.v1", { direction, facing_left, tick, attack });
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StRyuSweep {
+    pub tick: u8,
+    pub direction: i8,
+}
+
+crate::canonical::canonical_struct!(StRyuSweep, "StRyuSweep.v1", { tick, direction });
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StRedLaunch {
+    pub tick: u8,
+    pub direction: i8,
+    pub shinku: bool,
+}
+
+crate::canonical::canonical_struct!(StRedLaunch, "StRedLaunch.v2", { tick, direction, shinku });
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StRyuPushback {
+    pub elapsed: u8,
+    pub direction: i8,
+    pub kind: StRyuRecoil,
+}
+
+crate::canonical::canonical_struct!(StRyuPushback, "StRyuPushback.v2", {
+    elapsed, direction, kind,
+});
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StRyuRecoil {
+    Light,
+    Medium,
+    Heavy,
+}
+
+crate::canonical::canonical_enum!(StRyuRecoil, "StRyuRecoil.v1";
+    Light => 0, Medium => 1, Heavy => 2,
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FrozenCancel {
+    Classic { direction: u8, latches: u16, trackers: [u8; 3], era_move: Option<u8> },
+    ModernShortcut { shortcut: crate::control::Shortcut, strength: u8, scaled: bool },
+    ModernAssist { normal: (u8, bool, bool) },
+}
+
+crate::canonical::canonical_enum!(FrozenCancel, "FrozenCancel.v1";
+    Classic { direction, latches, trackers, era_move } => 0,
+    ModernShortcut { shortcut, strength, scaled } => 1,
+    ModernAssist { normal } => 2,
+);
 
 
 /// The combo state's slot of the fighter on player structure `ps` in game
@@ -131,6 +217,12 @@ pub enum HitSource {
     Melee,
     /// A projectile ([`PROJECTILE`]).
     Projectile,
+    /// A clean Super Turbo Red Hadoken contact with its flight phase and direction.
+    StRyuRed { launches: bool, direction: i8 },
+    /// A clean Super Turbo Shinku Hadoken contact.
+    StRyuShinku { launches: bool, direction: i8 },
+    /// A grounded World Super Turbo projectile hit with the measured heavy recoil.
+    StGroundedProjectile { direction: i8, recoil_on_thaw: bool },
     /// Chip damage through a guard (a guarded projectile or Tatsumaki): the
     /// 1987 reaction, never combo-able.
     Chip,

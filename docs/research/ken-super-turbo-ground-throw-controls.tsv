@@ -1,0 +1,69 @@
+group	ken_loadout	direction	button	phase	recipe	display_response_delay	source_reply_tick	release_tick	ryu_damage_ticks	ryu_damage_packets	ryu_landing_tick	ryu_ready_tick
+mash	new	forward	mk	0	attacker_buttons			179	14,48,80,114,148	26,4,4,4,4	223	229
+mash	new	forward	mk	0	attacker_dirs			191	13,47,79,109,141,173	26,4,4,4,4,4	237	243
+mash	new	forward	mk	0	attacker_hold_up			179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	0	both_buttons		5	179	14,48,80,114,148	26,4,4,4,4	223	229
+mash	new	forward	mk	0	both_dirs			79	13,47	26,4	125	133
+mash	new	forward	mk	0	both_mix		5	68	13,46	26,4	112	223
+mash	new	forward	mk	0	control			179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	0	victim_buttons		5	179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	0	victim_dirs			82	14,48	26,4	128	135
+mash	new	forward	mk	0	victim_neutral_punch		5	179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	1	attacker_buttons			191	14,48,73,107,141,173	26,4,4,4,4,4	237	243
+mash	new	forward	mk	1	attacker_dirs			191	13,45,78,112,144,176	26,4,4,4,4,4	237	243
+mash	new	forward	mk	1	attacker_hold_up			179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	1	both_buttons		6	191	14,48,73,107,141,173	26,4,4,4,4,4	237	243
+mash	new	forward	mk	1	both_dirs			90	13,45,76	26,4,4	136	243
+mash	new	forward	mk	1	both_mix		6	66	13,47	26,4	112	226
+mash	new	forward	mk	1	control			179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	1	victim_buttons		6	179	14,48,82,116,150	26,4,4,4,4	223	229
+mash	new	forward	mk	1	victim_dirs			79	14,48	26,4	123	183
+mash	new	forward	mk	1	victim_neutral_punch		6	179	14,48,82,116,150	26,4,4,4,4	223	229
+oldresponse	new	forward	hk	0	mp	10	13	62	95	32	95	156
+oldresponse	new	forward	hk	0	mp	6	8	62	95	32	95	156
+oldresponse	new	forward	mk	0	mp	10	13	179	14,48,82,116,150	26,4,4,4,4	223	229
+oldresponse	new	forward	mk	0	mp	6	8	179	14,48,82,116,150	26,4,4,4,4	223	229
+oldresponse	new	forward	mp	0	mp	10	13	44	79	32	79	153
+oldresponse	new	forward	mp	0	mp	6	8	44	79	32	79	153
+oldresponse	new	back	hk	0	mp	10	13	62	101	32	101	162
+oldresponse	new	back	hk	0	mp	6	8	62	101	32	101	162
+oldresponse	new	back	mk	0	mp	10	13	179	14,48,82,116,150	26,4,4,4,4	223	229
+oldresponse	new	back	mk	0	mp	6	8	179	14,48,82,116,150	26,4,4,4,4	223	229
+oldresponse	new	back	mp	0	mp	10	13	44	85	32	85	159
+oldresponse	new	back	mp	0	mp	6	8	44	85	32	85	159
+backboundary	new	forward	hk	1	mp	10	14	62	95	32	95	156
+backboundary	new	forward	hk	1	mp	11	15	62	95	32	95	156
+backboundary	new	forward	hk	1	mp	12	16	62	95	32	95	156
+backboundary	new	forward	mp	1	mp	10	14	44	79	32	79	153
+backboundary	new	forward	mp	1	mp	11	15	44	79	32	79	153
+backboundary	new	forward	mp	1	mp	12	16	44	79	32	79	153
+backboundary	new	back	hk	1	mp	10	14	62	101	32	101	162
+backboundary	new	back	hk	1	mp	11	15	62	101	32	101	162
+backboundary	new	back	hk	1	mp	12	16	62	101	32	101	162
+backboundary	new	back	mp	1	mp	10	14	44	85	32	85	159
+backboundary	new	back	mp	1	mp	11	15	44	85	32	85	159
+backboundary	new	back	mp	1	mp	12	16	44	85	32	85	159
+backboundary	old	forward	hk	1	mp	10	14	62	95	32	95	156
+backboundary	old	forward	hk	1	mp	11	15	62	95	32	95	156
+backboundary	old	forward	hk	1	mp	12	16	62	95	32	95	156
+backboundary	old	forward	mp	1	mp	10	14	44	79	32	79	153
+backboundary	old	forward	mp	1	mp	11	15	44	79	32	79	153
+backboundary	old	forward	mp	1	mp	12	16	44	79	32	79	153
+backboundary	old	back	hk	1	mp	10	14	62	101	32	101	162
+backboundary	old	back	hk	1	mp	11	15	62	101	32	101	162
+backboundary	old	back	hk	1	mp	12	16	62	101	32	101	162
+backboundary	old	back	mp	1	mp	10	14	44	85	32	85	159
+backboundary	old	back	mp	1	mp	11	15	44	85	32	85	159
+backboundary	old	back	mp	1	mp	12	16	44	85	32	85	159
+priority	new	forward	hp2 hk	0	hp2 hk			44	79	32	79	153
+priority	new	2	lk	0	lk							
+priority	new	2	lp	0	lp							
+priority	new	forward	mk2 hk	0	mk2 hk			179	14,48,82,116,150	26,4,4,4,4	223	229
+priority	new	forward	mp2 hp	0	mp2 hp			44	79	32	79	153
+priority	new	forward	mp2 mk	0	mp2 mk			44	79	32	79	153
+priority	old	forward	hp2 hk	0	hp2 hk			44	79	32	79	153
+priority	old	2	lk	0	lk							
+priority	old	2	lp	0	lp							
+priority	old	forward	mk2 hk	0	mk2 hk			62	95	32	95	156
+priority	old	forward	mp2 hp	0	mp2 hp			44	79	32	79	153
+priority	old	forward	mp2 mk	0	mp2 mk			44	79	32	79	153

@@ -191,8 +191,9 @@ impl Pair {
         let mut pair = Self::new([session(), session_with(client)]);
         online(&mut pair.peers[0]);
         pulse(&mut pair.peers[0], MenuInput::Right);
-        for _ in 0..4 {
-            pulse(&mut pair.peers[0], MenuInput::Down);
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut pair.peers[0], key);
         }
         pulse(&mut pair.peers[0], MenuInput::Confirm);
         pair.bus.submit(0, &pair.peers[0].drain_net_commands());
@@ -226,8 +227,9 @@ impl Pair {
         pulse(&mut host, MenuInput::Back);
         pulse(&mut host, MenuInput::Confirm);
         pulse(&mut host, MenuInput::Right);
-        for _ in 0..4 {
-            pulse(&mut host, MenuInput::Down);
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut host, key);
         }
         pulse(&mut host, MenuInput::Confirm);
         let host_commands = host.drain_net_commands();

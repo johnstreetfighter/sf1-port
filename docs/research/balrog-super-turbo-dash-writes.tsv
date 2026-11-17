@@ -1,0 +1,241 @@
+loadout	release	button	initial_gap	phase	defender	start_frame	start_tick	first_active	first_inactive	attacker_exit	attack_anim	box_forward	box_height	box_radius_x	box_radius_y	contact	damage	attacker_freeze_clear	defender_freeze_clear	defender_recovery	push	peak_height
+new	forward	lp	90	0	stand	2204	27	5	27	37	0x161a2a	62	74	49	7	5	29	14	15	36	78	0
+new	forward	lp	90	0	stand guard	2204	27	5	27	37	0x161a2a	62	74	49	7	5	6	14	15	36	78	0
+new	forward	lp	90	0	crouch guard	2204	28	5	13	23	0x161a2a	62	74	49	7							
+new	forward	lp	90	0	crouch	2204	28	5	13	23	0x161a2a	62	74	49	7							
+new	forward	lp	190	0	high target	2204	27	11	19	29	0x161a2a	62	74	49	7							
+new	forward	lp	90	1	stand	2205	29	5	27	37	0x161a2a	62	74	49	7	5	27	14	15	36	78	0
+new	forward	lp	90	1	stand guard	2205	29	5	27	37	0x161a2a	62	74	49	7	5	6	14	15	36	78	0
+new	forward	lp	90	1	crouch guard	2205	29	5	13	23	0x161a2a	62	74	49	7							
+new	forward	lp	90	1	crouch	2205	29	5	13	23	0x161a2a	62	74	49	7							
+new	forward	lp	190	1	high target	2205	27	11	19	29	0x161a2a	62	74	49	7							
+new	forward	mp	90	0	stand	2204	27	5	27	37	0x161ad6	62	74	49	7	5	31	14	15	36	78	0
+new	forward	mp	90	0	stand guard	2204	27	5	27	37	0x161ad6	62	74	49	7	5	7	14	15	36	78	0
+new	forward	mp	90	0	crouch guard	2204	28	5	13	23	0x161ad6	62	74	49	7							
+new	forward	mp	90	0	crouch	2204	28	5	13	23	0x161ad6	62	74	49	7							
+new	forward	mp	190	0	high target	2204	27	12	20	30	0x161ad6	62	74	49	7							
+new	forward	mp	90	1	stand	2205	29	5	27	37	0x161ad6	62	74	49	7	5	29	14	15	36	78	0
+new	forward	mp	90	1	stand guard	2205	29	5	27	37	0x161ad6	62	74	49	7	5	6	14	15	36	78	0
+new	forward	mp	90	1	crouch guard	2205	29	5	13	23	0x161ad6	62	74	49	7							
+new	forward	mp	90	1	crouch	2205	29	5	13	23	0x161ad6	62	74	49	7							
+new	forward	mp	190	1	high target	2205	27	12	20	30	0x161ad6	62	74	49	7							
+new	forward	hp	90	0	stand	2204	27	5	27	37	0x161b82	62	74	49	7	5	33	14	15	134	140	77
+new	forward	hp	90	0	stand guard	2204	27	5	27	37	0x161b82	62	74	49	7	5	7	14	15	36	78	0
+new	forward	hp	90	0	crouch guard	2204	28	5	13	23	0x161b82	62	74	49	7							
+new	forward	hp	90	0	crouch	2204	28	5	13	23	0x161b82	62	74	49	7							
+new	forward	hp	190	0	high target	2204	27	13	21	31	0x161b82	62	74	49	7							
+new	forward	hp	90	1	stand	2205	29	5	27	37	0x161b82	62	74	49	7	5	31	14	15	134	140	77
+new	forward	hp	90	1	stand guard	2205	29	5	27	37	0x161b82	62	74	49	7	5	6	14	15	36	78	0
+new	forward	hp	90	1	crouch guard	2205	29	5	13	23	0x161b82	62	74	49	7							
+new	forward	hp	90	1	crouch	2205	29	5	13	23	0x161b82	62	74	49	7							
+new	forward	hp	190	1	high target	2205	27	13	21	31	0x161b82	62	74	49	7							
+new	forward	lk	90	0	stand	2204	27	7	29	35	0x161c2e	56	97	17	25	7	26	14	15	36	78	0
+new	forward	lk	90	0	stand guard	2204	27	7	29	35	0x161c2e	56	97	17	25	7	5	14	15	36	78	0
+new	forward	lk	90	0	crouch guard	2204	28	7	15	21	0x161c2e	56	97	17	25							
+new	forward	lk	90	0	crouch	2204	28	7	15	21	0x161c2e	56	97	17	25							
+new	forward	lk	190	0	high target	2204	27	11	19	25	0x161c2e	56	97	17	25							
+new	forward	lk	90	1	stand	2205	29	7	29	35	0x161c2e	56	97	17	25	7	22	14	15	36	78	0
+new	forward	lk	90	1	stand guard	2205	29	7	29	35	0x161c2e	56	97	17	25	7	4	14	15	36	78	0
+new	forward	lk	90	1	crouch guard	2205	29	7	15	21	0x161c2e	56	97	17	25							
+new	forward	lk	90	1	crouch	2205	29	7	15	21	0x161c2e	56	97	17	25							
+new	forward	lk	190	1	high target	2205	27	11	19	25	0x161c2e	56	97	17	25							
+new	forward	mk	90	0	stand	2204	27	7	29	35	0x161cc2	56	97	17	25	7	27	14	15	36	78	0
+new	forward	mk	90	0	stand guard	2204	27	7	29	35	0x161cc2	56	97	17	25	7	6	14	15	36	78	0
+new	forward	mk	90	0	crouch guard	2204	28	7	15	21	0x161cc2	56	97	17	25							
+new	forward	mk	90	0	crouch	2204	28	7	15	21	0x161cc2	56	97	17	25							
+new	forward	mk	190	0	high target	2204	27	12	20	26	0x161cc2	56	97	17	25							
+new	forward	mk	90	1	stand	2205	29	7	29	35	0x161cc2	56	97	17	25	7	24	14	15	36	78	0
+new	forward	mk	90	1	stand guard	2205	29	7	29	35	0x161cc2	56	97	17	25	7	5	14	15	36	78	0
+new	forward	mk	90	1	crouch guard	2205	29	7	15	21	0x161cc2	56	97	17	25							
+new	forward	mk	90	1	crouch	2205	29	7	15	21	0x161cc2	56	97	17	25							
+new	forward	mk	190	1	high target	2205	27	12	20	26	0x161cc2	56	97	17	25							
+new	forward	hk	90	0	stand	2204	27	7	29	35	0x161d56	56	97	17	25	7	31	14	15	36	78	0
+new	forward	hk	90	0	stand guard	2204	27	7	29	35	0x161d56	56	97	17	25	7	6	14	15	36	78	0
+new	forward	hk	90	0	crouch guard	2204	28	7	15	21	0x161d56	56	97	17	25							
+new	forward	hk	90	0	crouch	2204	28	7	15	21	0x161d56	56	97	17	25							
+new	forward	hk	190	0	high target	2204	27	12	20	26	0x161d56	56	97	17	25							
+new	forward	hk	90	1	stand	2205	29	7	29	35	0x161d56	56	97	17	25	7	27	14	15	36	78	0
+new	forward	hk	90	1	stand guard	2205	29	7	29	35	0x161d56	56	97	17	25	7	5	14	15	36	78	0
+new	forward	hk	90	1	crouch guard	2205	29	7	15	21	0x161d56	56	97	17	25							
+new	forward	hk	90	1	crouch	2205	29	7	15	21	0x161d56	56	97	17	25							
+new	forward	hk	190	1	high target	2205	27	12	20	26	0x161d56	56	97	17	25							
+new	down-forward	lp	120	0	stand	2204	28	9	29	35	0x161e02	56	23	51	22	9	27	14	15	95	80	55
+new	down-forward	lp	120	0	stand guard	2204	28	9	29	35	0x161e02	56	23	51	22	9	26	14	15	95	82	55
+new	down-forward	lp	120	0	crouch guard	2204	28	9	29	35	0x161e02	56	23	51	22	9	6	14	15	36	78	0
+new	down-forward	lp	120	0	crouch	2204	28	9	29	35	0x161e02	56	23	51	22	9	25	14	15	95	80	55
+new	down-forward	lp	190	0	high target	2204	27	11	17	23	0x161e02	56	23	51	22							
+new	down-forward	lp	120	1	stand	2205	29	9	29	35	0x161e02	56	23	51	22	9	24	14	15	95	80	55
+new	down-forward	lp	120	1	stand guard	2205	29	9	29	35	0x161e02	56	23	51	22	9	26	14	15	95	82	55
+new	down-forward	lp	120	1	crouch guard	2205	29	9	29	35	0x161e02	56	23	51	22	9	6	14	15	36	78	0
+new	down-forward	lp	120	1	crouch	2205	29	9	29	35	0x161e02	56	23	51	22	9	25	14	15	95	80	55
+new	down-forward	lp	190	1	high target	2205	27	11	17	23	0x161e02	56	23	51	22							
+new	down-forward	mp	120	0	stand	2204	28	10	31	37	0x161ec6	56	23	51	22	10	26	14	15	95	80	55
+new	down-forward	mp	120	0	stand guard	2204	28	10	31	37	0x161ec6	56	23	51	22	10	26	14	15	95	82	55
+new	down-forward	mp	120	0	crouch guard	2204	28	10	31	37	0x161ec6	56	23	51	22	10	6	14	15	36	78	0
+new	down-forward	mp	120	0	crouch	2204	28	10	31	37	0x161ec6	56	23	51	22	10	26	14	15	95	80	55
+new	down-forward	mp	190	0	high target	2204	27	16	23	29	0x161ec6	56	23	51	22							
+new	down-forward	mp	120	1	stand	2205	29	10	31	37	0x161ec6	56	23	51	22	10	27	14	15	95	80	55
+new	down-forward	mp	120	1	stand guard	2205	29	10	31	37	0x161ec6	56	23	51	22	10	25	14	15	95	82	55
+new	down-forward	mp	120	1	crouch guard	2205	29	10	31	37	0x161ec6	56	23	51	22	10	6	14	15	36	78	0
+new	down-forward	mp	120	1	crouch	2205	29	10	31	37	0x161ec6	56	23	51	22	10	26	14	15	95	80	55
+new	down-forward	mp	190	1	high target	2205	27	16	23	29	0x161ec6	56	23	51	22							
+new	down-forward	hp	120	0	stand	2204	28	12	34	42	0x161f8a	56	23	51	22	12	27	14	15	95	80	55
+new	down-forward	hp	120	0	stand guard	2204	28	12	34	42	0x161f8a	56	23	51	22	12	27	14	15	95	82	55
+new	down-forward	hp	120	0	crouch guard	2204	28	12	34	42	0x161f8a	56	23	51	22	12	6	14	15	36	78	0
+new	down-forward	hp	120	0	crouch	2204	28	12	34	42	0x161f8a	56	23	51	22	12	27	14	15	95	80	55
+new	down-forward	hp	190	0	high target	2204	27	18	26	34	0x161f8a	56	23	51	22							
+new	down-forward	hp	120	1	stand	2205	29	12	34	42	0x161f8a	56	23	51	22	12	27	14	15	95	80	55
+new	down-forward	hp	120	1	stand guard	2205	29	12	34	42	0x161f8a	56	23	51	22	12	26	14	15	95	82	55
+new	down-forward	hp	120	1	crouch guard	2205	29	12	34	42	0x161f8a	56	23	51	22	12	6	14	15	36	78	0
+new	down-forward	hp	120	1	crouch	2205	29	12	34	42	0x161f8a	56	23	51	22	12	27	14	15	95	80	55
+new	down-forward	hp	190	1	high target	2205	27	18	26	34	0x161f8a	56	23	51	22							
+new	down-forward	lk	120	0	stand	2204	28	6	26	32	0x162036	65	103	18	23	6	24	14	15	127	126	57
+new	down-forward	lk	120	0	stand guard	2204	28	6	26	32	0x162036	65	103	18	23	6	6	14	15	36	78	0
+new	down-forward	lk	120	0	crouch guard	2204	28	6	12	18	0x162036	65	103	18	23							
+new	down-forward	lk	120	0	crouch	2204	28	6	12	18	0x162036	65	103	18	23							
+new	down-forward	lk	190	0	high target	2204	27	8	14	21	0x162036	65	103	18	23							
+new	down-forward	lk	120	1	stand	2205	29	6	26	32	0x162036	65	103	18	23	6	27	14	15	127	126	57
+new	down-forward	lk	120	1	stand guard	2205	29	6	26	32	0x162036	65	103	18	23	6	6	14	15	36	78	0
+new	down-forward	lk	120	1	crouch guard	2205	29	6	12	18	0x162036	65	103	18	23							
+new	down-forward	lk	120	1	crouch	2205	29	6	12	18	0x162036	65	103	18	23							
+new	down-forward	lk	190	1	high target	2205	27	8	14	21	0x162036	65	103	18	23							
+new	down-forward	mk	120	0	stand	2204	28	7	28	34	0x1620ca	65	103	18	23	7	29	14	15	127	126	57
+new	down-forward	mk	120	0	stand guard	2204	28	7	28	34	0x1620ca	65	103	18	23	7	7	14	15	36	78	0
+new	down-forward	mk	120	0	crouch guard	2204	28	7	14	20	0x1620ca	65	103	18	23							
+new	down-forward	mk	120	0	crouch	2204	28	7	14	20	0x1620ca	65	103	18	23							
+new	down-forward	mk	190	0	high target	2204	27	13	20	26	0x1620ca	65	103	18	23							
+new	down-forward	mk	120	1	stand	2205	29	7	28	34	0x1620ca	65	103	18	23	7	26	14	15	127	126	57
+new	down-forward	mk	120	1	stand guard	2205	29	7	28	34	0x1620ca	65	103	18	23	7	7	14	15	36	78	0
+new	down-forward	mk	120	1	crouch guard	2205	29	7	14	20	0x1620ca	65	103	18	23							
+new	down-forward	mk	120	1	crouch	2205	29	7	14	20	0x1620ca	65	103	18	23							
+new	down-forward	mk	190	1	high target	2205	27	13	20	26	0x1620ca	65	103	18	23							
+new	down-forward	hk	120	0	stand	2204	28	8	30	36	0x16215e	65	103	18	23	8	27	14	15	127	126	57
+new	down-forward	hk	120	0	stand guard	2204	28	8	30	36	0x16215e	65	103	18	23	8	6	14	15	36	78	0
+new	down-forward	hk	120	0	crouch guard	2204	28	8	16	22	0x16215e	65	103	18	23							
+new	down-forward	hk	120	0	crouch	2204	28	8	16	22	0x16215e	65	103	18	23							
+new	down-forward	hk	190	0	high target	2204	27	14	22	28	0x16215e	65	103	18	23							
+new	down-forward	hk	120	1	stand	2205	29	8	30	36	0x16215e	65	103	18	23	8	31	14	15	127	126	57
+new	down-forward	hk	120	1	stand guard	2205	29	8	30	36	0x16215e	65	103	18	23	8	6	14	15	36	78	0
+new	down-forward	hk	120	1	crouch guard	2205	29	8	16	22	0x16215e	65	103	18	23							
+new	down-forward	hk	120	1	crouch	2205	29	8	16	22	0x16215e	65	103	18	23							
+new	down-forward	hk	190	1	high target	2205	27	14	22	28	0x16215e	65	103	18	23							
+old	forward	lp	90	0	stand	2204	27	5	27	37	0x1f2fb0	62	61	49	16	5	28	14	15	134	140	77
+old	forward	lp	90	0	stand guard	2204	27	5	27	37	0x1f2fb0	62	61	49	16	5	7	14	15	36	78	0
+old	forward	lp	90	0	crouch guard	2204	27	5	27	37	0x1f2fb0	62	61	49	16	5	7	14	15	36	78	0
+old	forward	lp	90	0	crouch	2204	27	5	27	37	0x1f2fb0	62	61	49	16	5	26	14	15	134	140	77
+old	forward	lp	190	0	high target	2204	30	11	19	29	0x1f2fb0	62	61	49	16							
+old	forward	lp	90	1	stand	2205	30	5	27	37	0x1f2fb0	62	61	49	16	5	24	14	15	134	140	77
+old	forward	lp	90	1	stand guard	2205	30	5	27	37	0x1f2fb0	62	61	49	16	5	7	14	15	36	78	0
+old	forward	lp	90	1	crouch guard	2205	30	5	27	37	0x1f2fb0	62	61	49	16	5	6	14	15	36	78	0
+old	forward	lp	90	1	crouch	2205	30	5	27	37	0x1f2fb0	62	61	49	16	5	24	14	15	134	140	77
+old	forward	lp	190	1	high target	2205	29	11	19	29	0x1f2fb0	62	61	49	16							
+old	forward	mp	90	0	stand	2204	27	5	27	37	0x1f305c	62	61	49	16	5	30	14	15	36	78	0
+old	forward	mp	90	0	stand guard	2204	27	5	27	37	0x1f305c	62	61	49	16	5	7	14	15	36	78	0
+old	forward	mp	90	0	crouch guard	2204	27	5	27	37	0x1f305c	62	61	49	16	5	7	14	15	36	78	0
+old	forward	mp	90	0	crouch	2204	27	5	27	37	0x1f305c	62	61	49	16	5	27	14	15	36	78	0
+old	forward	mp	190	0	high target	2204	30	12	20	30	0x1f305c	62	61	49	16							
+old	forward	mp	90	1	stand	2205	30	5	27	37	0x1f305c	62	61	49	16	5	26	14	15	36	78	0
+old	forward	mp	90	1	stand guard	2205	30	5	27	37	0x1f305c	62	61	49	16	5	7	14	15	36	78	0
+old	forward	mp	90	1	crouch guard	2205	30	5	27	37	0x1f305c	62	61	49	16	5	6	14	15	36	78	0
+old	forward	mp	90	1	crouch	2205	30	5	27	37	0x1f305c	62	61	49	16	5	26	14	15	36	78	0
+old	forward	mp	190	1	high target	2205	29	12	20	30	0x1f305c	62	61	49	16							
+old	forward	hp	90	0	stand	2204	27	5	27	37	0x1f3108	62	61	49	16	5	32	14	15	36	78	0
+old	forward	hp	90	0	stand guard	2204	27	5	27	37	0x1f3108	62	61	49	16	5	8	14	15	36	78	0
+old	forward	hp	90	0	crouch guard	2204	27	5	27	37	0x1f3108	62	61	49	16	5	8	14	15	36	78	0
+old	forward	hp	90	0	crouch	2204	27	5	27	37	0x1f3108	62	61	49	16	5	29	14	15	36	78	0
+old	forward	hp	190	0	high target	2204	30	13	21	31	0x1f3108	62	61	49	16							
+old	forward	hp	90	1	stand	2205	30	5	27	37	0x1f3108	62	61	49	16	5	27	14	15	36	78	0
+old	forward	hp	90	1	stand guard	2205	30	5	27	37	0x1f3108	62	61	49	16	5	8	14	15	36	78	0
+old	forward	hp	90	1	crouch guard	2205	30	5	27	37	0x1f3108	62	61	49	16	5	6	14	15	36	78	0
+old	forward	hp	90	1	crouch	2205	30	5	27	37	0x1f3108	62	61	49	16	5	27	14	15	36	78	0
+old	forward	hp	190	1	high target	2205	29	13	21	31	0x1f3108	62	61	49	16							
+old	forward	lk	90	0	stand	2204	27	7	29	35	0x1f31b4	56	97	17	25	7	25	14	15	36	78	0
+old	forward	lk	90	0	stand guard	2204	27	7	29	35	0x1f31b4	56	97	17	25	7	6	14	15	36	78	0
+old	forward	lk	90	0	crouch guard	2204	27	7	15	21	0x1f31b4	56	97	17	25							
+old	forward	lk	90	0	crouch	2204	27	7	15	21	0x1f31b4	56	97	17	25							
+old	forward	lk	190	0	high target	2204	30	11	19	25	0x1f31b4	56	97	17	25							
+old	forward	lk	90	1	stand	2205	30	7	29	35	0x1f31b4	56	97	17	25	7	26	14	15	36	78	0
+old	forward	lk	90	1	stand guard	2205	30	7	29	35	0x1f31b4	56	97	17	25	7	6	14	15	36	78	0
+old	forward	lk	90	1	crouch guard	2205	30	7	15	21	0x1f31b4	56	97	17	25							
+old	forward	lk	90	1	crouch	2205	30	7	15	21	0x1f31b4	56	97	17	25							
+old	forward	lk	190	1	high target	2205	29	11	19	25	0x1f31b4	56	97	17	25							
+old	forward	mk	90	0	stand	2204	27	7	29	35	0x1f3248	56	97	17	25	7	27	14	15	36	78	0
+old	forward	mk	90	0	stand guard	2204	27	7	29	35	0x1f3248	56	97	17	25	7	7	14	15	36	78	0
+old	forward	mk	90	0	crouch guard	2204	27	7	15	21	0x1f3248	56	97	17	25							
+old	forward	mk	90	0	crouch	2204	27	7	15	21	0x1f3248	56	97	17	25							
+old	forward	mk	190	0	high target	2204	30	12	20	26	0x1f3248	56	97	17	25							
+old	forward	mk	90	1	stand	2205	30	7	29	35	0x1f3248	56	97	17	25	7	27	14	15	36	78	0
+old	forward	mk	90	1	stand guard	2205	30	7	29	35	0x1f3248	56	97	17	25	7	6	14	15	36	78	0
+old	forward	mk	90	1	crouch guard	2205	30	7	15	21	0x1f3248	56	97	17	25							
+old	forward	mk	90	1	crouch	2205	30	7	15	21	0x1f3248	56	97	17	25							
+old	forward	mk	190	1	high target	2205	29	12	20	26	0x1f3248	56	97	17	25							
+old	forward	hk	90	0	stand	2204	27	7	29	35	0x1f32dc	56	97	17	25	7	30	14	15	36	78	0
+old	forward	hk	90	0	stand guard	2204	27	7	29	35	0x1f32dc	56	97	17	25	7	8	14	15	36	78	0
+old	forward	hk	90	0	crouch guard	2204	27	7	15	21	0x1f32dc	56	97	17	25							
+old	forward	hk	90	0	crouch	2204	27	7	15	21	0x1f32dc	56	97	17	25							
+old	forward	hk	190	0	high target	2204	30	12	20	26	0x1f32dc	56	97	17	25							
+old	forward	hk	90	1	stand	2205	30	7	29	35	0x1f32dc	56	97	17	25	7	31	14	15	36	78	0
+old	forward	hk	90	1	stand guard	2205	30	7	29	35	0x1f32dc	56	97	17	25	7	7	14	15	36	78	0
+old	forward	hk	90	1	crouch guard	2205	30	7	15	21	0x1f32dc	56	97	17	25							
+old	forward	hk	90	1	crouch	2205	30	7	15	21	0x1f32dc	56	97	17	25							
+old	forward	hk	190	1	high target	2205	29	12	20	26	0x1f32dc	56	97	17	25							
+old	down-forward	lp	120	0	stand																	
+old	down-forward	lp	120	0	stand guard																	
+old	down-forward	lp	120	0	crouch guard																	
+old	down-forward	lp	120	0	crouch																	
+old	down-forward	lp	190	0	high target																	
+old	down-forward	lp	120	1	stand																	
+old	down-forward	lp	120	1	stand guard																	
+old	down-forward	lp	120	1	crouch guard																	
+old	down-forward	lp	120	1	crouch																	
+old	down-forward	lp	190	1	high target																	
+old	down-forward	mp	120	0	stand																	
+old	down-forward	mp	120	0	stand guard																	
+old	down-forward	mp	120	0	crouch guard																	
+old	down-forward	mp	120	0	crouch																	
+old	down-forward	mp	190	0	high target																	
+old	down-forward	mp	120	1	stand																	
+old	down-forward	mp	120	1	stand guard																	
+old	down-forward	mp	120	1	crouch guard																	
+old	down-forward	mp	120	1	crouch																	
+old	down-forward	mp	190	1	high target																	
+old	down-forward	hp	120	0	stand																	
+old	down-forward	hp	120	0	stand guard																	
+old	down-forward	hp	120	0	crouch guard																	
+old	down-forward	hp	120	0	crouch																	
+old	down-forward	hp	190	0	high target																	
+old	down-forward	hp	120	1	stand																	
+old	down-forward	hp	120	1	stand guard																	
+old	down-forward	hp	120	1	crouch guard																	
+old	down-forward	hp	120	1	crouch																	
+old	down-forward	hp	190	1	high target																	
+old	down-forward	lk	120	0	stand																	
+old	down-forward	lk	120	0	stand guard																	
+old	down-forward	lk	120	0	crouch guard																	
+old	down-forward	lk	120	0	crouch																	
+old	down-forward	lk	190	0	high target																	
+old	down-forward	lk	120	1	stand																	
+old	down-forward	lk	120	1	stand guard																	
+old	down-forward	lk	120	1	crouch guard																	
+old	down-forward	lk	120	1	crouch																	
+old	down-forward	lk	190	1	high target																	
+old	down-forward	mk	120	0	stand																	
+old	down-forward	mk	120	0	stand guard																	
+old	down-forward	mk	120	0	crouch guard																	
+old	down-forward	mk	120	0	crouch																	
+old	down-forward	mk	190	0	high target																	
+old	down-forward	mk	120	1	stand																	
+old	down-forward	mk	120	1	stand guard																	
+old	down-forward	mk	120	1	crouch guard																	
+old	down-forward	mk	120	1	crouch																	
+old	down-forward	mk	190	1	high target																	
+old	down-forward	hk	120	0	stand																	
+old	down-forward	hk	120	0	stand guard																	
+old	down-forward	hk	120	0	crouch guard																	
+old	down-forward	hk	120	0	crouch																	
+old	down-forward	hk	190	0	high target																	
+old	down-forward	hk	120	1	stand																	
+old	down-forward	hk	120	1	stand guard																	
+old	down-forward	hk	120	1	crouch guard																	
+old	down-forward	hk	120	1	crouch																	
+old	down-forward	hk	190	1	high target																	

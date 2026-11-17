@@ -1,8 +1,10 @@
 # Netplay
 
 Open **Multi Player → Online** to browse rooms, host a room, or enter a room
-code or IPv4 address. A room code contains the host's IPv4 address and UDP port;
-it is an address, rather than an account or invitation stored on a server.
+code or IPv4 address. A LAN address code (`SF1-…`) contains the host's IPv4
+address and UDP port; it is an address, rather than an account or invitation
+stored on a server. [Internet rooms](#internet-rooms) use a shorter code held
+by a relay.
 The default game port is **7000**. Codes for other ports include a final
 four-digit hexadecimal port word.
 
@@ -56,6 +58,47 @@ leave observation, while the combatants control match decisions.
 **Settings → Netplay** holds the player tag, input delay, maximum rollback,
 wired preference, HUD mode and game port. AUTO input delay uses the measured
 round-trip time: one frame per 34 milliseconds, capped at four frames.
+
+## Internet rooms
+
+In **Host Match**, **VISIBILITY** starts on **INTERNET CODE**. Step right to
+**PUBLIC** or **PRIVATE** for a room on the local network instead; those need
+no relay and keep working when the relay is down. Opening an Internet room
+connects to the relay, and the room code appears
+only once the relay has the room ready. An Internet room code has six letters
+and digits, such as `K7Q-MPX`. It never uses 0, O, 1, I or L, so it cannot be
+mistaken for a LAN address code. Guests enter or paste it in **Direct Join**
+in any case, with or without the dash.
+
+Both players connect out to the relay over QUIC on UDP, so neither needs port
+forwarding. The game checks the relay's certificate against the public web
+authorities and refuses a relay it cannot verify. The relay forwards the same
+rollback packets between the members of one room only. The host keeps the
+same room and code through fighter select, the match, Rematch and Reselect.
+Leaving closes the room and expires its code.
+
+### Choosing a relay
+
+**Settings → Netplay → RELAY** shows the selected relay. A fresh install uses
+the project's default relay, `RELAY.ALMAMOTO.COM`, which runs in US East
+(Virginia). Nothing needs setting up to host or join an Internet room.
+
+To use a community relay, confirm on **RELAY**, type its host name with an
+optional port (`RELAY.EXAMPLE.NET` or `RELAY.EXAMPLE.NET:9000`) and confirm.
+The port defaults to 7443. To restore the default, save an empty entry or use
+**RESET TAB**. The setting is saved as `relay = "relay.example.net"` in
+`settings.toml`.
+
+A code belongs to the relay that issued it, so both players must select the
+same relay. The game looks a code up only on the selected relay and never
+tries another one. When a lookup or connection fails, the message names the
+relay that was asked. A change of relay applies to the next room.
+
+The relay limits each room to the host and fifteen guests. It closes rooms
+after 15 idle minutes or 12 hours, throttles room creation and joins per
+address (failed joins count), and budgets each connection's traffic. It logs
+room and connection counts, never codes or gameplay. To run your own, follow
+[Running a relay](relay-deployment.md).
 
 ## Optional community directory
 
