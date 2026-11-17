@@ -2779,13 +2779,19 @@ fn edge(prev: bool, now: bool) -> bool {
 }
 
 /// The attract opens the menu on any Start: the menu Start, the menu
-/// confirm, or either cabinet start. Attack buttons do nothing, as on the
-/// cabinet.
+/// confirm, or either cabinet start; and on either player's attack buttons,
+/// so any button skips the opening (George, 2026-11-17). Directions do
+/// nothing.
 fn attract_start(prev: &FrameInputs, now: &FrameInputs) -> bool {
+    let attack = |before: &PlayerInputs, after: &PlayerInputs| {
+        (0..6).any(|button| edge(before.buttons[button], after.buttons[button]))
+    };
     any_menu_edge(prev, now, |m| m.start)
         || any_menu_edge(prev, now, |m| m.confirm)
         || edge(prev.cabinet[2], now.cabinet[2])
         || edge(prev.cabinet[3], now.cabinet[3])
+        || attack(&prev.p1, &now.p1)
+        || attack(&prev.p2, &now.p2)
 }
 
 /// A side's pad menu button's edge (`key` picks the button).

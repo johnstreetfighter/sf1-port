@@ -278,7 +278,7 @@ fn country_select_music_works_without_the_local_title_score() {
 }
 
 #[test]
-fn start_waits_for_the_ram_clear_and_every_start_source_opens_the_menu() {
+fn start_waits_for_the_ram_clear_and_every_start_source_and_button_opens_the_menu() {
     let Some(_) = assets() else { return };
     let mut s = session(load_assets(ROMS, MANIFEST).unwrap());
     // Frame 1 still runs the reset's RAM clear: Start there is ignored.
@@ -302,14 +302,36 @@ fn start_waits_for_the_ram_clear_and_every_start_source_opens_the_menu() {
         set(&mut input);
         assert_eq!(s.step(input).screen, "main menu");
     }
-    // An attack button is not Start.
+    // Any attack button skips the opening too (George, 2026-11-17); a
+    // direction alone does not.
+    for player in 0..2 {
+        for button in 0..6 {
+            let mut s = session(load_assets(ROMS, MANIFEST).unwrap());
+            for _ in 0..100 {
+                s.step(idle());
+            }
+            let mut press = idle();
+            if player == 0 { press.p1.buttons[button] = true } else { press.p2.buttons[button] = true }
+            let out = s.step(press);
+            assert_eq!(
+                (out.screen, out.transition),
+                ("main menu", Some(Transition::OpenMainMenu)),
+                "P{} button {button}", player + 1,
+            );
+        }
+    }
     let mut s = session(load_assets(ROMS, MANIFEST).unwrap());
     for _ in 0..100 {
         s.step(idle());
     }
-    let mut lp = idle();
-    lp.p1.buttons[0] = true;
-    assert_eq!(s.step(lp).screen, "attract");
+    assert_eq!(s.step(p_dir(1, RIGHT)).screen, "attract");
+    // A button held since before the RAM clear ended is not a new press.
+    let mut s = session(load_assets(ROMS, MANIFEST).unwrap());
+    let mut held = idle();
+    held.p1.buttons[0] = true;
+    for _ in 0..5 {
+        assert_eq!(s.step(held).screen, "attract");
+    }
 }
 
 #[test]
