@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use sf_engine::config::MatchConfig;
 use sf_engine::front::settings::Settings;
 use sf_engine::front::{FrameInputs, GameSession};
-use sf_engine::netplay::{NetPacket, NetTransportCommand as Command, NetTransportEvent as Event, RoomKind};
+use sf_engine::netplay::{Link, NetPacket, NetTransportCommand as Command, NetTransportEvent as Event, RoomKind};
 use sf_engine::roster::MenuInput;
 use sf_host::net::HostNetDriver;
 use sf_video::art::{load_art_from, ArtSources};
@@ -92,6 +92,10 @@ struct Room {
 
 impl Room {
     fn host(kind: RoomKind) -> Self {
+        Self::host_with(kind, false)
+    }
+
+    fn host_with(kind: RoomKind, wired_only: bool) -> Self {
         let relay = relay::TestRelay::start();
         let settings = Settings { relay: Some(relay.address()), ..Settings::default() };
         let template = session(kind).with_settings(settings);
@@ -112,9 +116,12 @@ impl Room {
             pulse(host, MenuInput::Right);
         }
         // VISIBILITY opens on INTERNET CODE once a relay is set.
-        for _ in 0..3 {
-            pulse(host, MenuInput::Down);
+        pulse(host, MenuInput::Down);
+        pulse(host, MenuInput::Down);
+        if wired_only {
+            pulse(host, MenuInput::Right);
         }
+        pulse(host, MenuInput::Down);
         pulse(host, MenuInput::Confirm);
         let deadline = Instant::now() + Duration::from_secs(6);
         while room.peers[0].room_code_for_copy().is_none() {
@@ -127,9 +134,14 @@ impl Room {
 
     /// A new peer joins by the room's code; returns its index.
     fn join(&mut self, role: Role) -> usize {
+        self.join_linked(role, Link::Ethernet)
+    }
+
+    /// As [`Self::join`], over a link the peer's transport reports as `link`.
+    fn join_linked(&mut self, role: Role, link: Link) -> usize {
         let id = self.peers.len();
         self.peers.push(self.template.clone());
-        self.drivers.push(self.relay.driver());
+        self.drivers.push(self.relay.driver_linked(link));
         self.errors.push(Vec::new());
         let peer = &mut self.peers[id];
         online(peer);
@@ -359,4 +371,32 @@ fn a_host_who_leaves_mid_match_returns_everyone_to_a_lobby_that_works() {
         std::thread::sleep(Duration::from_millis(1));
     }
     assert_eq!(room.peers[challenger].screen(), "online");
+}
+
+/// #127: Wired Only needs verified Ethernet. An unknown link is reported as
+/// Wi-Fi, so it is turned away there and welcome in an ordinary room.
+#[test]
+fn a_wired_only_internet_room_admits_ethernet_and_refuses_an_unverified_link() {
+    let mut room = Room::host_with(RoomKind::Versus, true);
+    let wireless = room.join_linked(Role::Player, Link::Wifi);
+    room.wait("the unverified link is turned away", 3_000, |room| {
+        room.peers[wireless].notice() == Some("WIRED ONLY REQUIRES ETHERNET")
+    });
+    assert_eq!(room.peers[wireless].screen(), "online");
+    assert_eq!(room.peers[0].screen(), "online", "the host keeps waiting for a challenger");
+
+    let wired = room.join_linked(Role::Player, Link::Ethernet);
+    room.wait("the wired challenger is admitted", 3_000, |room| {
+        room.peers[0].screen() == "select" && room.peers[wired].screen() == "select"
+    });
+}
+
+#[test]
+fn an_ordinary_internet_room_admits_an_unverified_link() {
+    let mut room = Room::host(RoomKind::Versus);
+    let wireless = room.join_linked(Role::Player, Link::Wifi);
+    room.wait("the challenger is admitted", 3_000, |room| {
+        room.peers[0].screen() == "select" && room.peers[wireless].screen() == "select"
+    });
+    assert!(room.errors.iter().all(Vec::is_empty), "{:?}", room.errors);
 }

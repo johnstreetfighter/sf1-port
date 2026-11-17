@@ -2,7 +2,7 @@
 use std::net::{Ipv4Addr, SocketAddr};
 
 use sf_engine::netplay::Link;
-use sf_host::net::{HostNetDriver, NetDriverConfig};
+use sf_host::net::{AdapterProbe, HostNetDriver, NetDriverConfig};
 use sf_relay::client::{ClientConfig, ClientEvent, RelayClient, Roots};
 use sf_relay::wire::Request;
 use sf_relay::RoomCode;
@@ -39,13 +39,31 @@ impl TestRelay {
 
     /// A driver set to this relay that trusts only `trusted`' certificates.
     pub fn driver_trusting(&self, trusted: &[&TestRelay]) -> HostNetDriver {
+        self.driver_with(trusted, Some(Link::Ethernet), None)
+    }
+
+    /// A driver whose link to this relay is reported as `link`.
+    #[allow(dead_code)]
+    pub fn driver_linked(&self, link: Link) -> HostNetDriver {
+        self.driver_with(&[self], Some(link), None)
+    }
+
+    /// A driver that classifies its link to this relay by asking `probe`.
+    #[allow(dead_code)]
+    pub fn driver_probing(&self, probe: AdapterProbe) -> HostNetDriver {
+        self.driver_with(&[self], None, Some(probe))
+    }
+
+    fn driver_with(&self, trusted: &[&TestRelay], link: Option<Link>, probe: Option<AdapterProbe>) -> HostNetDriver {
+        let defaults = NetDriverConfig::default();
         let mut driver = HostNetDriver::with_config(NetDriverConfig {
             bind_ip: Ipv4Addr::LOCALHOST,
-            link_override: Some(Link::Ethernet),
+            link_override: link,
+            adapter_probe: probe.unwrap_or(defaults.adapter_probe),
             discovery_port: 0,
             discovery_targets: Vec::new(),
             relay_roots: Roots::Only(trusted.iter().map(|relay| relay.certificate.clone()).collect()),
-            ..NetDriverConfig::default()
+            ..defaults
         });
         driver.set_relay(Some(self.address()));
         driver

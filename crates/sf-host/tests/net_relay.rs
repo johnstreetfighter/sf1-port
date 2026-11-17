@@ -9,7 +9,7 @@ use sf_engine::netplay::{
     RoomKind, SyncedMatchRules,
 };
 use sf_engine::roster::{StagePick, TournamentFighter};
-use sf_host::net::HostNetDriver;
+use sf_host::net::{AdapterInfo, AdapterQuery, HostNetDriver};
 
 #[path = "support/relay.rs"]
 mod relay;
@@ -286,4 +286,45 @@ fn a_relay_whose_certificate_is_not_trusted_is_refused_by_name() {
     assert!(message.starts_with(&format!("RELAY {} CONNECT", imposter.address())), "{message}");
     assert_eq!(imposter.service.open_rooms(), 0);
     assert_eq!(imposter.service.connections(), 0);
+}
+
+fn wired_route_to_the_relay(query: AdapterQuery) -> std::io::Result<AdapterInfo> {
+    // The link that matters is the one that routes to the relay itself.
+    match query {
+        AdapterQuery::Peer { target, .. } if target.is_loopback() => {
+            Ok(AdapterInfo { ip: std::net::Ipv4Addr::LOCALHOST, link: Link::Ethernet })
+        }
+        other => Err(std::io::Error::other(format!("unexpected adapter query {other:?}"))),
+    }
+}
+
+fn no_adapter_answer(_: AdapterQuery) -> std::io::Result<AdapterInfo> {
+    Err(std::io::Error::other("no adapter answered"))
+}
+
+/// #127: an Internet room reports the adapter that routes to the relay.
+#[test]
+fn an_internet_room_reports_the_link_that_routes_to_the_relay() {
+    let relay = TestRelay::start();
+    let mut host = relay.driver_probing(wired_route_to_the_relay);
+    let event = until(&mut host, &[Command::HostInternetRoom { room: announcement(false) }], |event| {
+        matches!(event, Event::Bound { .. })
+    });
+    assert_eq!(bound(event).1, Link::Ethernet);
+}
+
+/// #127: a link that cannot be classified does not stop an Internet room. It
+/// is reported as Wi-Fi, so only verified Ethernet satisfies Wired Only.
+#[test]
+fn an_internet_room_opens_on_an_unknown_link_and_reports_it_as_wifi() {
+    let relay = TestRelay::start();
+    let mut host = relay.driver_probing(no_adapter_answer);
+    let event = until(&mut host, &[Command::HostInternetRoom { room: announcement(false) }], |event| {
+        matches!(event, Event::Bound { .. })
+    });
+    let (code, link) = bound(event);
+    assert_eq!(link, Link::Wifi);
+    let mut guest = relay.driver_probing(no_adapter_answer);
+    let event = until(&mut guest, &[Command::JoinInternetRoom { code }], |event| matches!(event, Event::Bound { .. }));
+    assert_eq!(bound(event).1, Link::Wifi);
 }
