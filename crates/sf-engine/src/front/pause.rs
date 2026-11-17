@@ -453,7 +453,7 @@ fn value_direction(item: MenuItem, input: MenuInput) -> Option<Option<ValueDirec
     match item {
         MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::LivePreset
         | MenuItem::TrainingDrill | MenuItem::ComboTrial => Some(ValueDirection::from_input(input)),
-        MenuItem::MoveEffects | MenuItem::HoldCombo | MenuItem::FillMeters => Some(None),
+        MenuItem::HoldCombo | MenuItem::FillMeters => Some(None),
         _ => None,
     }
 }
