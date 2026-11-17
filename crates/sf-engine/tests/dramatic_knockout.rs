@@ -133,32 +133,35 @@ fn a_knocked_out_boss_stays_on_the_screen() {
     for boss in [TournamentFighter::Geki, TournamentFighter::Ken] {
         let Some((assets, mut fight)) = ready_fight(boss, LifebarMode::Independent) else { return };
         knock_out_the_boss(&mut fight, &assets, [true, true]);
-        // On the knockout's own frame, stand the boss by the edge of the
-        // screen it is about to be knocked toward: away from ally 1.
-        let telemetry = fight.machine().diagnostic_telemetry();
-        let rightward = telemetry.p2.center_x > telemetry.p1.center_x;
-        let edge = if rightward { right_edge - 24 } else { VISAREA_X as i32 + 24 };
-        shift_boss(&mut fight, edge - telemetry.p2.center_x);
-        let mut path = vec![boss_centre(&fight)];
-        let mut flows = std::collections::BTreeSet::new();
-        for _ in 0..900 {
-            step(&mut fight, &assets);
-            let flow = flow_position(fight.machine());
-            flows.insert(flow);
-            if flow == VICTORY_LOOP {
-                break;
+        // On the knockout's own frame, stand the boss by each edge of the
+        // screen in turn: one of them is the edge it is knocked toward.
+        let knocked_out = fight;
+        let bounds = [VISAREA_X as i32 + 16, right_edge - 16];
+        let mut pinned = false;
+        for (bound, inset) in bounds.into_iter().zip([8, -8]) {
+            let mut fight = knocked_out.clone();
+            let dx = bound + inset - boss_centre(&fight);
+            shift_boss(&mut fight, dx);
+            let mut path = vec![boss_centre(&fight)];
+            let mut flows = std::collections::BTreeSet::new();
+            for _ in 0..900 {
+                step(&mut fight, &assets);
+                let flow = flow_position(fight.machine());
+                flows.insert(flow);
+                if flow == VICTORY_LOOP {
+                    break;
+                }
+                path.push(boss_centre(&fight));
             }
-            path.push(boss_centre(&fight));
+            assert!(flows.contains(&VICTORY_LOOP), "{boss:?}'s knockout reached the victory pose: {flows:x?}");
+            assert!(path.len() > 8, "{boss:?}'s knockdown played out: {path:?}");
+            for (frame, x) in path.iter().enumerate() {
+                assert!(visible.contains(x), "{boss:?} left the screen at x={x} on frame {frame} of its knockout: {path:?}");
+            }
+            pinned |= path.last() == Some(&bound);
+            assert!(fight.machine().unrecovered().is_empty());
         }
-        eprintln!("{boss:?}: {flows:x?} {path:?}");
-        let travelled = path.last().unwrap() - path[0];
-        assert!(path.len() > 8, "{boss:?}'s knockdown played out: {path:?}");
-        eprintln!("{boss:?} was sent {} and travelled {travelled}", if rightward { "right" } else { "left" });
-        assert!(flows.contains(&VICTORY_LOOP), "{boss:?}'s knockout reached the victory pose: {flows:x?}");
-        for (frame, x) in path.iter().enumerate() {
-            assert!(visible.contains(x), "{boss:?} left the screen at x={x} on frame {frame} of its knockout: {path:?}");
-        }
-        assert!(fight.machine().unrecovered().is_empty());
+        assert!(pinned, "{boss:?} was knocked against an edge of the screen and held there");
     }
 }
 

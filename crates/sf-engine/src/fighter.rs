@@ -5404,19 +5404,23 @@ impl Bus<'_> {
         let world = fighters.map(|entity| camera + i32::from(self.center_x(entity) as i16) - origin);
         let alive = self.toggle_state.dramatic.health.map(|hp| hp != 0);
         let mut living = world.into_iter().zip(alive).filter_map(|(x, alive)| alive.then_some(x));
-        let Some(first) = living.next() else {
+        let span = living.next().map(|first| {
+            living.fold((first, first), |(min, max), x| (min.min(x), max.max(x)))
+        });
+        // With nobody standing this is a double knockout, or the health not
+        // yet set before a round: only a knocked-out fighter (+8 == 8)
+        // tells them apart.
+        if span.is_none() && !fighters.iter().any(|&entity| self.eb(entity, 8) == 8) {
             return;
-        };
-        let (min, max) = living.fold((first, first), |(min, max), x| (min.min(x), max.max(x)));
+        }
         // The knockout that ends the round (the boss down, or both allies)
         // plays out on a still screen with everyone held inside it, as the
         // 1987 screen edge holds a falling fighter. A fallen ally whose
         // partner fights on is held only by the ends of the stage.
         let decided = !alive[1] || (!alive[0] && !alive[2]);
-        let next = if decided {
-            camera
-        } else {
-            ((min + max - crate::dramatic::VIEW_W) / 2).clamp(0, 0x180)
+        let next = match span {
+            Some((min, max)) if !decided => ((min + max - crate::dramatic::VIEW_W) / 2).clamp(0, 0x180),
+            _ => camera,
         };
         let delta = (next - camera) as u16;
         self.ww(CAMERA, next as u16);
