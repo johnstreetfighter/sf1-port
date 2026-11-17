@@ -1024,6 +1024,12 @@ fn a_shared_stage_cycles_across_rematch_and_reselect_until_the_main_menu() {
     assert_eq!(choose(&mut s, 1), "select");
     lock_fighters(&mut s, Mode::Local);
     match_theme(&mut s, ThemeId::Goutetsu, 2);
+    for _ in 0..3_000 {
+        if s.fight().is_some_and(|fight| fight.round_live()) {
+            break;
+        }
+        s.step(idle());
+    }
     assert_eq!(tap(&mut s, with(|i| i.menu.start = true)), "pause");
     assert_eq!(choose(&mut s, 5), "main menu");
     assert_eq!(tap(&mut s, confirm()), "multi player");

@@ -825,6 +825,15 @@ impl GameSession {
         self.play.as_ref().map(|p| &p.fight)
     }
 
+    /// Draw the arcade's own sparks in the running fight (see
+    /// [`Fight::set_stock_move_effects`]), so a test can hold the presented
+    /// frame against the hardware's; nothing without a fight.
+    pub fn set_stock_move_effects(&mut self, stock: bool) {
+        if let Some(play) = &mut self.play {
+            play.fight.set_stock_move_effects(stock);
+        }
+    }
+
     /// The move list over the pause box, while it shows (the host and the
     /// tests read it; the panel layer is in [`FrameOutput::panel`]).
     pub fn move_list(&self) -> Option<&MovesPanel> {

@@ -599,6 +599,10 @@ fn spectator_pause_keeps_playback_live_and_has_no_restart_or_fighter_forfeit() {
         room.tick();
         if room.peers[2].fight().is_some_and(|fight| !fight.driving()) { break; }
     }
+    for _ in 0..3_000 {
+        if room.peers[2].fight().is_some_and(|fight| fight.round_live()) { break; }
+        room.tick();
+    }
     room.press(2, MenuInput::Start);
     assert_eq!(room.peers[2].screen(), "pause");
     let before = room.peers[2].spectator_frame().unwrap();

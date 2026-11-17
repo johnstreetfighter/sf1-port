@@ -421,6 +421,9 @@ fn play(
 ) -> u32 {
     let mut a = Pad::new(7 + tile(p1) as u64, p1.is_shoto(), RIGHT);
     let mut b = Pad::new(99 + tile(p2) as u64, p2.is_shoto(), LEFT);
+    // The presented frame is held against the scene's own render, so the
+    // arcade's own sparks stand in for the new move effects.
+    s.set_stock_move_effects(true);
     for f in 0..frames {
         let (d1, b1) = a.step(f);
         let (d2, b2) = b.step(f + 60);

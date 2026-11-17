@@ -513,6 +513,9 @@ fn clean_heavy_impact_survives_the_training_floor_and_respects_faithful() {
     for preset in [RulesetPreset::DefinitiveOverhaul, RulesetPreset::Faithful1987] {
         let Some(a) = assets() else { return };
         let mut s = training_dummy(a, preset, Settings::default());
+        // The spark's colour below is the arcade's own; the new move
+        // effects' drawing has its own tests.
+        s.set_stock_move_effects(true);
         let mut floor_hits = 0;
         for f in 0..1_200 {
             let before = health(s.fight_machine().unwrap(), Side::P2);

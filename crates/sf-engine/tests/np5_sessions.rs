@@ -138,6 +138,22 @@ impl Pair {
         pair
     }
 
+    /// A fight whose round is being fought: the pause box opens only then.
+    fn round_live() -> Self {
+        let mut pair = Self::fighting();
+        for _ in 0..3_000 {
+            if pair
+                .peers
+                .iter()
+                .all(|peer| peer.fight().is_some_and(|fight| fight.round_live()))
+            {
+                return pair;
+            }
+            pair.idle();
+        }
+        panic!("both real machines must reach the fight loop");
+    }
+
     fn start_fight(&mut self) {
         self.pulse(0, MenuInput::Confirm);
         for _ in 0..3_000 {
@@ -538,7 +554,7 @@ fn assert_live_neutral_step(
 
 #[test]
 fn online_pause_and_moves_keep_simulating_neutral_input_and_resume_without_a_held_frame() {
-    let mut paused = Pair::fighting();
+    let mut paused = Pair::round_live();
     let mut control = paused.clone();
     let opened = assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Start));
     assert_eq!(opened[1].screen, "pause");
@@ -1295,7 +1311,7 @@ fn rehosting_allocates_beyond_every_seen_epoch_and_retires_old_input_datagrams()
 
 #[test]
 fn quitting_a_live_match_sends_forfeit_returns_both_online_and_old_forfeits_stay_retired() {
-    let mut pair = Pair::fighting();
+    let mut pair = Pair::round_live();
     pair.pulse(1, MenuInput::Start);
     for _ in 0..4 {
         pair.pulse(1, MenuInput::Down);
@@ -1474,7 +1490,7 @@ fn a_confirmed_checksum_mismatch_logs_diagnostics_and_returns_to_online() {
 
 #[test]
 fn changing_a_local_look_online_keeps_the_clients_own_configuration_for_persistence() {
-    let mut pair = Pair::fighting();
+    let mut pair = Pair::round_live();
     assert_eq!(
         pair.peers[1].match_config().difficulty,
         2,

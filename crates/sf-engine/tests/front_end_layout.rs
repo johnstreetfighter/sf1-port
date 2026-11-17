@@ -279,6 +279,9 @@ fn arcade_keeps_its_score_with_time_moved() {
     }
     for preset in [RulesetPreset::DefinitiveOverhaul, RulesetPreset::PureFootsies1987Plus] {
         let (mut s, a) = fight(Mode::Arcade, preset);
+        // The frame is held against the hardware's, so the arcade's own
+        // sparks stand in for the new move effects.
+        s.set_stock_move_effects(true);
         for f in 0..240 {
             let out = s.step(idle());
             check_layout(&s, &a, &out.frame, false, ["RYU", "RETSU"], &format!("Arcade {preset:?} frame {f}"));

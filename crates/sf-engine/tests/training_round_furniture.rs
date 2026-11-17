@@ -237,6 +237,9 @@ fn training_shows_no_time_scores_or_round_markers_under_every_preset() {
     for preset in PRESETS {
         for kind in [Kind::TrainingCpu, Kind::TrainingDummy] {
             let (mut s, a) = fight(kind, preset);
+            // The frame is held against the hardware's, so the arcade's own
+            // sparks stand in for the new move effects.
+            s.set_stock_move_effects(true);
             let faithful = preset == RulesetPreset::Faithful1987;
             let names = match kind {
                 _ if faithful => None,
