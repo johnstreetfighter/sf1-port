@@ -212,10 +212,12 @@ const FIRST_ROW: usize = 8;
 const ROW_STEP: usize = 2;
 /// Give the full-size logo a tile of space below the top border.
 const MAIN_FRAME_ROW: usize = FRAME_ROW - 1;
-const SF1_PLUS_SUBTITLE_Y: usize = 104;
-/// Fit all six choices between the logo and the notice.
-const MAIN_FIRST_ITEM_Y: usize = 118;
-const MAIN_ITEM_STEP: usize = 14;
+/// The logo's descenders reach y=111: the subtitle stands four pixels clear.
+const SF1_PLUS_SUBTITLE_Y: usize = 116;
+/// Fit all six choices, close together, low between the subtitle and the
+/// notice row.
+const MAIN_FIRST_ITEM_Y: usize = 132;
+const MAIN_ITEM_STEP: usize = 11;
 /// The row of a one-line notice (an untranslated branch, say).
 pub const NOTICE_ROW: usize = 21;
 /// The Main Menu's notice row: the one free row under its last item.

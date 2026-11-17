@@ -652,7 +652,8 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
     if has_prime || edition == "Street Fighter: The World Tournament" {
         let mut rom_ink = 0;
         let mut prime_ink = 0;
-        for y in 2 * 8..13 * 8 {
+        // The whole logo block, down to its last row, y=111.
+        for y in 2 * 8..14 * 8 {
             for x in 8 * 8..40 * 8 {
                 let i = y * WIDTH + x;
                 let pixel = menu.frame.argb[i];
@@ -669,7 +670,7 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
         if has_prime {
             assert!(prime_ink > 15, "the prime is drawn ({prime_ink} pixels)");
             let mut subtitle_ink = 0;
-            for y in 104..112 {
+            for y in 116..124 {
                 for x in 110..276 {
                     let i = y * WIDTH + x;
                     let pixel = menu.frame.argb[i];
@@ -700,7 +701,9 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
         }
     }
 
-    for (gap, rows) in [("under the subtitle", 112..118)] {
+    // The logo's lowest ink is on y=111: the subtitle stands clear of it
+    // and of the rows (George, 2026-11-17).
+    for (gap, rows) in [("between the logo and the subtitle", 112..116), ("under the subtitle", 124..132)] {
         for y in rows {
             let interior = &menu.frame.argb[y * WIDTH + 6 * 8..y * WIDTH + 42 * 8];
             assert!(interior.iter().all(|&pixel| pixel == 0xff00_0000), "expected blank space {gap} at y={y}");
@@ -710,7 +713,7 @@ fn the_main_menu_shows_the_title_logo_inside_an_unbroken_frame() {
     // The rows sit under the logo, the last one clear of the frame.
     let main = MenuScreen::main();
     let item_y: Vec<_> = (0..main.items().len()).map(|i| main.item_y(i)).collect();
-    assert_eq!(item_y, [118, 132, 146, 160, 174, 188]);
+    assert_eq!(item_y, [132, 143, 154, 165, 176, 187]);
     assert_eq!(row_color(&menu.frame, &a, &main, MenuItem::SinglePlayer, 0), Some(ink::YELLOW));
 }
 
