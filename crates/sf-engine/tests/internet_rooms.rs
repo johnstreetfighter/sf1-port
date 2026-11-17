@@ -178,3 +178,15 @@ fn an_internet_room_code_joins_through_the_relay() {
         [NetTransportCommand::JoinInternetRoom { code: "K7Q-MPX".into() }]
     );
 }
+
+/// #171: the game font has capitals only, so a relay host name written in
+/// lower case showed as a gap in the lobby message.
+#[test]
+fn a_relay_failure_names_the_relay_in_letters_the_font_can_draw() {
+    let mut session = online_session(Settings::default());
+    session.push_net_events(&[NetTransportEvent::TransportError {
+        message: "RELAY relay.almamoto.com DID NOT ANSWER".into(),
+    }]);
+    session.step(FrameInputs::default());
+    assert_eq!(session.notice(), Some("RELAY RELAY.ALMAMOTO.COM DID NOT ANSWER"));
+}

@@ -1235,6 +1235,9 @@ impl GameSession {
                     if let Some(Screen::Online(screen)) = self.stack.last_mut() { screen.set_bound(room_code); }
                 }
                 NetTransportEvent::TransportError { message } => {
+                    // The font has capitals only; a lower-case relay host
+                    // or system error text would draw as a gap.
+                    let message = message.to_uppercase();
                     if let Some(Screen::Online(screen)) = self.stack.last_mut() { screen.set_notice(&message); }
                     self.notice = Some(message);
                 }
