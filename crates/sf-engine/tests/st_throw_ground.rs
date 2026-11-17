@@ -10,7 +10,11 @@ use sf_engine::era::{Loadout, Revision};
 use sf_engine::front::{FrameInputs, GameSession};
 use sf_video::decode::decode_sprite_tile;
 use sf_video::sprite_bank::sprite_slot;
-use support::{local_fight_p2_ryu, local_select_with_shoto_art, pad, LEFT, RIGHT};
+use sf_engine::roster::TournamentFighter;
+use support::{
+    local_fight, local_fight_p2_ryu, local_select_with_cast_art, local_select_with_shoto_art, pad,
+    LEFT, RIGHT,
+};
 
 type Tiles = Vec<[[u8; 16]; 16]>;
 
@@ -131,6 +135,65 @@ fn st_ryu_throws_keep_the_thrower_on_the_mat_and_land_the_thrown_on_it() {
                     assert!(thrown && rested > 0, "{at}: the throw connected");
                 }
             }
+        }
+    }
+}
+
+/// Ken's Hell Wheel on Ryu and Sagat's throw on Ken leave the thrown fighter
+/// lying on the mat too. (Knee Bash leaves him on his feet.)
+#[test]
+fn st_ken_and_sagat_throws_lay_the_thrown_fighter_on_the_mat() {
+    use TournamentFighter::{Ken, Ryu, Sagat};
+    for (thrower, victim, buttons) in [(Ken, Ryu, [5usize].as_slice()), (Sagat, Ken, &[2])] {
+        let Some((select, art)) = local_select_with_cast_art(thrower, Revision::St, Loadout::Standard)
+        else {
+            return;
+        };
+        let mut close = if victim == Ryu {
+            local_fight_p2_ryu(&select, Revision::St, Loadout::Standard)
+        } else {
+            local_fight(&select, Revision::St, Loadout::Standard)
+        };
+        let banked = close.assets().with_sprite_bank(&art.bank);
+        let tiles: Tiles = (0..banked.gfx3.len() / 128)
+            .map(|n| decode_sprite_tile(&banked.gfx3, n))
+            .collect();
+        let name = victim.name().to_ascii_lowercase();
+        let lying = *art.catalogue(&name).unwrap().move_poses("thrown").unwrap().last().unwrap();
+        let lying_codes = [lying.grid.code, lying.grid.code + 2 * u16::from(lying.grid.cols)];
+        for _ in 0..200 {
+            close.step(key(0, RIGHT, None));
+        }
+        for _ in 0..20 {
+            close.step(FrameInputs::default());
+        }
+        let mat = opaque_bottom(&tiles, &close, 1);
+        for &button in buttons {
+            let at = format!("{thrower:?} button {button}");
+            let mut s = close.clone();
+            let (mut thrown, mut lay, mut rest) = (false, 0, 0);
+            for tick in 0..400 {
+                s.step(if tick == 0 {
+                    key(0, RIGHT, Some(button))
+                } else {
+                    FrameInputs::default()
+                });
+                let read = s.fight().unwrap().fight_read().fighters[1];
+                thrown |= read.move_id == THROWN_MOVE;
+                let o = &s.fight_machine().unwrap().state.objectram;
+                let e = entity(&s, 1);
+                let code = u16::from_be_bytes([o[e], o[e + 1]]);
+                if thrown && lying_codes.contains(&code) {
+                    lay += 1;
+                    let ink = opaque_bottom(&tiles, &s, 1);
+                    assert!(ink <= mat, "{at}: lying at {ink}, below the mat {mat}, tick {tick}");
+                    rest = ink;
+                }
+            }
+            assert!(thrown, "{at}: the throw connected");
+            assert!(lay > 20, "{at}: the thrown fighter lay on his back for {lay} ticks");
+            // After the bounce, his last lying frame is on the mat.
+            assert!(rest >= mat - 1, "{at}: he rests at {rest}, the mat is {mat}");
         }
     }
 }

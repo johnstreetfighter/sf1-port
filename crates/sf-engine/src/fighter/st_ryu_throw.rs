@@ -643,14 +643,12 @@ impl Bus<'_> {
         if elapsed == 0 {
             self.step_st_ryu_throw_animation(fighter);
         } else if elapsed == landing && !motion.softened {
-            // Ryu's throws and Ken's shoulder throw put him on his back.
-            if matches!(
-                motion.family,
-                StRyuThrowFamily::Shoulder | StRyuThrowFamily::KenShoulder | StRyuThrowFamily::Flip
-            ) {
-                self.load_st_ryu_lying_pose(fighter);
-            } else {
+            // Every full throw puts him on his back but Knee Bash, which he
+            // leaves on his feet six ticks after the landing.
+            if motion.family == StRyuThrowFamily::KneeBash {
                 self.load_st_ryu_thrown_pose(fighter);
+            } else {
+                self.load_st_ryu_lying_pose(fighter);
             }
         } else if elapsed == lift || elapsed == turn {
             self.load_st_ryu_thrown_pose(fighter);

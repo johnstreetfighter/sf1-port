@@ -142,6 +142,16 @@ pub fn local_select_with_shoto_art(
     revision: Revision,
     loadout: Loadout,
 ) -> Option<(GameSession, Art)> {
+    local_select_with_cast_art(TournamentFighter::Ryu, revision, loadout)
+}
+
+/// As [`local_select_with_shoto_art`], with `fighter` on P1.
+#[allow(dead_code)]
+pub fn local_select_with_cast_art(
+    fighter: TournamentFighter,
+    revision: Revision,
+    loadout: Loadout,
+) -> Option<(GameSession, Art)> {
     if !Path::new(ROMS).is_dir() || !Path::new(ART_PACK).is_dir() {
         eprintln!("skipping: local ROM set or art pack not present");
         return None;
@@ -170,7 +180,7 @@ pub fn local_select_with_shoto_art(
     let session = GameSession::new(assets, MatchConfig::definitive())
         .with_sprite_bank(&art.bank)
         .with_player_tables(&art.catalogues);
-    let select = select_p1(session, TournamentFighter::Ryu, revision, loadout);
+    let select = select_p1(session, fighter, revision, loadout);
     Some((select, art))
 }
 
