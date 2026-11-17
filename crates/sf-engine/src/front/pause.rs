@@ -18,6 +18,7 @@ use sf_video::render::Frame;
 
 use super::draw::{boxed, dimmed};
 use super::menu::MenuItem;
+use super::value_motion::{ValueCue, ValueDirection, ValueMotion};
 use super::Transition;
 use crate::config::RulesetPreset;
 use crate::roster::MenuInput;
@@ -145,7 +146,7 @@ impl TrainingBox {
     /// The box drawn over `frame`: the title, the rows (the cursor's yellow
     /// with the arrow) and the preset, hold and fill values.
     fn render(&self, font: &RomFont<'_>, frame: &mut Frame, preset: RulesetPreset, hold_combo: bool, fill_meters: bool,
-        drill: Option<crate::utility::Drill>, trial: Option<u8>) {
+        drill: Option<crate::utility::Drill>, trial: Option<u8>, cues: &[Option<(MenuItem, ValueCue)>]) {
         let rows = Self::bottom_row() - SETTINGS_ROW + 1;
         boxed(frame, font, SETTINGS_COL, SETTINGS_ROW, SETTINGS_COLS, rows);
         let (col, row) = Self::title_cell();
@@ -170,7 +171,7 @@ impl TrainingBox {
                 MenuItem::ComboTrial => trial_label.as_deref().unwrap_or("OFF"),
                 _ => continue,
             };
-            font.text(&mut frame.argb, SETTINGS_VALUE_END_COL - value.len(), row, value, color);
+            draw_value(font, frame, (*item, value, color), row, (SETTINGS_LABEL_COL, SETTINGS_VALUE_END_COL), cues);
         }
     }
 }
@@ -184,6 +185,7 @@ pub struct PauseBox {
     move_effects: Option<bool>,
     /// The Training settings box over it, while it shows.
     settings: Option<TrainingBox>,
+    value_motion: [Option<(MenuItem, ValueMotion)>; 2],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,6 +205,7 @@ impl PauseBox {
             notice: None,
             move_effects: None,
             settings: None,
+            value_motion: [None; 2],
         }
     }
 
@@ -327,6 +330,16 @@ impl PauseBox {
     /// `OVERLAYS`, `LOOK` and `GAUGE ART` choose too (they cycle); back or
     /// Start resumes.
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
+        let transition = self.apply_input(input)?;
+        if matches!(transition, Transition::CursorMoved | Transition::Back)
+            || matches!(transition, Transition::Choose(item) if value_direction(item, input).is_none())
+        {
+            self.value_motion = [None; 2];
+        }
+        Some(transition)
+    }
+
+    fn apply_input(&mut self, input: MenuInput) -> Option<Transition> {
         if let Some(settings) = self.settings.as_mut() {
             let t = settings.apply(input);
             // Back leaves the settings box; the cursor is still on `TRAINING`.
@@ -360,6 +373,26 @@ impl PauseBox {
         }
     }
 
+    /// Record feedback after the caller has applied a real displayed change.
+    pub(super) fn note_value_change(&mut self, item: MenuItem, input: MenuInput, frame: u32) {
+        if let Some(direction) = value_direction(item, input) {
+            self.value_motion = [Some((item, ValueMotion::new(frame, direction))), None];
+        }
+    }
+
+    /// Choosing a drill can also clear a trial, and vice versa.
+    pub(super) fn note_related_value_change(&mut self, item: MenuItem, frame: u32) {
+        self.value_motion[1] = Some((item, ValueMotion::new(frame, None)));
+    }
+
+    pub(super) fn clear_look_motion(&mut self) {
+        for cue in &mut self.value_motion {
+            if cue.is_some_and(|(item, _)| item == MenuItem::Look) {
+                *cue = None;
+            }
+        }
+    }
+
     /// `last` dimmed, the box over it: the notice, the rows (the cursor's
     /// yellow with the arrow), and the overlay, look and gauge art values;
     /// then the Training settings box, with the preset, hold and fill values,
@@ -376,14 +409,28 @@ impl PauseBox {
         hold_combo: bool,
         fill_meters: bool,
     ) -> Frame {
-        self.render_with_training(font, last, overlay, look, gauge_art, preset, hold_combo, fill_meters, None, None)
+        self.render_box(font, last, overlay, look, gauge_art, preset, hold_combo, fill_meters, None, None, None)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn render_with_training(
+    pub(super) fn render_with_training_at(
         &self, font: &RomFont<'_>, last: &Frame, overlay: &str, look: &str, gauge_art: GaugeArt,
         preset: RulesetPreset, hold_combo: bool, fill_meters: bool, drill: Option<crate::utility::Drill>, trial: Option<u8>,
+        frame: u32,
     ) -> Frame {
+        self.render_box(font, last, overlay, look, gauge_art, preset, hold_combo, fill_meters, drill, trial, Some(frame))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_box(
+        &self, font: &RomFont<'_>, last: &Frame, overlay: &str, look: &str, gauge_art: GaugeArt,
+        preset: RulesetPreset, hold_combo: bool, fill_meters: bool, drill: Option<crate::utility::Drill>, trial: Option<u8>,
+        frame_no: Option<u32>,
+    ) -> Frame {
+        let cues = self.value_motion.map(|entry| {
+            let (item, motion) = entry?;
+            Some((item, motion.at(frame_no?)?))
+        });
         let mut frame = dimmed(last);
         // Training's extra rows take the box deeper, to the screen's last row.
         let rows = BOX_ROWS.max(Self::item_row(self.items().len() - 1) + 2 - BOX_ROW + 1).min(SCREEN_ROWS - BOX_ROW);
@@ -411,11 +458,34 @@ impl PauseBox {
                 MenuItem::MoveEffects => "CURRENT",
                 _ => continue,
             };
-            font.text(&mut frame.argb, VALUE_END_COL - value.len(), row, value, color);
+            draw_value(font, &mut frame, (*item, value, color), row, (LABEL_COL, VALUE_END_COL), &cues);
         }
         if let Some(settings) = &self.settings {
-            settings.render(font, &mut frame, preset, hold_combo, fill_meters, drill, trial);
+            settings.render(font, &mut frame, preset, hold_combo, fill_meters, drill, trial, &cues);
         }
         frame
+    }
+}
+
+/// `None` means the item is an action. A value can also flash on its own.
+fn value_direction(item: MenuItem, input: MenuInput) -> Option<Option<ValueDirection>> {
+    match item {
+        MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::LivePreset
+        | MenuItem::TrainingDrill | MenuItem::ComboTrial => Some(ValueDirection::from_input(input)),
+        MenuItem::MoveEffects | MenuItem::HoldCombo | MenuItem::FillMeters => Some(None),
+        _ => None,
+    }
+}
+
+fn draw_value(
+    font: &RomFont<'_>, frame: &mut Frame, (item, value, color): (MenuItem, &str, u8), row: usize,
+    (label_col, end_col): (usize, usize), cues: &[Option<(MenuItem, ValueCue)>],
+) {
+    let col = end_col - value.chars().count();
+    if let Some((_, cue)) = cues.iter().flatten().find(|(target, _)| *target == item) {
+        let start = (label_col + item.label().len()) * 8;
+        cue.draw(&mut frame.argb, font, value, (col * 8, row * 8), start..(end_col + 1) * 8);
+    } else {
+        font.text(&mut frame.argb, col, row, value, color);
     }
 }

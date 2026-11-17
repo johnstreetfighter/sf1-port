@@ -9,7 +9,7 @@ use sf_video::compositor::{ink, outline, RomFont};
 use sf_video::render::{render_frame, Frame};
 use sf_video::romset::Assets;
 
-use super::draw::{centred_col, framed};
+use super::draw::{centred_col, framed_at};
 use super::session::FrameInputs;
 use super::Transition;
 use crate::config::MatchConfig;
@@ -196,7 +196,11 @@ impl DipScreen {
     /// The framed screen: the DIP rows as `NAME .... OPTION`, `POWER ON`,
     /// and the hold hint at the foot.
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = framed(font, "1987 CABINET", HOLD_HINT);
+        self.render_with_title(font, 0)
+    }
+
+    pub(super) fn render_with_title(&self, font: &RomFont<'_>, title_offset: usize) -> Frame {
+        let mut frame = framed_at(font, "1987 CABINET", HOLD_HINT, title_offset);
         for (i, dip) in DIPS.iter().enumerate() {
             let row = Self::row_of(i);
             let color = if i == self.cursor {

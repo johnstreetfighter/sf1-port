@@ -600,7 +600,7 @@ impl GameSession {
         let setup = self.net_setup.as_mut()?;
         let (setup_seq, _) = setup.flow.dramatic_offer?;
         let Some(Screen::DramaticGuest(screen)) = self.stack.last_mut() else { return None };
-        let transition = screen.apply(event)?;
+        let transition = screen.apply_at(event, self.frames)?;
         if transition == Transition::Back {
             self.net_return_online("LEFT ROOM");
             return Some(transition);
@@ -619,6 +619,9 @@ impl GameSession {
     }
 
     pub(super) fn net_open_stage(&mut self, p1: TournamentFighter, p2: TournamentFighter) {
+        if let Some(Screen::Select(select)) = self.stack.last_mut() {
+            select.clear_motion();
+        }
         match self.stage_screen(FightKind::Local, p1, p2, self.chosen) {
             Some(screen) => self.stack.push(Screen::Stage(screen)),
             None => self.start_fight(FightKind::Local, p1, p2, Some(HIDDEN_FLAG)),
@@ -703,8 +706,8 @@ impl GameSession {
         let mut transition = None;
         for event in menu_events(&before, &input) {
             let applied = match self.stack.last_mut() {
-                Some(Screen::Select(screen)) => screen.apply_side(side, event),
-                Some(Screen::Stage(screen)) => screen.apply_side(side, event),
+                Some(Screen::Select(screen)) => screen.apply_side_at(side, event, self.frames),
+                Some(Screen::Stage(screen)) => screen.apply_side_at(side, event, self.frames),
                 _ => None,
             };
             let Some(applied) = applied else { continue };
@@ -881,12 +884,12 @@ impl GameSession {
         };
         match (phase, self.stack.last_mut()) {
             (LobbyPhase::Fighters, Some(Screen::Select(screen))) => {
-                screen.set_remote_pick(usize::from(*side), *fighter, *locked, *style)
+                screen.set_remote_pick_at(usize::from(*side), *fighter, *locked, *style, self.frames)
             }
             (LobbyPhase::Stage, Some(Screen::Stage(screen)))
                 if screen.picker() == usize::from(*side) =>
             {
-                screen.set_remote_pick(*stage, *random, *locked)
+                screen.set_remote_pick_at(*stage, *random, *locked, self.frames)
             }
             _ => None,
         }

@@ -285,7 +285,13 @@ fn a_recorded_input_brings_the_move_out_with_its_call_out_and_the_strip_resets()
                 assert_eq!(coach.outcome(), Some(Outcome::Success));
                 assert_eq!(words(&s), [CalloutKind::Move { word: entry.call_out }]);
                 let slot = regions::word_slot_at(Side::P1, 0, regions::TRY_DROP);
-                assert!(lettered(&frame, &a, slot.x, slot.y, entry.call_out, LETTER_PENS), "{}: called out", entry.name);
+                let (x, pens) = if overhaul {
+                    let width = 8 * entry.call_out.chars().count().min(regions::LINE_LETTERS);
+                    (slot.x + (slot.w - width).min(2), [0xffff_dd99, LETTER_PENS[1], 0xffdd_aa22])
+                } else {
+                    (slot.x, LETTER_PENS)
+                };
+                assert!(lettered(&frame, &a, x, slot.y, entry.call_out, pens), "{}: called out", entry.name);
                 if let (Some(dir), 0, true) = (&dir, row, overhaul) {
                     write_png(dir, "success_frame", &frame);
                 }

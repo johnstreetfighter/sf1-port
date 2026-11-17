@@ -18,6 +18,8 @@
 //! larger 2×2 header type cannot set the long words inside a half-screen
 //! column; see `docs/planning/art-upgrades.md`. The combo count's number
 //! is that header type's digits, in white, over `HITS` in the 8×8 gold.
+//! Words enter with a brief slide and warm ink. Super and Perfect Parry
+//! get a brighter entrance and a short dash under the word.
 //!
 //! **Screen effects.** A super dims the stage one level, however many supers
 //! are running; a burnt-out fighter is drawn grey, under the dim; an Alpha
@@ -182,6 +184,27 @@ pub struct ComboCount {
     pub damage: Option<u16>,
 }
 
+const COMBO_SPARK_FRAMES: u8 = 8;
+const COMBO_FINISH_FRAMES: u8 = 13;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum ComboMotion {
+    #[default]
+    Settled,
+    Growth(u8),
+    Finish(u8),
+}
+
+impl ComboMotion {
+    fn next(self) -> Self {
+        match self {
+            Self::Growth(age) if age + 1 < COMBO_SPARK_FRAMES => Self::Growth(age + 1),
+            Self::Finish(age) if age + 1 < COMBO_FINISH_FRAMES => Self::Finish(age + 1),
+            _ => Self::Settled,
+        }
+    }
+}
+
 /// Word slots under each column's combo slot.
 pub const WORD_SLOTS: usize = 4;
 /// Frames a word stays up.
@@ -198,8 +221,10 @@ pub const FLASH_PHASE: u16 = 4;
 pub struct SideCallouts {
     /// The top slot.
     pub combo: Option<ComboCount>,
+    combo_motion: ComboMotion,
     /// The word slots top down, oldest first; the rest `None`.
     pub words: [Option<CalloutKind>; WORD_SLOTS],
+    word_ages: [Option<u8>; WORD_SLOTS],
     /// The running super's name, on the move-name line.
     pub move_name: Option<&'static str>,
     /// The fighter and their gauge are grey (SF6 Burnout).
@@ -209,8 +234,15 @@ pub struct SideCallouts {
 }
 
 impl SideCallouts {
-    pub const NONE: SideCallouts =
-        SideCallouts { combo: None, words: [None; WORD_SLOTS], move_name: None, greyed: false, flash: None };
+    pub const NONE: SideCallouts = SideCallouts {
+        combo: None,
+        combo_motion: ComboMotion::Settled,
+        words: [None; WORD_SLOTS],
+        word_ages: [None; WORD_SLOTS],
+        move_name: None,
+        greyed: false,
+        flash: None,
+    };
 }
 
 /// What the call-out layer shows this frame, as the compositor draws it.
@@ -232,6 +264,14 @@ impl CalloutFrame {
 
     pub fn side(&self, side: Side) -> &SideCallouts {
         &self.sides[side.index()]
+    }
+
+    /// Suppress word motion while leaving word lifetime and other effects intact.
+    pub fn with_static_words(mut self) -> Self {
+        for shown in &mut self.sides {
+            shown.word_ages = [None; WORD_SLOTS];
+        }
+        self
     }
 
     /// Nothing to draw and no effect (where the columns would sit does not matter).
@@ -258,7 +298,17 @@ impl CalloutFrame {
             }
             for (slot, word) in shown.words.iter().enumerate() {
                 if let Some(word) = word {
-                    let rect = regions::text_box(side, regions::word_slot_at(side, slot, self.drop).y, word.word());
+                    let slot_rect = regions::word_slot_at(side, slot, self.drop);
+                    let mut rect = regions::text_box(side, slot_rect.y, word.word());
+                    let motion = WordMotion::from_age(*word, shown.word_ages[slot]);
+                    let distance = motion.slide.min(slot_rect.w - rect.w);
+                    match side {
+                        Side::P1 => rect.x += distance,
+                        Side::P2 => rect.x -= distance,
+                    }
+                    if motion.dash.is_some() {
+                        rect.h += 1;
+                    }
                     out.push(Element { side, part: Part::Word(slot), rect });
                 }
             }
@@ -302,6 +352,7 @@ pub enum Part {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Column {
     combo: Option<ComboCount>,
+    combo_motion: ComboMotion,
     /// Oldest first, with the frames each has left.
     words: VecDeque<(CalloutKind, u16)>,
     name: Option<(&'static str, u16)>,
@@ -383,7 +434,27 @@ impl CalloutBoard {
 
     /// The combo count in `side`'s top slot, or none (`EH5` sets it each frame).
     pub fn set_combo(&mut self, side: Side, combo: Option<ComboCount>) {
-        self.columns[side.index()].combo = combo;
+        let column = &mut self.columns[side.index()];
+        column.combo = combo;
+        column.combo_motion = ComboMotion::default();
+    }
+
+    /// Update the count and age its accents once per fight step.
+    pub fn set_combo_with_motion(&mut self, side: Side, combo: Option<ComboCount>, grew: bool, finished: bool) {
+        let column = &mut self.columns[side.index()];
+        let same_count = combo.zip(column.combo).is_some_and(|(now, old)| now.hits == old.hits);
+        column.combo = combo;
+        column.combo_motion = if combo.is_none() {
+            ComboMotion::Settled
+        } else if grew {
+            ComboMotion::Growth(0)
+        } else if finished {
+            ComboMotion::Finish(0)
+        } else if same_count {
+            column.combo_motion.next()
+        } else {
+            ComboMotion::Settled
+        };
     }
 
     /// Whether `side`'s fighter is drawn grey (SF6 Burnout, for as long as it lasts).
@@ -417,8 +488,11 @@ impl CalloutBoard {
             let column = &self.columns[side.index()];
             let shown = &mut out.sides[side.index()];
             shown.combo = column.combo;
-            for (slot, (kind, _)) in column.words.iter().enumerate() {
+            shown.combo_motion = column.combo_motion;
+            for (slot, (kind, left)) in column.words.iter().enumerate() {
                 shown.words[slot] = Some(*kind);
+                let age = (WORD_FRAMES - left) as u8;
+                shown.word_ages[slot] = (age < WordMotion::duration(*kind)).then_some(age);
             }
             shown.move_name = column.name.map(|(name, _)| name);
             shown.greyed = column.greyed;
@@ -488,12 +562,13 @@ pub mod regions {
     pub const COLUMN_WIDTH: usize = WIDTH / 2 - CORNER_EDGE - 8;
     /// The combo count's slot: room for a 16-pixel number, HITS and a damage line.
     pub const COMBO_SLOT_HEIGHT: usize = 32;
-    /// A word slot is one 8×8 line; slots are this far apart.
+    /// A word slot holds one 8×8 line and its dash; slots are this far apart.
     pub const WORD_PITCH: usize = 10;
+    const WORD_HEIGHT: usize = 9;
     const SLOT_GAP: usize = 2;
     /// The column: the combo slot and the word slots.
-    pub const COLUMN_HEIGHT: usize = COMBO_SLOT_HEIGHT + SLOT_GAP + WORD_SLOTS * WORD_PITCH - SLOT_GAP;
-    const NAME_GAP: usize = 4;
+    pub const COLUMN_HEIGHT: usize = COMBO_SLOT_HEIGHT + SLOT_GAP + (WORD_SLOTS - 1) * WORD_PITCH + WORD_HEIGHT;
+    const NAME_GAP: usize = 3;
 
     /// The region kinds, for the no-overlap checks.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -553,7 +628,7 @@ pub mod regions {
     }
 
     pub fn word_slot_at(side: Side, slot: usize, drop: usize) -> Rect {
-        from_edge(side, COLUMN_TOP + drop + COMBO_SLOT_HEIGHT + SLOT_GAP + slot * WORD_PITCH, COLUMN_WIDTH, 8)
+        from_edge(side, COLUMN_TOP + drop + COMBO_SLOT_HEIGHT + SLOT_GAP + slot * WORD_PITCH, COLUMN_WIDTH, WORD_HEIGHT)
     }
 
     /// The line under `side`'s column that holds its super's name.
@@ -622,6 +697,40 @@ pub mod regions {
 /// The call-out lettering's pens: PLAYER1 gold, text colour 4's highlight,
 /// shadow and body, as [`era_hud::pens::DIGIT_GOLD`].
 pub const LETTER_PENS: [u32; 3] = era_hud::pens::DIGIT_GOLD;
+
+const WARM_LETTER_PENS: [u32; 3] = [0xffff_dd99, era_hud::pens::GOLD_DARK, 0xffdd_aa22];
+const BRIGHT_LETTER_PENS: [u32; 3] = [era_hud::pens::CREAM, era_hud::pens::GOLD_DARK, era_hud::pens::GOLD_LIGHT];
+
+struct WordMotion {
+    slide: usize,
+    pens: [u32; 3],
+    dash: Option<(usize, u32)>,
+}
+
+impl WordMotion {
+    fn priority(kind: CalloutKind) -> bool {
+        matches!(kind, CalloutKind::Super { .. } | CalloutKind::PerfectParry)
+    }
+
+    fn duration(kind: CalloutKind) -> u8 {
+        if Self::priority(kind) { 12 } else { 6 }
+    }
+
+    fn from_age(kind: CalloutKind, age: Option<u8>) -> Self {
+        let settled = Self { slide: 0, pens: LETTER_PENS, dash: None };
+        let Some(age) = age else { return settled };
+        let slide = match age { 0..=2 => 2, 3..=5 => 1, _ => 0 };
+        if Self::priority(kind) {
+            let pens = if age < 6 { BRIGHT_LETTER_PENS } else { WARM_LETTER_PENS };
+            let color = if age < 5 { era_hud::pens::CREAM } else { era_hud::pens::GOLD_LIGHT };
+            Self { slide, pens, dash: Some(((3 + usize::from(age) * 2).min(11), color)) }
+        } else {
+            let pens = if age < 4 { WARM_LETTER_PENS } else { LETTER_PENS };
+            Self { slide, pens, dash: None }
+        }
+    }
+}
+
 /// The combo count's number pens (highlight, shadow, body): the ROM's
 /// whitest text pen (colour 10's highlight, `#eeeeee`) for the body and the
 /// highlight, over the health bar's `#444444` shadow. No boot text colour
@@ -642,11 +751,28 @@ pub fn draw(argb: &mut [u32], frame: &CalloutFrame, font: Option<&RomFont<'_>>) 
         let text = match element.part {
             Part::Combo => {
                 if let Some(combo) = shown.combo {
-                    draw_combo(argb, element.side, combo, frame.drop, font);
+                    draw_combo(argb, element.side, combo, shown.combo_motion, element.rect, font);
                 }
                 continue;
             }
-            Part::Word(slot) => shown.words[slot].as_ref().map(CalloutKind::word).unwrap_or_default(),
+            Part::Word(slot) => {
+                if let Some(word) = shown.words[slot] {
+                    let motion = WordMotion::from_age(word, shown.word_ages[slot]);
+                    letter_with_pens(argb, element.rect, word.word(), font, motion.pens);
+                    if let Some((length, color)) = motion.dash {
+                        let rect = element.rect;
+                        let start_x = match element.side {
+                            Side::P1 => rect.x,
+                            Side::P2 => rect.x + rect.w - length,
+                        };
+                        let start = (rect.y + 8) * WIDTH + start_x;
+                        if let Some(dash) = argb.get_mut(start..start + length) {
+                            dash.fill(color);
+                        }
+                    }
+                }
+                continue;
+            }
             Part::MoveName => shown.move_name.unwrap_or_default(),
         };
         letter(argb, element.rect, text, font);
@@ -655,9 +781,13 @@ pub fn draw(argb: &mut [u32], frame: &CalloutFrame, font: Option<&RomFont<'_>>) 
 
 /// `text` in the 8×8 font in PLAYER1 gold from `rect`'s top left, cut at a line.
 fn letter(argb: &mut [u32], rect: regions::Rect, text: &str, font: &RomFont<'_>) {
+    letter_with_pens(argb, rect, text, font, LETTER_PENS);
+}
+
+fn letter_with_pens(argb: &mut [u32], rect: regions::Rect, text: &str, font: &RomFont<'_>, pens: [u32; 3]) {
     for (i, ch) in text.chars().take(regions::LINE_LETTERS).enumerate() {
         if ch != ' ' {
-            font.glyph_in(argb, rect.x + 8 * i, rect.y, ch.to_ascii_uppercase(), LETTER_PENS);
+            font.glyph_in(argb, rect.x + 8 * i, rect.y, ch.to_ascii_uppercase(), pens);
         }
     }
 }
@@ -741,23 +871,54 @@ pub fn damage_line(damage: u16) -> String {
 /// header digits (`0x3bc3e`, each four 8×8 tiles), `HITS` in gold under it
 /// and, where it is shown, the damage line under that, each set from the
 /// side's screen edge. Everything stays inside the slot.
-fn draw_combo(argb: &mut [u32], side: Side, combo: ComboCount, drop: usize, font: &RomFont<'_>) {
-    let slot = regions::combo_slot_at(side, drop);
+fn draw_combo(argb: &mut [u32], side: Side, combo: ComboCount, motion: ComboMotion, slot: regions::Rect, font: &RomFont<'_>) {
     let digits = combo.hits.to_string();
     let width = 16 * digits.len();
+    let inward = match motion {
+        ComboMotion::Growth(0..=1) => 2,
+        ComboMotion::Growth(2..=4) => 1,
+        _ => 0,
+    };
     let x = match side {
-        Side::P1 => slot.x,
-        Side::P2 => slot.x + slot.w - width,
+        Side::P1 => slot.x + inward,
+        Side::P2 => slot.x + slot.w - width - inward,
+    };
+    let number_pens = match motion {
+        ComboMotion::Finish(0..=4) => [era_hud::pens::CREAM, era_hud::pens::GOLD_DARK, era_hud::pens::CREAM],
+        ComboMotion::Finish(_) => LETTER_PENS,
+        _ => NUMBER_PENS,
     };
     for (i, ch) in digits.chars().enumerate() {
         let Some(code) = header_glyph(ch) else { continue };
         let (cx, y) = (x + 16 * i, slot.y);
-        font.tile_in(argb, cx, y, code, NUMBER_PENS);
-        font.tile_in(argb, cx + 8, y, code + 1, NUMBER_PENS);
-        font.tile_in(argb, cx, y + 8, code + 0x10, NUMBER_PENS);
-        font.tile_in(argb, cx + 8, y + 8, code + 0x11, NUMBER_PENS);
+        font.tile_in(argb, cx, y, code, number_pens);
+        font.tile_in(argb, cx + 8, y, code + 1, number_pens);
+        font.tile_in(argb, cx, y + 8, code + 0x10, number_pens);
+        font.tile_in(argb, cx + 8, y + 8, code + 0x11, number_pens);
+    }
+    let from_edge = |offset: usize, len: usize| match side {
+        Side::P1 => slot.x + offset,
+        Side::P2 => slot.x + slot.w - offset - len,
+    };
+    if let ComboMotion::Growth(age) = motion {
+        let offset = width + 3 + usize::from(age / 2);
+        let spark_x = from_edge(offset, 2);
+        let pen = if age < 4 { era_hud::pens::GOLD_LIGHT } else { era_hud::pens::GOLD };
+        for y in slot.y + 7..slot.y + 9 {
+            argb[y * WIDTH + spark_x..y * WIDTH + spark_x + 2].fill(pen);
+        }
+        argb[(slot.y + 4) * WIDTH + from_edge(offset + 2, 1)] = era_hud::pens::GOLD;
     }
     letter(argb, regions::text_box(side, slot.y + COMBO_HITS_LINE, "HITS"), "HITS", font);
+    if let ComboMotion::Finish(age) = motion {
+        let length = (6 * (usize::from(age) + 1)).min(32);
+        // Training's damage line occupies the bottom of the slot.
+        let (offset, line) = if combo.damage.is_some() { (36, 21) } else { (0, 26) };
+        let x = from_edge(offset, length);
+        let start = (slot.y + line) * WIDTH + x;
+        let pen = if age < 7 { era_hud::pens::GOLD_LIGHT } else { era_hud::pens::GOLD };
+        argb[start..start + length].fill(pen);
+    }
     if let Some(damage) = combo.damage {
         let line = damage_line(damage);
         letter(argb, regions::text_box(side, slot.y + COMBO_DAMAGE_LINE, &line), &line, font);

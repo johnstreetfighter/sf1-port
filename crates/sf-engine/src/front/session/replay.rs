@@ -299,10 +299,12 @@ impl GameSession {
                     Some(Transition::Choose(MenuItem::Overlays)) => {
                         let fight = watching.playback.fight_mut();
                         fight.set_overlay(fight.overlay().next());
+                        pause.note_value_change(MenuItem::Overlays, event, self.frames);
                     }
                     Some(Transition::Choose(MenuItem::Look)) => {
                         let n = self.looks.len();
                         if n > 0 {
+                            let before = super::super::pause::short_look_name(self.look());
                             let at = self
                                 .looks
                                 .iter()
@@ -314,6 +316,9 @@ impl GameSession {
                                 .clone();
                             self.failed_look = None;
                             self.settings_changed = true;
+                            if before != super::super::pause::short_look_name(self.look()) {
+                                pause.note_value_change(MenuItem::Look, event, self.frames);
+                            }
                         }
                     }
                     Some(Transition::Choose(MenuItem::QuitToReplays)) => {
@@ -396,7 +401,7 @@ impl GameSession {
             font.text_centred(&mut frame.argb, 8, help, ink::YELLOW);
         }
         if let Some(pause) = &watching.pause {
-            frame = pause.render(
+            frame = pause.render_with_training_at(
                 &font,
                 &frame,
                 fight.overlay().label(),
@@ -405,12 +410,16 @@ impl GameSession {
                 preset,
                 false,
                 false,
+                None,
+                None,
+                self.frames,
             );
         }
         if exit {
             self.sounds.push_back(sound::STOP_SAMPLES);
             if let Some(Screen::Replays(screen)) = self.stack.last() {
-                frame = screen.render(&font, self.replays.iter(), None);
+                frame = screen.render_with_title(&font, self.replays.iter(), None, 2);
+                self.title_started_at = Some(self.frames);
             }
         } else {
             self.playback = Some(watching);

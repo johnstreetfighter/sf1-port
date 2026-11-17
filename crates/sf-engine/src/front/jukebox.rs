@@ -26,7 +26,7 @@ use sf_video::background_bank::{shown_stages, BackgroundBank};
 use sf_video::compositor::{drawable, ink, RomFont, TEXT_COLS};
 use sf_video::render::Frame;
 
-use super::draw::{fit, framed_wide};
+use super::draw::{fit, framed_wide_at};
 use super::Transition;
 use crate::jukebox::{Jukebox, Pick, TrackFormats, NATIVE, TRACK_EXTENSIONS};
 use crate::roster::{MenuInput, TournamentFighter};
@@ -369,7 +369,11 @@ impl JukeboxScreen {
     /// (scrolling with the cursor), a file the folder lacks dim, and the
     /// notice under them.
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = framed_wide(font, "JUKEBOX", "");
+        self.render_with_title(font, 0)
+    }
+
+    pub(super) fn render_with_title(&self, font: &RomFont<'_>, title_offset: usize) -> Frame {
+        let mut frame = framed_wide_at(font, "JUKEBOX", "", title_offset);
         let argb = &mut frame.argb;
         let rows = self.rows();
         let top = self.cursor.saturating_sub(VISIBLE_ROWS - 1).min(rows.len().saturating_sub(VISIBLE_ROWS));

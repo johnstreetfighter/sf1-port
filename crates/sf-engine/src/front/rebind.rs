@@ -13,7 +13,7 @@
 use sf_video::compositor::{ink, RomFont};
 use sf_video::render::Frame;
 
-use super::draw::framed_wide;
+use super::draw::framed_wide_at;
 use super::Transition;
 
 /// A logical input's key and pad button, by name.
@@ -189,7 +189,11 @@ impl RebindScreen {
     }
 
     pub fn render(&self, font: &RomFont<'_>) -> Frame {
-        let mut frame = framed_wide(font, self.walk.header(), "ESC KEEPS THE OLD ONE");
+        self.render_with_title(font, 0)
+    }
+
+    pub(super) fn render_with_title(&self, font: &RomFont<'_>, title_offset: usize) -> Frame {
+        let mut frame = framed_wide_at(font, self.walk.header(), "ESC KEEPS THE OLD ONE", title_offset);
         let argb = &mut frame.argb;
         font.text(argb, KEY_COL, FIRST_ROW - 2, "KEY", ink::DIM);
         font.text(argb, PAD_COL, FIRST_ROW - 2, "PAD", ink::DIM);

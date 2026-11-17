@@ -92,10 +92,11 @@ impl WorldTourScreen {
     }
 
     /// The second return value indicates a profile change that needs saving.
-    pub(super) fn apply(
+    pub(super) fn apply_at(
         &mut self,
         input: MenuInput,
         profile: &mut WorldTourProfile,
+        frame_no: u32,
     ) -> (Option<Transition>, bool) {
         match &mut self.overlay {
             Overlay::Map => match input {
@@ -110,7 +111,7 @@ impl WorldTourScreen {
                 }
                 MenuInput::Filter => (None, false),
             },
-            Overlay::Select(select) => match select.apply(input) {
+            Overlay::Select(select) => match select.apply_at(input, frame_no) {
                 Some(Transition::StyleOpened) => {
                     if select.fighter(0) == profile.fighter {
                         select.restore_open_style(profile.style);
@@ -160,16 +161,17 @@ impl WorldTourScreen {
         }
     }
 
-    pub(super) fn render(
+    pub(super) fn render_with_title(
         &self,
         font: &RomFont<'_>,
         busts: &[Option<Bust>; 12],
         profile: &WorldTourProfile,
         frame_no: u32,
         notice: Option<&str>,
+        title_offset: usize,
     ) -> Frame {
         if let Overlay::Select(select) = &self.overlay {
-            return select.render_named(font, busts, "TOUR FIGHTER", frame_no, None);
+            return select.render_named_with_title(font, busts, "TOUR FIGHTER", frame_no, None, title_offset);
         }
         let mut frame = (*self.backdrop).clone();
         draw_routes(&mut frame, profile, frame_no);

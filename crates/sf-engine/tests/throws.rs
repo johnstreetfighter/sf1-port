@@ -1016,7 +1016,9 @@ fn screen_shake_moves_the_throw_playfield_and_keeps_the_hud_anchored() {
                 .filter(|&i| text.argb[i] != clear)
                 .collect();
             assert!(!health_pixels.is_empty(), "the anchored health bar is visible");
-            assert!(health_pixels.iter().all(|&i| shaken.frame.argb[i] == text.argb[i] && stable.frame.argb[i] == text.argb[i]));
+            // The slam's damage paints a hit cue over the newly empty part of
+            // the bar, so the bar is compared with and without the shake.
+            assert!(health_pixels.iter().all(|&i| shaken.frame.argb[i] == stable.frame.argb[i]));
             // Below the stationary callouts and above the local dust burst,
             // the playfield should match the frame eight rows above it.
             let playfield = 120 * WIDTH..170 * WIDTH;

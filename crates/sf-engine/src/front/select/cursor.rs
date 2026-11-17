@@ -2,6 +2,8 @@
 
 use sf_video::render::WIDTH;
 
+use super::MoveCue;
+
 /// Bright borders and pale label outlines, in 1P and 2P order.
 pub(super) const COLORS: [u32; 2] = [0xff5a_81ff, 0xffff_634f];
 pub(super) const LABEL_LIGHT: [u32; 2] = [0xffb7_cbff, 0xffff_c4af];
@@ -9,6 +11,7 @@ pub(super) const LABEL_LIGHT: [u32; 2] = [0xffb7_cbff, 0xffff_c4af];
 const DIM: [u32; 2] = [0xff34_4d94, 0xff94_3b3e];
 const RAIL: [u32; 2] = [0xff13_1d46, 0xff45_1c21];
 const LABEL_INK: [u32; 2] = [0xff24_48db, 0xffd9_2d25];
+const ARRIVAL: [u32; 2] = [0xffeb_f3ff, 0xffff_f0e8];
 
 /// Inclusive horizontal spans of the upper-left bracket, mirrored at the
 /// other corners. The tapered ends leave the middle of the portrait clear.
@@ -41,6 +44,7 @@ pub(super) fn draw(
     side: usize,
     shared: bool,
     bright: bool,
+    cue: Option<MoveCue>,
 ) {
     let (x, y, w, h) = tile;
     let middle = x + w / 2;
@@ -50,8 +54,14 @@ pub(super) fn draw(
     let right = !shared || side == 1;
     let rail_left = if left { x } else { middle };
     let rail_right = if right { right_edge } else { middle - 1 };
-    let color = if bright { COLORS[side] } else { DIM[side] };
-    let highlight = if bright { LABEL_LIGHT[side] } else { color };
+    let (color, highlight, settle) = if let Some(cue) = cue {
+        let color = if cue.bright() { ARRIVAL[side] } else { LABEL_LIGHT[side] };
+        (color, ARRIVAL[side], cue.settle())
+    } else if bright {
+        (COLORS[side], LABEL_LIGHT[side], 0)
+    } else {
+        (DIM[side], DIM[side], 0)
+    };
 
     for row in [y, bottom] {
         argb[row * WIDTH + rail_left..=row * WIDTH + rail_right].fill(RAIL[side]);
@@ -61,8 +71,9 @@ pub(super) fn draw(
             for row in y..=bottom {
                 argb[row * WIDTH + edge] = RAIL[side];
             }
-            draw_corner(argb, edge, y, mirrored, false, color, highlight);
-            draw_corner(argb, edge, bottom, mirrored, true, color, highlight);
+            let inset_edge = if mirrored { edge - settle } else { edge + settle };
+            draw_corner(argb, inset_edge, y, mirrored, false, color, highlight);
+            draw_corner(argb, inset_edge, bottom, mirrored, true, color, highlight);
         }
     }
 

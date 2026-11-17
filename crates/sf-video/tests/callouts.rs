@@ -155,7 +155,7 @@ fn half(color: u32) -> u32 {
 }
 
 #[test]
-fn every_call_out_matches_its_golden_frame_in_its_slot() {
+fn every_settled_call_out_matches_its_golden_frame_in_its_slot() {
     let Some(assets) = assets() else { return };
     let font = RomFont::new(&assets.gfx4, &assets.maincpu);
     for art in arts() {
@@ -166,7 +166,7 @@ fn every_call_out_matches_its_golden_frame_in_its_slot() {
                 board.set_greyed(Side::P2, true);
             }
             board.step(&both(kind));
-            let shown = board.frame();
+            let shown = board.frame().with_static_words();
             let frame = draw(art, gauges(), shown, None, Some(&font));
             check_golden(&format!("{}_{}", art_slug(art), slug(kind)), &frame);
 
@@ -186,6 +186,67 @@ fn every_call_out_matches_its_golden_frame_in_its_slot() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn words_slide_inward_and_only_super_and_perfect_parry_draw_the_priority_dash() {
+    let Some(assets) = assets() else { return };
+    let font = RomFont::new(&assets.gfx4, &assets.maincpu);
+    let events = [
+        CalloutEvent::new(Side::P1, CalloutKind::AlphaCounter),
+        CalloutEvent::new(Side::P1, CalloutKind::Counter),
+        CalloutEvent::new(Side::P1, CalloutKind::PunishCounter),
+        CalloutEvent::new(Side::P1, CalloutKind::Super { name: NAME }),
+        CalloutEvent::new(Side::P2, CalloutKind::PerfectParry),
+    ];
+    let mut board = CalloutBoard::new();
+    board.set_drop(regions::TRY_DROP);
+    board.step(&events);
+    let mut launch = None;
+    for age in 0..13 {
+        let shown = board.frame();
+        let still = shown.with_static_words();
+        let render = |callouts| {
+            let mut frame = blank();
+            sf_video::callouts::draw(&mut frame.argb, &callouts, Some(&font));
+            frame
+        };
+        let animated = render(shown);
+        let settled = render(still);
+        assert_eq!(shown.gauges(gauges()), still.gauges(gauges()), "Alpha Counter keeps its native gauge flash");
+        assert_apart(&shown, "animated words");
+        assert_boxes_hold_the_drawing(&animated, &shown, "animated words");
+
+        let placed = shown.elements();
+        let base = still.elements();
+        assert_eq!(placed.len(), base.len());
+        for (motion, rest) in placed.into_iter().zip(base) {
+            let Part::Word(slot) = motion.part else {
+                assert_eq!(motion, rest);
+                assert_eq!(pixels_in(&animated, motion.rect), pixels_in(&settled, rest.rect));
+                continue;
+            };
+            let kind = shown.side(motion.side).words[slot].unwrap();
+            let priority = matches!(kind, CalloutKind::Super { .. } | CalloutKind::PerfectParry);
+            let distance = match age { 0..=2 => 2, 3..=5 => 1, _ => 0 };
+            let x = match motion.side { Side::P1 => rest.rect.x + distance, Side::P2 => rest.rect.x - distance };
+            assert_eq!(motion.rect.x, x, "{kind:?} at {age}");
+            let ink = pixels_in(&animated, motion.rect);
+            assert_eq!(ink.contains(&pens::CREAM), priority && age < 6, "{kind:?} at {age}");
+            let dash = regions::Rect::new(motion.rect.x, motion.rect.y + 8, motion.rect.w, 1);
+            let count = pixels_in(&animated, dash).into_iter().filter(|&p| p != BACKDROP).count();
+            assert_eq!(count, if priority && age < 12 { (3 + age * 2).min(11) } else { 0 }, "{kind:?} at {age}");
+        }
+
+        if age == 0 {
+            launch = Some((board.clone(), animated.argb));
+        } else if age == 12 {
+            assert_eq!(animated.argb, settled.argb);
+            let (launch, picture) = launch.as_ref().unwrap();
+            assert_eq!(render(launch.frame()).argb, *picture, "cloned board keeps the entrance frame");
+        }
+        board.step(&[]);
     }
 }
 
@@ -506,8 +567,8 @@ fn the_super_dim_stays_one_level_with_two_supers_and_each_name_on_its_side() {
         one.step(&[CalloutEvent::new(Side::P1, p1_super)]);
         let mut two = CalloutBoard::new();
         two.step(&[CalloutEvent::new(Side::P1, p1_super), CalloutEvent::new(Side::P2, p2_super)]);
-        let single = draw(art, gauges(), one.frame(), None, Some(&font));
-        let double = draw(art, gauges(), two.frame(), None, Some(&font));
+        let single = draw(art, gauges(), one.frame().with_static_words(), None, Some(&font));
+        let double = draw(art, gauges(), two.frame().with_static_words(), None, Some(&font));
         let stage = 30 * WIDTH + 190;
         assert_eq!(single.argb[stage], half(BACKDROP), "one super dims one level");
         assert_eq!(double.argb[stage], half(BACKDROP), "two supers still dim one level");
@@ -563,7 +624,7 @@ fn a_burnt_out_fighter_stays_grey_under_the_dim() {
             CalloutEvent::new(Side::P1, CalloutKind::Burnout),
             CalloutEvent::new(Side::P2, CalloutKind::Super { name: NAME }),
         ]);
-        let shown = board.frame();
+        let shown = board.frame().with_static_words();
         assert!(shown.dim && shown.side(Side::P1).greyed);
         let frame = draw(art, burnt, shown, None, Some(&font));
         assert_eq!(frame.argb[30 * WIDTH + 190], half(BACKDROP), "the stage is dimmed");
@@ -756,7 +817,7 @@ fn a_fix_is_lettered_in_gold_arrows_included() {
     for word in ["TOO SLOW", "MISSED \u{2198}", "MISSED 3", "PRESS P SOONER"] {
         let mut board = CalloutBoard::new();
         board.step(&[CalloutEvent::new(Side::P1, CalloutKind::fix(word))]);
-        let shown = board.frame();
+        let shown = board.frame().with_static_words();
         let frame = draw(GaugeArt::Ruled, EraHud::NONE, shown, None, Some(&font));
         let slot = regions::word_slot(Side::P1, 0);
         let rect = regions::text_box(Side::P1, slot.y, word);

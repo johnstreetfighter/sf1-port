@@ -46,11 +46,36 @@ pub struct RowPresentation {
     pub flash: bool,
     pub pulse: u8,
     pub drain: Fill,
+    /// Most recent earned readiness, while its snap or sweep is visible.
+    pub charge: Option<GaugeCharge>,
+    /// Elapsed frames since the last discrete payment, including a payment
+    /// with no drawable discharge trail.
+    pub spend_age: Option<u8>,
+}
+
+/// The newly usable span of a row, measured from its outer end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GaugeCharge {
+    pub from: Fill,
+    pub to: Fill,
+    pub age: u8,
+}
+
+impl GaugeCharge {
+    pub const FRAMES: u8 = 13;
 }
 
 impl RowPresentation {
     pub const fn new(kind: GaugeKind) -> Self {
-        Self { kind, ready: Fill::EMPTY, flash: false, pulse: 0, drain: Fill::EMPTY }
+        Self {
+            kind,
+            ready: Fill::EMPTY,
+            flash: false,
+            pulse: 0,
+            drain: Fill::EMPTY,
+            charge: None,
+            spend_age: None,
+        }
     }
 
     pub const fn with_ready(mut self, ready: Fill) -> Self {
@@ -86,6 +111,20 @@ impl GaugeColumn {
     fn near_edge(self, fill: Fill) -> bool {
         let at = self.cell * self.width + self.index;
         at + 2 >= fill.px(self.width * self.cells)
+    }
+
+    fn charge_span(self, charge: GaugeCharge) -> std::ops::Range<usize> {
+        let unit = |fill: Fill| {
+            fill.px(self.width * self.cells)
+                .saturating_sub(self.cell * self.width)
+                .min(self.width)
+        };
+        unit(charge.from)..unit(charge.to)
+    }
+
+    fn spend_spark(self, fill: Fill) -> bool {
+        let at = self.cell * self.width + self.index;
+        at % 3 == 0 && at + 7 >= fill.px(self.width * self.cells)
     }
 }
 
@@ -228,6 +267,46 @@ impl RowPaint {
         }
     }
 
+    pub(super) fn charge_rail(self, column: GaugeColumn, original: u32) -> u32 {
+        // A level-up can wrap the progress to zero. Sweep its rail too so
+        // the new stock reads even when there is no remainder to light.
+        if matches!(self.row, GaugeRow::Level { .. }) {
+            if let Some(ink) = self.sweep_ink(column, self.shown().light) {
+                return ink;
+            }
+        }
+        self.snap_ink().filter(|(_, charge)| column.charge_span(*charge).contains(&column.index))
+            .map_or(original, |(ink, _)| ink)
+    }
+
+    pub(super) fn charge_bevel(self, column: GaugeColumn, original: (u32, u32)) -> (u32, u32) {
+        if let Some(ink) = self.charge_ink(column) {
+            (ink, mix(original.1, ink, 135))
+        } else {
+            original
+        }
+    }
+
+    pub(super) fn charge_ink(self, column: GaugeColumn) -> Option<u32> {
+        self.snap_ink().filter(|(_, charge)| !column.charge_span(*charge).is_empty())
+            .map(|(ink, _)| ink)
+    }
+
+    fn snap_ink(self) -> Option<(u32, GaugeCharge)> {
+        let charge = self.presentation?.charge?;
+        (charge.age < 8)
+            .then(|| if charge.age < 4 { super::pens::CREAM } else { self.shown().light })
+            .map(|ink| (ink, charge))
+    }
+
+    fn sweep_ink(self, column: GaugeColumn, light: u32) -> Option<u32> {
+        let charge = self.presentation?.charge.filter(|cue| cue.age < GaugeCharge::FRAMES)?;
+        let span = column.charge_span(charge);
+        let head = span.start + usize::from(charge.age) * span.len() / usize::from(GaugeCharge::FRAMES);
+        (span.contains(&column.index) && column.index <= head && column.index + 2 >= head)
+            .then_some(if column.index == head { super::pens::CREAM } else { light })
+    }
+
     fn filling_palette(self, p: RowPresentation, column: GaugeColumn) -> Palette {
         let Palette { mut body, mut light, rail, track } = self.shown();
         if self.state != GaugeState::Greyed {
@@ -269,6 +348,9 @@ impl RowPaint {
         if p.drain.num != 0 {
             return [DRAIN_AMBER, dark, mix(body, DRAIN_AMBER, 154)];
         }
+        if let Some((ink, _)) = self.snap_ink() {
+            return [ink, dark, mix(body, ink, 154)];
+        }
         if p.flash && self.full() {
             let flash = mix(light, WHITE, 102);
             return [flash, dark, flash];
@@ -284,6 +366,9 @@ impl RowPaint {
         let Palette { body, light, track, .. } = self.filling_palette(p, column);
         if !column.lit {
             if column.inside(p.drain) {
+                if fy == 0 && p.spend_age.is_some_and(|age| age < 7) && column.spend_spark(p.drain) {
+                    return super::pens::CREAM;
+                }
                 let tail = mix(track, DRAIN_AMBER, 122);
                 return if column.near_edge(p.drain) { DRAIN_AMBER } else { tail };
             }
@@ -294,6 +379,9 @@ impl RowPaint {
         }
         if self.state == GaugeState::Draining {
             return mix(body, track, 90);
+        }
+        if let Some(ink) = self.sweep_ink(column, light) {
+            return ink;
         }
         let counter_lit = p.kind != GaugeKind::Sf4Revenge && self.state == GaugeState::Flashing { lit: true };
         if (self.full() && p.flash) || counter_lit {
@@ -347,12 +435,21 @@ pub(super) fn draw_label(corner: &mut Corner<'_>, lx: usize, at: Slot, kind: Gau
     let mirrored = corner.side == Side::P2;
     let mark_x = if mirrored { x + width - 5 } else { x + 2 };
     let text_x = if mirrored { x + 2 } else { x + 8 };
-    let accent = match kind {
+    let normal_accent = match kind {
         GaugeKind::Alpha3A => color(0x7fef76),
         GaugeKind::Alpha3X => color(0xff8c7e),
         GaugeKind::Sf6Drive if paint.state != GaugeState::Greyed => color(0x9af16e),
         _ => paint.shown().light,
     };
+    let cue = paint.presentation.and_then(|info| {
+        if info.spend_age.is_some_and(|age| age < 10) {
+            Some(DRAIN_AMBER)
+        } else if info.charge.is_some_and(|charge| charge.age < 10) {
+            Some(super::pens::CREAM)
+        } else {
+            None
+        }
+    });
     let mut draw = |gx, bitmap: [u8; 5], ink, flip| {
         for (row, bits) in bitmap.into_iter().enumerate() {
             for col in 0..3 {
@@ -363,9 +460,13 @@ pub(super) fn draw_label(corner: &mut Corner<'_>, lx: usize, at: Slot, kind: Gau
             }
         }
     };
-    draw(mark_x, kind.emblem(), mix(accent, color(0xfff7e1), 48), mirrored);
+    draw(mark_x, kind.emblem(), cue.unwrap_or_else(|| mix(normal_accent, color(0xfff7e1), 48)), mirrored);
     for (index, letter) in label.bytes().enumerate() {
         draw(text_x + index * 4, glyph(letter), LETTERING, false);
+    }
+    if let Some(ink) = cue {
+        let bottom = (y + height - 1) * WIDTH + x;
+        corner.argb[bottom..bottom + width].fill(ink);
     }
 }
 
@@ -374,7 +475,7 @@ mod tests {
     use super::*;
     use crate::era_hud::{
         draw_lifted, draw_lifted_presented, EraGauge, EraHud, GaugeArt, CORNER_EDGE,
-        SIGNATURE_CORNER_WIDTH,
+        MAIN_ROW, SIGNATURE_CORNER_WIDTH,
     };
 
     const BACKDROP: u32 = color(0x090809);
@@ -450,6 +551,50 @@ mod tests {
         assert_eq!(returning[sample(64)], idle[sample(64)]);
         assert_eq!(moving[sample(72)], idle[sample(72)]); // Divider.
         assert_eq!(moving[sample(73)], idle[sample(73)]); // Outside spend.
+    }
+
+    #[test]
+    fn charge_and_spend_stay_inside_the_existing_mirrored_row_and_label_for_each_art() {
+        let row = GaugeRow::stock(3, 2, Fill::EMPTY);
+        let gauge = EraGauge::one(row);
+        let hud = EraHud { p1: Some(gauge), p2: Some(gauge) };
+        let ready = RowPresentation::new(GaugeKind::Sf5Critical).with_ready(Fill::of(2, 3));
+        let charge = GaugeCharge { from: Fill::of(1, 3), to: Fill::of(2, 3), age: 0 };
+        let top = HEIGHT - 8 - MAIN_ROW;
+        for art in GaugeArt::ALL {
+            let draw = |sample| {
+                let mut frame = vec![BACKDROP; WIDTH * HEIGHT];
+                let presentation = GaugePresentation { main: sample, second: None };
+                draw_lifted_presented(&mut frame, &hud, art, None, 0, [Some(presentation); 2]);
+                frame
+            };
+            let steady = draw(ready);
+            let snap = draw(RowPresentation { charge: Some(charge), ..ready });
+            let sweep = draw(RowPresentation { charge: Some(GaugeCharge { age: 11, ..charge }), ..ready });
+            let expense = draw(RowPresentation { drain: Fill::of(5, 6), spend_age: Some(0), ..ready });
+            let label_start = (8..WIDTH / 2).find(|&x| steady[(top + MAIN_ROW - 1) * WIDTH + x] == color(0x171720)).unwrap();
+            for frame in [&snap, &sweep, &expense] {
+                assert!(frame[..top * WIDTH].iter().all(|&pixel| pixel == BACKDROP));
+                assert!(frame[(top + MAIN_ROW) * WIDTH..].iter().all(|&pixel| pixel == BACKDROP));
+                for y in top..top + MAIN_ROW {
+                    assert_eq!(frame[y * WIDTH + 13], steady[y * WIDTH + 13], "older stock of {art:?}");
+                    assert_eq!(frame[y * WIDTH + WIDTH - 14], steady[y * WIDTH + WIDTH - 14]);
+                }
+                for (&sample, &plain) in frame.iter().zip(&steady) {
+                    if plain == BACKDROP {
+                        assert_eq!(sample, plain, "{art:?} effect stays within the current footprint");
+                    }
+                }
+            }
+            let at = (top + MAIN_ROW - 1) * WIDTH + label_start;
+            assert_eq!(snap[at], super::super::pens::CREAM);
+            assert_eq!(sweep[at], steady[at]);
+            assert_eq!(expense[at], DRAIN_AMBER);
+            let body = top * WIDTH..(top + MAIN_ROW - 1) * WIDTH;
+            assert_ne!(&snap[body.clone()], &steady[body.clone()]);
+            assert_ne!(&sweep[body.clone()], &steady[body.clone()]);
+            assert_ne!(&expense[body.clone()], &steady[body]);
+        }
     }
 
     #[test]

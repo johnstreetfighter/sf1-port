@@ -29,6 +29,7 @@ use sf_engine::run::PowerOnMachine;
 use sf_engine::roster::TournamentFighter;
 use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
+use sf_video::palette::Palette;
 use sf_video::render::{render_frame, Frame, WIDTH};
 use sf_video::romset::{load_assets, Assets};
 use sf_video::scene::SceneState;
@@ -51,6 +52,7 @@ const SCORES: (usize, usize, usize, usize) = (16, 8, 352, 8);
 const NEW_TIME: (usize, usize, usize, usize) = (164, 52, 64, 8);
 /// The bars' labels (text rows 5 and 7, columns 22 to 28).
 const LABELS: [(usize, usize, usize, usize); 2] = [(112, 24, 56, 8), (112, 40, 56, 8)];
+const LIFEBAR_FILLS: [(usize, usize, usize, usize); 2] = [(176, 25, 96, 5), (176, 41, 96, 5)];
 
 fn assets() -> Option<Assets> {
     if !Path::new(ROMS).is_dir() {
@@ -182,13 +184,22 @@ fn in_rect(r: (usize, usize, usize, usize), i: usize) -> bool {
 
 /// The presented `frame` against the layout's expectation: the hidden
 /// cells show the playfield, the ROM's TIME pixels are moved to the layout
-/// position unchanged, and nothing else differs but the call-outs the fight
-/// earned (a CPU's FIRST ATTACK, EH6), each inside its own box.
+/// position unchanged. The earned call-outs and the damage trail may draw
+/// within their own regions.
 fn check_layout(s: &GameSession, a: &Assets, frame: &Frame, scores_hidden: bool, names: [&str; 2], at: &str) {
     let plain = plain(s, a);
     let callouts = s.fight().unwrap().callouts().frame().elements();
     let in_callout = |i: usize| callouts.iter().any(|e| e.rect.contains(i % WIDTH, i / WIDTH));
-    let expected = render_frame(a, &blanked(s, scores_hidden, names));
+    let scene = blanked(s, scores_hidden, names);
+    let expected = render_frame(a, &scene);
+    let palette = Palette::from_ram(&scene.paletteram);
+    let trail_inks = [(4, 0), (4, 1), (4, 2), (6, 2), (12, 0)]
+        .map(|(group, pen)| palette.argb(768 + group * 4 + pen));
+    let in_damage_trail = |i: usize| {
+        LIFEBAR_FILLS.iter().any(|&r| in_rect(r, i))
+            && expected.argb[i] == 0xff44_4444
+            && trail_inks.contains(&frame.argb[i])
+    };
     let mut moved = 0;
     for (i, (got, want)) in frame.argb.iter().zip(&expected.argb).enumerate() {
         if in_rect(NEW_TIME, i) {
@@ -201,7 +212,7 @@ fn check_layout(s: &GameSession, a: &Assets, frame: &Frame, scores_hidden: bool,
                 continue;
             }
         }
-        if !in_callout(i) {
+        if !in_callout(i) && !in_damage_trail(i) {
             assert_eq!(got, want, "pixel ({}, {}) {at}", i % WIDTH, i / WIDTH);
         }
     }
@@ -212,7 +223,7 @@ fn check_layout(s: &GameSession, a: &Assets, frame: &Frame, scores_hidden: bool,
         if in_rect(OLD_TIME, i) || (scores_hidden && in_rect(SCORES, i)) || LABELS.iter().any(|&r| in_rect(r, i)) {
             continue;
         }
-        if !in_rect(NEW_TIME, i) && !in_callout(i) {
+        if !in_rect(NEW_TIME, i) && !in_callout(i) && !in_damage_trail(i) {
             assert_eq!(got, was, "pixel ({}, {}) {at}", i % WIDTH, i / WIDTH);
         }
     }

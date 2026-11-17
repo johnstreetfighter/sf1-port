@@ -50,6 +50,7 @@ const TIME_CELLS: (usize, usize, usize) = (28, 9, 16);
 const SCORE_CELLS: (usize, usize, usize) = (3, 10, 53);
 const MARKER_CELLS: [(usize, usize, usize); 4] = [(5, 12, 15), (6, 12, 15), (5, 48, 51), (6, 48, 51)];
 const NEW_TIME: (usize, usize, usize, usize) = (164, 52, 64, 8);
+const LIFEBAR_FILL: [(usize, usize, usize, usize); 2] = [(176, 25, 96, 5), (176, 41, 96, 5)];
 
 fn assets() -> Option<Assets> {
     if !Path::new(ROMS).is_dir() {
@@ -256,8 +257,8 @@ fn training_shows_no_time_scores_or_round_markers_under_every_preset() {
                 // Nothing is drawn in their place, TIME under the bars
                 // included, and the rest of the frame is the hardware's
                 // (with the overhaul's names on the bars): Faithful 1987
-                // exactly, the overhauls but for the call-outs the fight
-                // earned (a CPU's FIRST ATTACK), each inside its own box.
+                // exactly, the overhauls with the fight's call-outs and
+                // hit trails confined to their own boxes and bar fills.
                 let expected = render_frame(&a, &blanked(&s, names));
                 assert_eq!(changed(&out.frame, &expected, NEW_TIME), 0, "no TIME under the bars {at}");
                 if faithful {
@@ -266,7 +267,9 @@ fn training_shows_no_time_scores_or_round_markers_under_every_preset() {
                 }
                 let callouts = s.fight().unwrap().callouts().frame().elements();
                 for (i, (got, want)) in out.frame.argb.iter().zip(&expected.argb).enumerate() {
-                    if !callouts.iter().any(|e| e.rect.contains(i % WIDTH, i / WIDTH)) {
+                    if !callouts.iter().any(|e| e.rect.contains(i % WIDTH, i / WIDTH))
+                        && !LIFEBAR_FILL.into_iter().any(|rect| in_rect(rect, i))
+                    {
                         assert_eq!(got, want, "pixel ({}, {}) {at}", i % WIDTH, i / WIDTH);
                     }
                 }

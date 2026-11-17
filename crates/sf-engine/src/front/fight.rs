@@ -49,10 +49,15 @@ use crate::utility::{ComboTrialSpec, Drill, DrillController, RosterFighter, Tria
 use crate::impact::{ImpactCue, ImpactFighter};
 
 mod gauge_effects;
+mod lifebar;
 mod move_effects;
+mod round_motion;
+mod timer_motion;
 
 use gauge_effects::{Corner as GaugeCorner, GaugeEffects, Spends};
+use lifebar::LifebarTrails;
 use move_effects::MoveEffects;
+use round_motion::{HudKo, HudRound, HudWins, RoundMotion};
 
 /// The game flow's round start (`0x3ea3e`): Training's restart point.
 const ROUND_START: u32 = 0x3ea3e;
@@ -412,6 +417,10 @@ pub struct Fight {
     /// The active gauge art from Settings or the pause box.
     gauge_art: GaugeArt,
     gauge_effects: GaugeEffects,
+    /// Short presentation cues indexed by displayed lifebar.
+    lifebar_trails: LifebarTrails,
+    round_motion: RoundMotion,
+    timer_motion: timer_motion::TimerMotion,
     impact_visuals: [Option<ImpactCue>; 3],
     screen_shake: bool,
     /// The machine at the start of the current round (`0x3ea3e`).
@@ -483,6 +492,9 @@ pub struct FightSnapshot {
     pub last_flow: u32,
     pub callouts: CalloutBoard,
     pub(crate) gauge_effects: GaugeEffects,
+    lifebar_trails: LifebarTrails,
+    round_motion: RoundMotion,
+    timer_motion: timer_motion::TimerMotion,
     impact_visuals: [Option<ImpactCue>; 3],
     pub pending_callouts: Vec<CalloutEvent>,
     pub pending_combos: Vec<AnnouncerLine>,
@@ -591,6 +603,7 @@ impl Fight {
             machine, setup, country, black, over, continuing, round_start,
             last_flow, show, read, fed_reads,
             sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, screen_shake: _, callouts: _, pending_callouts: _,
+            lifebar_trails: _, round_motion: _, timer_motion: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, move_effects_preview: _, move_effects: _, satsui_art: _,
             coach, notation: _, selected_styles: _, practice_meters,
@@ -642,6 +655,7 @@ impl Fight {
         let Self {
             machine, setup, country, black, sounds, over, continuing,
             overlay: _, gauge_art: _, gauge_effects, impact_visuals, screen_shake: _, selected_styles: _, round_start, last_flow, callouts,
+            lifebar_trails, round_motion, timer_motion,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, move_effects_preview: _, move_effects,
             satsui_art: _, show, coach, practice_meters, notation: _,
@@ -660,6 +674,9 @@ impl Fight {
             last_flow: *last_flow,
             callouts: callouts.clone(),
             gauge_effects: *gauge_effects,
+            lifebar_trails: *lifebar_trails,
+            round_motion: *round_motion,
+            timer_motion: *timer_motion,
             impact_visuals: *impact_visuals,
             pending_callouts: pending_callouts.clone(),
             pending_combos: pending_combos.clone(),
@@ -688,6 +705,7 @@ impl Fight {
         let FightSnapshot {
             frame: _, machine, setup, country, black, sounds, over, continuing,
             round_start, last_flow, callouts, gauge_effects, impact_visuals, pending_callouts, pending_combos,
+            lifebar_trails, round_motion, timer_motion,
             reader, read, fed_reads, combo, moments, hold_combo, era_hud, trails, move_effects,
             show, coach, practice_meters, drill, trial,
         } = snap;
@@ -702,6 +720,9 @@ impl Fight {
         self.last_flow = *last_flow;
         self.callouts.clone_from(callouts);
         self.gauge_effects = *gauge_effects;
+        self.lifebar_trails = *lifebar_trails;
+        self.round_motion = *round_motion;
+        self.timer_motion = *timer_motion;
         self.impact_visuals = *impact_visuals;
         self.pending_callouts.clone_from(pending_callouts);
         self.pending_combos.clone_from(pending_combos);
@@ -797,6 +818,9 @@ impl Fight {
             overlay: OverlayMode::Off,
             gauge_art: GaugeArt::default(),
             gauge_effects: GaugeEffects::default(),
+            lifebar_trails: LifebarTrails::default(),
+            round_motion: RoundMotion::default(),
+            timer_motion: timer_motion::TimerMotion::default(),
             impact_visuals: [None; 3],
             screen_shake: true,
             round_start: None,
@@ -1081,6 +1105,9 @@ impl Fight {
         // The abandoned attempt's words go with it.
         self.callouts = CalloutBoard::new();
         self.gauge_effects = GaugeEffects::default();
+        self.lifebar_trails = LifebarTrails::default();
+        self.round_motion = RoundMotion::default();
+        self.timer_motion = timer_motion::TimerMotion::default();
         self.move_effects = MoveEffects::default();
         self.impact_visuals.fill(None);
         self.pending_callouts.clear();
@@ -1134,6 +1161,9 @@ impl Fight {
             self.set_drill(None);
         }
         self.gauge_effects = GaugeEffects::default();
+        self.lifebar_trails = LifebarTrails::default();
+        self.round_motion = RoundMotion::default();
+        self.timer_motion = timer_motion::TimerMotion::default();
         self.move_effects = MoveEffects::default();
         self.impact_visuals.fill(None);
     }
@@ -1193,6 +1223,61 @@ impl Fight {
         self.setup.config.dramatic.is_some_and(|rules| {
             rules.lifebar == crate::dramatic::LifebarMode::Independent
         })
+    }
+
+    fn ally2_lifebar_fill(&self) -> u8 {
+        let maximum = crate::dramatic::ALLY_SUB_HP;
+        let health = self.machine.toggle_state().dramatic.health[2].min(maximum);
+        (u32::from(health) * u32::from(lifebar::FILL_POINTS)).div_ceil(u32::from(maximum)) as u8
+    }
+
+    fn round_marker_players(&self) -> [u32; 2] {
+        let ram = self.machine.work_ram();
+        match ram[(GAME_MODE - 0xff8000) as usize] {
+            2 => [P1_STRUCT, CPU_STRUCT],
+            4 => [P2_STRUCT, CPU_STRUCT],
+            _ => [P1_STRUCT, P2_STRUCT],
+        }
+    }
+
+    fn hud_round(&self) -> HudRound {
+        let state = &self.machine.state;
+        if self.over || self.training() || self.setup.config.preset == RulesetPreset::Faithful1987
+            || self.name() != "fight" || state.gfxctrl & 0x08 == 0
+            || (self.setup.config.evil_ryu_playtest.is_some()
+                && self.machine.toggle_state().raging_demon.blackout_frames.is_some())
+        {
+            return HudRound::default();
+        }
+        let ram = self.machine.work_ram();
+        let markers = self.round_marker_players().map(|player| {
+            let player = (player - 0xff8000) as usize;
+            let base = u16::from_be_bytes([ram[player + MARKER_OFFSET as usize], ram[player + MARKER_OFFSET as usize + 1]]);
+            Some(HudWins::read(ram[player + 8], usize::from(base), &state.videoram))
+        });
+        let knockout = self.machine.settling_knockout().then(|| {
+            let native_empty = lifebar::ROWS.map(|row| lifebar::native_fill(&state.videoram, row) == Some(0));
+            let dramatic_health = self.setup.config.dramatic.is_some()
+                .then_some(self.machine.toggle_state().dramatic.health);
+            HudKo::read(native_empty, dramatic_health)
+        });
+        HudRound { knockout, markers }
+    }
+
+    fn displayed_lifebars(&self, in_fight: bool) -> [Option<u8>; 3] {
+        if !in_fight || self.over || self.setup.config.preset == RulesetPreset::Faithful1987
+            || (self.setup.config.evil_ryu_playtest.is_some()
+                && self.machine.toggle_state().raging_demon.blackout_frames.is_some())
+        {
+            return [None; 3];
+        }
+        let state = &self.machine.state;
+        let [first, second] = if state.gfxctrl & 0x08 != 0 {
+            lifebar::ROWS.map(|row| lifebar::native_fill(&state.videoram, row))
+        } else {
+            [None; 2]
+        };
+        [first, second, self.independent_ally_lifebars().then(|| self.ally2_lifebar_fill())]
     }
 
     fn ally2_gauge(&self) -> Option<EraGauge> {
@@ -1513,6 +1598,19 @@ impl Fight {
         fighter.name()
     }
 
+    fn visible_timer_digits(&self) -> Option<[u8; 3]> {
+        let state = &self.machine.state;
+        if self.name() != "fight" || self.over || self.training()
+            || self.setup.config.preset == RulesetPreset::Faithful1987
+            || state.flip_screen || state.gfxctrl & 0x08 == 0
+            || (self.setup.config.evil_ryu_playtest.is_some()
+                && self.machine.toggle_state().raging_demon.blackout_frames.is_some())
+        {
+            return None;
+        }
+        timer_motion::digits(&state.videoram)
+    }
+
     /// The overhaul fight layout, as edits to the presented text layer:
     /// the ROM's TIME tiles hidden and drawn again centred under the health
     /// bars (not while the ROM has text there, such as the bonus tally's
@@ -1565,12 +1663,7 @@ impl Fight {
             // Both sides' marker cells, from the two player structures
             // `round_hud` lays out for the game mode; only where a slot or
             // a marker is drawn.
-            let sides = match ram[(GAME_MODE - 0xff8000) as usize] {
-                2 => [P1_STRUCT, CPU_STRUCT],
-                4 => [P2_STRUCT, CPU_STRUCT],
-                _ => [P1_STRUCT, P2_STRUCT],
-            };
-            for player in sides {
+            for player in self.round_marker_players() {
                 let offset = usize::from(rw(player + MARKER_OFFSET));
                 let (row, first) = (offset / 0x80, offset % 0x80 / 2);
                 for row in (row..row + MARKER_ROWS).filter(|&row| row < 32) {
@@ -1650,8 +1743,14 @@ impl Fight {
         if time && !self.training() && under_time_clear {
             // The same tiles, as the ROM draws them, under the health bars;
             // a wiped tile leaves its place there to the screen beneath.
+            let accent = self.timer_motion.accent(self.visible_timer_digits(), self.machine.state.frame);
             for (i, col) in (TIME_COLS.0..=TIME_COLS.1).enumerate().filter(|&(_, col)| !wiped(col, TIME_ROW)) {
-                edits.added.push((TIME_X + 8 * i as i32, TIME_Y, cell(col, TIME_ROW)));
+                let tile = (TIME_X + 8 * i as i32, TIME_Y, cell(col, TIME_ROW));
+                if let Some(tile) = accent.and_then(|accent| accent.tile(i, tile)) {
+                    edits.inked.push(tile);
+                } else {
+                    edits.added.push(tile);
+                }
             }
         }
         for (col, code) in result {
@@ -1679,14 +1778,14 @@ impl Fight {
             return self.render_demon_blackout(assets);
         }
         let mut frame = self.render_scene(assets);
-        self.draw_ally_lifebar(&mut frame);
+        self.draw_ally_lifebar(&mut frame, assets);
         if self.last_flow == FIGHT_LOOP {
             let strip = self.drill.map(DrillController::strip).or_else(|| self.trial_strip());
             if let Some(strip) = strip {
                 let font = RomFont::new(&assets.gfx4, &assets.maincpu);
                 draw_strip(&mut frame.argb, &strip, Some(&font));
                 if self.setup.config.preset == RulesetPreset::Faithful1987 {
-                    draw(&mut frame.argb, &self.callouts.frame(), Some(&font));
+                    draw(&mut frame.argb, &self.callouts.frame().with_static_words(), Some(&font));
                 }
             }
         }
@@ -1754,8 +1853,7 @@ impl Fight {
         frame
     }
 
-    fn draw_ally_lifebar(&self, frame: &mut Frame) {
-        use crate::dramatic::ALLY_SUB_HP;
+    fn draw_ally_lifebar(&self, frame: &mut Frame, assets: &Assets) {
         use sf_video::render::{HEIGHT, VISAREA_X, VISAREA_Y, WIDTH};
 
         if self.last_flow != FIGHT_LOOP || !self.independent_ally_lifebars() {
@@ -1763,8 +1861,12 @@ impl Fight {
         }
         // The cabinet's Ally 1 bar begins at text-RAM offset 0x2bc.
         let (left, top) = (30 * 8 - VISAREA_X, 5 * 8 - VISAREA_Y + 10);
-        let health = self.machine.toggle_state().dramatic.health[2].min(ALLY_SUB_HP);
-        let fill = (usize::from(health) * 48).div_ceil(usize::from(ALLY_SUB_HP));
+        let points = self.ally2_lifebar_fill();
+        let fill = usize::from(points);
+        let trail = self.lifebar_trails.ally2_view(points, self.machine.state.frame).map(|trail| {
+            let font = RomFont::new(&assets.gfx4, &assets.maincpu);
+            (trail, font)
+        });
         let flip = self.machine.state.flip_screen;
         for row in 0..4 {
             for col in 0..50 {
@@ -1776,7 +1878,10 @@ impl Fight {
                 frame.argb[y * WIDTH + x] = match (row, col) {
                     (0 | 3, _) | (_, 0 | 49) => 0xffd5c49a,
                     (_, col) if col <= fill => 0xffe6b948,
-                    _ => 0xff392626,
+                    (_, col) => trail.as_ref().and_then(|(trail, font)| {
+                        let (color, pen) = trail.ally_ink(row, col - fill)?;
+                        Some(font.pen(color, pen))
+                    }).unwrap_or(0xff392626),
                 };
             }
         }
@@ -1991,7 +2096,8 @@ impl Fight {
 
     fn render_scene(&self, assets: &Assets) -> Frame {
         let mut scene = self.machine.state.scene();
-        let layout = self.layout(&scene);
+        let mut layout = self.layout(&scene);
+        let mut native_edits = TextEdits::default();
         let preview = layout.is_some() && self.move_effects_preview() == Some(true);
         let move_effects = if preview {
             self.move_effects.hide_native_sparks(&mut scene.objectram);
@@ -2011,6 +2117,19 @@ impl Fight {
         let sprite_art = self.satsui_sprite_art(&scene);
         let (boxes, meter) = self.overlay.parts();
         let telemetry = || self.machine.diagnostic_telemetry();
+        if self.last_flow == FIGHT_LOOP && self.setup.config.preset != RulesetPreset::Faithful1987 {
+            self.lifebar_trails.paint_native(
+                layout.as_mut().unwrap_or(&mut native_edits), &scene.videoram,
+                self.machine.state.frame, scene.flip_screen,
+            );
+        }
+        if self.name() == "fight" && self.setup.config.preset != RulesetPreset::Faithful1987 {
+            self.round_motion.paint(
+                assets, layout.as_mut().unwrap_or(&mut native_edits), &scene,
+                self.machine.state.frame, self.screen_shake,
+            );
+        }
+        let text_edits = layout.as_ref().unwrap_or(&native_edits);
         let base = match &layout {
             // Faithful 1987 Training's edits only hide cells: the hardware
             // path, as every Faithful 1987 frame.
@@ -2062,7 +2181,7 @@ impl Fight {
             }
             _ if impact_active => {
                 let (mut hardware, _) = render_frame_staged_with_motion(
-                    assets, &scene, &layout.unwrap_or_default(), &tints, &sprite_art, world_offset,
+                    assets, &scene, text_edits, &tints, &sprite_art, world_offset,
                 );
                 if boxes {
                     draw_boxes(&mut hardware, &telemetry(), world_offset);
@@ -2075,9 +2194,9 @@ impl Fight {
                 return if meter { render_diagnostic_overlay_parts(&frame, &telemetry(), false, true) } else { frame };
             }
             _ if !sprite_art.is_empty() => {
-                render_frame_staged_with_art(assets, &scene, &layout.unwrap_or_default(), &[], &sprite_art).0
+                render_frame_staged_with_art(assets, &scene, text_edits, &[], &sprite_art).0
             }
-            _ => render_frame_edited(assets, &scene, &layout.unwrap_or_default()),
+            _ => render_frame_edited(assets, &scene, text_edits),
         };
         if !boxes && !meter {
             return base;
@@ -2125,6 +2244,8 @@ impl Fight {
         let mut clear_impacts = false;
         let mut event = None;
         let mut ally2_events = [None; 5];
+        let mut combo_grew = [false; 2];
+        let mut combo_finished = [None; 2];
         if !self.over {
             // A Training dummy's pad is held still, and the fair CPU plays
             // P2's in the machine (SP21), so the pad's never reaches it.
@@ -2190,6 +2311,9 @@ impl Fight {
                 coach.input(p1, p1_facing_right(&self.machine));
             }
             let before_gauges = if in_fight { self.current_gauge_corners() } else { [None; 3] };
+            let before_lifebars = self.displayed_lifebars(in_fight);
+            let before_timer = if in_fight { self.visible_timer_digits() } else { None };
+            let before_round = self.hud_round();
             let previous_read = self.read;
             let previous_tech = self.machine.toggle_state().throw.tech_window[0];
             let m = &mut self.machine;
@@ -2284,6 +2408,15 @@ impl Fight {
             }
             let after_gauges = if flow == FIGHT_LOOP { self.current_gauge_corners() } else { [None; 3] };
             self.gauge_effects.step(before_gauges, after_gauges, spends);
+            let after_lifebars = self.displayed_lifebars(flow == FIGHT_LOOP);
+            let after_timer = if flow == FIGHT_LOOP { self.visible_timer_digits() } else { None };
+            let after_round = self.hud_round();
+            self.timer_motion.step(before_timer, after_timer, self.machine.state.frame);
+            self.round_motion.step(before_round, after_round, self.machine.state.frame);
+            let shared_lifebar = self.setup.config.dramatic.is_some() && !self.independent_ally_lifebars();
+            let right_player_only = self.machine.work_ram()[(GAME_MODE - 0xff8000) as usize] == 4;
+            let heavy_hits = lifebar::heavy_hits(&impacts, right_player_only, shared_lifebar);
+            self.lifebar_trails.step(before_lifebars, after_lifebars, heavy_hits, self.machine.state.frame);
             // The fight reader reads the stepped frame; the counts it feeds
             // show in every overhaul fight, with their damage in Training.
             // In Training it reads the gate's hit record too, so hits the
@@ -2317,8 +2450,11 @@ impl Fight {
                     self.pending_callouts.push(CalloutEvent::new(Side::P1, CalloutKind::fix(&text)));
                 }
             }
+            let previous_combos = Side::BOTH.map(|side| self.combo.live_hits(side));
+            combo_finished = self.combo.step(&self.read, self.hold_combo && self.training());
+            combo_grew = Side::BOTH.map(|side| self.combo.live_hits(side) > previous_combos[side.index()]);
             // A finished combo of five hits and up is the announcer's too.
-            for hits in self.combo.step(&self.read, self.hold_combo && self.training()).into_iter().flatten() {
+            for hits in combo_finished.into_iter().flatten() {
                 self.pending_combos.extend(AnnouncerLine::for_combo(hits));
             }
             if in_fight && flow == FIGHT_LOOP {
@@ -2355,7 +2491,9 @@ impl Fight {
         let overhaul = self.setup.config.preset != RulesetPreset::Faithful1987;
         for side in Side::BOTH {
             let shown = self.combo.shown(side, self.training()).filter(|_| overhaul);
-            self.callouts.set_combo(side, shown);
+            self.callouts.set_combo_with_motion(
+                side, shown, combo_grew[side.index()], combo_finished[side.index()].is_some_and(|hits| hits >= 5),
+            );
             self.callouts.set_greyed(side, self.machine.era_fighters()[side.index()].sf6_burnout());
         }
         let events = std::mem::take(&mut self.pending_callouts);
