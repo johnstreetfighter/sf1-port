@@ -1652,8 +1652,12 @@ impl GameSession {
             return None;
         }
         let training = matches!(play.fight.setup().kind, FightKind::TrainingCpu | FightKind::TrainingDummy);
-        // Only while the round is being fought (George, 2026-11-17).
+        // A player opens the box only while the round is being fought
+        // (George, 2026-11-17). A lost pad's notice is not a player's
+        // choice: it waits only for the hidden drive and the continue
+        // countdown, as before.
         let can_pause = play.fight.round_live();
+        let can_notify = !play.fight.driving() && !play.fight.in_continue();
         // A lost pad pauses the fight with a notice, at once or as soon as
         // the fight can pause; a box already up takes the notice.
         if let Some(side) = (0..2).find(|&s| now.pad_lost[s]).or(self.lost_pad) {
@@ -1665,7 +1669,7 @@ impl GameSession {
                 // The notice is on the pause box: the list gives way to it.
                 play.moves = None;
             } else if play.after.is_none() {
-                if !can_pause {
+                if !can_notify {
                     self.lost_pad = Some(side);
                 } else {
                     play.paused_by = if online { local_side } else { 0 };
