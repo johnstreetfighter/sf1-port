@@ -285,19 +285,24 @@ name, certificate, UDP port and service. This example uses
 `relay2.example.net` on UDP 17443 and the name `sf-relay2`.
 
 Create an `A` record for `relay2.example.net` that points at the same server,
-and wait until it resolves. Then:
+and wait until it resolves. Then, from the repository checkout on the server:
 
 ```sh
 sudo ufw allow 17443/udp
+sed -e 's|0.0.0.0:7443|0.0.0.0:17443|' -e 's|/etc/sf-relay/|/etc/sf-relay2/|g' tools/relay/sf-relay.service \
+    | sudo tee /etc/systemd/system/sf-relay2.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable sf-relay2.service
 sudo certbot certonly --standalone --non-interactive --agree-tos --register-unsafely-without-email \
     --cert-name relay2.example.net -d relay2.example.net \
     --deploy-hook "env SF_RELAY_NAME=sf-relay2 /usr/local/sbin/sf-relay-renew-hook"
 sudo ls -l /etc/sf-relay2
-sed -e 's|0.0.0.0:7443|0.0.0.0:17443|' -e 's|/etc/sf-relay/|/etc/sf-relay2/|g' tools/relay/sf-relay.service \
-    | sudo tee /etc/systemd/system/sf-relay2.service > /dev/null
-sudo systemctl daemon-reload
-sudo systemctl enable --now sf-relay2.service
+sudo systemctl start sf-relay2.service
 ```
+
+The unit goes in before the certificate because the deploy hook restarts it
+by name; without the unit the hook copies the certificate and then reports an
+error. The `sed` command reads the unit from the checkout, so run it there.
 
 If `/etc/sf-relay2` is missing its two files, run the hook by hand:
 
