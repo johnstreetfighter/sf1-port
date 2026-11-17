@@ -15,12 +15,23 @@ struct TestRelay {
 
 impl TestRelay {
     fn start() -> Self {
-        let signed = rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_owned()]).unwrap();
-        let certificate = signed.cert.der().to_vec();
+        Self::start_valid_for(None)
+    }
+
+    /// A relay whose certificate expires after `days`, or rcgen's far-off
+    /// default.
+    fn start_valid_for(days: Option<u64>) -> Self {
+        let mut params = rcgen::CertificateParams::new(vec!["127.0.0.1".to_owned()]).unwrap();
+        if let Some(days) = days {
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
+            params.not_after = rcgen::date_time_ymd(1970, 1, 1) + now + Duration::from_secs(days * 86_400);
+        }
+        let signing_key = rcgen::KeyPair::generate().unwrap();
+        let certificate = params.self_signed(&signing_key).unwrap().der().to_vec();
         let service = RelayService::start(ServiceConfig {
             listen: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
             certificates: vec![certificate.clone()],
-            private_key: signed.signing_key.serialize_der(),
+            private_key: signing_key.serialize_der(),
             limits: Limits::default(),
         })
         .expect("the test relay starts");
@@ -173,4 +184,22 @@ fn a_health_check_passes_only_for_a_reachable_relay_with_a_trusted_certificate()
     drop(relay);
     let message = sf_relay::client::check(&trusted).unwrap_err();
     assert!(message.starts_with("RELAY "), "{message}");
+}
+
+#[test]
+fn a_health_check_can_require_days_of_certificate_lifetime() {
+    for (days, lasts) in [(None, true), (Some(40), true), (Some(5), false)] {
+        let relay = TestRelay::start_valid_for(days);
+        let config = ClientConfig { relay: relay.address(), roots: Roots::Only(vec![relay.certificate.clone()]) };
+        assert_eq!(sf_relay::client::check(&config), Ok(relay.service.local_addr()), "{days:?}: a plain check");
+        let checked = sf_relay::client::check_valid_for(&config, 14);
+        if lasts {
+            assert_eq!(checked, Ok(relay.service.local_addr()), "{days:?}");
+        } else {
+            let message = checked.unwrap_err();
+            assert!(message.contains("EXPIRES WITHIN 14 DAYS"), "{message}");
+            assert!(message.starts_with(&format!("RELAY {} ", relay.address())), "{message}");
+        }
+        assert_eq!((relay.service.open_rooms(), relay.service.connections()), (0, 0), "{days:?}: no room or seat");
+    }
 }

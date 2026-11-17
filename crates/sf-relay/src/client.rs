@@ -11,7 +11,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use quinn::crypto::rustls::QuicClientConfig;
-use rustls::pki_types::CertificateDer;
+use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+use rustls::client::WebPkiServerVerifier;
+use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
 use tokio::sync::mpsc as async_mpsc;
 
 use crate::rooms::{Refusal, Seat};
@@ -183,12 +186,19 @@ enum Outcome {
 /// relay protocol, and leave without asking for a room. Returns the address
 /// that answered. It blocks for up to the connect timeout.
 pub fn check(config: &ClientConfig) -> Result<SocketAddr, String> {
+    check_valid_for(config, 0)
+}
+
+/// [`check`], and the relay's certificate chain must also still be valid
+/// `min_days` from now, so a stuck renewal shows before the certificate
+/// expires.
+pub fn check_valid_for(config: &ClientConfig, min_days: u32) -> Result<SocketAddr, String> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|error| format!("RELAY CLIENT: {error}"))?;
     runtime.block_on(async {
-        match tokio::time::timeout(CONNECT_TIMEOUT, dial(config)).await {
+        match tokio::time::timeout(CONNECT_TIMEOUT, dial(config, min_days)).await {
             Ok(Ok((endpoint, connection))) => {
                 let address = connection.remote_address();
                 connection.close(close::LEFT.into(), b"check");
@@ -202,7 +212,7 @@ pub fn check(config: &ClientConfig) -> Result<SocketAddr, String> {
 }
 
 /// Connect and verify the relay, before any request.
-async fn dial(config: &ClientConfig) -> Result<(quinn::Endpoint, quinn::Connection), String> {
+async fn dial(config: &ClientConfig, min_days: u32) -> Result<(quinn::Endpoint, quinn::Connection), String> {
     let failed = |what: &str, error: &dyn std::fmt::Display| failure(config, what, error);
     let (host, port) = crate::endpoint::split(&config.relay)
         .ok_or_else(|| format!("INVALID RELAY ADDRESS {}", config.relay))?;
@@ -214,7 +224,7 @@ async fn dial(config: &ClientConfig) -> Result<(quinn::Endpoint, quinn::Connecti
     let bind: SocketAddr = if address.is_ipv4() { ([0, 0, 0, 0], 0).into() } else { ([0u16; 8], 0).into() };
     let endpoint = quinn::Endpoint::client(bind).map_err(|error| failed("SOCKET", &error))?;
     let connection = endpoint
-        .connect_with(client_config(&config.roots)?, address, &host)
+        .connect_with(client_config(&config.roots, min_days)?, address, &host)
         .map_err(|error| failed("CONNECT", &error))?
         .await
         .map_err(|error| failed("CONNECT", &error))?;
@@ -228,7 +238,7 @@ fn failure(config: &ClientConfig, what: &str, error: &dyn std::fmt::Display) -> 
 
 async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Outcome> {
     let failed = |what: &str, error: &dyn std::fmt::Display| Outcome::Failed(failure(config, what, error));
-    let (endpoint, connection) = dial(config).await.map_err(Outcome::Failed)?;
+    let (endpoint, connection) = dial(config, 0).await.map_err(Outcome::Failed)?;
     let (mut send, mut recv) = connection.open_bi().await.map_err(|error| failed("STREAM", &error))?;
     send.write_all(&request.encode()).await.map_err(|error| failed("REQUEST", &error))?;
     let mut reply = [0; wire::MESSAGE];
@@ -248,7 +258,7 @@ async fn connect(config: &ClientConfig, request: Request) -> Result<Session, Out
     Ok(Session { endpoint, connection, code, seat })
 }
 
-fn client_config(roots: &Roots) -> Result<quinn::ClientConfig, String> {
+fn client_config(roots: &Roots, min_days: u32) -> Result<quinn::ClientConfig, String> {
     let mut store = rustls::RootCertStore::empty();
     match roots {
         Roots::Web => store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned()),
@@ -261,16 +271,75 @@ fn client_config(roots: &Roots) -> Result<quinn::ClientConfig, String> {
         }
     }
     let provider = Arc::new(rustls::crypto::ring::default_provider());
-    let mut tls = rustls::ClientConfig::builder_with_provider(provider)
+    let builder = rustls::ClientConfig::builder_with_provider(provider.clone())
         .with_protocol_versions(&[&rustls::version::TLS13])
-        .map_err(|error| format!("RELAY TLS: {error}"))?
-        .with_root_certificates(store)
-        .with_no_client_auth();
+        .map_err(|error| format!("RELAY TLS: {error}"))?;
+    let mut tls = if min_days == 0 {
+        builder.with_root_certificates(store).with_no_client_auth()
+    } else {
+        let inner = WebPkiServerVerifier::builder_with_provider(Arc::new(store), provider)
+            .build()
+            .map_err(|error| format!("RELAY CERTIFICATE: {error}"))?;
+        builder
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(ValidAhead { inner, days: min_days }))
+            .with_no_client_auth()
+    };
     tls.alpn_protocols = vec![wire::ALPN.to_vec()];
     let crypto = QuicClientConfig::try_from(tls).map_err(|error| format!("RELAY TLS: {error}"))?;
     let mut config = quinn::ClientConfig::new(Arc::new(crypto));
     config.transport_config(Arc::new(crate::transport()));
     Ok(config)
+}
+
+/// The usual web verification, made a second time as of `days` from now.
+#[derive(Debug)]
+struct ValidAhead {
+    inner: Arc<WebPkiServerVerifier>,
+    days: u32,
+}
+
+impl ServerCertVerifier for ValidAhead {
+    fn verify_server_cert(
+        &self,
+        end_entity: &CertificateDer<'_>,
+        intermediates: &[CertificateDer<'_>],
+        server_name: &ServerName<'_>,
+        ocsp_response: &[u8],
+        now: UnixTime,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        let verified = self.inner.verify_server_cert(end_entity, intermediates, server_name, ocsp_response, now)?;
+        let later = UnixTime::since_unix_epoch(Duration::from_secs(now.as_secs() + u64::from(self.days) * 86_400));
+        match self.inner.verify_server_cert(end_entity, intermediates, server_name, ocsp_response, later) {
+            Ok(_) => Ok(verified),
+            Err(rustls::Error::InvalidCertificate(CertificateError::Expired | CertificateError::ExpiredContext { .. })) => {
+                Err(rustls::Error::General(format!("CERTIFICATE EXPIRES WITHIN {} DAYS", self.days)))
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        self.inner.verify_tls12_signature(message, cert, dss)
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        self.inner.verify_tls13_signature(message, cert, dss)
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.inner.supported_verify_schemes()
+    }
 }
 
 fn closed(error: &quinn::ConnectionError) -> Closed {

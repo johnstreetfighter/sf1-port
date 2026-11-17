@@ -13,6 +13,13 @@
 //!
 //! A health check: connect the way the game does, verify the certificate
 //! against the public web authorities, and exit 0 if the relay answered.
+//!
+//! ```text
+//! sf-relay --check --min-days 14 relay.example.net
+//! ```
+//!
+//! The same check, which also fails if the certificate expires within 14
+//! days.
 
 use std::net::SocketAddr;
 use std::process::ExitCode;
@@ -37,6 +44,7 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let mut listen: SocketAddr = ([0, 0, 0, 0], sf_relay::wire::DEFAULT_PORT).into();
     let (mut cert, mut key) = (None, None);
+    let (mut checking, mut relay_to_check, mut min_days) = (false, None, 0);
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         let mut value = || args.next().ok_or(format!("{arg} needs a value"));
@@ -44,9 +52,22 @@ fn run() -> Result<(), String> {
             "--listen" => listen = value()?.parse().map_err(|error| format!("--listen: {error}"))?,
             "--cert" => cert = Some(value()?),
             "--key" => key = Some(value()?),
-            "--check" => return check(value()?),
-            _ => return Err(format!("unknown argument {arg}; use --listen, --cert and --key, or --check")),
+            "--check" => checking = true,
+            "--min-days" => min_days = value()?.parse().map_err(|error| format!("--min-days: {error}"))?,
+            // The relay to check follows --check, before or after --min-days.
+            relay if checking && relay_to_check.is_none() && !relay.starts_with("--") => relay_to_check = Some(arg),
+            _ => {
+                return Err(format!(
+                    "unknown argument {arg}; use --listen, --cert and --key, or --check [--min-days N] HOST"
+                ))
+            }
         }
+    }
+    if checking {
+        return check(relay_to_check.ok_or("--check needs a relay host")?, min_days);
+    }
+    if min_days != 0 {
+        return Err("--min-days goes with --check".into());
     }
     let cert = cert.ok_or("--cert is required")?;
     let key = key.ok_or("--key is required")?;
@@ -69,8 +90,10 @@ fn run() -> Result<(), String> {
     }
 }
 
-fn check(relay: String) -> Result<(), String> {
-    let address = sf_relay::client::check(&ClientConfig { relay: relay.clone(), roots: Roots::Web })?;
-    println!("sf-relay: {} answered at {address} with a trusted certificate", relay.trim());
+fn check(relay: String, min_days: u32) -> Result<(), String> {
+    let config = ClientConfig { relay: relay.clone(), roots: Roots::Web };
+    let address = sf_relay::client::check_valid_for(&config, min_days)?;
+    let lifetime = if min_days == 0 { String::new() } else { format!(" valid for at least {min_days} more days") };
+    println!("sf-relay: {} answered at {address} with a trusted certificate{lifetime}", relay.trim());
     Ok(())
 }
