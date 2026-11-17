@@ -162,3 +162,36 @@ Street Fighter 6's ranked format could not be confirmed from an official page. T
 - [Ranked Question (Steam discussions)](https://steamcommunity.com/app/1364780/discussions/0/4340986888820219180/)
 - [Rematch options (Steam discussions)](https://steamcommunity.com/app/1364780/discussions/0/3809531491906820610/)
 - [Rejecting a rematch (Steam discussions)](https://steamcommunity.com/app/1364780/discussions/0/3809533595059093945/)
+
+## Settled in grilling (2026-11-17)
+
+Every item here is the maintainer's answer. Where this section and the text above differ, this section wins.
+
+**Words.** The glossary (`CONTEXT.md`, Matchmaking) now fixes the terms. Above, read "ladder" as **Leaderboard** (Ladder stays the one-player arcade sequence), a ranked "game" as a **match**, and a "pairing" as a **set**. The queues are named **Ranked** and **Unranked** on screen.
+
+**Sets and drops.**
+- A drop is settled per match: earlier matches of the set stand, the dropped match is the dropper's loss, and the set ends.
+- Declining a rematch carries no penalty.
+- Leaving or closing the game during a Ranked match against a CPU entry is a loss.
+- When both players stay connected to the service but the fight breaks, no rating changes and the break counts toward both players' drop history.
+- If the service goes down during a Ranked match, the fight continues over the relay and each game keeps trying to report for a while; a result that never arrives changes nothing.
+
+**Fighters, styles and stages.**
+- Both players keep the same fighters for every match of a Ranked set.
+- In matched play between two people, each player's pick is hidden until both have locked in. A CPU entry's fighter is shown before the player picks.
+- Ranked allows everything the Definitive Overhaul style card allows, what-if styles included.
+- A CPU entry always plays the SF1+ style.
+- The stage is random for every match in matched play; there is no stage screen.
+- The queues need the full twelve-fighter roster, which means the shipped art pack. A player without it is told what is missing and cannot queue. (Without the pack only Ryu and Ken can be picked, and the room handshake refuses a player whose pack differs.)
+- A match under Definitive Overhaul cannot end in a draw: equal round wins lead to a Sudden Death round (`three_rounds` in `crates/sf-engine/src/tasks.rs`). The rating rules need no draw case.
+
+**Accounts.**
+- One sign-in at a time: signing in on a second machine signs the first out.
+- Players cannot rename themselves; the operator renames from the command line.
+- Deleting an account erases the name, password and recovery code and removes the player from the Leaderboard. Their match rows stay, without the name, so other ratings remain valid.
+
+**Ratings.**
+- A "no rank change" Ranked match played by a player above the ceiling still moves the CPU entry's rating.
+- An Unranked match against a CPU entry moves the player's hidden Unranked rating.
+
+**Record.** The decision is recorded in [ADR-0025](../adr/0025-matchmaking-service-accounts-and-trusted-cpu-matches.md).
