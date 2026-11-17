@@ -5408,17 +5408,26 @@ impl Bus<'_> {
             return;
         };
         let (min, max) = living.fold((first, first), |(min, max), x| (min.min(x), max.max(x)));
-        let next = ((min + max - crate::dramatic::VIEW_W) / 2).clamp(0, 0x180);
+        // The knockout that ends the round (the boss down, or both allies)
+        // plays out on a still screen with everyone held inside it, as the
+        // 1987 screen edge holds a falling fighter. A fallen ally whose
+        // partner fights on is held only by the ends of the stage.
+        let decided = !alive[1] || (!alive[0] && !alive[2]);
+        let next = if decided {
+            camera
+        } else {
+            ((min + max - crate::dramatic::VIEW_W) / 2).clamp(0, 0x180)
+        };
         let delta = (next - camera) as u16;
         self.ww(CAMERA, next as u16);
         let fg = self.rw(FG_SCROLL_COPY).wrapping_add(delta);
         self.ww(FG_SCROLL_COPY, fg);
         *self.fg_scroll = fg;
         for ((entity, x), alive) in fighters.into_iter().zip(world).zip(alive) {
-            let desired = if alive {
+            let desired = if alive || decided {
                 x.clamp(next + 16, next + crate::dramatic::VIEW_W - 16)
             } else {
-                x
+                x.clamp(16, 0x180 + crate::dramatic::VIEW_W - 16)
             };
             self.set_eb(entity, 0x36, 0);
             self.shift_grid_x(entity, ((desired - x) as u16).wrapping_sub(delta));
