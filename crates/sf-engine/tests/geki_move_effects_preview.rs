@@ -21,9 +21,9 @@ fn geki_has_shuriken_and_warp_effects_only_in_later_styles() {
         for (direction, move_id) in [(RIGHT, 0x1a), (LEFT, 0x1b)] {
             let mut current = session.fight().unwrap().clone();
             let mut preview = current.clone();
-            assert_eq!(current.move_effects_preview(), Some(false));
-            preview.toggle_move_effects();
-            assert_eq!(preview.move_effects_preview(), Some(true));
+            current.set_stock_move_effects(true);
+            assert!(!current.move_effects_on());
+            assert!(preview.move_effects_on());
 
             let dummy = PlayerInputs::default();
             let initial_health = current.fight_read().fighters[1].health;

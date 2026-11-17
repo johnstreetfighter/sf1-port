@@ -1,4 +1,4 @@
-//! Run the preview and current presentation against the same real fight inputs.
+//! Run the new move effects and the arcade's own against the same real fight inputs.
 
 #[path = "support/alpha.rs"]
 mod support;
@@ -6,6 +6,7 @@ mod support;
 use sf_engine::data_bank::SF2_SUPER_SLOT;
 use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::Fight;
+use sf_engine::front::pause::PauseBox;
 use sf_engine::front::{FrameInputs, MenuItem, PlayerInputs, Transition};
 use sf_video::compositor::PaletteTint;
 use sf_video::move_effects::signature::{signature_impact, ImpactKind};
@@ -15,11 +16,13 @@ use support::{local_fight, local_select_with_p1, pad, DOWN, LEFT, LP, RIGHT, UP}
 const HP: usize = 2;
 const MP: usize = 1;
 
-fn preview_pair(current: Fight) -> [Fight; 2] {
-    let mut preview = current.clone();
-    assert_eq!(current.move_effects_preview(), Some(false));
-    preview.toggle_move_effects();
-    assert_eq!(preview.move_effects_preview(), Some(true));
+/// The fight as it is drawn now, with the new effects, beside a copy drawn
+/// with the arcade's own (`current`, from when the two were a choice).
+fn preview_pair(mut current: Fight) -> [Fight; 2] {
+    let preview = current.clone();
+    assert!(preview.move_effects_on());
+    current.set_stock_move_effects(true);
+    assert!(!current.move_effects_on());
     [current, preview]
 }
 
@@ -65,19 +68,24 @@ fn approach(fight: &mut Fight, assets: &Assets) {
     panic!("fighters never reached close range");
 }
 
+/// George, 2026-11-17: the new effects are simply on under Definitive
+/// Overhaul, and the pause box no longer offers the arcade's in their place.
 #[test]
-fn the_local_pause_menu_switches_the_comparison() {
+fn the_new_effects_are_on_and_the_pause_menu_has_no_choice() {
     let Some(select) =
         local_select_with_p1(GaugeMode::EraDefault, Revision::Sf1Plus, Loadout::Standard)
     else {
         return;
     };
     let mut session = local_fight(&select, Revision::Sf1Plus, Loadout::Standard);
+    assert!(session.fight().unwrap().move_effects_on());
     let mut start = FrameInputs::default();
     start.menu.start = true;
     assert_eq!(session.step(start).transition, Some(Transition::Paused));
     session.step(FrameInputs::default());
 
+    // UP from RESUME wraps to the last row, which is MOVES again; RIGHT
+    // on it changes nothing.
     let up = FrameInputs {
         p1: pad(UP, None),
         ..FrameInputs::default()
@@ -88,17 +96,13 @@ fn the_local_pause_menu_switches_the_comparison() {
     };
     session.step(up);
     session.step(FrameInputs::default());
-    assert_eq!(
-        session.step(right).transition,
-        Some(Transition::Choose(MenuItem::MoveEffects))
-    );
-    assert_eq!(session.fight().unwrap().move_effects_preview(), Some(true));
-    session.step(FrameInputs::default());
-    assert_eq!(
-        session.step(right).transition,
-        Some(Transition::Choose(MenuItem::MoveEffects))
-    );
-    assert_eq!(session.fight().unwrap().move_effects_preview(), Some(false));
+    assert_eq!(session.step(right).transition, None);
+    for training in [false, true] {
+        let items = PauseBox::open(training).items();
+        assert_eq!(items.last(), Some(&MenuItem::Moves));
+        assert!(items.iter().all(|item| item.label() != "MOVE EFFECTS"));
+    }
+    assert!(session.fight().unwrap().move_effects_on());
 }
 
 #[test]
@@ -214,9 +218,9 @@ fn light_medium_and_heavy_sparks_replace_stock_after_contact() {
                     assert!(recoiling * 100 >= pixels.len() * 95,
                         "only {recoiling}/{} victim pixels kept the 4px recoil", pixels.len());
                 }
-                preview.toggle_move_effects();
+                preview.set_stock_move_effects(true);
                 assert_eq!(current.render(assets).argb, preview.render(assets).argb);
-                preview.toggle_move_effects();
+                preview.set_stock_move_effects(false);
                 assert_ne!(current.render(assets).argb, preview.render(assets).argb);
                 break;
             }

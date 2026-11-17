@@ -62,9 +62,9 @@ fn raging_demon_adds_ink_to_the_glide_and_native_blackout() {
     current.step(assets, idle, idle, false);
 
     let mut preview = current.clone();
-    assert_eq!(current.move_effects_preview(), Some(false));
-    preview.toggle_move_effects();
-    assert_eq!(preview.move_effects_preview(), Some(true));
+    current.set_stock_move_effects(true);
+    assert!(!current.move_effects_on());
+    assert!(preview.move_effects_on());
 
     let command = [
         pad(0, Some(LP)),

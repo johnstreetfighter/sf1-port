@@ -30,9 +30,9 @@ fn check_preview(
     };
     let mut current = session.fight().unwrap().clone();
     let mut preview = current.clone();
-    preview.toggle_move_effects();
-    assert_eq!(current.move_effects_preview(), Some(false));
-    assert_eq!(preview.move_effects_preview(), Some(true));
+    current.set_stock_move_effects(true);
+    assert!(!current.move_effects_on());
+    assert!(preview.move_effects_on());
 
     let colors: Vec<_> = (0..8)
         .flat_map(|age| accent_frame(accent, age, 0, 0, false))

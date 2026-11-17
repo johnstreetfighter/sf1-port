@@ -29,13 +29,15 @@ struct Comparison<'a> {
 
 impl<'a> Comparison<'a> {
     fn new(fight: &Fight, assets: &'a Assets) -> Self {
-        assert_eq!(fight.move_effects_preview(), Some(false));
-        let mut preview = fight.clone();
-        preview.toggle_move_effects();
-        assert_eq!(preview.move_effects_preview(), Some(true));
+        // The new effects are on; `current` is the arcade's own, for comparison.
+        let preview = fight.clone();
+        assert!(preview.move_effects_on());
+        let mut current = fight.clone();
+        current.set_stock_move_effects(true);
+        assert!(!current.move_effects_on());
         Self {
             assets,
-            current: fight.clone(),
+            current,
             preview,
         }
     }

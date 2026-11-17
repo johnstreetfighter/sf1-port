@@ -1,4 +1,4 @@
-//! Contacts and sprite anchors for the local Overhaul effects preview.
+//! Contacts and sprite anchors for Definitive Overhaul's move effects.
 
 use sf_video::callouts::Side;
 use sf_video::move_effects::signature::{ImpactKind, ProjectileKind};

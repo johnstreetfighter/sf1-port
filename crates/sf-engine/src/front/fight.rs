@@ -445,7 +445,9 @@ pub struct Fight {
     /// The preview gauges supplied through the renderer's test hook.
     era_hud: EraHud,
     trails: [AfterimageTrail; 3],
-    move_effects_preview: bool,
+    /// The arcade's own sparks in place of the new move effects: a
+    /// comparison hook for tests, never a player's choice.
+    stock_move_effects: bool,
     move_effects: MoveEffects,
     satsui_art: Option<Arc<SatsuiArt>>,
     /// Training's Show of a move (ticket #230): its input stands in for the
@@ -605,7 +607,7 @@ impl Fight {
             sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, screen_shake: _, callouts: _, pending_callouts: _,
             lifebar_trails: _, round_motion: _, timer_motion: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
-            era_hud: _, trails: _, move_effects_preview: _, move_effects: _, satsui_art: _,
+            era_hud: _, trails: _, stock_move_effects: _, move_effects: _, satsui_art: _,
             coach, notation: _, selected_styles: _, practice_meters,
             drill, trial: _,
         } = self;
@@ -657,7 +659,7 @@ impl Fight {
             overlay: _, gauge_art: _, gauge_effects, impact_visuals, screen_shake: _, selected_styles: _, round_start, last_flow, callouts,
             lifebar_trails, round_motion, timer_motion,
             pending_callouts, pending_combos, reader, read, fed_reads,
-            combo, moments, hold_combo, era_hud, trails, move_effects_preview: _, move_effects,
+            combo, moments, hold_combo, era_hud, trails, stock_move_effects: _, move_effects,
             satsui_art: _, show, coach, practice_meters, notation: _,
             drill, trial,
         } = self;
@@ -836,7 +838,7 @@ impl Fight {
             hold_combo: false,
             era_hud: EraHud::NONE,
             trails: Default::default(),
-            move_effects_preview: false,
+            stock_move_effects: false,
             move_effects: MoveEffects::default(),
             satsui_art: None,
             show: None,
@@ -1075,16 +1077,19 @@ impl Fight {
         self.gauge_art = art;
     }
 
-    /// The local comparison choice, available under Definitive Overhaul.
-    pub fn move_effects_preview(&self) -> Option<bool> {
-        (self.setup.config.preset == RulesetPreset::DefinitiveOverhaul && self.setup.config.dramatic.is_none())
-            .then_some(self.move_effects_preview)
+    /// Whether the new move effects are drawn: always under Definitive
+    /// Overhaul outside Dramatic Battle (George, 2026-11-17: no option).
+    /// A fighter in the 1987 style keeps the arcade's own, since the engine
+    /// raises no cues for it (ADR-0015).
+    pub fn move_effects_on(&self) -> bool {
+        self.setup.config.preset == RulesetPreset::DefinitiveOverhaul
+            && self.setup.config.dramatic.is_none()
+            && !self.stock_move_effects
     }
 
-    pub fn toggle_move_effects(&mut self) {
-        if let Some(preview) = self.move_effects_preview() {
-            self.move_effects_preview = !preview;
-        }
+    /// Draw the arcade's own sparks instead, so a test can compare the two.
+    pub fn set_stock_move_effects(&mut self, stock: bool) {
+        self.stock_move_effects = stock;
     }
 
     /// The machine at the current round's start, if one has started.
@@ -1851,7 +1856,7 @@ impl Fight {
         } else {
             render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0
         };
-        if self.move_effects_preview() == Some(true) {
+        if self.move_effects_on() {
             let sparks = self.move_effects.demon_sparks();
             if !sparks.is_empty() {
                 return present_with_move_effects(PresentMode::Overhaul, &frame, &OverhaulScene::EMPTY, &sparks);
@@ -1915,7 +1920,7 @@ impl Fight {
         }
         let states = self.era_combatants();
         let burn_tints = [0, 1, 2].map(|side| {
-            (side < 2 && self.move_effects_preview() == Some(true))
+            (side < 2 && self.move_effects_on())
                 .then(|| self.move_effects.burn_tint(side))
                 .flatten()
         });
@@ -2105,7 +2110,7 @@ impl Fight {
         let mut scene = self.machine.state.scene();
         let mut layout = self.layout(&scene);
         let mut native_edits = TextEdits::default();
-        let preview = layout.is_some() && self.move_effects_preview() == Some(true);
+        let preview = layout.is_some() && self.move_effects_on();
         let move_effects = if preview {
             self.move_effects.hide_native_sparks(&mut scene.objectram);
             self.move_effects.sprites(self.machine.state.frame)

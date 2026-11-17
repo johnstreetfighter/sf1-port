@@ -182,7 +182,6 @@ pub struct PauseBox {
     kind: PauseKind,
     cursor: usize,
     notice: Option<String>,
-    move_effects: Option<bool>,
     /// The Training settings box over it, while it shows.
     settings: Option<TrainingBox>,
     value_motion: [Option<(MenuItem, ValueMotion)>; 2],
@@ -203,14 +202,9 @@ impl PauseBox {
             kind: if training { PauseKind::Training } else { PauseKind::Fight },
             cursor: 0,
             notice: None,
-            move_effects: None,
             settings: None,
             value_motion: [None; 2],
         }
-    }
-
-    pub(super) fn set_move_effects(&mut self, preview: Option<bool>) {
-        self.move_effects = preview;
     }
 
     /// The local overlay for an online fight: no restart or Training actions.
@@ -292,25 +286,14 @@ impl PauseBox {
             MenuItem::TrainingSettings,
             MenuItem::Moves,
         ];
-        const FIGHT_PREVIEW: &[MenuItem] = &[
-            MenuItem::Resume, MenuItem::Overlays, MenuItem::Look, MenuItem::GaugeArt,
-            MenuItem::RestartRound, MenuItem::QuitToMenu, MenuItem::Moves, MenuItem::MoveEffects,
-        ];
-        const TRAINING_PREVIEW: &[MenuItem] = &[
-            MenuItem::Resume, MenuItem::Overlays, MenuItem::Look, MenuItem::GaugeArt,
-            MenuItem::ResetPositions, MenuItem::QuitToMenu, MenuItem::TrainingSettings,
-            MenuItem::Moves, MenuItem::MoveEffects,
-        ];
         const REPLAY: &[MenuItem] = &[
             MenuItem::Resume, MenuItem::TakeoverP1, MenuItem::TakeoverP2,
             MenuItem::RewindBookmark, MenuItem::Overlays, MenuItem::Look, MenuItem::QuitToReplays,
         ];
         match self.kind {
             PauseKind::Online => ONLINE,
-            PauseKind::Training if self.move_effects.is_some() => TRAINING_PREVIEW,
             PauseKind::Training => TRAINING,
             PauseKind::Replay { .. } => REPLAY,
-            PauseKind::Fight if self.move_effects.is_some() => FIGHT_PREVIEW,
             PauseKind::Fight => FIGHT,
         }
     }
@@ -365,7 +348,7 @@ impl PauseBox {
                 }
                 Some(Transition::Choose(item))
             }
-            MenuInput::Left | MenuInput::Right if matches!(item, MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::MoveEffects) => {
+            MenuInput::Left | MenuInput::Right if matches!(item, MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt) => {
                 Some(Transition::Choose(item))
             }
             MenuInput::Back | MenuInput::Start => Some(Transition::Choose(MenuItem::Resume)),
@@ -454,8 +437,6 @@ impl PauseBox {
                 MenuItem::Overlays => overlay,
                 MenuItem::Look => look,
                 MenuItem::GaugeArt => gauge_art.label(),
-                MenuItem::MoveEffects if self.move_effects == Some(true) => "PREVIEW",
-                MenuItem::MoveEffects => "CURRENT",
                 _ => continue,
             };
             draw_value(font, &mut frame, (*item, value, color), row, (LABEL_COL, VALUE_END_COL), &cues);

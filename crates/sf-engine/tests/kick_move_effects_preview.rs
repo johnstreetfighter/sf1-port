@@ -27,8 +27,8 @@ fn compare_kick(
     };
     let mut current = session.fight().unwrap().clone();
     let mut preview = current.clone();
-    preview.toggle_move_effects();
-    assert_eq!(preview.move_effects_preview(), Some(true));
+    current.set_stock_move_effects(true);
+    assert!(preview.move_effects_on());
 
     let colors: Vec<_> = effects
         .iter()

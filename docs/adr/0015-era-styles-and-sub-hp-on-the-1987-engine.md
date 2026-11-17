@@ -20,7 +20,7 @@ The standalone `CombatSession` stepping wrappers are retired once real-fight era
 
 The SF1 era style uses its arcade move effects, including in Definitive Overhaul. A new move effect follows the style of the fighter who produces it. In mixed-era fights, an eligible opponent can still show their own move effects, including effects on contact with the SF1 fighter. SF1+ is a separate, eligible era style.
 
-Move Effects Preview uses original light, medium, and heavy hit sparks for eligible styles. Drive Impact has larger contact effects with a paint burst on a hit and a cool arc on guard. Throws and hard knockdowns use a wider dust burst when the defender hits the floor.
+The new move effects are always on in Definitive Overhaul for eligible styles: the pause box's current-or-preview choice was removed on 2026-11-17. They use original light, medium, and heavy hit sparks. Drive Impact has larger contact effects with a paint burst on a hit and a cool arc on guard. Throws and hard knockdowns use a wider dust burst when the defender hits the floor.
 
 ## Match pacing
 

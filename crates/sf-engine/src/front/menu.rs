@@ -38,7 +38,6 @@ pub enum MenuItem {
     /// The pause box's `LOOK`: the player's `CRT LOOK`, stepped live.
     Look,
     GaugeArt,
-    MoveEffects,
     RestartRound,
     /// Training's `RESET POSITIONS`, in `RestartRound`'s place: the round's
     /// start with the fight's present configuration kept.
@@ -98,7 +97,6 @@ impl MenuItem {
             MenuItem::Overlays => "OVERLAYS",
             MenuItem::Look => "LOOK",
             MenuItem::GaugeArt => "GAUGE ART",
-            MenuItem::MoveEffects => "MOVE EFFECTS",
             MenuItem::RestartRound => "RESTART ROUND",
             MenuItem::ResetPositions => "RESET POSITIONS",
             MenuItem::QuitToMenu => "QUIT TO MENU",
@@ -156,7 +154,6 @@ impl MenuItem {
                 | MenuItem::Overlays
                 | MenuItem::Look
                 | MenuItem::GaugeArt
-                | MenuItem::MoveEffects
                 | MenuItem::RestartRound
                 | MenuItem::ResetPositions
                 | MenuItem::QuitToMenu
