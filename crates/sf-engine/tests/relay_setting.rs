@@ -1,10 +1,9 @@
-//! #128: the Netplay tab shows the selected relay, saves a custom one and
-//! restores the default.
+//! #128, #170: the Netplay tab shows the selected relay, saves a custom one
+//! and restores the default, `relay.almamoto.com`.
 
 use sf_engine::config::MatchConfig;
 use sf_engine::front::settings::{rows, Row, Settings, SettingsScreen, Tab};
 use sf_engine::front::{Transition, TypedKey};
-use sf_engine::netplay::DEFAULT_RELAY;
 use sf_engine::roster::MenuInput;
 
 fn on_relay_row(settings: Settings) -> SettingsScreen {
@@ -28,15 +27,11 @@ fn type_text(screen: &mut SettingsScreen, text: &str) {
     }
 }
 
-fn default_shown() -> String {
-    DEFAULT_RELAY.map_or("NONE".to_owned(), str::to_ascii_uppercase)
-}
-
 #[test]
 fn with_no_custom_relay_the_row_shows_the_default_and_the_game_uses_it() {
     let screen = on_relay_row(Settings::default());
-    assert_eq!(screen.value(Row::Relay), default_shown());
-    assert_eq!(screen.settings().relay_endpoint(), DEFAULT_RELAY);
+    assert_eq!(screen.value(Row::Relay), "RELAY.ALMAMOTO.COM");
+    assert_eq!(screen.settings().relay_endpoint(), Some("relay.almamoto.com"));
 }
 
 #[test]
@@ -82,14 +77,16 @@ fn saving_an_empty_entry_or_resetting_the_tab_restores_the_default() {
     }
     assert_eq!(screen.type_key(TypedKey::Enter), Some(Transition::ValueChanged));
     assert_eq!(screen.settings().relay, None);
-    assert_eq!(screen.value(Row::Relay), default_shown());
-    assert_eq!(screen.settings().relay_endpoint(), DEFAULT_RELAY);
+    assert_eq!(screen.value(Row::Relay), "RELAY.ALMAMOTO.COM");
+    assert_eq!(screen.settings().relay_endpoint(), Some("relay.almamoto.com"));
 
     let mut screen = on_relay_row(settings);
     screen.apply(MenuInput::Down);
     assert_eq!(screen.row(), Row::ResetTab);
     screen.apply(MenuInput::Confirm);
     assert_eq!(screen.settings().relay, None, "RESET TAB goes back to the default relay");
+    assert_eq!(screen.value(Row::Relay), "RELAY.ALMAMOTO.COM");
+    assert_eq!(screen.settings().relay_endpoint(), Some("relay.almamoto.com"));
 }
 
 #[test]

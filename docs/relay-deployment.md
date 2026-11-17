@@ -11,7 +11,8 @@ relay and never falls back to another one. A community relay keeps working
 when the project's default relay is down.
 
 This guide deploys the relay on a Linux server with systemd. The same binary
-and steps serve the project's default relay. On Ubuntu 24.04 one script does
+and steps serve the project's default relay, `relay.almamoto.com`, which was
+set up with the script below. On Ubuntu 24.04 one script does
 the whole setup; see [Set up Ubuntu 24.04 with one command](#set-up-ubuntu-2404-with-one-command).
 The sections after it describe each step, for other distributions and for
 understanding what the script did.
@@ -210,8 +211,8 @@ a stuck renewal shows up while there is still time to fix it:
 sf-relay --check --min-days 14 relay.example.net
 ```
 
-The project's **Relay** workflow runs this check against the default relay
-every six hours once that relay ships, trying three times ten seconds apart
+The project's **Relay** workflow runs this check against the default relay,
+`relay.almamoto.com`, every six hours, trying three times ten seconds apart
 before it fails. GitHub emails a failed scheduled run to the person who last
 changed the workflow's schedule. GitHub also pauses scheduled workflows after
 60 days without activity in the repository and sends a warning first; push a

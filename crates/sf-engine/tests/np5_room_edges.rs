@@ -98,7 +98,10 @@ impl Pair {
         if let Some(side) = override_side { pair.peers[side].set_stage(Some(StagePick::Bank(9))); }
         online(&mut pair.peers[0]);
         pulse(&mut pair.peers[0], MenuInput::Right);
-        for _ in 0..4 { pulse(&mut pair.peers[0], MenuInput::Down); }
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut pair.peers[0], key);
+        }
         pulse(&mut pair.peers[0], MenuInput::Confirm);
         let commands = pair.peers[0].drain_net_commands();
         pair.host_commands.extend(commands.iter().cloned());

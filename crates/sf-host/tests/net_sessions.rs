@@ -93,8 +93,9 @@ fn two_real_game_sessions_adopt_host_rules_and_run_a_matching_fight_over_udp() {
     online(&mut peers[0]);
     peers[0].drain_net_commands();
     pulse(&mut peers[0], MenuInput::Right);
-    for _ in 0..4 {
-        pulse(&mut peers[0], MenuInput::Down);
+    // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+    for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+        pulse(&mut peers[0], key);
     }
     pulse(&mut peers[0], MenuInput::Confirm);
     transport(&mut peers[0], &mut drivers[0]);

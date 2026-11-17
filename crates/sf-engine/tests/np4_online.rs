@@ -173,7 +173,10 @@ fn a_host_bound_event_shows_the_shareable_code_and_waiting_status_but_client_bou
 
     let mut host = online_session();
     pulse(&mut host, MenuInput::Right);
-    for _ in 0..4 { pulse(&mut host, MenuInput::Down); }
+    // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+    for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+        pulse(&mut host, key);
+    }
     pulse(&mut host, MenuInput::Confirm);
     assert!(matches!(host.drain_net_commands().as_slice(), [NetTransportCommand::BindHost { .. }]));
     host.push_net_events(&[NetTransportEvent::Bound {

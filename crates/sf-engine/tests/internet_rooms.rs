@@ -85,12 +85,15 @@ fn pulse(session: &mut GameSession, key: MenuInput) {
 }
 
 fn online_session_with_relay() -> GameSession {
+    online_session(Settings { relay: Some("relay.example.test".into()), ..Settings::default() })
+}
+
+fn online_session(settings: Settings) -> GameSession {
     let assets = sf_video::romset::load_assets(
         "../../tools/reference/local/roms/sf",
         "../../tools/reference/rom-manifest.json",
     )
     .expect("online session checks require the verified local ROMs");
-    let settings = Settings { relay: Some("relay.example.test".into()), ..Settings::default() };
     let mut session = GameSession::new(
         assets,
         sf_engine::config::MatchConfig::from_preset(sf_engine::config::RulesetPreset::DefinitiveOverhaul),
@@ -136,6 +139,31 @@ fn an_internet_host_keeps_one_relay_room_through_announcement_updates() {
         updates.iter().all(|command| matches!(command, NetTransportCommand::HostInternetRoom { room } if !room.public)),
         "{updates:?}"
     );
+}
+
+/// #170: the shipped Default relay makes Internet rooms the first choice.
+#[test]
+fn a_fresh_install_hosts_an_internet_room_and_can_still_pick_a_lan_room() {
+    let mut session = online_session(Settings::default());
+    pulse(&mut session, MenuInput::Right);
+    for _ in 0..4 {
+        pulse(&mut session, MenuInput::Down);
+    }
+    pulse(&mut session, MenuInput::Confirm);
+    let commands = session.drain_net_commands();
+    assert!(matches!(commands.as_slice(), [NetTransportCommand::HostInternetRoom { .. }]), "{commands:?}");
+
+    // One step right on VISIBILITY is PUBLIC, a room on the local network.
+    let mut session = online_session(Settings::default());
+    pulse(&mut session, MenuInput::Right);
+    pulse(&mut session, MenuInput::Down);
+    pulse(&mut session, MenuInput::Down);
+    pulse(&mut session, MenuInput::Right);
+    pulse(&mut session, MenuInput::Down);
+    pulse(&mut session, MenuInput::Down);
+    pulse(&mut session, MenuInput::Confirm);
+    let commands = session.drain_net_commands();
+    assert!(matches!(commands.as_slice(), [NetTransportCommand::BindHost { .. }]), "{commands:?}");
 }
 
 #[test]

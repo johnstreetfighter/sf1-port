@@ -13,12 +13,11 @@ on:
       health-check:
         description: Check relay.almamoto.com after the build
         type: boolean
-        # Off until relay.almamoto.com is live (#169, #170).
-        default: false
-  # Disabled until relay.almamoto.com ships as the Default relay (#170).
-  # GitHub pauses schedules after 60 days without repository activity.
-  # schedule:
-  #   - cron: '17 */6 * * *'
+        default: true
+  # Every six hours, for the health check (#170). GitHub pauses schedules
+  # after 60 days without repository activity.
+  schedule:
+    - cron: '17 */6 * * *'
 
 permissions:
   contents: read

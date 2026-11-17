@@ -27,7 +27,7 @@ fn old_settings_get_netplay_defaults_and_new_settings_round_trip_through_the_fil
     assert_eq!(settings.netplay_hud, NetplayHudMode::Compact);
     assert_eq!(settings.netplay_port, 7000);
     assert_eq!(settings.lobby_url, None);
-    assert_eq!(settings.relay, None, "no relay means no Internet rooms");
+    assert_eq!(settings.relay, None, "no custom relay: the default relay is used");
 
     settings.player_tag = "RYU_87".to_owned();
     settings.netplay_input_delay = InputDelaySetting::Frames(3);

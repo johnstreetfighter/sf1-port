@@ -5,9 +5,9 @@ use std::net::{IpAddr, SocketAddr};
 
 use crate::wire::DEFAULT_PORT;
 
-/// The project relay that official builds use when the player sets none.
-/// `None` until the project relay runs at a stable hostname (#130).
-pub const DEFAULT_RELAY: Option<&str> = None;
+/// The project relay that builds use when the player sets none (#130,
+/// #170). `None` here would hide Internet rooms until a player sets one.
+pub const DEFAULT_RELAY: Option<&str> = Some("relay.almamoto.com");
 
 /// The longest relay a player can enter: a full DNS name and a port.
 pub const MAX_LEN: usize = 253 + 6;

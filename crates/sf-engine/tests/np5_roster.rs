@@ -158,8 +158,9 @@ impl Pair {
         };
         online(&mut pair.peers[0]);
         pulse(&mut pair.peers[0], MenuInput::Right);
-        for _ in 0..4 {
-            pulse(&mut pair.peers[0], MenuInput::Down);
+        // VISIBILITY one step right of INTERNET CODE is PUBLIC, a local room.
+        for key in [MenuInput::Down, MenuInput::Down, MenuInput::Right, MenuInput::Down, MenuInput::Down] {
+            pulse(&mut pair.peers[0], key);
         }
         pulse(&mut pair.peers[0], MenuInput::Confirm);
         pair.bus.submit(0, &pair.peers[0].drain_net_commands());

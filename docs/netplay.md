@@ -61,8 +61,10 @@ round-trip time: one frame per 34 milliseconds, capped at four frames.
 
 ## Internet rooms
 
-**Host Match** offers **VISIBILITY → INTERNET CODE** first when a relay is
-selected. Opening the room connects to the relay, and the room code appears
+In **Host Match**, **VISIBILITY** starts on **INTERNET CODE**. Step right to
+**PUBLIC** or **PRIVATE** for a room on the local network instead; those need
+no relay and keep working when the relay is down. Opening an Internet room
+connects to the relay, and the room code appears
 only once the relay has the room ready. An Internet room code has six letters
 and digits, such as `K7Q-MPX`. It never uses 0, O, 1, I or L, so it cannot be
 mistaken for a LAN address code. Guests enter or paste it in **Direct Join**
@@ -78,8 +80,8 @@ Leaving closes the room and expires its code.
 ### Choosing a relay
 
 **Settings → Netplay → RELAY** shows the selected relay. A fresh install uses
-the project's default relay. No default relay runs yet (#130), so the row
-shows `NONE` and Internet rooms stay hidden until you set a relay.
+the project's default relay, `RELAY.ALMAMOTO.COM`, which runs in US East
+(Virginia). Nothing needs setting up to host or join an Internet room.
 
 To use a community relay, confirm on **RELAY**, type its host name with an
 optional port (`RELAY.EXAMPLE.NET` or `RELAY.EXAMPLE.NET:9000`) and confirm.
