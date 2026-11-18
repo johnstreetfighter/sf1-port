@@ -180,6 +180,38 @@ _Avoid_: bot, AI off, sparring partner
 The overhaul's CPU opponent, which plays like a person through Player 2's pad: it decides from what the screen shows, seen after a human reaction delay, presses the same stick and buttons a player would, and never reads the opponent's inputs. The Gameplay tab's difficulty sets its delay, how often it chooses well and how cleanly it enters specials. Training's CPU under the overhaul presets; Faithful 1987 keeps Capcom's CPU.
 _Avoid_: AI, bot, Capcom's CPU (the 1987 routines), utility CPU (the old practice model's)
 
+**Situation**:
+Which state the Fair CPU judges the fight to be in at a moment, such as neutral, it hit, it was blocked, the opponent is knocked down, or defending. It chooses only among that situation's game plans.
+_Avoid_: state (the fighter's state byte), phase, mode
+
+**Game plan**:
+A short script of several steps that the Fair CPU follows within a situation, branching on what it sees: a hit, a guard, a whiff, a jump.
+_Avoid_: plan (too loose), strategy, tactic, script (a Training drill's)
+
+**Route**:
+One proven combo recipe for a tournament fighter in an era style: its opener, its inputs and timing, what it needs and what it gives.
+_Avoid_: combo (the hits themselves), trial (a Combo trial is graded for the player), string
+
+**Route book**:
+All the routes of one tournament fighter in one era style, found by searching the real game and each proven by a test.
+_Avoid_: combo list, combo table, move list
+
+**Pressure sequence**:
+Attacks made into an opponent's guard with gaps left on purpose, so that an opponent who presses a button or moves is hit.
+_Avoid_: string, block string, chain
+
+**Combo reset**:
+Ending a combo early on purpose to attack again at once: a throw, a low, an overhead or a pause that draws out a reversal.
+_Avoid_: reset (Reset positions is Training's), drop (a mistake)
+
+**Focus**:
+The one event the Fair CPU is watching for at a moment, which it answers at its fastest reaction delay; anything else it answers more slowly.
+_Avoid_: read, prediction, Focus Attack (the SF4 mechanic)
+
+**Habit memory**:
+What the Fair CPU has noted during a match about what its opponent does in recurring spots. It starts empty every match.
+_Avoid_: learning, profile, player model
+
 **Preset line**:
 The edition name that every framed front-end screen showed at its foot, naming the active ruleset preset. The maintainer dropped it on 2026-11-07. Settings' `PRESET` row shows the active preset, and so does Training's pause box.
 _Avoid_: status bar, footer, version line
@@ -491,7 +523,7 @@ _Avoid_: infinite meter, max meter, free supers
 How a fighter reads the six logical buttons. Classic reads the cabinet buttons directly, Pneumatic resolves a punch or kick pad by press duration, and Modern provides Light, Medium, Heavy, Special, Assist and Macro. Faithful 1987 always reads Classic. Online matches agree on both fighters' schemes and the Modern shortcut penalty. Players keep their own device bindings.
 
 **Utility AI**:
-The deterministic opponent controller that reads the live fight and enters normals, specials and era mechanics through the same pad inputs as a player. The 1987 era uses the original ROM CPU.
+The deterministic opponent controller that reads the live fight and enters normals, specials and era mechanics through the same pad inputs as a player. The 1987 era uses the original ROM CPU. From the stronger Fair CPU (ADR-0026) on, it plays only Training's scripted drills and combo trials.
 _Avoid_: bot AI, modern AI
 
 **Combo trial**:
