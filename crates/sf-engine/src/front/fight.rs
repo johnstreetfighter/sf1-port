@@ -1754,9 +1754,17 @@ impl Fight {
             .all(|row| (UNDER_TIME_COLS.0..=UNDER_TIME_COLS.1).all(|col| matches!(cell(col, row) & 0x3ff, BLANK_TILE | WIPE_TILE)));
         if time && !self.training() && under_time_clear {
             // The same tiles, as the ROM draws them, under the health bars;
-            // a wiped tile leaves its place there to the screen beneath.
+            // a wiped tile leaves its place there to the screen beneath, and
+            // so does one the wipe has reached there (it straddles two
+            // columns), so none is left over the wipe's black.
             let accent = self.timer_motion.accent(self.visible_timer_digits(), self.machine.state.frame);
-            for (i, col) in (TIME_COLS.0..=TIME_COLS.1).enumerate().filter(|&(_, col)| !wiped(col, TIME_ROW)) {
+            let under_wipe = |i: usize| {
+                let first = (TIME_X as usize + 8 * i + 64) / 8;
+                (first..=first + 1).any(|col| wiped(col, UNDER_TIME_ROWS.0))
+            };
+            for (i, col) in (TIME_COLS.0..=TIME_COLS.1).enumerate()
+                .filter(|&(i, col)| !wiped(col, TIME_ROW) && !under_wipe(i))
+            {
                 let tile = (TIME_X + 8 * i as i32, TIME_Y, cell(col, TIME_ROW));
                 if let Some(tile) = accent.and_then(|accent| accent.tile(i, tile)) {
                     edits.inked.push(tile);
@@ -2107,6 +2115,28 @@ impl Fight {
     }
 
     fn render_scene(&self, assets: &Assets) -> Frame {
+        /// Puts the round's column wipe back over what the overhaul
+        /// presenter drew: the ROM's black is its top layer, so the Era
+        /// Gauges, call-outs and trails leave with the life bars as the wipe
+        /// crosses and stay away under the round card. `scene` is unflipped.
+        fn restore_round_wipe(presented: &mut Frame, hardware: &Frame, scene: &SceneState) {
+            use sf_video::render::{HEIGHT, VISAREA_X, VISAREA_Y, WIDTH};
+            for row in VISAREA_Y / 8..(VISAREA_Y + HEIGHT) / 8 {
+                for col in VISAREA_X / 8..(VISAREA_X + WIDTH) / 8 {
+                    let i = row * TEXT_COLS + col;
+                    let cell = u16::from_be_bytes([scene.videoram[2 * i], scene.videoram[2 * i + 1]]);
+                    if cell & 0x3ff != WIPE_TILE {
+                        continue;
+                    }
+                    let x = col * 8 - VISAREA_X;
+                    for y in row * 8 - VISAREA_Y..row * 8 - VISAREA_Y + 8 {
+                        let line = y * WIDTH + x..y * WIDTH + x + 8;
+                        presented.argb[line.clone()].copy_from_slice(&hardware.argb[line]);
+                    }
+                }
+            }
+        }
+
         let mut scene = self.machine.state.scene();
         let mut layout = self.layout(&scene);
         let mut native_edits = TextEdits::default();
@@ -2123,8 +2153,12 @@ impl Fight {
         let quarter_dim = self.machine.era_fighters().map(|state| state.is_sf2());
         let ally2_quarter_dim = self.era_combatants().get(2).is_some_and(|state| state.is_sf2());
         let callouts = self.callouts.frame_with_ally2_quarter_dim(quarter_dim, ally2_quarter_dim);
-        let era_hud = self.era_hud();
-        let ally2_gauge = self.ally2_gauge();
+        // The round card's black is the stage switched off (`gfxctrl`'s bg
+        // and fg enables), which the wipe leaves before the stage and the
+        // life bars are back: no gauge is drawn over it.
+        let staged = scene.active & 0x60 != 0;
+        let era_hud = if staged { self.era_hud() } else { EraHud::NONE };
+        let ally2_gauge = self.ally2_gauge().filter(|_| staged);
         let tints = self.era_sprite_tints(&scene);
         let sprite_art = self.satsui_sprite_art(&scene);
         let (boxes, meter) = self.overlay.parts();
@@ -2157,7 +2191,7 @@ impl Fight {
                 }
                 let font = RomFont::new(&assets.gfx4, &assets.maincpu);
                 let [p1, p2, ally2] = self.gauge_corners(era_hud, ally2_gauge);
-                let hud = present_with_move_effects(
+                let mut hud = present_with_move_effects(
                     PresentMode::Overhaul,
                     &hardware,
                     &OverhaulScene {
@@ -2186,6 +2220,7 @@ impl Fight {
                     },
                     &move_effects,
                 );
+                restore_round_wipe(&mut hud, &hardware, &scene);
                 if !meter {
                     return hud;
                 }
