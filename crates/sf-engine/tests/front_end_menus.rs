@@ -614,10 +614,11 @@ fn every_sub_menu_draws_its_header_in_the_rom_header_font_inside_the_gold_frame(
     assert_eq!(returned.screen, "main menu");
     let art_row = |y| y * WIDTH + 48..y * WIDTH + 336;
     assert!(returned.frame.argb[..16 * WIDTH] == main.frame.argb[..16 * WIDTH], "fixed top rail");
-    for y in 16..110 {
+    // The subtitle (rows 116..124) rises with the logo above it.
+    for y in 16..122 {
         assert!(returned.frame.argb[art_row(y)] == main.frame.argb[art_row(y + 2)], "returning logo row {y}");
     }
-    assert!(returned.frame.argb[112 * WIDTH..] == main.frame.argb[112 * WIDTH..], "fixed menu rows");
+    assert!(returned.frame.argb[124 * WIDTH..] == main.frame.argb[124 * WIDTH..], "fixed menu rows");
     s.step(idle());
     // A new route replaces the stamp immediately, even before the previous
     // title has settled.
