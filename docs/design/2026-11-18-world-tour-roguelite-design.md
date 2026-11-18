@@ -1,6 +1,7 @@
 # Roguelite World Tour, hybrid builds, active tag and prop minigames: design
 
 - **Date:** 2026-11-18
+- **Status:** Approved by the maintainer on 2026-11-18. Spec #240; tickets WT1–WT13 (#241–#253). Nothing here is built.
 - **Size:** Project (replacing the static 18-node World Tour with a seeded roguelite run, between-round 3-card drafts, escalating loss burns, meta-progression starting unlocks, slot-shared `TourBuild` modifiers/statuses/cross-era move grafting/CPU specialists, 3rd-slot active tag swaps, and 2,048-column side-scrolling prop minigames).
 - **Marking:** `"(user)"` is the maintainer's decision in brainstorming; `"(user accepted)"` is a proposal the maintainer confirmed in playback; `"My call"` is the designer's choice, which the maintainer has not been asked about one by one.
 
