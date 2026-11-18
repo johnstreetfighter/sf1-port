@@ -1,4 +1,5 @@
-//! Record a match of Ryu against the game's CPU Ken, both in the SF6 style,
+//! Record a match of Ryu against the game's CPU Ken, both in the SF6 style
+//! (or the SF5 one),
 //! at the Very Difficult setting, from the headless game session. Every
 //! frame is the game's own. No sound.
 //!
@@ -8,7 +9,7 @@
 //! The fight is opened as Training against a CPU and then switched to Versus
 //! rules, so that it has rounds, a clock and knockouts.
 //!
-//! `cargo run -p sf-host --release --example cpu_match -- <out> <first seed> <count>`
+//! `cargo run -p sf-host --release --example cpu_match -- <out> <first seed> <count> [sf6|sf5]`
 //!
 //! Writes `<out>/match-<seed>.mkv` (384x224 at 60 fps, lossless) and one line
 //! per match in `<out>/matches.tsv`: seed, frames, whether the match ended,
@@ -123,6 +124,11 @@ fn main() {
     let out = PathBuf::from(args.get(1).map(String::as_str).unwrap_or("cpu-match"));
     let first: u64 = args.get(2).and_then(|t| t.parse().ok()).unwrap_or(1);
     let count: u64 = args.get(3).and_then(|t| t.parse().ok()).unwrap_or(1);
+    // The style both fighters take: SF6, or the first SF5 with V-Skill I and V-Trigger I.
+    let style = match args.get(4).map(String::as_str) {
+        Some("sf5") => (Revision::Sf5, Loadout::Skill1Trigger1),
+        _ => (Revision::Sf6, Loadout::Standard),
+    };
     std::fs::create_dir_all(&out).unwrap();
 
     let handles: Vec<_> = (first..first + count)
@@ -131,7 +137,7 @@ fn main() {
             std::thread::Builder::new()
                 .stack_size(256 << 20)
                 .spawn(move || {
-                    let row = one(&out, seed).unwrap_or_else(|e| format!("{seed}\tfailed\t{e}"));
+                    let row = one(&out, seed, style).unwrap_or_else(|e| format!("{seed}\tfailed\t{e}"));
                     println!("{row}");
                     row
                 })
@@ -196,7 +202,7 @@ fn attack(gap: u32, roll: u64) -> Vec<(u8, u8)> {
     }
 }
 
-fn one(out: &Path, seed: u64) -> Result<String, String> {
+fn one(out: &Path, seed: u64, (revision, loadout): (Revision, Loadout)) -> Result<String, String> {
     let mut log = Log::create(&out.join(format!("match-{seed}.log")));
     let assets = load_assets(ROMS, MANIFEST).map_err(|e| e.to_string())?;
     let art = sf_host::art::load_with_fallbacks(&assets, &[Path::new(ROMS)], &[Path::new("assets").to_path_buf()], &mut log)
@@ -218,8 +224,8 @@ fn one(out: &Path, seed: u64) -> Result<String, String> {
     choose(&mut s, MenuItem::SinglePlayer)?;
     choose(&mut s, MenuItem::Training)?;
     choose(&mut s, MenuItem::TrainingCpu)?;
-    lock_style(&mut s, 0, TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard)?;
-    lock_style(&mut s, 0, TournamentFighter::Ken, Revision::Sf6, Loadout::Standard)?;
+    lock_style(&mut s, 0, TournamentFighter::Ryu, revision, loadout)?;
+    lock_style(&mut s, 0, TournamentFighter::Ken, revision, loadout)?;
     let mut f = 0;
     while s.fight_machine().map(flow_position) != Some(FIGHT_LOOP) {
         match s.screen() {
@@ -239,7 +245,7 @@ fn one(out: &Path, seed: u64) -> Result<String, String> {
     let fight = s.fight().unwrap();
     let styles = machine.era_fighters().map(|e| (e.style.revision, e.style.loadout));
     let who = [fight.player_fighter(0), fight.player_fighter(1)];
-    if who != [TournamentFighter::Ryu, TournamentFighter::Ken] || styles != [(Revision::Sf6, Loadout::Standard); 2] {
+    if who != [TournamentFighter::Ryu, TournamentFighter::Ken] || styles != [(revision, loadout); 2] {
         return Err(format!("the fight opened as {who:?} {styles:?}"));
     }
     if machine.match_config().difficulty != 4 {
