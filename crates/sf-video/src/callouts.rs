@@ -698,7 +698,8 @@ pub mod regions {
 /// shadow and body, as [`era_hud::pens::DIGIT_GOLD`].
 pub const LETTER_PENS: [u32; 3] = era_hud::pens::DIGIT_GOLD;
 
-const WARM_LETTER_PENS: [u32; 3] = [0xffff_dd99, era_hud::pens::GOLD_DARK, 0xffdd_aa22];
+/// An ordinary word's pens for its first four frames on the board.
+pub const WARM_LETTER_PENS: [u32; 3] = [0xffff_dd99, era_hud::pens::GOLD_DARK, 0xffdd_aa22];
 const BRIGHT_LETTER_PENS: [u32; 3] = [era_hud::pens::CREAM, era_hud::pens::GOLD_DARK, era_hud::pens::GOLD_LIGHT];
 
 struct WordMotion {

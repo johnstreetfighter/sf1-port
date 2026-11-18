@@ -6,7 +6,7 @@ use sf_engine::era_preview::{EraPreview, PreviewEra, FIXTURES};
 use sf_engine::fair_cpu::FIGHT_LOOP;
 use sf_engine::front::{cabinet::flow_position, PlayerInputs};
 use sf_engine::roster::TournamentFighter;
-use sf_video::callouts::{regions, CalloutKind, Side, FLASH_PHASE};
+use sf_video::callouts::{regions, CalloutKind, Side, FLASH_PHASE, WARM_LETTER_PENS};
 use sf_video::era_hud::{pens, GaugeArt, GaugeRow, GaugeState};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 use sf_video::romset::{load_assets, Assets};
@@ -105,7 +105,10 @@ fn callout_fixtures_draw_words_flash_the_gauge_and_dim_the_stage() {
         .elements()
         .into_iter()
         .filter(|el| el.side == Side::P1)
-        .any(|el| pixels(&flash, el.rect).any(|pixel| pixel == pens::GOLD)));
+        // Six words a frame apart leave the four on the board in their
+        // arriving pens (the first four frames), not yet the settled gold.
+        .any(|el| pixels(&flash, el.rect)
+            .any(|pixel| pixel == pens::GOLD || pixel == WARM_LETTER_PENS[2])));
     for _ in 0..FLASH_PHASE {
         tick(&mut preview, &assets);
     }
