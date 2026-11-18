@@ -2,3 +2,5 @@
 shaders/** -text
 # libopenmpt's source stays byte-identical to the release it came from.
 crates/sf-openmpt/vendor/** -text
+# Shell scripts run inside Linux containers from any checkout.
+*.sh text eol=lf

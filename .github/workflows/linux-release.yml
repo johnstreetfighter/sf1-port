@@ -1,0 +1,104 @@
+name: Linux release
+
+# Builds, packages and verifies the Linux x86_64 archive (#125). The files are
+# a workflow artifact only; nothing is attached to a GitHub Release yet.
+# See tools/release/README.md.
+
+on:
+  workflow_dispatch:
+  # While the Linux build is being brought up on its branch.
+  push:
+    branches:
+      - linux-build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: '1.96.0'
+      BASELINE_IMAGE: ubuntu:22.04
+    outputs:
+      tag: ${{ steps.source.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Identify the source
+        id: source
+        run: |
+          version=$(python3 -c "import tomllib; from pathlib import Path; print(tomllib.loads(Path('Cargo.toml').read_text(encoding='utf-8'))['workspace']['package']['version'])")
+          tag="v$version"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid workspace release version"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = branch ]; then
+            # Branch runs use a local tag in the runner checkout.
+            git -c user.name="Release verification" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" tag -a "$tag" -m "Package verification"
+          fi
+          [ "$(git cat-file -t "refs/tags/$tag")" = tag ] || { echo "Expected an annotated tag for $tag"; exit 1; }
+          commit=$(git rev-parse "refs/tags/$tag^{commit}")
+          [ "$commit" = "$GITHUB_SHA" ] || { echo "The tag must point to the workflow commit"; exit 1; }
+          [ "$(git rev-parse HEAD)" = "$commit" ] || { echo "Checkout does not match the release tag"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Check the release tooling
+        working-directory: tools/release
+        run: python3 -m unittest -v test_release_packs test_release_linux
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/sf1-build
+          key: linux-release-${{ env.BASELINE_IMAGE }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build the Linux executable in the runtime baseline
+        run: |
+          mkdir -p "$RUNNER_TEMP/sf1-build"
+          docker run --rm -e RUSTUP_TOOLCHAIN \
+            -v "$GITHUB_WORKSPACE":/source -v "$RUNNER_TEMP/sf1-build":/build \
+            "$BASELINE_IMAGE" sh /source/tools/release/build-linux.sh
+
+      - name: Install the release Rust toolchain for dependency metadata
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+
+      - name: Package the archive and checksum
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/release/package-linux.py --tag "$RELEASE_TAG" \
+            --build-directory "$RUNNER_TEMP/sf1-build/release" --output-directory "$RUNNER_TEMP/sf1-release"
+
+      - name: Verify the Linux package
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          python3 tools/release/verify-linux-package.py \
+            "$RUNNER_TEMP/sf1-release/sf1-port-$RELEASE_TAG-linux-x86_64.tar.gz" \
+            "$RUNNER_TEMP/sf1-build/release/sf-game" "$GITHUB_WORKSPACE" "$RELEASE_TAG" "$RELEASE_COMMIT"
+
+      - name: Keep the verified release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: linux-${{ steps.source.outputs.tag }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/sf1-release/sf1-port-${{ steps.source.outputs.tag }}-linux-x86_64.tar.gz
+            ${{ runner.temp }}/sf1-release/sf1-port-${{ steps.source.outputs.tag }}-linux-x86_64.tar.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Launch on a clean baseline system as an ordinary user
+        run: |
+          mkdir "$RUNNER_TEMP/sf1-download"
+          cp "$RUNNER_TEMP"/sf1-release/sf1-port-*-linux-x86_64.tar.gz* "$RUNNER_TEMP/sf1-download/"
+          docker run --rm -v "$RUNNER_TEMP/sf1-download":/package:ro -v "$GITHUB_WORKSPACE/tools/release":/tools:ro \
+            "$BASELINE_IMAGE" sh /tools/check-linux-launch.sh
