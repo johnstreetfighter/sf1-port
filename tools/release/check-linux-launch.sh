@@ -20,10 +20,16 @@ if [ "${1:-}" != "--as-player" ]; then
         libasound2 libudev1 libvulkan1 mesa-vulkan-drivers \
         libx11-6 libx11-xcb1 libxcursor1 libxi6 libxrandr2 libxkbcommon0 libxkbcommon-x11-0 \
         xvfb xauth
-    if dpkg-query -W -f '${Package}\n' | grep -E -- '-dev$|^gcc|^g\+\+|^rustc$|^cargo$'; then
+    if dpkg-query -W -f '${Package}\n' | grep -E -- '-dev$'; then
         echo "FAIL development packages are installed" >&2
         exit 1
     fi
+    for tool in cc gcc g++ clang rustc cargo pkg-config; do
+        if command -v "$tool" > /dev/null; then
+            echo "FAIL $tool is installed" >&2
+            exit 1
+        fi
+    done
     echo "ok   no compilers or development packages are installed"
     useradd --create-home player
     cp "$0" /tmp/check-linux-launch.sh
