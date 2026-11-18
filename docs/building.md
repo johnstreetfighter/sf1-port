@@ -32,13 +32,21 @@ cargo run -p sf-game --release -- --roms tools/reference/local/roms/sf
 
 `cargo run -p sf-game --release -- smoke` opens the window, switches it to fullscreen and back, and reports presents and game frames per second and late refreshes over five seconds.
 
+## Linux
+
+The Linux build is the same game for x86_64 desktop Linux and Steam Deck. Its runtime baseline is Ubuntu 22.04 (glibc 2.35): the release executable is built inside an `ubuntu:22.04` container by [`tools/release/build-linux.sh`](../tools/release/build-linux.sh), so it runs on that system and newer ones, including Fedora 36 and later, Debian 12 and SteamOS 3.
+
+To build on Linux yourself, install a C and C++ compiler, `pkg-config`, and the ALSA, udev, X11, Wayland and xkbcommon development packages (on Ubuntu: `build-essential pkg-config libasound2-dev libudev-dev libx11-dev libxcursor-dev libxkbcommon-dev libwayland-dev`), then run the same `cargo build -p sf-game --release`. The executable is `target/release/sf-game`.
+
+At run time the game needs a Vulkan driver, ALSA sound (PipeWire and PulseAudio provide it) and X11 or Wayland. It looks for the ROM set in `roms/sf` beside the executable, then `~/.local/share/sf1-port/roms/sf`, then the saved `rom_folder`. The missing-ROM screen's BROWSE choices are Windows-only for now, so on Linux use one of those folders or `--roms`.
+
 ## Display timing
 
 The game draws through the graphics card (Vulkan, or Direct3D 12 without it) and waits for the display's refresh. When the refresh is a multiple of 60 Hz, every game frame is shown for the same number of refreshes: two at 120 Hz, one at 60 Hz. Other rates, such as 144 Hz, run the game on a 60 Hz clock.
 
 ## Files the game keeps
 
-Everything is in `%APPDATA%\sf1-port`. A first launch writes the three settings files with their defaults.
+Everything is in one folder per user: `%APPDATA%\sf1-port` on Windows and `~/.local/share/sf1-port` on Linux (`$XDG_DATA_HOME/sf1-port` when the desktop sets that variable). A first launch writes the three settings files with their defaults. Replacing or deleting the game's own folder leaves this one alone.
 
 | File | Holds |
 | --- | --- |

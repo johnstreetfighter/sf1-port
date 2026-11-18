@@ -1,4 +1,6 @@
-# Windows release packages
+# Release packages
+
+Windows comes first; the [Linux archive](#linux-archive) has its own section at the end.
 
 ## Publish with GitHub Actions
 
@@ -77,3 +79,53 @@ tagged source. ROMs, the local title arrangement, source captures, listening
 renders, raw art candidates, voice archives, settings, and logs stay outside
 the ZIP. The quick start links Microsoft's x64 v14 runtime and explains where
 users supply their own ROM set.
+
+## Linux archive
+
+The Linux x86_64 archive is for desktop Linux and Steam Deck. It is built and
+verified by the **Linux release** workflow, which keeps the archive and its
+SHA-256 sidecar as an Actions artifact. A version tag does not publish it yet:
+that waits for the Steam Deck checks.
+
+The runtime baseline is Ubuntu 22.04 (glibc 2.35). `build-linux.sh` builds the
+locked executable with the default tracker feature inside a fresh
+`ubuntu:22.04` container, which is what fixes the oldest system the package
+runs on:
+
+```bash
+docker run --rm -e RUSTUP_TOOLCHAIN=1.96.0 -v "$PWD":/source -v /path/to/isolated-target:/build ubuntu:22.04 sh /source/tools/release/build-linux.sh
+```
+
+```bash
+python3 tools/release/package-linux.py --tag v1.5.27 --build-directory /path/to/isolated-target/release --output-directory /path/to/release-packages
+```
+
+```bash
+python3 tools/release/verify-linux-package.py /path/to/release-packages/sf1-port-v1.5.27-linux-x86_64.tar.gz /path/to/isolated-target/release/sf-game . v1.5.27 <full commit>
+```
+
+The packager applies the Windows packager's rules to the same tagged source:
+`sf-game`, the complete shader tree, the three playable packs from their
+manifests, the README and notices, dependency license texts for the Linux
+dependency set, `Cargo.lock`, `QUICKSTART.txt` and `BUILD.txt`. The archive is
+`sf1-port-vX.Y.Z-linux-x86_64.tar.gz`, with root ownership, fixed modes and
+sorted members, and `sf-game` marked executable. The dependency notice rules
+live in `release_notices.py` for Linux and in `package-windows.ps1` for
+Windows; change both together.
+
+The verifier checks the sidecar, every member against the tag, and the
+executable against the build. It reads the ELF file: x86-64, the standard
+loader, no library search path, only `libc`, `libm`, `libgcc_s`, `libstdc++`,
+`libasound` and `libudev` as linked libraries, and no glibc symbol newer than
+2.35. It then extracts the whole archive and runs `sf-game --version` from
+another working folder.
+
+`check-linux-launch.sh` runs in a second fresh `ubuntu:22.04` container with
+runtime packages only, as an ordinary user. It launches the extracted game on a
+virtual display, checks that settings and the log land in
+`~/.local/share/sf1-port`, replaces the package folder and checks that a
+changed setting and the player's ROM folder are still there, and runs
+`sf-game smoke` from another folder to see the looks load from beside the
+launcher. The display is Mesa's software Vulkan driver: real graphics drivers,
+sound, controllers and the art and voice packs (which need a ROM set) are
+checked by hand on a desktop or a Steam Deck and recorded in the release notes.

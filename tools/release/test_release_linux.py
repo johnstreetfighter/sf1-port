@@ -215,6 +215,7 @@ class NoticeTests(unittest.TestCase):
             root = Path(tmp)
             packages = [
                 self.crate(root, "own", {"LICENSE": b"own text", "LICENSES/extra.txt": b"extra", "src/lib.rs": b""}),
+                self.crate(root, "lower", {"license": b"lowercase name"}),
                 self.crate(root, "bare", {".cargo_vcs_info.json": json.dumps({"git": {"sha1": revision}}).encode()}),
                 {"name": "sf-game", "version": "9.9.9", "source": None, "manifest_path": str(root / "Cargo.toml")},
             ]
@@ -223,9 +224,10 @@ class NoticeTests(unittest.TestCase):
             licenses = package / "licenses" / "rust-dependencies"
             written = {p.relative_to(licenses).as_posix(): p.read_bytes() for p in licenses.rglob("*") if p.is_file()}
             index = (package / "licenses" / "README.md").read_text(encoding="utf-8")
-        self.assertEqual(count, 2)
+        self.assertEqual(count, 3)
         self.assertEqual(written, {
             "own-1.0.0/LICENSE": b"own text",
+            "lower-1.0.0/license": b"lowercase name",
             "own-1.0.0/LICENSES/extra.txt": b"extra",
             "bare-1.0.0/LICENSE-MIT": b"upstream MIT text",
             "bare-1.0.0/UPSTREAM-SOURCE.txt": f"https://github.com/example/bare (commit {revision})".encode(),

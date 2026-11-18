@@ -15,10 +15,15 @@ import subprocess
 from urllib.parse import quote, urlparse
 from urllib.request import urlopen
 
-NOTICE_NAME = re.compile(r"^(LICENSE|LICENCE|COPYING|NOTICE|UNLICENSE|COPYRIGHT)([._-].*)?$")
-ROOT_LICENSE_NAME = re.compile(r"^(LICENSE|LICENCE|COPYING|UNLICENSE)([._-].*)?$")
-UPSTREAM_NAME = re.compile(r"^(LICENSES?|LICENCES?|COPYING|NOTICE|UNLICENSE|COPYRIGHT)([._-].*)?$")
+# Names match in any letter case, as PowerShell's -match does: hound ships `license`.
+NOTICE_NAME = re.compile(r"^(LICENSE|LICENCE|COPYING|NOTICE|UNLICENSE|COPYRIGHT)([._-].*)?$", re.I)
+ROOT_LICENSE_NAME = re.compile(r"^(LICENSE|LICENCE|COPYING|UNLICENSE)([._-].*)?$", re.I)
+UPSTREAM_NAME = re.compile(r"^(LICENSES?|LICENCES?|COPYING|NOTICE|UNLICENSE|COPYRIGHT)([._-].*)?$", re.I)
 LICENSE_FOLDERS = {"LICENSES", "LICENCES"}
+
+
+def in_license_folder(parts: tuple[str, ...]) -> bool:
+    return any(part.upper() in LICENSE_FOLDERS for part in parts)
 INDEX_HEADER = [
     "# Locked Rust dependency notices",
     "",
@@ -56,13 +61,13 @@ def local_notices(manifest_folder: Path) -> list[Path]:
     return sorted(
         path for path in manifest_folder.rglob("*")
         if path.is_file() and (NOTICE_NAME.match(path.name)
-                               or LICENSE_FOLDERS.intersection(path.relative_to(manifest_folder).parts[:-1]))
+                               or in_license_folder(path.relative_to(manifest_folder).parts[:-1]))
     )
 
 
 def has_own_license(manifest_folder: Path, notices: list[Path], license_file: str | None) -> bool:
     root = any(path.parent == manifest_folder and ROOT_LICENSE_NAME.match(path.name) for path in notices)
-    folder = any(path.relative_to(manifest_folder).parts[0] in LICENSE_FOLDERS for path in notices)
+    folder = any(in_license_folder(path.relative_to(manifest_folder).parts[:1]) for path in notices)
     return root or folder or bool(license_file)
 
 
