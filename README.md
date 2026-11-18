@@ -6,269 +6,147 @@
   <sub>Fan-made key art, not affiliated with or endorsed by Capcom.</sub>
 </p>
 
-**Street Fighter': The World Tournament** is a native Windows PC port of Capcom's original 1987 arcade **Street Fighter** (US set 1, six-button controls).
+**Street Fighter': The World Tournament** is a PC port of Capcom's original 1987 arcade **Street Fighter**, expanded so that all twelve tournament fighters are playable, with online play, training tools and fighting styles from the later games.
 
-[Windows download](https://github.com/johnstreetfighter/sf1-port/releases/latest) · [Gameplay trailer (MP4)](https://github.com/johnstreetfighter/sf1-port/releases/download/v1.3.3/sf1-port-trailer.mp4) · [Netplay guide](docs/netplay.md)
+The original game is still inside it, untouched: the 1987 arcade program was translated to run natively instead of in an emulator, and you can boot that cabinet from the Main Menu at any time.
+
+**[Download for Windows](https://github.com/johnstreetfighter/sf1-port/releases/latest)** · [Play online](#play-online) · [Controls](#controls)
+
+The game does not include Capcom's ROM files. You need your own copy of the arcade `sf` ROM set to play.
 
 <p align="center">
-  <img src="docs/media/versus-hadoken.gif" alt="2-Player Versus: Ryu vs. Ken Hadoken" width="49%" />
-  <img src="docs/media/sagat-boss.gif" alt="1-Player Tournament: Ryu vs. Final Boss Sagat" width="49%" />
+  <img src="docs/media/main-menu.png" alt="The Main Menu under the Street Fighter' logo: Single Player, Multi Player, Replays, Settings, 1987 and Exit" width="49%" />
+  <img src="docs/media/local-fight.png" alt="A Local fight on the USA stage: Ken lands a kick on a second Ken in his mirror palette" width="49%" />
 </p>
 
-Rather than running the game inside an emulator or rebuilding it from memory, this port translates the original 1987 arcade game and sound programs directly into native Rust. Sprites, background layers, FM music, voice samples, frame timing, AI patterns, and cabinet quirks all behave just as they did on the arcade hardware.
+## Get playing
 
-No copyrighted ROM binaries are included in this repository. To play, you need your own local copy of the arcade `sf` ROM set.
+You need 64-bit Windows 10 or 11 and a graphics driver with Vulkan or Direct3D 12. Linux and Steam Deck versions are planned ([#125](https://github.com/johnstreetfighter/sf1-port/issues/125), [#129](https://github.com/johnstreetfighter/sf1-port/issues/129)). There is no macOS version yet.
 
-Extract the entire Windows ZIP and follow `QUICKSTART.txt`. Keep the included `shaders` folder beside `sf-game.exe`. The release page includes a SHA-256 checksum for the package.
+1. **Download** the newest `sf1-port-…-windows-x86_64.zip` from the [releases page](https://github.com/johnstreetfighter/sf1-port/releases/latest).
+2. **Extract the whole ZIP** to a folder. Keep the `shaders` and `assets` folders beside `sf-game.exe`.
+3. **Add your ROM set.** The game wants MAME's `sf` set (US set 1, the six-button version). Either:
+   - put the ROM files in a `roms\sf` folder beside `sf-game.exe`, keeping their original names, or
+   - skip this step and point the game at your `sf.zip`, `sf.7z` or ROM folder when it asks.
+4. **Run `sf-game.exe`.** If it cannot find the ROM set, choose **BROWSE ARCHIVE** or **BROWSE FOLDER** and pick yours. The game checks the files and remembers the choice.
+5. **Press Start** (`Space`, `Enter`, or `Options` on a pad) at the title to open the Main Menu.
 
-Double-click `sf-game.exe` to open the game window. The log is saved in `%APPDATA%\sf1-port\sf-game.log`. Run `sf-game.exe --console` to see the log live.
-
-## Screenshots
-
-| Title Screen | 4-Country Select |
-| :---: | :---: |
-| ![Title Screen](docs/media/title-screen.png) | ![Country Select](docs/media/country-select.png) |
-| **Round 1: Ryu vs. Retsu (Japan)** | **Final Boss: Ryu vs. Sagat (Thailand)** |
-| ![Ryu vs. Retsu](docs/media/ryu-vs-retsu.png) | ![Ryu vs. Sagat](docs/media/ryu-vs-sagat.png) |
-| **Bonus Stage: Tile Breaking** | **Hitbox, Command-Tracker & 60-Cell Frame Meter Overlay** |
-| ![Bonus Stage](docs/media/bonus-stage.png) | ![Training Overlay](docs/media/training-overlay.gif) |
-
-### The front end
-
-| Main Menu | Settings: Gameplay Toggles |
-| :---: | :---: |
-| ![Main Menu](docs/media/main-menu.png) | ![Settings, Gameplay tab on the Definitive Overhaul preset](docs/media/settings.png) |
-| **Local Player Select: Sagat vs. Geki** | **Local Fight: Sagat vs. Geki (Japan)** |
-| ![Local player select, Sagat against Geki](docs/media/player-select.png) | ![Sagat's high kick against a jumping Geki](docs/media/local-fight.png) |
-
-### The era HUD
-
-Under Definitive Overhaul, the Style card carries each fighter's era, revision, and loadout into the fight. The HUD draws each side's gauges and call-outs from that fight's state. Online 1v1 synchronizes both Style picks.
-
-The stills below show the later-era gauges and call-outs using preview fixtures. They come from a Training fight of Ryu against the dummy Ken with `cargo run -p sf-host --release --example era_hud_shots`.
-
-| A Counter-Hit Combo That Was the First Attack | A Super Against a Perfect Parry |
-| :---: | :---: |
-| ![Ryu, in SF6 with Drive and Super Art gauges, lands a three-hit combo against Ken in Alpha: FIRST ATTACK and COUNTER stack under the count](docs/media/era-hud-fight.png) | ![Ken's Shoryureppa dims the stage while Ryu calls a perfect parry](docs/media/era-hud-super.png) |
-| **Gauge Art: Ruled, Blocks and Plate** | **Training: the Frame Meter With the Gauges Above It** |
-| ![The same SF6 and Alpha gauges in Ruled, Blocks and Plate gauge art](docs/media/era-hud-gauge-art.png) | ![Training with the frame meter on: the gauges sit above it and the combo shows its damage](docs/media/era-hud-training.png) |
-
-## Gameplay and features
-
-The base edition, *The World Tournament*, is complete and playable from power-on to the ending credits:
-
-- **1-player arcade tournament.** Boot up the cabinet, drop a coin, choose your starting country (Japan, USA, England, or China), and fight through all ten opponents across five countries:
-  - **Japan:** Retsu and Geki
-  - **USA:** Joe and Mike
-  - **England:** Birdie and Eagle
-  - **China:** Lee and Gen
-  - **Thailand:** Adon and the final boss, Sagat
-- **Bonus stages and endings.** Fly between countries on the world map, test your timing on the plank-breaking and block-breaking bonus stages, and smash through the timed concrete-stack bonus rounds. Defeating Sagat plays the ending sequence, staff roll, and high-score name entry.
-- **2-player versus and arcade join-in.** Play head-to-head as Ryu (Player 1) and Ken (Player 2), or have a second player insert a coin mid-match to challenge an active 1-player run. The winner of a versus match carries on into the single-player tournament, which also lets Player 2 play the arcade campaign as Ken.
-- **Quick-launch fight modes.** Jump straight into Round 1 against the CPU (Ryu vs. Retsu) or a 2-player versus round (Ryu vs. Ken) whenever you want to skip the attract sequence and country select.
-- **Original 1987 six-button combat.** Standing, crouching, and jumping Light, Medium, and Heavy punches and kicks, plus all three special moves (*Hadoken*, *Shoryuken*, and *Tatsumaki Senpukyaku*). Preserves the original 1987 negative-edge trigger (attacks fire on button release), tight command windows, and heavy special-move damage.
-- **Arcade sound and cabinet options.** Stereo YM2151 FM music and sound effects paired with dual MSM5205 ADPCM voice samples and impact sounds, plus original cabinet DIP switch settings (difficulty, round timer, two-country or four-country select, game speed, continues, buy-in, coinage rates, and screen flip) and the operator service menu.
-- **Remappable keyboard and pad controls.** Play both fighters and the cabinet on the keyboard or on two pads, and rebind either from the Controls tab.
-
-## Playing the game
-
-### Requirements
-
-- Windows and a recent stable Rust toolchain (`x86_64-pc-windows-msvc`), with Visual Studio's **Desktop development with C++** workload (the MSVC compiler). Tracker module support builds libopenmpt from C++ source; see [Tracker modules and the C++ build](#tracker-modules-and-the-c-build).
-- A legally obtained `sf` arcade ROM set (MAME's `sf`, US set 1). The game checks each of its 44 files against the size and CRC-32 in the embedded manifest.
-
-### Build and launch
-
-Build the game from the repository root:
-
-```bash
-cargo build -p sf-game --release
-```
-
-The executable is `target\release\sf-game.exe`. It looks for the ROM set in these locations:
-
-1. `roms\sf` beside the executable
-2. `%APPDATA%\sf1-port\roms\sf`
-3. The path saved in `rom_folder` in `%APPDATA%\sf1-port\settings.toml`
-
-If none of those locations holds a matching set, choose **BROWSE FOLDER** to select the extracted ROM folder or **BROWSE ARCHIVE** to select `sf.zip` or `sf.7z`. The game validates the set before starting and saves the successful path for next time. **RETRY** checks the usual locations again. The `--roms` option checks a folder or archive first:
-
-```bash
-cargo run -p sf-game --release -- --roms tools/reference/local/roms/sf
-```
-
-The game opens on the 1987 attract. Press Start (`Space`, `Enter`, `1`, `2`, or a pad's Options) for the Main Menu:
-
-- **Single Player:** Arcade mode against the CPU ladder, or Training against a CPU or a dummy. Under the overhaul presets Training's CPU is the *fair CPU*: it plays Ryu, Ken or Retsu through Player 2's pad like a person, from what the screen shows after a human reaction delay (27 frames on Easy down to 12 on Very Hard, set by the Gameplay difficulty), and never reads your inputs. *Faithful 1987* keeps Capcom's CPU.
-- **Multi Player:** Local versus, each player choosing a fighter on the portrait select.
-- **Settings:** gameplay toggles and the preset, roster options, video, sound and controls. The game saves them when you leave the screen. The Video tab's `SCREEN SHAKE` setting controls the stage jolt on mat and wall impacts. Contact effects and audio still play with shake off.
-- **1987:** the original cabinet's DIP switches, then `POWER ON` to play the untouched 1987 machine from power-on. Hold `Esc` for one second to come back.
-
-The game draws through the graphics card (Vulkan, or Direct3D 12 without it) and waits for the display's refresh (VO2). When the refresh is a multiple of 60 Hz, every game frame is shown for the same number of refreshes: two at 120 Hz, one at 60 Hz. Other rates, such as 144 Hz, run the game on a 60 Hz clock. `cargo run -p sf-game --release -- smoke` opens the window, switches it to fullscreen and back, and reports presents and game frames per second and late refreshes over five seconds.
-
-The game keeps its files in `%APPDATA%\sf1-port`: `settings.toml` (video, sound, devices, ROM folder, the cabinet's DIP switches), `match_config.toml` (preset, toggles, roster, difficulty and round time) and `bindings.toml` (keys and pad buttons). A first launch writes all three with their defaults. `sf-game.log` there records each launch: the settings in force, the ROM folder, the graphics adapter and the display's refresh rate, pads seen or lost, any file that failed to load, and any untranslated-branch notice. The game overwrites the log at every launch.
-
-The Windows ZIP includes the approved SF1+ art in `assets/sf1-port-art`. A `sf1-port-art` folder beside the ROM set takes precedence as a local override. If the chosen pack cannot be loaded, the game logs the reason and uses ROM art.
-
-The Windows ZIP includes the overhaul announcer in `assets/sf1-port-voice`. A `sf1-port-voice` folder beside the ROM set takes precedence as a local override. The announcer plays on a third emulated MSM5205, and `ANNOUNCER` on the Sound tab sets his volume. See the [announcer reference](docs/reference/announcer.md) for the pack format and fallback behavior.
-
-The Windows ZIP and source checkout include 30 native character arrangements in `assets/sf1-port-music`. Overhaul presets use them when available. Valid scores beside the ROM set take precedence for the matching theme. See the [music pack](assets/sf1-port-music/README.md).
-
-### Tracker modules and the C++ build
-
-The Jukebox plays tracker modules (MOD, XM, S3M, IT, MPTM, 669, MTM and the rest of libopenmpt's list) as well as OGG, WAV and FLAC. Modules go through [libopenmpt](https://lib.openmpt.org/libopenmpt/) 0.8.10, a C++ library. Its official source release is committed, as an unmodified subset, in `crates/sf-openmpt/vendor/libopenmpt` (about 6.5 MB of source, no binaries), and `crates/sf-openmpt/build.rs` compiles it into a static library with the `cc` crate. So on Windows a fresh clone builds with the same command as before and needs no download, no DLL, no vcpkg and no `PATH` setup:
-
-```bash
-cargo build -p sf-game --release
-```
-
-The one requirement is a C++17 compiler: install Visual Studio 2022 (or the Build Tools) with the **Desktop development with C++** workload, the same one Rust's MSVC target needs for linking. Open a normal shell; `cc` finds the compiler itself through `vswhere`. The first build compiles about 150 C++ files and takes about a minute on a multi-core machine (it compiles in parallel); later builds reuse it. The game then has no extra DLL: libopenmpt is inside `sf-game.exe`.
-
-To build **without** libopenmpt (a machine with no C++ compiler), turn off the `tracker` feature, which is on by default:
-
-```bash
-cargo build -p sf-game --release --no-default-features
-```
-
-That build plays OGG, WAV and FLAC as before. A tracker module in the `jukebox` folder then cannot play: the game logs one line saying the build has no tracker support and the native theme plays, as it does for any file it cannot play. (`-p sf-dev` takes the same flag.)
-
-A module loops where the module says (its restart position), and a module that is broken or empty falls back to the native theme with a log line. libopenmpt is BSD-3-Clause; see [Legal](#legal).
-
-### Development launcher
-
-The development launcher runs the translated machine directly, without the front end:
-
-```bash
-cargo run -p sf-dev --release -- power-on
-```
-
-Or launch directly into a fight:
-
-```bash
-# 1-player quick match: Ryu (P1) vs. CPU Retsu
-cargo run -p sf-dev --release -- cpu
-
-# 2-player versus quick match: Ryu (P1) vs. Ken (P2)
-cargo run -p sf-dev --release
-
-# Portrait character select. Arrows move, Enter confirms, Backspace steps back.
-cargo run -p sf-dev --release -- select
-```
-
-The launcher reads its ROMs from `tools/reference/local/roms/sf` (see [tools/reference/README.md](tools/reference/README.md)).
+If something goes wrong, see [Troubleshooting](#troubleshooting). `QUICKSTART.txt` in the ZIP repeats these steps.
 
 ## Controls
 
-### Fighter controls
+These are the defaults. Change them in **Settings → Controls**.
 
-| Player | Up | Left | Down | Right | LP | MP | HP | LK | MK | HK |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Player 1** | `↑` | `←` | `↓` | `→` | `A` | `S` | `D` | `Z` | `X` | `C` |
-| **Player 2** | `T` | `F` | `G` | `H` | `U` | `I` | `O` | `J` | `K` | `L` |
-| **Pad (Classic)** | D-pad or left stick | | | | `Square` | `Triangle` | `R1` | `Cross` | `Circle` | `R2` |
+### In a fight
 
-Just like on the original six-button arcade cabinet, normal and special attacks fire when you **release** an attack button rather than when you press it down.
+| | Move | Light Punch | Medium Punch | Heavy Punch | Light Kick | Medium Kick | Heavy Kick |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **Keyboard, Player 1** | Arrow keys | `A` | `S` | `D` | `Z` | `X` | `C` |
+| **Keyboard, Player 2** | `T` `F` `G` `H` | `U` | `I` | `O` | `J` | `K` | `L` |
+| **PlayStation pad** | D-pad or left stick | `Square` | `Triangle` | `R1` | `Cross` | `Circle` | `R2` |
+| **Xbox pad** | D-pad or left stick | `X` | `Y` | `RB` | `A` | `B` | `RT` |
 
-### Menus
+Under the default preset an attack comes out when you press its button. The Faithful 1987 preset and the 1987 cabinet keep the arcade's behaviour, where an attack comes out when you **release** the button.
+
+Pause a fight with `Space` or `Options`. The pause box's **MOVES** row lists your fighter's moves and their inputs.
+
+### In menus
 
 | Action | Keyboard | Pad |
 | --- | --- | --- |
-| Move | arrows, or either player's stick | D-pad or left stick |
-| Confirm | `Enter`, or a keyboard player's LP | `Cross` |
-| Back | `Backspace`, `Esc`, or a keyboard player's LK | `Circle` |
-| Start / pause a fight | `Space`, `Esc`, `Backspace`, `1`, `2` | `Options` |
+| Move | Arrow keys | D-pad or left stick |
+| Confirm | `Enter` | `Cross` / `A` |
+| Back | `Backspace` or `Esc` | `Circle` / `B` |
 | Switch Settings tabs | `Q` / `E` | `L1` / `R1` |
 
 ### Pads
 
-Pads are read through Windows Gaming Input, only while the game window has focus. A DualShock 4 over USB should need nothing else installed, but that is not yet confirmed on real pads (#163). By default P1 takes the first pad plugged in and P2 the second. Until a side's pad is seen, that side plays on the keyboard. The Controls tab's `P1 DEVICE` and `P2 DEVICE` rows choose `AUTO`, `KEYBOARD`, `PAD 1` or `PAD 2`, which swaps the pads. If a pad is unplugged during a fight, the fight pauses with `P1 PAD DISCONNECTED` or `P2 PAD DISCONNECTED`. That side waits until a pad is plugged in again; the keyboard never takes over on its own. On the 1987 cabinet, a pad's `Share` inserts a coin and `Options` is its side's Start.
+The first pad plugged in plays Player 1 and the second plays Player 2. A side without a pad plays on the keyboard. **Settings → Controls** has `P1 DEVICE` and `P2 DEVICE` rows to choose a device yourself or swap the pads, and `REBIND` rows to change keys and buttons. If a pad is unplugged during a fight, the fight pauses until it is plugged back in.
 
-### Cabinet keys
+## Play online
 
-| Action | Default key |
-| --- | --- |
-| Insert Coin (Player 1 / Player 2) | `5` / `6` |
-| Start (1-Player / 2-Player) | `1` / `2` |
-| Service Credit | `9` |
+Online rooms work by code. Neither player needs to forward a port or set anything up.
 
-### Rebinding
+**To host:**
 
-In the game, the Controls tab's `REBIND P1`, `REBIND P2` and `REBIND MENU` rows walk each input in turn. Press a key or a pad button to bind it, or press `Esc` to keep the old binding. A key another input already uses, or a pad button the same player already uses, is refused with a notice. The bindings are saved to `%APPDATA%\sf1-port\bindings.toml`, and `RESET TAB` restores the defaults.
+1. Open **Multi Player → Online → Host Match**.
+2. Leave **VISIBILITY** on **INTERNET CODE** and open the room.
+3. A six-character code such as `K7Q-MPX` appears. Press `Ctrl+C` to copy it and send it to your friend.
 
-### Development launcher controls
+**To join:**
 
-| Action | Default key |
-| --- | --- |
-| Toggle Hitbox & 60-Cell Frame Meter Overlay | `F1` |
-| Pause / Resume | `Space` |
-| Save Snapshot / Take Over P1 or P2 (`replay`) | `F2` / `F3` |
-| Rewind to Bookmark | `F4` |
-| Quit | `Esc` |
+1. Open **Multi Player → Online → Direct Join**.
+2. Type the code, or press `Ctrl+V` to paste it, and confirm **Join**.
 
-The launcher reads both pads too: the first pad plays P1 and the second P2, alongside the keyboard. It can rebind any of the 25 player or cabinet inputs (`p1_up`, `p1_down`, `p1_left`, `p1_right`, `p1_lp`, `p1_mp`, `p1_hp`, `p1_lk`, `p1_mk`, `p1_hk`, the `p2_*` equivalents, `coin1`, `coin2`, `start1`, `start2`, `service1`) from the command line, into the same `bindings.toml`:
+Good to know:
 
-```bash
-cargo run -p sf-dev --release -- rebind <input> <Key>
-```
+- Both players need the same version of the game.
+- Each player uses their own Player 1 controls.
+- Up to four spectators can watch: choose **JOIN AS → SPECTATOR** with the same code.
+- The rooms run through the project's relay server in the eastern United States. Players far from it will see more delay.
+- On the same home network you can host a **PUBLIC** or **PRIVATE** room instead, which needs no internet connection.
 
-## Roadmap
+The [netplay guide](docs/netplay.md) covers spectating, co-op rooms, connection settings and community relays.
 
-### Done
+## What you can play
 
-- **Street Fighter: The World Tournament (Spec #1).** Complete, frame-accurate native port of the 1987 arcade game across all ten opponents, bonus stages, two-player modes, sound programs, DIP switches, and service mode.
-- **The game (Spec #150).** `sf-game` is one executable. It runs the 1987 attract with a front end: Arcade, Local and Training on the portrait select, the pause and after-match boxes, Settings, the untouched 1987 cabinet behind its DIP screen, pads, rebinding, and a log. Every fight runs on the translated 1987 engine. The overhaul lets all twelve fighters play with their approved art and player tables. The Main Menu sits under the 1987 title logo inside the gold frame.
-- **Art pipeline (Spec #164).** Every SF1+ move has a pose from the ROM's own art: a 1987 pose reused, one rebuilt from ROM pieces, or one generated in the fighter's palette and approved by eye. All twelve fighters' sets are finished, and the game loads them from the art pack into an extended sprite bank that the 1987 sprite code draws. Each fighter walks, attacks and takes hits in his own animations.
-- **Stages and music (Spec #192).** A stage select in Local and Training outside Faithful 1987: P1 picks first, then the loser of each match, with a RANDOM tile and a one-press Rematch. The 1987 background and sound code read an extended background bank and tune table, so stage themes play in their fights. The Jukebox plays a track per stage or fighter from a `jukebox` folder: OGG, WAV, FLAC and tracker modules.
-- **Video options (Spec #203).** Smooth motion on vsync, RetroArch CRT looks through librashader (built-in looks, a live tuning screen, saved looks and drop-in presets), and true 4:3 beside whole-number scales and square pixels.
-- **Era HUD (Spec #216).** Every overhaul fight moves TIME under the health bars and hides the scores outside Arcade. The Faithful 1987 preset keeps the plain 1987 screen.
-  - **Gauges.** Every era's gauges share one 1987 style in the bottom corners, in Ruled, Blocks or Plate gauge art (VIDEO tab and the pause box).
-  - **Call-outs.** COUNTER, PUNISH COUNTER, CRUSH COUNTER, PERFECT PARRY, BURNOUT, CUSTOM COMBO, ALPHA COUNTER, the super with its move's name and a one-level dim, FIRST ATTACK, REVERSAL and PERFECT stack on the earner's side and never overlap.
-  - **REVERSAL is literal.** It is keyed to true blockstun or a get-up; Faithful 1987 retains its native behavior.
-  - **Combo count.** It counts true combos, including SF1+ with that modern rule enabled. Training adds damage and a HOLD COMBO row.
-  - **The announcer.** He has a generated voice, designed from a description to sit beside the 1987 announcer and encoded as the cabinet's 4 kHz ADPCM. He calls each word and combos of five hits or more. The `tools/voice` pipeline makes his voice pack.
-- **The move list and coach (Spec #226).** MOVES in the pause box lists the paused side's moves, drawn as arrows and button chips, numpad notation or words (the MOVE INPUTS setting). In Training, SHOW performs a move with your fighter and TRY has the coach watch your attempt and say what to fix.
-- **Training without rounds (Spec #238).** Under every preset nobody is knocked out and a Training fight never ends: health stops at a floor and refills a second after the last hit, hits at the floor count their full damage, and the clock, scores and round-win markers are gone. The frame meter is see-through. The pause box's TRAINING row opens RESET POSITIONS and FILL METERS.
-- **Key art ([Spec #3](https://github.com/johnstreetfighter/sf1-port/issues/3)).** The painted twelve-fighter key art at the top of this page. A redraw closer to the reference illustrations ([KA4](https://github.com/johnstreetfighter/sf1-port/issues/4)) waits until the game is complete.
+<p align="center">
+  <img src="docs/media/player-select.png" alt="Player Select: Player 1 on Ken, choosing his SF1+ style" width="49%" />
+  <img src="docs/media/settings.png" alt="Settings, Gameplay tab, on the Definitive Overhaul preset" width="49%" />
+</p>
 
-- **SF1+ (Spec #246).** All twelve tournament fighters have their own standing, crouching and jumping attacks, blocks, techable throws and specials on the translated engine. True combos, cancels and throws have independent modern-rule switches. Balanced roster retunes the original character values. Each fighter can play the real Arcade ladder, with Ryu standing in for the player's own opponent slot. Ryu's approved theme is integrated (SP15 #267).
-- **Online 1v1 and live spectating (Spec #303).** The twelve-fighter roster runs with rollback up to eight frames and 0–4 frames of input delay. Up to four observers can join before or during a match. Rooms use shareable codes or IPv4 addresses, LAN discovery, and an optional community directory. The host synchronizes fighters, styles, match rules, DIPs, stage and seed. Peers must match engine, data and art identities. Display, sound, bindings and Jukebox preferences stay local. Pause and MOVES keep the match running, and rematch/reselect decisions are shared. The browser shows measured ping/jitter, rollback limit and the actual Ethernet/Wi-Fi link. Wired Only filters Wi-Fi rooms and can reject Wi-Fi challengers. See the [netplay guide](docs/netplay.md).
-- **Dramatic Battle.** Fight a CPU boss with a CPU partner, a second local player, or an online guest. Choose a rivalry and its era, or set each fighter's style and the stage in Custom 2v1. Shared Lifebar gives the allies one Team Era Gauge, with three unified stocks for mixed eras. Independent Lifebar gives each ally their own gauge. The boss has a separate gauge. Online co-op supports rollback and live spectating.
+### Arcade
 
-### Era Styles
+**Single Player → Arcade Mode.** Pick any of the twelve tournament fighters (Ryu, Ken, Retsu, Geki, Joe, Mike, Lee, Gen, Birdie, Eagle, Adon or Sagat) and fight through Japan, the USA, England, China and Thailand, with the bonus stages between countries.
 
-Definitive Overhaul brings SF1, SF1+, and six later eras to the native fight engine. The matching art pack enables the full roster. Each fighter can pick their own style in Local Versus, Training, and Online 1v1. In Arcade, opponents use the player's era where available. Training's MOVES panel lists the selected style's commands, with SHOW, TRY, and FILL METERS for practice.
+### Online and Local
 
-- **Street Fighter II.** Ryu, Ken, and Sagat pick World Warrior through Super Turbo. Super Turbo's New loadout adds a Super gauge and a Super Combo.
-- **Alpha.** Ryu, Ken, Adon, Sagat, and Birdie pick SFZ1 through SFZ3. Gen joins in SFZ2 and Eagle in SFZ3. Alpha Counter spends meter out of blockstun. SFZ3 adds A-ISM, V-ISM, and X-ISM, with Guard Power that drains on block and can be crushed. Gen switches between Mantis and Crane.
-- **Street Fighter III.** Ryu and Ken pick New Generation, 2nd Impact, or 3rd Strike and Super Art I, II, or III. The native fights support high, low, and air parries, Red Parry in 3rd Strike, an overhead, and EX specials from 2nd Impact onward.
-- **Street Fighter IV.** Ryu, Ken, Sagat, and Gen pick SF4 through Ultra, and Adon joins from Super. Focus Attack can absorb a hit and cancel into a dash. Revenge powers Ultras. Ultra adds Red Focus, Ultra Combo Double, and delayed wakeup.
-- **Street Fighter V.** Ryu, Ken, and Birdie pick SF5, Arcade Edition, or Champion Edition, and Sagat joins from Arcade Edition. The EX gauge pays for EX specials and Critical Arts. The V-System includes V-Skills, V-Triggers, and V-Reversal. Champion Edition adds V-Shift and V-Shift Break.
-- **Street Fighter 6.** Ryu, Ken, and Retsu have a six-bar Drive gauge and three Super Arts. Drive pays for Overdrive, Parry, Rush, Impact, and Reversal. An empty Drive gauge puts the fighter in Burnout until it recovers.
-- **What-If Styles.** Turn on WHAT-IF STYLES to add fighting styles for the twelve tournament fighters in eras they missed, from Hyper Fighting and Super Turbo through Street Fighter 6. Their moves reuse the 1987 ROM artwork and approved art pack.
+**Multi Player → Online** for rooms by code, as above. **Multi Player → Local** for two players on one PC: each chooses a fighter, then Player 1 picks the stage.
 
-### In the engine, awaiting native integration
+### Training
 
-`sf-engine` also holds prototypes for World Tour and bonus challengers. The descriptions below outline their prototype behavior.
-- **1987 World Tour.** Any of the twelve fighters walks Japan, the USA, China, England, and Thailand. Nodes set the match: projectile-only, no blocking, survival waves, a time-attack target, a cross-era showdown, or a 2v1 Dramatic Battle. RPG progression spends XP on attack, defense, speed, and an ISM-Plus perk, and that save reloads. Arcade Pure leaves the stats alone. Arcade, Versus, Training, and online keep every fighter, style, costume, and palette unlocked no matter the tour progress.
-- **Bonus challengers.** Definitive Overhaul can show the extra thirteen on the `[BONUS '87]` row: Gouken, Akuma, Evil Ryu, Goutetsu, Sheng Long, Gou Hibiki, Dan, Cody, Guy, Haggar, Charlie, M. Bison, and Chun-Li. Each has an SF1 kit with 26-frame player hitstun and no boss lock, plus SF1+ through SF6. Each has a 1987 stage and an FM theme with a CD jukebox path. Haggar's command throw does not loop. Gou Hibiki has the Tengu mask, Cody has the prison and mayor outfits, Charlie has the stitched outfit, and Chun-Li has the qipao and the master outfit. In Arcade they fight all ten country opponents and the bonus stages, then a four-panel ending. A perfect or a Super can insert "Here Comes A New Challenger!" before Thailand. Losing that fight does not spend a credit. Turning off bonus challengers or secret intrusions keeps the rival out. With bonus challengers on, Dramatic Battle and World Tour list five lore episodes, and any of the thirteen can walk the tour map. The CPU will command-throw or teleport when that kit is in range. Online rooms badge `1987 Tournament 12` or `25-Fighter / What-If`, and the handshake hash includes both toggles.
+**Single Player → Training** against a CPU opponent or a standing dummy. Nobody is knocked out, health refills and there is no clock. From the pause box:
 
-### Next: the rest of the Definitive Overhaul ([Spec #1](https://github.com/johnstreetfighter/sf1-port/issues/1))
+- **MOVES** lists your moves. **SHOW** performs one with your fighter, and **TRY** watches your attempt and tells you what to fix.
+- **OVERLAYS** turns on hitboxes and the frame meter.
+- **RESET POSITIONS** puts both fighters back where the fight began.
+- **TRAINING** holds full meters, drills and combo trials.
 
-Haute42 S16 DirectInput Up and Down passed in the Main Menu and Training. Charge inputs still need hardware verification. [Haute42 hardware QA #70](https://github.com/johnstreetfighter/sf1-port/issues/70)
+### Era styles
 
-Next, in this order:
+Under the default Definitive Overhaul preset, each fighter picks a style on Player Select. All twelve fighters have SF1+, an expanded set of moves built on the 1987 game. Fighters who appeared in Street Fighter II, Alpha, III, IV, V or 6 can pick a style from those games too. Each style brings that game's moves and gauges, such as parries in III or the Drive gauge in 6. Two players can pick different styles and fight each other.
 
-1. **Endings and World Tour.** Native character endings, win quotes, and the 1987 World Tour campaign are tracked in [#19](https://github.com/johnstreetfighter/sf1-port/issues/19).
-2. **Bonus challengers by 1987 lore ([Spec #2](https://github.com/johnstreetfighter/sf1-port/issues/2)).** Twenty-eight challengers chosen by 1987 lore, in three roster waves. Tickets start when a wave does and extend netplay roster compatibility.
+### Also in the game
 
-## Technical documentation
+- **Dramatic Battle:** two fighters against one CPU boss, with a CPU partner, a second player on the same PC, or a friend online.
+- **Replays:** watch saved matches from the Main Menu.
+- **Presets:** **Settings → Gameplay → PRESET** switches the whole rule set. *Faithful 1987* plays every mode by the original rules.
+- **Video:** CRT looks, true 4:3 and whole-number scaling in **Settings → Video**.
+- **Jukebox:** play your own music files per stage or fighter, from **Settings → Sound**.
 
-For architecture details, developer CLI commands, crate layout, ROM translation notes, and the frame-by-frame MAME 0.289 verification audit, see:
+### 1987
 
+<p align="center">
+  <img src="docs/media/title-screen.png" alt="The 1987 title screen" width="49%" />
+  <img src="docs/media/ryu-vs-sagat.png" alt="The 1987 game: Ryu against Sagat in Thailand" width="49%" />
+</p>
+
+**1987** on the Main Menu is the original arcade cabinet, exactly as it was: set its DIP switches, choose `POWER ON`, insert a coin with `5` and press `1` to start. A second player joins with `6` and `2`. Hold `Esc` for one second to return to the Main Menu.
+
+## Troubleshooting
+
+- **Windows says `VCRUNTIME140.dll` or `MSVCP140.dll` is missing.** Install Microsoft's [Visual C++ Redistributable (x64)](https://aka.ms/vc14/vc_redist.x64.exe) and run the game again.
+- **The game keeps asking for the ROM set.** It accepts only the US set 1 `sf` set and checks every file. A different regional set, or one with renamed or missing files, is refused.
+- **Something else.** The game writes a log to `%APPDATA%\sf1-port\sf-game.log` on every launch. Paste that path into File Explorer's address bar to find it, and attach the file if you [report a problem](https://github.com/johnstreetfighter/sf1-port/issues).
+
+Settings are saved in the same `%APPDATA%\sf1-port` folder. Deleting the folder resets the game to its defaults.
+
+## For developers
+
+- [Building from source](docs/building.md), including the development launcher
 - [Technical overview and verification](docs/technical-overview.md)
-- [Full-game verification audit](docs/reference/full-game-audit.md)
-- [Translation coverage ledger](docs/reference/coverage-ledger.md)
-- [Domain glossary (`CONTEXT.md`)](CONTEXT.md)
+- [Roadmap and project history](docs/roadmap.md)
+- [Domain glossary](CONTEXT.md)
 
 ## Legal
 
