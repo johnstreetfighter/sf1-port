@@ -54,6 +54,8 @@ const FRAME_PENDING: u32 = 0xff8632;
 /// Palette-upload request serviced by vblank (0x3b362).
 const PALETTE_REQUEST: u32 = 0xff8633;
 const SCENE_MODE: u32 = 0xffc008;
+/// ($400a,A5): the round's number within the match, from zero.
+pub(crate) const ROUND_NO: u32 = 0xffc00a;
 const GAME_MODE: u32 = 0xffc002;
 /// KO slow-motion flag (set by scene event 9).
 const SLOW_MOTION: u32 = 0xffc00b;

@@ -397,7 +397,7 @@ impl ComboTrialSpec {
         };
         let extension = match family {
             EraFamily::Sf1987 | EraFamily::Sf1Plus => vec![medium, heavy_special],
-            EraFamily::Sf2 => vec![medium, finish],
+            EraFamily::Sf2 | EraFamily::Kessen => vec![medium, finish],
             EraFamily::SfZ => vec![
                 TrialStep {
                     label: "CUSTOM",

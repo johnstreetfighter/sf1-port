@@ -12,7 +12,7 @@ use crate::era_fight::sf3::style_art;
 
 use super::draw::fit;
 
-const ERA_ORDER: [EraFamily; 8] = [
+const ERA_ORDER: [EraFamily; 9] = [
     EraFamily::Sf1Plus,
     EraFamily::Sf2,
     EraFamily::SfZ,
@@ -20,6 +20,7 @@ const ERA_ORDER: [EraFamily; 8] = [
     EraFamily::Sf4,
     EraFamily::Sf5,
     EraFamily::Sf6,
+    EraFamily::Kessen,
     EraFamily::Sf1987,
 ];
 const ADVANCE: usize = 4;
@@ -283,6 +284,7 @@ fn revision_label(revision: Revision) -> &'static str {
         Revision::Sf5Ae => "AE",
         Revision::Sf5Ce => "CE",
         Revision::Sf6 => "DRIVE",
+        Revision::Kessen => "KESSEN",
         _ => revision.name(),
     }
 }
@@ -299,6 +301,9 @@ fn loadout_label(pick: StylePick) -> &'static str {
         (_, Loadout::Skill1Trigger2) => "VS I / VT II",
         (_, Loadout::Skill2Trigger1) => "VS II / VT I",
         (_, Loadout::Skill2Trigger2) => "VS II / VT II",
+        (_, Loadout::Balanced) => "BALANCED",
+        (_, Loadout::Versatile) => "VERSATILE",
+        (_, Loadout::SuperHeavy) => "SUPER",
         (_, loadout) => loadout.name(),
     }
 }
@@ -326,6 +331,15 @@ fn summary(fighter: TournamentFighter, pick: StylePick) -> String {
         (EraFamily::Sf4, _) => "SUPER / REVENGE GAUGES",
         (EraFamily::Sf5, _) => "EX / V-GAUGE",
         (EraFamily::Sf6, _) => "6-BAR DRIVE · SA1/2/3",
+        (EraFamily::Kessen, loadout) => {
+            let Some(ration) = loadout.kessen_ration() else { return "SF KESSEN".into() };
+            let stocks = if ration.opening == ration.cap {
+                format!("{}", ration.cap)
+            } else {
+                format!("{}-{}", ration.opening, ration.cap)
+            };
+            return format!("{} SUPER / {stocks} VERSATILE", ration.super_stocks);
+        }
     }
     .into()
 }
@@ -340,6 +354,7 @@ pub(super) fn render_badge(
 ) {
     let label = match pick.revision {
         Revision::Sf6 => "SF6 · DRIVE SYSTEM".into(),
+        Revision::Kessen => format!("KESSEN · {}", loadout_label(pick)),
         _ if pick.loadout != Loadout::Standard || pick.revision == Revision::St => {
             let load = match pick.loadout {
                 Loadout::Skill1Trigger1 => "VS1/VT1",

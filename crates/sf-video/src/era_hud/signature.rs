@@ -28,6 +28,8 @@ pub enum GaugeKind {
     Sf5VTrigger,
     Sf6Drive,
     Sf6SuperArt,
+    /// `SF KESSEN`'s Versatile stocks, one cell a stock.
+    KessenVersatile,
 }
 
 /// The presentation of one corner's main row and optional lower row.
@@ -171,6 +173,7 @@ impl GaugeKind {
             Self::Sf6Drive => palette(0x2ac400, 0xe7e307, 0xb3d391, 0x223421),
             Self::Sf6SuperArt if side == Side::P1 => palette(0xfa79b3, 0xffd4eb, 0xe5b2cc, 0x4b2037),
             Self::Sf6SuperArt => palette(0x217ed3, 0xc6faff, 0xa5d4f0, 0x17334b),
+            Self::KessenVersatile => palette(0xb070ff, 0xe2c8ff, 0xd0c8e0, 0x2a1848),
         }
     }
 
@@ -189,6 +192,7 @@ impl GaugeKind {
             Self::Sf5VTrigger => "V-TRIGGER",
             Self::Sf6Drive if state == GaugeState::Greyed => "BURNOUT",
             Self::Sf6Drive => "DRIVE",
+            Self::KessenVersatile => "VERSATILE",
         }
     }
 
@@ -203,6 +207,7 @@ impl GaugeKind {
             Self::Sf4Super | Self::Sf4Revenge => [1, 3, 7, 6, 4],
             Self::Sf5Critical | Self::Sf5V | Self::Sf5VTrigger => [1, 3, 2, 6, 4],
             Self::Sf6Drive | Self::Sf6SuperArt => [2, 5, 5, 5, 2],
+            Self::KessenVersatile => [2, 7, 5, 7, 2],
         }
     }
 }
@@ -407,7 +412,7 @@ fn glyph(letter: u8) -> [u8; 5] {
     match letter {
         b'A' => [2, 5, 7, 5, 5], b'B' => [6, 5, 6, 5, 6], b'C' => [3, 4, 4, 4, 3],
         b'D' => [6, 5, 5, 5, 6], b'E' => [7, 4, 6, 4, 7], b'G' => [3, 4, 5, 5, 3],
-        b'I' => [7, 2, 2, 2, 7], b'M' => [5, 7, 7, 5, 5], b'N' => [5, 7, 7, 7, 5],
+        b'I' => [7, 2, 2, 2, 7], b'L' => [4, 4, 4, 4, 7], b'M' => [5, 7, 7, 5, 5], b'N' => [5, 7, 7, 7, 5],
         b'O' => [2, 5, 5, 5, 2], b'P' => [6, 5, 6, 4, 4], b'R' => [6, 5, 6, 5, 5],
         b'S' => [3, 4, 2, 1, 6], b'T' => [7, 2, 2, 2, 2], b'U' => [5, 5, 5, 5, 7],
         b'V' => [5, 5, 5, 5, 2], b'X' => [5, 5, 2, 5, 5], b'-' => [0, 0, 7, 0, 0],

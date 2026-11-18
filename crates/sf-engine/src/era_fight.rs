@@ -466,8 +466,30 @@ impl crate::canonical::Canonical for EvilRyuKit {
     }
 }
 
+/// An `SF KESSEN` fighter's own state (ADR-0027). His moves are his Super
+/// Turbo ones, so `EraFighterState::style` holds that moveset and this
+/// holds what the style card picked on top of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KessenState {
+    pub loadout: Loadout,
+    /// Versatile stocks held. Granted at the start of a round, never during one.
+    pub versatile: u8,
+    /// The odd point left over while the Versatile loadout builds Super
+    /// meter at half the rate.
+    slow_gain_remainder: u8,
+    /// The super now playing has taken its stock. Super Turbo needs no
+    /// such mark, since its one stock is gone once spent.
+    super_paid: bool,
+}
+
+crate::canonical::canonical_struct!(KessenState, "KessenState.v1", {
+    loadout, versatile, slow_gain_remainder, super_paid,
+});
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EraFighterState {
+    /// The style whose moves he plays. For `SF KESSEN` that is his Super
+    /// Turbo moveset; [`Self::pick`] is what the style card chose.
     pub style: StylePick,
     pub fighter: Option<TournamentFighter>,
     pub sub_hp: u16,
@@ -511,18 +533,62 @@ pub struct EraFighterState {
     pub(crate) attack_reached_active: bool,
     tour: world_tour::TourFighter,
     evil_ryu_kit: EvilRyuKit,
+    kessen: Option<KessenState>,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v12", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v13", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, st_ken_kick_motions, st_ken_heel_requested, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
     active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, st_ryu_air_reaction,
-    attack_reached_active, tour, evil_ryu_kit,
+    attack_reached_active, tour, evil_ryu_kit, kessen,
 });
 
 impl EraFighterState {
+    /// The style the style card picked. It differs from `style` only for
+    /// `SF KESSEN`, whose moves are the fighter's Super Turbo ones.
+    pub fn pick(&self) -> StylePick {
+        match self.kessen {
+            Some(kessen) => StylePick {
+                family: EraFamily::Kessen,
+                revision: Revision::Kessen,
+                loadout: kessen.loadout,
+                ..self.style
+            },
+            None => self.style,
+        }
+    }
+
+    /// `None` for a fighter in any other style.
+    pub fn versatile_stocks(&self) -> Option<u8> {
+        self.kessen.map(|kessen| kessen.versatile)
+    }
+
+    fn kessen_ration(&self) -> Option<crate::era::KessenRation> {
+        self.kessen.and_then(|kessen| kessen.loadout.kessen_ration())
+    }
+
+    /// What the Super Turbo super costs: the whole one-stock gauge in
+    /// Super Turbo, one stock of a longer gauge in `SF KESSEN`.
+    fn st_super_cost(&self) -> u8 {
+        if self.kessen.is_some() && !self.unified_gauge { STOCK_AT } else { self.super_capacity }
+    }
+
+    /// The Versatile loadout builds Super meter at half the rate; the odd
+    /// point is kept for the next gain.
+    pub(super) fn kessen_slow_gain(&mut self, gain: u8) -> u8 {
+        match &mut self.kessen {
+            // A Unified Gauge is not his Super meter and builds as usual.
+            Some(kessen) if kessen.loadout == Loadout::Versatile && !self.unified_gauge => {
+                let total = gain.saturating_add(kessen.slow_gain_remainder);
+                kessen.slow_gain_remainder = total % 2;
+                total / 2
+            }
+            _ => gain,
+        }
+    }
+
     pub fn gauge(&self) -> Option<EraGauge> {
         self.gauge_with_trigger_timer(true)
     }
@@ -547,6 +613,10 @@ impl EraFighterState {
             let timer = GaugeRow::bar(Fill::of(left, u16::from(self.super_capacity) * 2), Fill::FULL)
                 .with_state(GaugeState::Draining);
             return Some(EraGauge::two(timer, main));
+        }
+        if let (Some(ration), Some(held)) = (self.kessen_ration(), self.versatile_stocks()) {
+            // Unified Gauge replaces the Super meter only; the stocks stay his.
+            return Some(EraGauge::two(main, GaugeRow::stock(ration.cap, held, Fill::EMPTY)));
         }
         if !self.unified_gauge {
             if self.custom_frames != 0 {
@@ -823,6 +893,9 @@ impl EraFighterState {
         self.sf5.configure(self.style, self.fighter, mode);
         self.sf6.configure(mode == GaugeMode::EraDefault && self.is_sf6());
         self.super_capacity = match mode {
+            GaugeMode::EraDefault if self.kessen.is_some() => {
+                self.kessen_ration().map_or(0, |ration| ration.super_stocks * STOCK_AT)
+            }
             GaugeMode::EraDefault if self.st_new() || (self.what_if_active() && self.style.revision == Revision::St) => STOCK_AT,
             GaugeMode::EraDefault if self.is_alpha() => match self.style.loadout {
                 // One 48-point stock is exactly half of the V-ISM gauge.
@@ -837,6 +910,10 @@ impl EraFighterState {
             _ => 0,
         };
         self.super_meter = self.super_meter.min(self.super_capacity);
+        if let Some(kessen) = self.kessen.as_mut().filter(|_| mode == GaugeMode::NoGauges) {
+            // No Gauges removes both meters (ADR-0027): he holds no stocks.
+            kessen.versatile = 0;
+        }
         if mode == GaugeMode::NoGauges
             || !self.is_alpha()
             || self.style.revision != Revision::Sfz3
@@ -953,7 +1030,7 @@ impl EraFighterState {
     }
 
     pub(crate) fn super_stock_full(&self) -> bool {
-        let cost = self.meter_cost(self.super_capacity);
+        let cost = self.meter_cost(self.st_super_cost());
         self.st_new() && self.super_capacity > 0 && if self.st_sagat() && !self.unified_gauge {
             self.super_meter == cost
         } else {
@@ -1000,8 +1077,23 @@ impl EraFighterState {
                 || self.super_motion.remaining == ST_SAGAT_GENOCIDE_FINISH_WINDOW)
     }
 
+    /// Whether the super now playing has already taken its stock.
+    pub(crate) fn super_paid(&self) -> bool {
+        self.kessen.is_some_and(|kessen| kessen.super_paid)
+    }
+
+    /// The super has ended: the next one pays again.
+    pub(crate) fn super_ended(&mut self) {
+        if let Some(kessen) = &mut self.kessen {
+            kessen.super_paid = false;
+        }
+    }
+
     fn spend_super_stock(&mut self) {
-        self.super_meter -= self.meter_cost(self.super_capacity);
+        if let Some(kessen) = &mut self.kessen {
+            kessen.super_paid = true;
+        }
+        self.super_meter -= self.meter_cost(self.st_super_cost());
         self.super_motion = MotionTracker::default();
     }
 
@@ -1302,7 +1394,7 @@ impl Bus<'_> {
         for (index, ps) in self.era_player_slots().into_iter().enumerate() {
             let Some(ps) = ps else { continue };
             let fighter = TournamentFighter::from_move_table(self.rl(ps + 0x12));
-            let style = if index == 0 && tour.is_some() {
+            let pick = if index == 0 && tour.is_some() {
                 state.selections[0]
             } else if let Some(rules) = dramatic {
                 crate::dramatic::DramaticRules::style_pick(rules.styles[index])
@@ -1322,6 +1414,20 @@ impl Bus<'_> {
             } else {
                 state.selections[index]
             };
+            // SF KESSEN plays the fighter's Super Turbo moves (ADR-0027).
+            let style = pick.moveset();
+            let previous = state.fighters[index];
+            let carried = !new_match && previous.pick() == pick && previous.fighter == fighter;
+            let kessen = pick.loadout.kessen_ration().map(|ration| {
+                let round = self.rb(crate::tasks::ROUND_NO).saturating_add(1);
+                let held = previous.kessen.filter(|_| carried).map_or(0, |kessen| kessen.versatile);
+                KessenState {
+                    loadout: pick.loadout,
+                    versatile: ration.at_round(if carried { round } else { 1 }, held),
+                    slow_gain_remainder: 0,
+                    super_paid: false,
+                }
+            });
             let awakened = awakening.filter(|form| form.side.fighter_struct() == ps);
             let profile = awakened.map(|form| form.profile)
                 .or_else(|| self.evil_ryu_playtest.filter(|_| ps == crate::fighter::P1_STRUCT))
@@ -1371,6 +1477,8 @@ impl Bus<'_> {
                     }
                     _ => EvilRyuKit::Standard,
                 },
+                // Evil Ryu has no SF KESSEN kit yet: an awakened Ryu drops the meters.
+                kessen: kessen.filter(|_| profile.is_none()),
                 ..EraFighterState::default()
             };
             next.set_gauge_mode(self.era_gauge_mode(index));
@@ -1380,10 +1488,9 @@ impl Bus<'_> {
             if index == 2 && self.era_shared_gauge(index).is_some() {
                 next.super_capacity = self.toggle_state.era.fighters[0].super_capacity;
             }
-            let previous = state.fighters[index];
             next.super_meter = if self.era_rules.fill_meters {
                 next.super_capacity
-            } else if !new_match && previous.style == style && previous.fighter == fighter {
+            } else if carried {
                 previous.super_meter.min(next.super_capacity)
             } else {
                 0

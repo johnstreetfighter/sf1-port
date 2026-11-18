@@ -18,10 +18,14 @@ pub enum EraFamily {
     Sf4,
     Sf5,
     Sf6,
+    /// `SF KESSEN`, the first original style (ADR-0027): no Street Fighter
+    /// entry stands behind it.
+    Kessen,
 }
 
 crate::canonical::canonical_enum!(EraFamily, "EraFamily.v1";
     Sf1987 => 0, Sf1Plus => 1, Sf2 => 2, SfZ => 3, Sf3 => 4, Sf4 => 5, Sf5 => 6, Sf6 => 7,
+    Kessen => 8,
 );
 
 impl EraFamily {
@@ -35,6 +39,7 @@ impl EraFamily {
             EraFamily::Sf4 => "SF4",
             EraFamily::Sf5 => "SF5",
             EraFamily::Sf6 => "SF6",
+            EraFamily::Kessen => "SF KESSEN",
         }
     }
 }
@@ -63,13 +68,14 @@ pub enum Revision {
     Sf5Ae,
     Sf5Ce,
     Sf6,
+    Kessen,
 }
 
 crate::canonical::canonical_enum!(Revision, "EraRevision.v1";
     Arcade1987 => 0, Sf1Plus => 1, Ww => 2, Ce => 3, Hf => 4, Super => 5,
     St => 6, Sfz1 => 7, Sfz2 => 8, Sfz2A => 9, Sfz3 => 10, Sf3Ng => 11,
     Sf3TwoI => 12, Sf3ThreeS => 13, Sf4 => 14, Ssf4 => 15, Ae2012 => 16,
-    Usf4 => 17, Sf5 => 18, Sf5Ae => 19, Sf5Ce => 20, Sf6 => 21,
+    Usf4 => 17, Sf5 => 18, Sf5Ae => 19, Sf5Ce => 20, Sf6 => 21, Kessen => 22,
 );
 
 impl Revision {
@@ -97,6 +103,7 @@ impl Revision {
             Revision::Sf5Ae => "SF5 AE",
             Revision::Sf5Ce => "SF5 CE",
             Revision::Sf6 => "SF6",
+            Revision::Kessen => "SF KESSEN",
         }
     }
 
@@ -110,6 +117,7 @@ impl Revision {
             Revision::Sf4 | Revision::Ssf4 | Revision::Ae2012 | Revision::Usf4 => EraFamily::Sf4,
             Revision::Sf5 | Revision::Sf5Ae | Revision::Sf5Ce => EraFamily::Sf5,
             Revision::Sf6 => EraFamily::Sf6,
+            Revision::Kessen => EraFamily::Kessen,
         }
     }
 }
@@ -134,12 +142,19 @@ pub enum Loadout {
     Skill1Trigger2,
     Skill2Trigger1,
     Skill2Trigger2,
+    /// `SF KESSEN`: two Super stocks and a middling ration of Versatile stocks.
+    Balanced,
+    /// `SF KESSEN`: one slow Super stock and the most Versatile stocks.
+    Versatile,
+    /// `SF KESSEN`: three Super stocks and the fewest Versatile stocks.
+    SuperHeavy,
 }
 
 crate::canonical::canonical_enum!(Loadout, "EraLoadout.v1";
     Standard => 0, Old => 1, AIsm => 2, VIsm => 3, XIsm => 4,
     Art1 => 5, Art2 => 6, Art3 => 7, Ultra1 => 8, Ultra2 => 9, UltraDouble => 10,
     Skill1Trigger1 => 11, Skill1Trigger2 => 12, Skill2Trigger1 => 13, Skill2Trigger2 => 14,
+    Balanced => 15, Versatile => 16, SuperHeavy => 17,
 );
 
 impl Loadout {
@@ -160,7 +175,49 @@ impl Loadout {
             Loadout::Skill1Trigger2 => "V-Skill I / V-Trigger II",
             Loadout::Skill2Trigger1 => "V-Skill II / V-Trigger I",
             Loadout::Skill2Trigger2 => "V-Skill II / V-Trigger II",
+            Loadout::Balanced => "Balanced",
+            Loadout::Versatile => "Versatile",
+            Loadout::SuperHeavy => "Super",
         }
+    }
+
+    /// An `SF KESSEN` loadout's ration, or `None` for any other loadout.
+    pub const fn kessen_ration(self) -> Option<KessenRation> {
+        Some(match self {
+            Loadout::Balanced => KessenRation { super_stocks: 2, opening: 3, cap: 5, round_two: 2, round_three_on: 1 },
+            Loadout::Versatile => KessenRation { super_stocks: 1, opening: 4, cap: 6, round_two: 2, round_three_on: 2 },
+            Loadout::SuperHeavy => KessenRation { super_stocks: 3, opening: 3, cap: 3, round_two: 1, round_three_on: 1 },
+            _ => return None,
+        })
+    }
+}
+
+/// What an `SF KESSEN` loadout grants: its Super stocks, and its Versatile
+/// stocks by round. Nothing during a round adds a Versatile stock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KessenRation {
+    /// Super stocks the Super meter holds.
+    pub super_stocks: u8,
+    /// Versatile stocks held in round 1.
+    pub opening: u8,
+    /// The most Versatile stocks he can hold.
+    pub cap: u8,
+    /// Versatile stocks gained at the start of round 2.
+    pub round_two: u8,
+    /// Versatile stocks gained at the start of round 3 and of every round after it.
+    pub round_three_on: u8,
+}
+
+impl KessenRation {
+    /// The Versatile stocks held at the start of `round` (1 for the first),
+    /// having ended the round before with `held`.
+    pub const fn at_round(self, round: u8, held: u8) -> u8 {
+        let granted = match round {
+            ..=1 => return self.opening,
+            2 => held.saturating_add(self.round_two),
+            _ => held.saturating_add(self.round_three_on),
+        };
+        if granted > self.cap { self.cap } else { granted }
     }
 }
 
@@ -277,6 +334,20 @@ impl StylePick {
         Self { family: revision.family(), revision, loadout, ..Self::default() }
     }
 
+    /// The style whose moves this pick plays. `SF KESSEN` is built on the
+    /// fighter's Super Turbo moves (ADR-0027); every other pick plays its own.
+    pub fn moveset(self) -> Self {
+        match self.family {
+            EraFamily::Kessen => Self {
+                family: EraFamily::Sf2,
+                revision: Revision::St,
+                loadout: Loadout::Standard,
+                ..self
+            },
+            _ => self,
+        }
+    }
+
     pub(crate) fn for_preset(preset: RulesetPreset) -> Self {
         match preset {
             RulesetPreset::Faithful1987 => Self::for_revision(Revision::Arcade1987, Loadout::Standard),
@@ -284,8 +355,12 @@ impl StylePick {
         }
     }
 
-    /// Resolve the style for a zero-based Arcade ladder step.
+    /// Resolve the style for a zero-based Arcade ladder step. A CPU
+    /// opponent is not given `SF KESSEN` until every kit exists.
     pub fn arcade_opponent(self, fighter: TournamentFighter, what_if: bool, step: usize) -> Self {
+        if self.family == EraFamily::Kessen {
+            return Self::default();
+        }
         let revisions = listed_revisions(fighter, self.family, what_if);
         let Some(&flagship) = revisions.last() else {
             return Self::default();
@@ -349,9 +424,20 @@ pub fn families(fighter: TournamentFighter) -> Vec<EraFamily> {
     out
 }
 
-/// Families the select screen shows. What-if families stay off the canonical list.
+/// Whether `fighter`'s `SF KESSEN` kit is built. The style is offered for
+/// a fighter only once it is, with or without what-if style options.
+pub fn kessen_kit_built(fighter: TournamentFighter) -> bool {
+    matches!(fighter, TournamentFighter::Ryu)
+}
+
+/// Families the select screen shows. What-if families stay off the canonical
+/// list, and so does `SF KESSEN`: an original style is shown for a fighter
+/// whose kit is built whether or not what-if styles are on.
 pub fn listed_families(fighter: TournamentFighter, what_if: bool) -> Vec<EraFamily> {
     let mut out = families(fighter);
+    if kessen_kit_built(fighter) {
+        out.push(EraFamily::Kessen);
+    }
     if what_if {
         if what_if_sf2(fighter) && !out.contains(&EraFamily::Sf2) {
             out.push(EraFamily::Sf2);
@@ -377,6 +463,9 @@ pub fn listed_families(fighter: TournamentFighter, what_if: bool) -> Vec<EraFami
 
 /// Revisions in release order, with the flagship last when the era is available.
 pub fn listed_revisions(fighter: TournamentFighter, family: EraFamily, what_if: bool) -> Vec<Revision> {
+    if family == EraFamily::Kessen {
+        return revisions(fighter, family);
+    }
     if what_if && !families(fighter).contains(&family) {
         return match family {
             EraFamily::Sf2 if what_if_sf2(fighter) => vec![Revision::Hf, Revision::St],
@@ -502,6 +591,13 @@ pub fn revisions(fighter: TournamentFighter, family: EraFamily) -> Vec<Revision>
                 Vec::new()
             }
         }
+        EraFamily::Kessen => {
+            if kessen_kit_built(fighter) {
+                vec![Revision::Kessen]
+            } else {
+                Vec::new()
+            }
+        }
     }
 }
 
@@ -523,6 +619,7 @@ pub fn loadouts(revision: Revision) -> Vec<Loadout> {
             Loadout::Skill2Trigger1,
             Loadout::Skill2Trigger2,
         ],
+        Revision::Kessen => vec![Loadout::Balanced, Loadout::Versatile, Loadout::SuperHeavy],
         _ => vec![Loadout::Standard],
     }
 }

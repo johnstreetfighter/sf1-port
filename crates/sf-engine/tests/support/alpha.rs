@@ -434,6 +434,7 @@ fn lock_style(
         EraFamily::Sf4,
         EraFamily::Sf5,
         EraFamily::Sf6,
+        EraFamily::Kessen,
         EraFamily::Sf1987,
     ];
     let available = listed_families(fighter, true);

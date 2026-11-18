@@ -253,12 +253,13 @@ enum_codec!(write_revision, read_revision, Revision, {
     Arcade1987 => 0, Sf1Plus => 1, Ww => 2, Ce => 3, Hf => 4, Super => 5,
     St => 6, Sfz1 => 7, Sfz2 => 8, Sfz2A => 9, Sfz3 => 10, Sf3Ng => 11,
     Sf3TwoI => 12, Sf3ThreeS => 13, Sf4 => 14, Ssf4 => 15, Ae2012 => 16,
-    Usf4 => 17, Sf5 => 18, Sf5Ae => 19, Sf5Ce => 20, Sf6 => 21,
+    Usf4 => 17, Sf5 => 18, Sf5Ae => 19, Sf5Ce => 20, Sf6 => 21, Kessen => 22,
 });
 enum_codec!(write_loadout, read_loadout, Loadout, {
     Standard => 0, Old => 1, AIsm => 2, XIsm => 3, VIsm => 4,
     Art1 => 5, Art2 => 6, Art3 => 7, Ultra1 => 8, Ultra2 => 9, UltraDouble => 10,
     Skill1Trigger1 => 11, Skill1Trigger2 => 12, Skill2Trigger1 => 13, Skill2Trigger2 => 14,
+    Balanced => 15, Versatile => 16, SuperHeavy => 17,
 });
 
 fn write_style(style: Option<StylePick>, out: &mut Vec<u8>) {

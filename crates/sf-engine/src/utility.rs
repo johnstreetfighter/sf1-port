@@ -242,7 +242,7 @@ impl ComboTrial {
 fn finisher(family: EraFamily) -> &'static str {
     match family {
         EraFamily::Sf1987 | EraFamily::Sf1Plus => "Special",
-        EraFamily::Sf2 | EraFamily::SfZ => "Super",
+        EraFamily::Sf2 | EraFamily::SfZ | EraFamily::Kessen => "Super",
         EraFamily::Sf3 => "Super Art",
         EraFamily::Sf4 => "Ultra",
         EraFamily::Sf5 => "Critical Art",

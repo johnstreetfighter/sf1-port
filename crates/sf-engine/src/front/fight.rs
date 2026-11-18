@@ -1425,7 +1425,8 @@ impl Fight {
             Some(EraFamily::Sf1Plus) | None => config.toggles.throws,
             Some(_) => true,
         });
-        let sf2_throw = styles[1].is_some_and(|style| era_rules.enabled && style.family == EraFamily::Sf2);
+        // SF KESSEN throws with the fighter's Super Turbo moves.
+        let sf2_throw = styles[1].is_some_and(|style| era_rules.enabled && style.moveset().family == EraFamily::Sf2);
         let has_tables = self.machine.data_bank().is_some_and(|bank| {
             [self.player_fighter(0), self.player_fighter(1)].into_iter().all(|fighter| bank.throw_entry(fighter).is_some())
         });

@@ -146,7 +146,8 @@ fn training_with_settings(
             EraFamily::Sf4 => 4,
             EraFamily::Sf5 => 5,
             EraFamily::Sf6 => 6,
-            EraFamily::Sf1987 => 7,
+            EraFamily::Kessen => 7,
+            EraFamily::Sf1987 => 8,
         };
         for _ in 0..family_steps {
             tap(&mut s, stick(RIGHT));

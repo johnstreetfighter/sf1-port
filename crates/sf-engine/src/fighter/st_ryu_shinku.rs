@@ -108,12 +108,17 @@ impl Bus<'_> {
             let ready = self.player_slot_index(player).is_some_and(|side| {
                 self.toggle_state.human_attack_frames[side] == 9
             });
+            let move_id = self.eb(fighter, 0xa);
+            if move_id != SF2_SUPER {
+                if let Some(side) = self.era_side(player) {
+                    self.toggle_state.era.fighters[side].super_ended();
+                }
+            }
             if self.contact_frozen(fighter)
-                || !self.sf2_state(player).is_some_and(|state| state.super_stock_full())
+                || !self.sf2_state(player).is_some_and(|state| state.super_stock_full() && !state.super_paid())
             {
                 continue;
             }
-            let move_id = self.eb(fighter, 0xa);
             if ready && self.st_ryu_shinku(player, move_id) {
                 self.era_spend_super_with_freeze(player, ST_RYU_SHINKU_FREEZE);
                 return;

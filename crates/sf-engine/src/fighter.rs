@@ -7680,7 +7680,7 @@ impl Bus<'_> {
             Revision::Sfz3 | Revision::Sf3ThreeS => 37,
             Revision::Sf3Ng | Revision::Sf3TwoI => 43,
             Revision::Sf4 | Revision::Ssf4 | Revision::Ae2012 | Revision::Usf4 | Revision::Sf5 => 33,
-            Revision::Arcade1987 | Revision::Sf1Plus | Revision::St => return None,
+            Revision::Arcade1987 | Revision::Sf1Plus | Revision::St | Revision::Kessen => return None,
         };
         // The release pose loads on the spawn tick. After its hold, the
         // native settle pose, stream end, and next input take three ticks

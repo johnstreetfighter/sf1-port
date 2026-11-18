@@ -46,6 +46,7 @@ impl EraFighterState {
     }
 
     pub(super) fn award_super_meter(&mut self, gain: u8) {
+        let gain = self.kessen_slow_gain(gain);
         let gain = meter_gain(
             u16::from(gain),
             self.world_tour_perk(Perk::MeterSurge),

@@ -18,6 +18,8 @@ impl EraFighterState {
         ) {
             second = Some(main);
             main = RowPresentation::new(GaugeKind::AlphaCustom);
+        } else if self.versatile_stocks().is_some() {
+            second = Some(RowPresentation::new(GaugeKind::KessenVersatile));
         } else if !self.unified_gauge {
             if self.is_sf6() {
                 second = Some(main);
@@ -126,7 +128,7 @@ impl EraFighterState {
                 && self.style.revision == Revision::St
                 && self.style.loadout == Loadout::Standard)
         {
-            Some(self.super_capacity)
+            Some(self.st_super_cost())
         } else if self.is_alpha() {
             match self.style.loadout {
                 _ if self.evil_ryu_alpha2() && self.custom_combo_active() => None,
