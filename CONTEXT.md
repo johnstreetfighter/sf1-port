@@ -405,6 +405,10 @@ _Avoid_: overlay (that is the Training overlay), UI layer
 The drawing of the era gauges, one of three that every era shares: Ruled, Blocks or Plate.
 _Avoid_: gauge style (an era style is a fighter's era package), gauge look (a look is the monitor picture), skin, theme
 
+**Gauge layout**:
+Where and how large the era gauges are drawn, one of two: Classic, or Compact, which tucks shorter gauges without labels into the bottom corners under the fighters' feet.
+_Avoid_: gauge position, HUD size, gauge art (that is how the gauges are drawn)
+
 **Call-out**:
 A word the era HUD shows on the side of the fighter who earned a moment, such as COUNTER, REVERSAL or PERFECT PARRY.
 _Avoid_: banner, popup, notification
