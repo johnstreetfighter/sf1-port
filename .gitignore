@@ -22,3 +22,4 @@ __pycache__/
 
 # Combo clips are rebuilt by tools/combo-clips; only the index is kept.
 /docs/media/combos/*.mp4
+/docs/media/*.mp4
