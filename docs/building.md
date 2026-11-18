@@ -38,7 +38,9 @@ The Linux build is the same game for x86_64 desktop Linux and Steam Deck. Its ru
 
 To build on Linux yourself, install a C and C++ compiler, `pkg-config`, and the ALSA, udev, X11, Wayland and xkbcommon development packages (on Ubuntu: `build-essential pkg-config libasound2-dev libudev-dev libx11-dev libxcursor-dev libxkbcommon-dev libwayland-dev`), then run the same `cargo build -p sf-game --release`. The executable is `target/release/sf-game`.
 
-At run time the game needs a Vulkan driver, ALSA sound (PipeWire and PulseAudio provide it) and X11 or Wayland. It looks for the ROM set in `roms/sf` beside the executable, then `~/.local/share/sf1-port/roms/sf`, then the saved `rom_folder`. The missing-ROM screen's BROWSE choices are Windows-only for now, so on Linux use one of those folders or `--roms`.
+At run time the game needs a Vulkan driver, ALSA sound (PipeWire and PulseAudio provide it) and X11 or Wayland. It looks for the ROM set in `roms/sf` beside the executable, then `~/.local/share/sf1-port/roms/sf`, then the saved `rom_folder`. When none holds the set, the ROM-missing screen's `BROWSE FOLDER` opens the game's own ROM browser, which a pad can drive: move to the ROM folder, `sf.zip` or `sf.7z` and choose it, and the game saves it as `rom_folder`. Windows shows its own file pickers there instead.
+
+On a Steam Deck, extract the archive in Desktop Mode, add `sf-game` with Steam's **Add a Non-Steam Game to My Library**, and start it from Gaming Mode; the package's `QUICKSTART.txt` has the steps, including entering a room code with the built-in controls. None of this has been run on a Deck yet ([#129](https://github.com/johnstreetfighter/sf1-port/issues/129)).
 
 ## Display timing
 

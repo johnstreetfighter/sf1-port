@@ -1521,3 +1521,21 @@ fn changing_a_local_look_online_keeps_the_clients_own_configuration_for_persiste
         "a cosmetic change cannot persist the host's synced rules over offline preferences"
     );
 }
+
+/// #129: a Steam Deck player votes REMATCH with the pad's confirm alone.
+#[test]
+fn a_pad_confirm_votes_rematch_after_an_online_match() {
+    let mut pair = Pair::after_match();
+    let pad = |confirm| FrameInputs {
+        pads: [Some(MenuKeys { confirm, ..MenuKeys::default() }), None],
+        ..FrameInputs::default()
+    };
+    pair.step([pad(true), FrameInputs::default()]);
+    pair.step([pad(false), FrameInputs::default()]);
+    assert!(
+        pair.packets.iter().any(|(side, packet)| matches!(packet,
+            NetPacket::AfterMatchVote { choice: AfterMatchChoice::Rematch, .. } if *side == 0)),
+        "the pad's confirm sends the Rematch vote"
+    );
+    assert!(pair.peers.iter().all(|peer| peer.screen() == "after match"), "one vote waits for the peer");
+}

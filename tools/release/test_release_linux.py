@@ -89,6 +89,15 @@ class LinuxArchiveTests(unittest.TestCase):
         self.assertEqual(members[f"{ROOT}/README.md"].mode, 0o644)
         self.assertEqual({(m.uid, m.gid, m.uname, m.gname) for m in members.values()}, {(0, 0, "root", "root")})
 
+    def test_the_quick_start_covers_rom_setup_and_the_steam_deck(self):
+        text = "\n".join(PACKAGE["quick_start"]("Street Fighter", "v9.9.9"))
+        for needed in ("~/.local/share/sf1-port/roms/sf", "BROWSE FOLDER", "Switch to Desktop",
+                       "Add a Non-Steam Game to My Library", "Return to Gaming Mode", "Steam + X",
+                       "--roms /path/to/sf.zip", "OPEN ROOM", "CODE / IP", "REMATCH"):
+            self.assertIn(needed, text)
+        self.assertNotIn("not available on Linux", text)
+        self.assertNotIn("launcher", text.lower())
+
     def test_the_same_package_always_makes_the_same_archive(self):
         with tempfile.TemporaryDirectory() as tmp:
             package = staged(Path(tmp))

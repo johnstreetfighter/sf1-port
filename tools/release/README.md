@@ -109,7 +109,10 @@ The packager applies the Windows packager's rules to the same tagged source:
 manifests, the README and notices, dependency license texts for the Linux
 dependency set, `Cargo.lock`, `QUICKSTART.txt` and `BUILD.txt`. The archive is
 `sf1-port-vX.Y.Z-linux-x86_64.tar.gz`, with root ownership, fixed modes and
-sorted members, and `sf-game` marked executable. The dependency notice rules
+sorted members, and `sf-game` marked executable. Its `QUICKSTART.txt` carries
+the Steam Deck steps: adding `sf-game` as a non-Steam game in Desktop Mode,
+choosing the ROM set once with the game's ROM browser, and entering a room
+code with the built-in controls. The dependency notice rules
 live in `release_notices.py` for Linux and in `package-windows.ps1` for
 Windows; change both together.
 

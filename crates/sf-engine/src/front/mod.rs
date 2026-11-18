@@ -25,6 +25,7 @@ pub mod online;
 pub mod pause;
 pub mod rebind;
 mod replays;
+pub mod rom_browser;
 pub mod rom_missing;
 pub mod select;
 pub mod session;

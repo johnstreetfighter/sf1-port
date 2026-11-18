@@ -3,6 +3,8 @@
 //! screen is drawn in the compositor's ROM-independent 3×5 font. It names
 //! the set, lists each folder looked in with what was wrong there, and
 //! offers `RETRY` (look again), host browsing where available, and `EXIT`.
+//! A host with no picker of its own offers the game's ROM browser
+//! (`rom_browser`) instead, under the one item `BROWSE FOLDER`.
 
 use sf_video::compositor::{fallback_text, outline, SELECT_BLUE, SELECT_GOLD, SELECT_YELLOW};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
@@ -21,6 +23,7 @@ const ITEMS: [MenuItem; 2] = [MenuItem::Retry, MenuItem::Exit];
 const BROWSE_ITEMS: [MenuItem; 4] = [
     MenuItem::Retry, MenuItem::BrowseRomFolder, MenuItem::BrowseRomArchive, MenuItem::Exit,
 ];
+const BROWSER_ITEMS: [MenuItem; 3] = [MenuItem::Retry, MenuItem::BrowseRomFolder, MenuItem::Exit];
 const DIM: u32 = 0xff_80_80_88;
 
 /// One folder looked in and what was wrong there.
@@ -37,9 +40,20 @@ pub struct RomMissing {
     description: String,
     looked: Vec<Looked>,
     failed_choice: Option<Looked>,
-    browse: bool,
+    choosing: Choosing,
     cursor: usize,
     prev: FrameInputs,
+}
+
+/// How the player can point the game at a ROM set from this screen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Choosing {
+    /// Only by putting the files in a folder looked in.
+    Folders,
+    /// With the host's own folder and archive pickers.
+    HostPickers,
+    /// With the game's ROM browser.
+    RomBrowser,
 }
 
 impl RomMissing {
@@ -50,7 +64,7 @@ impl RomMissing {
             description: description.to_owned(),
             looked,
             failed_choice: None,
-            browse: false,
+            choosing: Choosing::Folders,
             cursor: 0,
             prev: FrameInputs::default(),
         }
@@ -62,13 +76,33 @@ impl RomMissing {
 
     /// Enable the source pickers on hosts that can show them.
     pub fn with_browse(mut self, available: bool) -> Self {
-        self.browse = available;
+        self.choosing = if available { Choosing::HostPickers } else { Choosing::Folders };
         self.cursor = 0;
         self
     }
 
+    /// Offer the game's own ROM browser, which a pad can drive, on hosts
+    /// with no picker to show.
+    pub fn with_rom_browser(mut self, available: bool) -> Self {
+        if available && self.choosing == Choosing::Folders {
+            self.choosing = Choosing::RomBrowser;
+        }
+        self.cursor = 0;
+        self
+    }
+
+    /// Back from a screen opened over this one, with `held` still down:
+    /// what is held chooses and moves nothing here.
+    pub fn resume(&mut self, held: FrameInputs) {
+        self.prev = held;
+    }
+
     fn items(&self) -> &[MenuItem] {
-        if self.browse { &BROWSE_ITEMS } else { &ITEMS }
+        match self.choosing {
+            Choosing::HostPickers => &BROWSE_ITEMS,
+            Choosing::RomBrowser => &BROWSER_ITEMS,
+            Choosing::Folders => &ITEMS,
+        }
     }
 
     pub fn cursor(&self) -> MenuItem {
@@ -135,10 +169,10 @@ impl RomMissing {
             lines.push(format!("  {}", fit(&looked.problem, COLUMNS - 2)));
         }
         lines.push(String::new());
-        lines.push(if self.browse {
-            "CHOOSE A ROM FOLDER OR ZIP / 7Z ARCHIVE."
-        } else {
-            "PUT THE FILES IN ONE OF THESE FOLDERS, THEN CHOOSE RETRY."
+        lines.push(match self.choosing {
+            Choosing::HostPickers => "CHOOSE A ROM FOLDER OR ZIP / 7Z ARCHIVE.",
+            Choosing::RomBrowser => "BROWSE FOR THE FOLDER OR A ZIP / 7Z ARCHIVE, OR PUT THE FILES THERE.",
+            Choosing::Folders => "PUT THE FILES IN ONE OF THESE FOLDERS, THEN CHOOSE RETRY.",
         }.to_owned());
         lines
     }
@@ -162,7 +196,7 @@ impl RomMissing {
         }
         for (i, item) in self.items().iter().enumerate() {
             let label = item.label();
-            let y = if self.browse { HEIGHT - 62 + i * 12 } else { HEIGHT - 48 + i * 16 };
+            let y = if self.choosing == Choosing::Folders { HEIGHT - 48 + i * 16 } else { HEIGHT - 62 + i * 12 };
             let x = centred_x(label, 2);
             let color = if i == self.cursor { SELECT_YELLOW } else { SELECT_BLUE };
             if i == self.cursor {

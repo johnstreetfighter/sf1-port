@@ -21,7 +21,7 @@ The game does not include Capcom's ROM files. You need your own copy of the arca
 
 ## Get playing
 
-You need 64-bit Windows 10 or 11 and a graphics driver with Vulkan or Direct3D 12. Linux and Steam Deck versions are planned ([#125](https://github.com/johnstreetfighter/sf1-port/issues/125), [#129](https://github.com/johnstreetfighter/sf1-port/issues/129)). There is no macOS version yet.
+You need 64-bit Windows 10 or 11 and a graphics driver with Vulkan or Direct3D 12. A Linux build that also runs on Steam Deck is being tested and is not on the releases page yet ([#125](https://github.com/johnstreetfighter/sf1-port/issues/125), [#129](https://github.com/johnstreetfighter/sf1-port/issues/129)). There is no macOS version yet.
 
 1. **Download** the newest `sf1-port-…-windows-x86_64.zip` from the [releases page](https://github.com/johnstreetfighter/sf1-port/releases/latest).
 2. **Extract the whole ZIP** to a folder. Keep the `shaders` and `assets` folders beside `sf-game.exe`.

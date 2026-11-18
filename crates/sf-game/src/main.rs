@@ -230,6 +230,7 @@ fn main() {
         pads,
         candidates,
         selected_rom: None,
+        browsing: None,
         video: video(&settings),
         look: look_request(&catalogue, &settings.crt_look),
         reload_look: false,
@@ -269,6 +270,8 @@ struct Game {
     candidates: Vec<Candidate>,
     /// The latest manually chosen source, including a failed choice to retry.
     selected_rom: Option<PathBuf>,
+    /// The ROM browser, while it is open over the ROM-missing screen.
+    browsing: Option<roms::RomBrowsing>,
     /// The settings as loaded, until the session holds them.
     settings: Settings,
     config: Option<MatchConfig>,
@@ -331,7 +334,8 @@ impl Game {
         self.report(&looked);
         let (set, description) = roms::set_name();
         let screen = RomMissing::open(&set.to_uppercase(), &description.to_uppercase(), looked)
-            .with_browse(cfg!(windows));
+            .with_browse(cfg!(windows))
+            .with_rom_browser(roms::ROM_BROWSER);
         self.frame = screen.render();
         self.phase = Phase::Missing(screen);
     }
@@ -492,6 +496,37 @@ impl Driver for Game {
             Phase::Starting => {}
             Phase::Missing(screen) => {
                 let inputs = frame_inputs(keyboard, &self.bindings, self.settings.devices, &pad_frame);
+                if let Some(browsing) = &mut self.browsing {
+                    let chosen = match browsing.screen.step(inputs).map(|request| browsing.answer(request)) {
+                        Some(roms::Browsed::Load(path)) => Some(path),
+                        Some(roms::Browsed::Cancel) => {
+                            screen.resume(inputs);
+                            self.browsing = None;
+                            self.frame = screen.render();
+                            return true;
+                        }
+                        Some(roms::Browsed::Stay) | None => None,
+                    };
+                    if let Some(path) = chosen {
+                        // Kept on a failure too, so RETRY looks there again.
+                        self.selected_rom = Some(path.clone());
+                        match roms::load(&path) {
+                            Ok(set) => {
+                                self.browsing = None;
+                                self.start_after_search(set);
+                                return true;
+                            }
+                            Err(problem) => {
+                                let folder = path.display().to_string();
+                                self.log.line("roms", &format!("{folder}: {problem}"));
+                                browsing.screen.problem(&problem);
+                                screen.failed_choice(sf_engine::front::rom_missing::Looked { folder, problem });
+                            }
+                        }
+                    }
+                    self.frame = browsing.screen.render();
+                    return true;
+                }
                 match screen.step(inputs) {
                     Some(Transition::Choose(MenuItem::Retry)) => {
                         let mut candidates = self.candidates.clone();
@@ -517,6 +552,13 @@ impl Driver for Game {
                                 }
                             }
                         }
+                    }
+                    Some(Transition::Choose(MenuItem::BrowseRomFolder)) if roms::ROM_BROWSER => {
+                        let mut browsing = roms::RomBrowsing::open(&roms::browse_start());
+                        browsing.screen.resume(inputs);
+                        self.frame = browsing.screen.render();
+                        self.browsing = Some(browsing);
+                        return true;
                     }
                     Some(Transition::Choose(item @ (MenuItem::BrowseRomFolder | MenuItem::BrowseRomArchive))) => {
                         let kind = if item == MenuItem::BrowseRomFolder {

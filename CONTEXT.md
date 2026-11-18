@@ -170,6 +170,10 @@ Agreement with the original sound events, timing, pitch, and character, without 
 The overhaul's screens outside a fight: the attract wrapper, menus, settings, select, pause and after-match screens.
 _Avoid_: launcher, shell, UI layer
 
+**ROM browser**:
+The game's own screen for choosing the ROM set's folder or archive with a pad, opened from the ROM-missing screen on hosts that have no file picker to show.
+_Avoid_: file dialog, file manager
+
 **Attract**:
 The faithful attract loop (warning, title, demo fight, ranking) running under the front end with every toggle off.
 _Avoid_: demo mode, idle screen

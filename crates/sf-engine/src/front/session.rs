@@ -340,6 +340,9 @@ pub struct GameSession {
     /// (the faithful cabinet's sound stopping as the attract returns).
     attract_hold: VecDeque<u8>,
     prev: FrameInputs,
+    /// The pad direction held on an open text entry and for how many
+    /// frames, so a held Up or Down keeps stepping the symbol.
+    entry_hold: Option<(MenuInput, u32)>,
     frames: u32,
     /// The current front-end title's arrival frame on the session clock.
     title_started_at: Option<u32>,
@@ -435,6 +438,7 @@ impl GameSession {
             cabinet: None,
             attract_hold: VecDeque::new(),
             prev: FrameInputs::default(),
+            entry_hold: None,
             frames: 0,
             title_started_at: None,
             sounds: VecDeque::new(),
@@ -2058,8 +2062,14 @@ impl GameSession {
             Some(Screen::Online(screen)) => screen.typing(),
             _ => false,
         };
+        // Only the room code row steps symbols with a held pad direction.
+        let stepping = typing && matches!(self.stack.last(), Some(Screen::Online(_)));
+        let repeat = stepping.then(|| entry_repeat(&mut self.entry_hold, now)).flatten();
+        if !stepping {
+            self.entry_hold = None;
+        }
         let sided: Vec<(usize, Event)> = if typing {
-            let pads = pad_menu_events(prev, now).into_iter().map(Event::Menu);
+            let pads = pad_menu_events(prev, now).into_iter().chain(repeat).map(Event::Menu);
             pads.chain(typed.into_iter().map(Event::Typed)).map(|e| (0, e)).collect()
         } else if dramatic_host {
             let before = netplay::local_inputs(*prev);
@@ -2866,6 +2876,40 @@ fn side_events(prev: &FrameInputs, now: &FrameInputs) -> Vec<(usize, MenuInput)>
 enum Event {
     Menu(MenuInput),
     Typed(TypedKey),
+}
+
+/// Frames Up or Down is held before it repeats, and the frames between
+/// repeats after that.
+const HELD_REPEAT_DELAY: u32 = 20;
+const HELD_REPEAT_EVERY: u32 = 5;
+
+/// A held Up or Down as a repeated step, for a long list or a symbol
+/// picker. `hold` carries the direction and its held frames from frame to
+/// frame; the press itself is the caller's menu event, not a repeat.
+pub(crate) fn held_repeat(hold: &mut Option<(MenuInput, u32)>, up: bool, down: bool) -> Option<MenuInput> {
+    let direction = match (up, down) {
+        (true, false) => MenuInput::Up,
+        (false, true) => MenuInput::Down,
+        _ => {
+            *hold = None;
+            return None;
+        }
+    };
+    let frames = match *hold {
+        Some((before, frames)) if before == direction => frames + 1,
+        _ => 0,
+    };
+    *hold = Some((direction, frames));
+    (frames >= HELD_REPEAT_DELAY && (frames - HELD_REPEAT_DELAY).is_multiple_of(HELD_REPEAT_EVERY))
+        .then_some(direction)
+}
+
+/// A held pad Up or Down on an open text entry, as a repeated step.
+fn entry_repeat(hold: &mut Option<(MenuInput, u32)>, now: &FrameInputs) -> Option<MenuInput> {
+    let held = |i: usize| {
+        [now.p1, now.p2].iter().enumerate().any(|(side, p)| now.pads[side].is_some() && p.directions[i])
+    };
+    held_repeat(hold, held(3), held(2))
 }
 
 /// The pads' menu input edges alone: a pad side's stick and its pad's

@@ -5,7 +5,7 @@
 //! does nothing. Needs no ROMs.
 
 use sf_engine::front::rom_missing::{Looked, RomMissing};
-use sf_engine::front::{FrameInputs, MenuItem, Transition};
+use sf_engine::front::{FrameInputs, MenuItem, MenuKeys, Transition};
 use sf_video::compositor::{fallback_text, SELECT_BLUE, SELECT_GOLD, SELECT_YELLOW};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
@@ -132,4 +132,19 @@ fn the_missing_screen_can_browse_for_a_folder_or_an_archive() {
     assert!(s.text().contains(&looked()[0].folder));
     s.update(looked());
     assert_eq!(s.text()[4], looked()[0].folder);
+}
+
+/// #129: a host with no file picker offers the game's ROM browser as one
+/// item, which a pad can reach and choose.
+#[test]
+fn the_missing_screen_offers_the_rom_browser_where_the_host_has_no_picker() {
+    let mut s = screen().with_rom_browser(true);
+    assert_eq!(s.cursor(), MenuItem::Retry);
+    tap(&mut s, |i| i.p1.directions[2] = true);
+    assert_eq!(s.cursor(), MenuItem::BrowseRomFolder);
+    let choose = tap(&mut s, |i| i.pads[0] = Some(MenuKeys { confirm: true, ..MenuKeys::default() }));
+    assert_eq!(choose, Some(Transition::Choose(MenuItem::BrowseRomFolder)));
+    tap(&mut s, |i| i.p1.directions[2] = true);
+    assert_eq!(s.cursor(), MenuItem::Exit, "there is no separate archive item: the browser lists archives too");
+    assert!(s.text().last().unwrap().starts_with("BROWSE FOR THE FOLDER"));
 }

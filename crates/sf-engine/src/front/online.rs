@@ -9,6 +9,11 @@ use sf_video::render::Frame;
 use super::draw::{fit, framed_wide_at};
 
 pub const NET_ENTRY_CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.: ";
+/// The same characters in the order a pad steps through them: the room
+/// code symbols first, then the ones only an address or address code uses.
+const PAD_ENTRY_CHARS: &str = "23456789ABCDEFGHJKMNPQRSTUVWXYZ01ILO-_.: ";
+/// How many of them are room code symbols.
+const ROOM_CODE_SYMBOLS: usize = 31;
 const ENTRY_MAX: usize = 32;
 const BROWSE_ROOM_START: usize = 4;
 const DIRECT_JOIN_ROW: usize = 3;
@@ -307,6 +312,8 @@ impl OnlineScreen {
                 font.text(&mut frame.argb, 4, 18, "ROOM CODE OR IPV4:PORT", ink::DIM);
                 if cfg!(windows) {
                     font.text(&mut frame.argb, 4, 19, "CTRL+V PASTE", ink::DIM);
+                } else if cfg!(target_os = "linux") {
+                    font.text(&mut frame.argb, 4, 19, "STEAM DECK: STEAM+X KEYBOARD", ink::DIM);
                 }
             }
         }
@@ -314,7 +321,7 @@ impl OnlineScreen {
             font.text(&mut frame.argb, 3, 22, &fit(&self.notice, 42), ink::BLUE);
         }
         font.text_centred(&mut frame.argb, 23,
-            if self.editing { "UP/DN CHAR  L/R PLACE  CONFIRM DONE" }
+            if self.editing { "UP/DN CHAR L/R PLACE START ERASE CONFIRM DONE" }
             else { "UP/DN SELECT  L/R CHANGE  CONFIRM" }, ink::DIM);
         frame
     }
@@ -325,16 +332,30 @@ impl OnlineScreen {
                 MenuInput::Left => self.at = self.at.saturating_sub(1),
                 MenuInput::Right => self.at = (self.at + 1).min(self.entry.len()),
                 MenuInput::Up | MenuInput::Down => {
-                    if self.at == self.entry.len() {
+                    let alphabet = PAD_ENTRY_CHARS.as_bytes();
+                    let place = |ch: u8| alphabet.iter().position(|&known| known == ch);
+                    // A new place steps from the symbol before it. The
+                    // first place steps from outside the room code
+                    // symbols: up to the first of them, down to the last.
+                    let old = if self.at == self.entry.len() {
                         if self.entry.len() == ENTRY_MAX { return None; }
+                        let before = self.at.checked_sub(1).and_then(|i| place(self.entry.as_bytes()[i]));
                         self.entry.push(' ');
-                    }
-                    let alphabet = NET_ENTRY_CHARS.as_bytes();
-                    let old = alphabet.iter().position(|&ch| ch == self.entry.as_bytes()[self.at]).unwrap_or(0);
-                    let next = if input == MenuInput::Up { (old + 1) % alphabet.len() }
-                        else { (old + alphabet.len() - 1) % alphabet.len() };
+                        before
+                    } else {
+                        Some(place(self.entry.as_bytes()[self.at]).unwrap_or(0))
+                    };
+                    let next = match (old, input == MenuInput::Up) {
+                        (Some(old), true) => (old + 1) % alphabet.len(),
+                        (Some(old), false) => (old + alphabet.len() - 1) % alphabet.len(),
+                        (None, true) => 0,
+                        (None, false) => ROOM_CODE_SYMBOLS - 1,
+                    };
                     self.entry.replace_range(self.at..self.at + 1, &char::from(alphabet[next]).to_string());
                 }
+                // Start erases the symbol under the cursor; past the
+                // end it erases the last one.
+                MenuInput::Start if self.at < self.entry.len() => { self.entry.remove(self.at); }
                 MenuInput::Start if self.at > 0 => { self.at -= 1; self.entry.remove(self.at); }
                 MenuInput::Confirm => { self.editing = false; self.cursor = DIRECT_JOIN_ROW; }
                 MenuInput::Back => self.editing = false,

@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use sf_engine::front::rom_browser::{Browse, RomBrowser, Source};
 use sf_engine::front::rom_missing::Looked;
 use sf_video::romset::{self, Assets, RomsetError, VerifiedRomSet};
 
@@ -114,6 +115,103 @@ pub fn find(candidates: &[Candidate]) -> Result<RomSet, Vec<Looked>> {
     Err(looked)
 }
 
+/// Whether the game's own ROM browser stands in for a host picker.
+pub const ROM_BROWSER: bool = cfg!(not(windows));
+
+/// Where the ROM browser starts: the player's home folder when there is
+/// one, else the top of the file system.
+pub fn browse_start() -> PathBuf {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .filter(|home| home.is_dir())
+        .unwrap_or_else(|| PathBuf::from(std::path::MAIN_SEPARATOR_STR))
+}
+
+/// What the ROM browser lists for `folder`: the folders in it, then its
+/// ZIP and 7z archives, each in name order whatever the letter case.
+/// Names that begin with a dot are left out, as file managers do.
+pub fn sources(folder: &Path) -> Result<Vec<Source>, String> {
+    let entries = std::fs::read_dir(folder).map_err(|error| format!("cannot read this folder: {error}"))?;
+    let mut sources: Vec<Source> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().into_string().ok()?;
+            if name.starts_with('.') {
+                return None;
+            }
+            let path = entry.path();
+            // A link counts as what it leads to.
+            let folder = path.is_dir();
+            let archive = !folder && path.is_file() && ["zip", "7z"].iter().any(|kind| {
+                path.extension().and_then(|value| value.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case(kind))
+            });
+            (folder || archive).then_some(Source { archive, name })
+        })
+        .collect();
+    sources.sort_by_key(|source| (source.archive, source.name.to_lowercase(), source.name.clone()));
+    Ok(sources)
+}
+
+/// The ROM browser with the folder it shows: the screen asks, and this
+/// reads the file system for it.
+pub struct RomBrowsing {
+    pub screen: RomBrowser,
+    folder: PathBuf,
+}
+
+/// What a browser request came to.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Browsed {
+    /// The browser stays open, on another folder or with a problem shown.
+    Stay,
+    /// The player chose this folder or archive: try to load the set.
+    Load(PathBuf),
+    /// Back to the ROM-missing screen.
+    Cancel,
+}
+
+impl RomBrowsing {
+    /// Open on `start`. A folder that cannot be read opens empty with the
+    /// reason shown, so the player can still go up from it.
+    pub fn open(start: &Path) -> Self {
+        let listed = sources(start);
+        let mut screen = RomBrowser::open(&start.display().to_string(), listed.clone().unwrap_or_default());
+        if let Err(problem) = listed {
+            screen.problem(&problem);
+        }
+        RomBrowsing { screen, folder: start.to_owned() }
+    }
+
+    pub fn folder(&self) -> &Path {
+        &self.folder
+    }
+
+    pub fn answer(&mut self, request: Browse) -> Browsed {
+        let target = match request {
+            Browse::Use => return Browsed::Load(self.folder.clone()),
+            Browse::Choose(name) => return Browsed::Load(self.folder.join(name)),
+            Browse::Cancel => return Browsed::Cancel,
+            Browse::Enter(name) => self.folder.join(name),
+            Browse::Up => match self.folder.parent() {
+                Some(parent) => parent.to_owned(),
+                None => {
+                    self.screen.problem("this is the top folder");
+                    return Browsed::Stay;
+                }
+            },
+        };
+        match sources(&target) {
+            Ok(listed) => {
+                self.screen.show(&target.display().to_string(), listed);
+                self.folder = target;
+            }
+            Err(problem) => self.screen.problem(&problem),
+        }
+        Browsed::Stay
+    }
+}
+
 /// The name among `names` that is `wanted` in another letter case.
 fn same_name_in_another_case(names: impl IntoIterator<Item = String>, wanted: &str) -> Option<String> {
     names.into_iter().find(|name| name.eq_ignore_ascii_case(wanted))
@@ -175,5 +273,58 @@ mod case_tests {
         assert_eq!(read_named(&folder, "sf-39.2k").as_deref(), Some(&b"rom"[..]));
         assert_eq!(read_named(&folder, "sf-40.2k"), None);
         std::fs::remove_dir_all(&folder).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod browser_tests {
+    use super::{sources, Browsed, RomBrowsing, Source};
+    use sf_engine::front::rom_browser::Browse;
+
+    #[test]
+    fn browsing_walks_into_a_folder_and_back_up_and_hands_over_the_choice() {
+        let top = std::env::temp_dir().join(format!("sf1-port-rom-browsing-{}", std::process::id()));
+        std::fs::create_dir_all(top.join("roms").join("sf")).unwrap();
+        std::fs::write(top.join("roms").join("sf.zip"), b"").unwrap();
+        let mut browsing = RomBrowsing::open(&top);
+        assert_eq!(browsing.screen.rows()[2..], ["roms/"]);
+
+        assert_eq!(browsing.answer(Browse::Enter("roms".into())), Browsed::Stay);
+        assert_eq!(browsing.folder(), top.join("roms"));
+        assert_eq!(browsing.screen.rows()[2..], ["sf/", "sf.zip"]);
+        assert_eq!(browsing.answer(Browse::Choose("sf.zip".into())), Browsed::Load(top.join("roms").join("sf.zip")));
+
+        assert_eq!(browsing.answer(Browse::Enter("gone".into())), Browsed::Stay);
+        assert_eq!(browsing.folder(), top.join("roms"), "a folder that cannot be read is not entered");
+        assert!(browsing.screen.notice().unwrap().starts_with("cannot read this folder"));
+
+        assert_eq!(browsing.answer(Browse::Up), Browsed::Stay);
+        assert_eq!(browsing.folder(), top);
+        assert_eq!(browsing.screen.notice(), None);
+        assert_eq!(browsing.answer(Browse::Use), Browsed::Load(top.clone()));
+        assert_eq!(browsing.answer(Browse::Cancel), Browsed::Cancel);
+        std::fs::remove_dir_all(&top).unwrap();
+    }
+
+    #[test]
+    fn a_folder_lists_its_folders_and_then_its_archives_in_name_order() {
+        let folder = std::env::temp_dir().join(format!("sf1-port-rom-browser-{}", std::process::id()));
+        for name in ["b", "A", ".hidden", "sf.7z"] {
+            std::fs::create_dir_all(folder.join(name)).unwrap();
+        }
+        for name in ["sf.zip", "OLD.7Z", "notes.txt", ".secret.zip"] {
+            std::fs::write(folder.join(name), b"").unwrap();
+        }
+        let listed: Vec<(String, bool)> =
+            sources(&folder).unwrap().into_iter().map(|Source { name, archive }| (name, archive)).collect();
+        let expected = [("A", false), ("b", false), ("sf.7z", false), ("OLD.7Z", true), ("sf.zip", true)];
+        assert_eq!(listed, expected.map(|(name, archive)| (name.to_owned(), archive)));
+        std::fs::remove_dir_all(&folder).unwrap();
+    }
+
+    #[test]
+    fn a_folder_that_cannot_be_read_says_so() {
+        let missing = std::env::temp_dir().join("sf1-port-rom-browser-no-such-folder");
+        assert!(sources(&missing).unwrap_err().starts_with("cannot read this folder"));
     }
 }
