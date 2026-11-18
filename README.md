@@ -148,6 +148,10 @@ Settings are saved in the same `%APPDATA%\sf1-port` folder. Deleting the folder 
 - [Roadmap and project history](docs/roadmap.md)
 - [Domain glossary](CONTEXT.md)
 
+## Credits
+
+**SF KESSEN** is an era style in development that follows the design for a new Street Fighter which Clayton Chapman (@SaishuuKessen) set out in his "Game Theory" video series. Its system rules and its Ryu, Ken, Sagat and Evil Ryu kits are his design. The kits for the other fighters are this project's own work in the spirit of his rules, and every place the built style departs from his design is logged. He is not affiliated with this project and has not endorsed it. See the [design document](docs/design/2026-11-18-sf-kessen-era-style-design.md).
+
 ## Legal
 
 Street Fighter is a trademark of Capcom. This project is not affiliated with or endorsed by Capcom. It contains no playable ROM binaries or extracted asset dumps from the original game, and it does not run without a legally obtained ROM set.
