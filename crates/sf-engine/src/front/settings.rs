@@ -475,12 +475,9 @@ fn without_comment(line: &str) -> &str {
     line
 }
 
-/// `%APPDATA%\sf1-port\settings.toml`.
+/// `settings.toml` in the player's folder.
 pub fn default_settings_path() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("sf1-port").join("settings.toml")
+    crate::user_folder::app_dir().join("settings.toml")
 }
 
 impl Settings {

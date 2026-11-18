@@ -15,12 +15,10 @@ use sf_engine::world_tour::native::WorldTourProfile;
 use crate::bindings::BindingsTable;
 use crate::log::Log;
 
-/// `%APPDATA%\sf1-port` (the working folder when `APPDATA` is not set).
+/// The player's folder: `%APPDATA%\sf1-port` on Windows and
+/// `~/.local/share/sf1-port` on Linux (see [`sf_engine::user_folder`]).
 pub fn app_dir() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("sf1-port")
+    sf_engine::user_folder::app_dir()
 }
 
 pub fn settings_path(app_dir: &Path) -> PathBuf {

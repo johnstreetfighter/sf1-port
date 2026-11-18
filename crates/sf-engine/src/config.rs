@@ -680,12 +680,9 @@ impl Default for MatchConfig {
     }
 }
 
-/// Default Windows path `%APPDATA%\sf1-port\match_config.toml` (`#94`, `O3`).
+/// `match_config.toml` in the player's folder (`#94`, `O3`).
 pub fn default_match_config_path() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("sf1-port").join("match_config.toml")
+    crate::user_folder::app_dir().join("match_config.toml")
 }
 
 impl MatchConfig {

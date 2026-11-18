@@ -435,12 +435,9 @@ pub fn name_to_key(name: &str) -> Result<Key, String> {
     Err(format!("unknown key name '{trimmed}'"))
 }
 
-/// Default Windows path `%APPDATA%\sf1-port\bindings.toml` (Decision 9).
+/// `bindings.toml` in the player's folder (Decision 9).
 pub fn default_bindings_path() -> PathBuf {
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    base.join("sf1-port").join("bindings.toml")
+    sf_engine::user_folder::app_dir().join("bindings.toml")
 }
 
 impl BindingsTable {
