@@ -97,7 +97,8 @@ def check_elf(data: bytes) -> dict:
     require(not report["search_paths"], "executable carries a library search path")
     unexpected = sorted(set(report["needed"]) - ALLOWED_LIBRARIES)
     require(not unexpected, "executable needs libraries outside the baseline: " + ", ".join(unexpected))
-    require(report["glibc"] and report["glibc"] <= MAX_GLIBC,
+    require(bool(report["glibc"]), "executable names no glibc symbol version")
+    require(report["glibc"] <= MAX_GLIBC,
             f"executable needs glibc {'.'.join(map(str, report['glibc']))}, newer than the baseline")
     require(report["glibcxx"] <= MAX_GLIBCXX,
             f"executable needs libstdc++ {'.'.join(map(str, report['glibcxx']))}, newer than the baseline")
@@ -176,14 +177,14 @@ def archive_contents(raw: bytes, root: str, tracked: dict[str, str], roms: dict[
 
 
 def run_extracted(raw: bytes, root: str) -> str:
-    """Extract the whole archive and run the launcher from another working folder."""
+    """Extract the whole archive and run the executable from another working folder."""
     with tempfile.TemporaryDirectory(prefix="sf1-port-verify-") as tmp:
         with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as package:
             package.extractall(tmp, filter="data")
-        launcher = Path(tmp) / root / EXECUTABLE
+        game = Path(tmp) / root / EXECUTABLE
         elsewhere = Path(tmp) / "elsewhere"
         elsewhere.mkdir()
-        return subprocess.check_output([str(launcher), "--version"], cwd=elsewhere,
+        return subprocess.check_output([str(game), "--version"], cwd=elsewhere,
                                        text=True, encoding="utf-8", timeout=30).strip()
 
 

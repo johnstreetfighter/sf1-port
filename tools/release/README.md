@@ -115,9 +115,9 @@ Windows; change both together.
 
 The verifier checks the sidecar, every member against the tag, and the
 executable against the build. It reads the ELF file: x86-64, the standard
-loader, no library search path, only `libc`, `libm`, `libgcc_s`, `libstdc++`,
-`libasound` and `libudev` as linked libraries, and no glibc symbol newer than
-2.35. It then extracts the whole archive and runs `sf-game --version` from
+loader, no library search path, no linked library beyond glibc's own,
+`libgcc_s`, `libstdc++`, `libasound` and `libudev`, and no glibc symbol newer
+than 2.35. It then extracts the whole archive and runs `sf-game --version` from
 another working folder.
 
 `check-linux-launch.sh` runs in a second fresh `ubuntu:22.04` container with
@@ -126,6 +126,6 @@ virtual display, checks that settings and the log land in
 `~/.local/share/sf1-port`, replaces the package folder and checks that a
 changed setting and the player's ROM folder are still there, and runs
 `sf-game smoke` from another folder to see the looks load from beside the
-launcher. The display is Mesa's software Vulkan driver: real graphics drivers,
+executable. The display is Mesa's software Vulkan driver: real graphics drivers,
 sound, controllers and the art and voice packs (which need a ROM set) are
 checked by hand on a desktop or a Steam Deck and recorded in the release notes.

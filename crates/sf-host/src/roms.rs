@@ -114,11 +114,27 @@ pub fn find(candidates: &[Candidate]) -> Result<RomSet, Vec<Looked>> {
     Err(looked)
 }
 
+/// The name among `names` that is `wanted` in another letter case.
+fn same_name_in_another_case(names: impl IntoIterator<Item = String>, wanted: &str) -> Option<String> {
+    names.into_iter().find(|name| name.eq_ignore_ascii_case(wanted))
+}
+
+/// The file `name` in `folder`. A ROM set copied from a Windows disk can
+/// arrive as `SF-39.2K`; a case-sensitive file system needs the folder
+/// searched for it.
+fn read_named(folder: &Path, name: &str) -> Option<Vec<u8>> {
+    if let Ok(bytes) = std::fs::read(folder.join(name)) {
+        return Some(bytes);
+    }
+    let names = std::fs::read_dir(folder).ok()?.flatten().filter_map(|entry| entry.file_name().into_string().ok());
+    std::fs::read(folder.join(same_name_in_another_case(names, name)?)).ok()
+}
+
 /// Validate and load a ROM directory, ZIP, or 7z archive.
 pub fn load(path: &Path) -> Result<RomSet, String> {
     let VerifiedRomSet { files, assets, audio2, audiocpu } = if path.is_dir() {
         romset::load_verified_set(MANIFEST, |name, _| {
-            std::fs::read(path.join(name)).map_err(|_| RomsetError(format!("{name} is missing")))
+            read_named(path, name).ok_or_else(|| RomsetError(format!("{name} is missing")))
         }).map_err(|error| error.0)?
     } else if path.is_file() {
         archive::load(path, MANIFEST)?
@@ -137,4 +153,27 @@ pub fn load(path: &Path) -> Result<RomSet, String> {
         audio2,
         audiocpu,
     })
+}
+
+#[cfg(test)]
+mod case_tests {
+    use super::{read_named, same_name_in_another_case};
+
+    #[test]
+    fn a_rom_file_is_found_under_another_letter_case() {
+        let names = || ["SF-39.2K".to_owned(), "sfd-19.2a".to_owned(), "notes.txt".to_owned()];
+        assert_eq!(same_name_in_another_case(names(), "sf-39.2k").as_deref(), Some("SF-39.2K"));
+        assert_eq!(same_name_in_another_case(names(), "sfd-19.2a").as_deref(), Some("sfd-19.2a"));
+        assert_eq!(same_name_in_another_case(names(), "sf-40.2k"), None);
+    }
+
+    #[test]
+    fn a_folder_of_upper_case_rom_files_is_read() {
+        let folder = std::env::temp_dir().join(format!("sf1-port-rom-case-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("SF-39.2K"), b"rom").unwrap();
+        assert_eq!(read_named(&folder, "sf-39.2k").as_deref(), Some(&b"rom"[..]));
+        assert_eq!(read_named(&folder, "sf-40.2k"), None);
+        std::fs::remove_dir_all(&folder).unwrap();
+    }
 }

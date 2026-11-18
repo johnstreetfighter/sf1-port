@@ -14,14 +14,15 @@
 //!   cargo run -p sf-game --release -- --version
 //!   cargo run -p sf-game --release -- smoke [--roms <folder>]   # the host smoke check
 //!
-//! The ROM set (`roms\sf`) is looked up beside the executable, then in
-//! `%APPDATA%\sf1-port\roms\sf`, then in the settings file's folder;
+//! The ROM set (`roms/sf`) is looked up beside the executable, then in
+//! the player's folder (`%APPDATA%\sf1-port` on Windows,
+//! `~/.local/share/sf1-port` on Linux), then in the settings file's folder;
 //! `--roms` names another folder or archive first. `--stage`
 //! names a stage of the background bank that Local and Training fights
 //! under an overhaul preset are fought on, in place of the stage select
 //! (a development aid: `--stage test-stage`). With none, the
 //! ROM-missing screen offers `RETRY`, browsing on Windows, and `EXIT`. The three settings files
-//! and `sf-game.log` live in `%APPDATA%\sf1-port`. Esc is back on every
+//! and `sf-game.log` live in the player's folder. Esc is back on every
 //! screen; the Exit item and the window's close button quit.
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
@@ -867,6 +868,25 @@ fn smoke(args: &[String]) -> i32 {
             && first.bindings == BindingsTable::default(),
         "a first launch on a clean folder writes the three files with the spec's defaults (fullscreen, ARCADE CABINET at true 4:3)",
     );
+
+    // The bundled packs, found beside the executable (a package) or in the
+    // working folder (a source checkout) whatever folder the game starts in.
+    let asset_roots: Vec<PathBuf> =
+        [exe_dir(), std::env::current_dir().ok()].into_iter().flatten().map(|root| root.join("assets")).collect();
+    let art = asset_roots.iter().map(|root| root.join(sf_video::art_pack::PACK_FOLDER)).find(|folder| folder.is_dir());
+    match art.as_deref().map(sf_video::art_pack::ArtPack::open) {
+        Some(Ok(pack)) => report(!pack.is_empty(), &format!("art pack opens at {}: {} poses", pack.folder.display(), pack.len())),
+        Some(Err(error)) => report(false, &format!("art pack: {error}")),
+        None => println!("skip art pack: no assets folder beside the executable or in the working folder"),
+    }
+    if art.is_some() {
+        let voice = sf_host::voice::load_with_fallbacks(&[], &asset_roots, &mut log);
+        let folder = voice.as_ref().and_then(|store| store.folder.clone());
+        report(
+            voice.as_ref().is_some_and(|store| !store.is_empty()),
+            &format!("voice pack opens at {}", folder.map_or_else(|| "(none found)".to_owned(), |f| f.display().to_string())),
+        );
+    }
 
     // The ROM lookup: the set copied into each folder in turn.
     if roms::find(&[Candidate { label: String::new(), path: Some(source.clone()) }]).is_err() {

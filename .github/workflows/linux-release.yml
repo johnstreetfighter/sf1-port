@@ -54,11 +54,6 @@ jobs:
         working-directory: tools/release
         run: python3 -m unittest -v test_release_packs test_release_linux
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/sf1-build
-          key: linux-release-${{ env.BASELINE_IMAGE }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
-
       - name: Build the Linux executable in the runtime baseline
         run: |
           mkdir -p "$RUNNER_TEMP/sf1-build"
@@ -86,6 +81,13 @@ jobs:
             "$RUNNER_TEMP/sf1-release/sf1-port-$RELEASE_TAG-linux-x86_64.tar.gz" \
             "$RUNNER_TEMP/sf1-build/release/sf-game" "$GITHUB_WORKSPACE" "$RELEASE_TAG" "$RELEASE_COMMIT"
 
+      - name: Launch on a clean baseline system as an ordinary user
+        run: |
+          mkdir "$RUNNER_TEMP/sf1-clean"
+          cp "$RUNNER_TEMP"/sf1-release/sf1-port-*-linux-x86_64.tar.gz* "$RUNNER_TEMP/sf1-clean/"
+          docker run --rm -v "$RUNNER_TEMP/sf1-clean":/package:ro -v "$GITHUB_WORKSPACE/tools/release":/tools:ro \
+            "$BASELINE_IMAGE" sh /tools/check-linux-launch.sh
+
       - name: Keep the verified release files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -95,10 +97,3 @@ jobs:
             ${{ runner.temp }}/sf1-release/sf1-port-${{ steps.source.outputs.tag }}-linux-x86_64.tar.gz.sha256
           if-no-files-found: error
           compression-level: 0
-
-      - name: Launch on a clean baseline system as an ordinary user
-        run: |
-          mkdir "$RUNNER_TEMP/sf1-download"
-          cp "$RUNNER_TEMP"/sf1-release/sf1-port-*-linux-x86_64.tar.gz* "$RUNNER_TEMP/sf1-download/"
-          docker run --rm -v "$RUNNER_TEMP/sf1-download":/package:ro -v "$GITHUB_WORKSPACE/tools/release":/tools:ro \
-            "$BASELINE_IMAGE" sh /tools/check-linux-launch.sh

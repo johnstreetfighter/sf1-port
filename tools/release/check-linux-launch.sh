@@ -65,7 +65,7 @@ launch() {
 mkdir -p "$HOME/Games/first"
 tar -xzf "$archive" -C "$HOME/Games/first"
 game="$HOME/Games/first/$name/sf-game"
-[ -x "$game" ] || fail "the extracted launcher is not executable"
+[ -x "$game" ] || fail "the extracted sf-game is not executable"
 
 missing=$(ldd "$game" | grep "not found" || true)
 [ -z "$missing" ] || fail "libraries are missing: $missing"
@@ -94,7 +94,7 @@ grep -q "^master = 3$" "$data/settings.toml" || fail "the changed setting did no
 [ -f "$data/roms/sf/marker" ] || fail "the player's ROM folder did not survive the package update"
 echo "ok   settings and the ROM folder survived replacing the package"
 
-# The window and the built-in looks, read from beside the launcher while the
+# The window and the built-in looks, read from beside the executable while the
 # working folder is somewhere else. Pacing checks need a real display and are
 # reported, not required.
 cd /
@@ -104,5 +104,10 @@ status=$?
 set -e
 cat /tmp/smoke.log
 echo "note smoke exit status on the virtual display: $status"
-grep -q "^looks: $HOME/Games/second/$name/shaders$" /tmp/smoke.log || fail "the looks were not read from beside the launcher"
-echo "ok   the looks are read from beside the launcher"
+for pack in art voice; do
+    grep -q "^ok   $pack pack opens at $HOME/Games/second/$name/assets/sf1-port-$pack" /tmp/smoke.log \
+        || fail "the $pack pack was not opened from beside the executable"
+done
+echo "ok   the art and voice packs open from beside the executable"
+grep -q "^looks: $HOME/Games/second/$name/shaders$" /tmp/smoke.log || fail "the looks were not read from beside the executable"
+echo "ok   the looks are read from beside the executable"

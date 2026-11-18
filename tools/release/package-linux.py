@@ -6,7 +6,6 @@ import argparse
 from datetime import datetime, timezone
 import gzip
 import hashlib
-import io
 import json
 import os
 from pathlib import Path
@@ -34,9 +33,9 @@ def package_name(tag: str) -> str:
     return f"sf1-port-{tag}-linux-x86_64"
 
 
-def quick_start(tag: str) -> list[str]:
+def quick_start(edition: str, tag: str) -> list[str]:
     return [
-        f"Street Fighter: The World Tournament - {tag} (Linux x86_64)",
+        f"{edition} - {tag} (Linux x86_64)",
         "",
         "1. Extract the whole archive anywhere in your home folder:",
         f"     tar -xzf {package_name(tag)}.tar.gz",
@@ -47,15 +46,17 @@ def quick_start(tag: str) -> list[str]:
         "3. Put your legally obtained US set 1 six-button sf ROM files in one of these folders:",
         "     ~/.local/share/sf1-port/roms/sf   (kept when you replace the package)",
         "     roms/sf beside sf-game",
-        "   Keep the original ROM filenames. A folder, sf.zip or sf.7z elsewhere also works:",
+        "   A folder, sf.zip or sf.7z elsewhere also works when named on each launch:",
         "     ./sf-game --roms /path/to/sf.zip",
+        "   The BROWSE choices on the missing-ROM screen are not available on Linux yet.",
         "4. Run ./sf-game from a terminal or your file manager. It can be started from any folder.",
         "",
         "The playable art, voice, and music packs are included under assets. Each pack has its own README.",
         "Settings, saves and sf-game.log are kept in ~/.local/share/sf1-port",
         "($XDG_DATA_HOME/sf1-port when your desktop sets that variable).",
         "To update, extract the new archive and delete the old folder; that folder is not touched.",
-        "See README.md for controls and features.",
+        "README.md describes controls and features. Its install steps are written for Windows;",
+        "on Linux follow this file.",
         "",
         "BUILD.txt records the exact source commit and executable checksum. licenses and THIRD_PARTY_NOTICES.md "
         "retain dependency notices.",
@@ -64,9 +65,18 @@ def quick_start(tag: str) -> list[str]:
     ]
 
 
-def build_info(tag: str, commit: str, banner: str, compiler: str, exe_digest: str, packaged: str) -> list[str]:
+def edition_name(banner: str, tag: str, commit: str) -> str:
+    """The edition from a `<edition> vX.Y.Z (revision)` banner for exactly this tag and commit."""
+    suffix = f" {tag} ({commit[:8]})"
+    require(banner.endswith(suffix) and len(banner) > len(suffix),
+            "the executable's --version must identify both the requested version and the exact source revision")
+    return banner.removesuffix(suffix)
+
+
+def build_info(edition: str, tag: str, commit: str, banner: str, compiler: str, exe_digest: str,
+               packaged: str) -> list[str]:
     return [
-        f"Street Fighter: The World Tournament - {tag} Linux x86_64 package",
+        f"{edition} - {tag} Linux x86_64 package",
         f"Tag: {tag}",
         f"Source commit: {commit}",
         f"Source: https://github.com/johnstreetfighter/sf1-port/tree/{commit}",
@@ -103,7 +113,7 @@ def write_archive(package: Path, archive: Path) -> None:
             tarfile.open(fileobj=packed, mode="w", format=tarfile.PAX_FORMAT) as tar:
         tar.addfile(member(package))
         for path in sorted(package.rglob("*"), key=lambda p: p.relative_to(package).as_posix()):
-            require(path.is_dir() or (path.is_file() and not path.is_symlink()),
+            require(not path.is_symlink() and (path.is_dir() or path.is_file()),
                     f"staged package entry is not a regular file: {path}")
             if path.is_dir():
                 tar.addfile(member(path))
@@ -125,8 +135,7 @@ def package(tag: str, build: Path, output: Path, source: Path) -> tuple[Path, Pa
                               env=os.environ | {"CARGO_TARGET_DIR": str(build.parent)}))
     banner = subprocess.run([str(exe), "--version"], check=True, capture_output=True, text=True,
                             encoding="utf-8", timeout=30).stdout.strip()
-    require(tag in banner and head[:8] in banner,
-            "the executable's --version must identify both the requested version and the exact source revision")
+    edition = edition_name(banner, tag, head)
     compiler = run(source, "rustc", "--version")
 
     output.mkdir(parents=True, exist_ok=True)
@@ -149,8 +158,8 @@ def package(tag: str, build: Path, output: Path, source: Path) -> tuple[Path, Pa
     exe_digest = hashlib.sha256((staged / EXECUTABLE).read_bytes()).hexdigest()
     packaged = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     (staged / "BUILD.txt").write_text(
-        "\n".join(build_info(tag, head, banner, compiler, exe_digest, packaged)) + "\n", encoding="utf-8")
-    (staged / "QUICKSTART.txt").write_text("\n".join(quick_start(tag)) + "\n", encoding="utf-8")
+        "\n".join(build_info(edition, tag, head, banner, compiler, exe_digest, packaged)) + "\n", encoding="utf-8")
+    (staged / "QUICKSTART.txt").write_text("\n".join(quick_start(edition, tag)) + "\n", encoding="utf-8")
 
     write_archive(staged, archive)
     sidecar = archive.with_name(archive.name + ".sha256")

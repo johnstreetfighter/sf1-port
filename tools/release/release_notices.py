@@ -90,7 +90,7 @@ class Upstream:
             raise ValueError(f"Missing pinned upstream revision for {name}.")
         repository = dependency.get("repository") or ""
         url = urlparse(repository)
-        repo_path = url.path.strip("/").replace(".git", "")
+        repo_path = url.path.strip("/").removesuffix(".git")
         key = f"{repository}@{revision}"
         if key in self.cache:
             return self.cache[key]
