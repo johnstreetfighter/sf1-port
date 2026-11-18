@@ -1,6 +1,6 @@
 # Compact era gauges
 
-Status: approved by the maintainer on 2026-11-18. Nothing here is built.
+Status: approved by the maintainer on 2026-11-18; his later answers accepted the calls below as written. Spec #236, tickets CG1 to CG3 (#237 to #239). Nothing here is built.
 
 Words: era HUD, era gauge and gauge art are used as `CONTEXT.md` defines them.
 
@@ -39,7 +39,7 @@ Players have told the maintainer they lose sight of crouching kicks and sweeps i
 - The animations are kept in full.
 - The approach is one drawing with two layouts (below).
 
-## Claude's calls (correct any of these)
+## Claude's calls, accepted by the maintainer on 2026-11-18
 
 - **The setting is `GAUGE LAYOUT`, with values `CLASSIC` and `COMPACT`,** directly under `GAUGE ART` on the Video tab and in the pause box. `CLASSIC` is the default, so nothing changes for anyone who does not ask.
 - **One setting for the whole screen.**
