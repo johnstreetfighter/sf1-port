@@ -1,6 +1,6 @@
 # SF KESSEN: an original era style
 
-Status: approved by the maintainer on 2026-11-18. Nothing here is built.
+Status: approved by the maintainer on 2026-11-18, then sharpened in a question round the same day (see "Settled in the question round"). Decision recorded in [ADR-0027](../adr/0027-sf-kessen-is-an-original-style-with-round-rationed-stocks.md). Nothing here is built.
 
 Words: era style, era gauge, style card, revision delta, what-if style, loadout and sub-HP are used as `CONTEXT.md` defines them. New words this document introduces are listed under "Words to add".
 
@@ -74,6 +74,20 @@ The maintainer chose the first on 2026-11-18, on the recommendation that it is t
 - **Approach:** a new family built on Super Turbo moves.
 - **Who sees it:** `SF KESSEN` appears on the style card for a fighter once his kit is built, whether or not what-if styles are enabled. CPU opponents in Arcade are not handed it until every kit exists.
 - **Evil Ryu** gets a thirteenth kit from the blueprint's case study, built after Ryu, Ken and Sagat.
+
+## Settled in the question round
+
+The maintainer's answers on 2026-11-18.
+
+1. **The kind of style** is an **original style**: an era style that comes from no Street Fighter entry. `CONTEXT.md` defines it.
+2. **An opponent with no Versatile stocks** (any other style) counts as holding three or more wherever a Kessen move checks them. Evil Ryu's heavy Denjin Hadoken damages such an opponent's guard but does not break it at once.
+3. **Chip KO.** While a Kessen fighter holds three or more stocks, only the attacker's style's super moves (Super Arts, Ultras, Critical Arts, Level 3s) can KO him through a block. SF6 Burnout chip and ordinary or EX specials cannot.
+4. **Stocks come only from the round grants.** Nothing during a round adds one.
+5. **Other match lengths.** A one-round match gets only the round 1 allotment. Any round after the third repeats round 3's gain.
+6. **Evil Ryu's `SF KESSEN` style** appears on his style card whenever bonus roster options make him selectable.
+7. **The pose's picture** is an existing frame of the fighter (a taunt, a win pose or a charge stance), chosen on his kit sheet and tinted with the afterimage trail. New art is drawn only where nothing existing reads as a deliberate pose.
+8. **ADR-0027** records the family, the round-rationed stocks and the mixed-style rule.
+9. **Clayton Chapman is told before it ships.** Building starts now; the maintainer messages him before the first release that includes `SF KESSEN`. This is a release gate.
 
 ## Claude's calls (not yet agreed; correct any of these)
 
@@ -227,9 +241,9 @@ This follows the stronger Fair CPU design ([2026-11-18-stronger-fair-cpu-design.
 
 A section of this document (or a file beside it, the builder's choice) lists each rule that was built differently from the blueprint or left out, with the reason and the date. It starts empty.
 
-## Words to add to `CONTEXT.md`
+## Words in `CONTEXT.md`
 
-To be settled in the question round that follows approval: a name for the family as a kind of style (it is neither an entry's style nor a what-if style), Versatile stock, Special Pose, pose-exit attack, freebie state, kit sheet, hurtbox tier.
+Original style, SF KESSEN, Versatile stock, three-stock privileges, Special Pose, pose-exit attack, freebie state, hurtbox tier and kit sheet were added on 2026-11-18.
 
 ## Left to the builder
 

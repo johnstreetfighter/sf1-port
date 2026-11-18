@@ -45,7 +45,7 @@ An individually selectable mechanical change applied directly to the original ga
 _Avoid_: fidelity fix, hack
 
 **Era style**:
-A per-fighter selectable package representing a specific Street Fighter entry or revision (`SF1`, `SF1+`, `SF2 WW`, `SF2 ST`, `SFZ3`, `SF3 3S`, `USF4`, `SF5 CE`, `SF6`, etc.), bundling that entry's moveset and era gauge. `SF1` is the 1987 game's own Ryu and Ken, as Faithful 1987 plays them; `SF1+` is the style all twelve tournament fighters play under the overhaul presets, each with Ryu's kind of kit.
+A per-fighter selectable package representing a specific Street Fighter entry or revision (`SF1`, `SF1+`, `SF2 WW`, `SF2 ST`, `SFZ3`, `SF3 3S`, `USF4`, `SF5 CE`, `SF6`, etc.), or an original style, bundling its moveset and era gauge. `SF1` is the 1987 game's own Ryu and Ken, as Faithful 1987 plays them; `SF1+` is the style all twelve tournament fighters play under the overhaul presets, each with Ryu's kind of kit.
 _Avoid_: groove, ISM, edition, variation
 
 **Style card**:
@@ -83,6 +83,42 @@ _Avoid_: raw values, default values
 **What-if style**:
 An optional era style adapting a fighter to a Street Fighter entry they did not officially appear in (such as `SF3 3S` Lee or `SF2` Dorai), selectable when what-if style options are enabled.
 _Avoid_: fan edit, custom groove, non-canon mode
+
+**Original style**:
+An era style that comes from no Street Fighter entry. `SF KESSEN` is the first; it is shown for a fighter once his kit is built, whether or not what-if style options are enabled.
+_Avoid_: fan style, custom style, what-if style (that adapts a fighter to a real entry)
+
+**SF KESSEN**:
+The original style that follows Clayton Chapman's blueprint for a new Street Fighter: Super Turbo's strict ground rules, bent only by spending Versatile stocks through moves that belong to one fighter alone.
+_Avoid_: Kessen mode, Chapman style, SaishuuKessen
+
+**Versatile stock**:
+One unit of SF KESSEN's second resource, shown as an orb: granted at the start of each round and never earned during one, and separate from the Super meter.
+_Avoid_: orb, versatile meter, utility bar
+
+**Three-stock privileges**:
+What an SF KESSEN fighter has while he holds three or more Versatile stocks: no chip KO except by a super move, no guard break, an invincible backdash, and a free kara cancel into a Level 3 Super.
+_Avoid_: shield, passive defence, safe mode
+
+**Special Pose**:
+SF KESSEN's two-stock cancel: a short stance entered only from a special move, a command normal or a target combo, and left only into one of those or an EX move.
+_Avoid_: pose cancel, Roman cancel, special cancel
+
+**Pose-exit attack**:
+The move a fighter leaves the Special Pose with, which carries the pose's bonuses.
+_Avoid_: pose move, exit move
+
+**Freebie state**:
+The one-hit window on an airborne victim after a pose-exit attack lands, in which the next move of any kind connects once.
+_Avoid_: free juggle, bonus state
+
+**Hurtbox tier**:
+A fighter's body class for SF KESSEN's routes: small, medium, tall or wide. It belongs to the fighter in every style and changes no boxes outside an SF KESSEN kit.
+_Avoid_: size class, sprite class, weight class
+
+**Kit sheet**:
+The one-page description of a fighter's SF KESSEN kit that the maintainer approves before the kit is built, marking which parts come from the blueprint and which are this project's.
+_Avoid_: character doc, move spec
 
 **Era gauge**:
 The resource and system-mechanic package associated with an era style (such as Parry and Super Art or Drive and Super Art), which can be decoupled from the fighter's moveset via match toggles.
