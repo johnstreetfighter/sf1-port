@@ -19,3 +19,6 @@ __pycache__/
 
 # Brainstorm mockup sessions.
 /.superpowers/
+
+# Combo clips are rebuilt by tools/combo-clips; only the index is kept.
+/docs/media/combos/*.mp4
