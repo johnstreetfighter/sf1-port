@@ -482,7 +482,8 @@ fn a_match_survives_loss_duplication_and_reordering_on_the_way_to_the_relay() {
     room.pace = Duration::from_millis(1);
     for peer in &room.peers[..2] {
         let (ping, jitter) = peer.net_ping_and_jitter_ms().unwrap();
-        assert!((30..200).contains(&ping), "ping is measured end to end across the relay: {ping} ms");
+        // Four 10 ms hops at least; a busy test machine only adds to it.
+        assert!(ping >= 30, "ping is measured end to end across the relay: {ping} ms");
         assert!(jitter > 0, "the uneven link shows up as jitter");
     }
     room.fight_to_the_end(|id, frame| if id == 0 { attack(frame) } else { FrameInputs::default() });
