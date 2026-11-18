@@ -1,7 +1,7 @@
 # Roguelite World Tour, hybrid builds, active tag and prop minigames: design
 
 - **Date:** 2026-11-18
-- **Status:** Approved 2026-11-18 (expanded Lore School, Kit Channel, Construct, Bootleg Chip, Omega Mastery & Cursed Card design grilled and recorded in `CONTEXT.md` + `ADR-0028`). Nothing here is built.
+- **Status:** Approved 2026-11-18; Spec #240 and tickets `WT1`–`WT16` (`#241`–`#256`) published (with `CONTEXT.md` + `ADR-0028` updated). Nothing here is built.
 - **Size:** Project (replacing the static 18-node World Tour with a seeded roguelite run, between-round 3-card drafts, escalating loss burns, meta-progression starting unlocks, slot-shared `TourBuild` modifiers/statuses/cross-era move grafting/CPU specialists, 3rd-slot active tag swaps, and 2,048-column side-scrolling prop minigames).
 - **Marking:** `"(user)"` is the maintainer's decision in brainstorming; `"(user accepted)"` is a proposal the maintainer confirmed in playback; `"My call"` is the designer's choice, which the maintainer has not been asked about one by one.
 
@@ -116,7 +116,7 @@ This design supersedes the World Tour portion of `ADR-0016` while leaving `ADR-0
 - **C. Five Kit Channels (`(user)` + `(user accepted)`):**
   - Core Lore School infusions bind to **5 Kit Channels**: `Normals`, `Specials` (covering base specials and all **Grafted moves**), `Projectiles`, `Movement`, and `Defense/Utility`, allowing deliberate cross-school combos (e.g., *Saikyo Oil* on `Normals` feeding *Kyoi Shock* on `Specials`).
   - Each channel holds one School infusion (`Rank 1–3`), prompting a Channel Swap modal if a new school card is drafted onto an occupied channel (`*My call:*`). On **Active Tag**, Lead and **Tag partner** share the run's `5` Channel infusions, Bootleg Chips, Duo Capstones, and Cursed Cards while keeping separate Era Gauges and `3` Grafted + Omega slots (`*My call:*`).
-- **D. Cross-era Move Grafting & *Omega* Graft Mastery (`WT8`, `(user)` + `(user accepted)`):**
+- **D. Cross-era Move Grafting & *Omega* Graft Mastery (`WT11`, `(user)` + `(user accepted)`):**
   - Drafting a **Grafted Move** card attaches a meterless attack special or direct-attack command normal from another built era of the **same fighter** (e.g., `SFZ3` Ryu grafting `SF6` Ryu's command normals or Hashogeki) (`(user)` + `(user accepted)`).
   - Because `EraFamily::Sf6` in `crates/sf-engine/src/era_fight/sf6.rs` currently lacks `MoveKind::Normal` command normals, this project authors missing signature meterless `SF6` command normals **only for the 3 canonical `SF6` fighters (`Ryu`, `Ken`, and `Retsu`)** in `DataBank` and `era_fight/sf6.rs` (such as Ryu's `6+MP` Solar Plexus Strike / `6+HP` and peer command normals for Ken and Retsu), enabled globally in `EraFamily::Sf6` across overhaul modes (Local, Arcade, Training `MOVES`/Coach, Online, and World Tour; `Faithful 1987` untouched, and the other 9 tournament fighters' `WhatIfKit` `SF6` tables unchanged) (`(user)`).
   - **Metered and era-system donor moves** (`EX`/`OD` specials, `Drive` Impact/Parry/Rush/Reversal, `Focus` Attack, `V-Skill`/`V-Trigger`, `Super Arts`) and **stateful install specials** (`Denjin Charge`, `Renkiko`, stance switches) are excluded from Move Grafting; installs are offered as School/Major upgrade cards instead (`(user)`).
