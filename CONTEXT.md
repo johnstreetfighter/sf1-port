@@ -205,9 +205,6 @@ _Avoid_: campaign, story mode, tower
 **Dramatic Battle**:
 A two-on-one fight on the 1987 engine. The player teams up with a CPU ally in single-player or a second player in local co-op to face the CPU boss (ADR-0016).
 
-**World Tour profile**:
-The persistent campaign state shared across fighters and Era Styles. It stores node progress, the RPG setting, XP, stats, and perks in world_tour.toml (ADR-0016).
-
 **Stand-in**:
 Ryu taking the player's own slot in the Arcade ladder when the player is one of a country's two fighters, fought on the stage of the slot he takes (the maintainer, 2026-11-07; before, the country's other fighter stood in). A Sagat player's final battle is against Ryu, in Thailand.
 _Avoid_: substitute, swap, mirror fix
@@ -259,6 +256,56 @@ _Avoid_: status bar, footer, version line
 **Free play**:
 The overhaul rule that no coin is ever needed: Start alone opens the front end, and the attract shows FREE PLAY where the cabinet blinked INSERT COIN.
 _Avoid_: unlimited credits, coin hack
+
+## World Tour
+
+**World Tour profile**:
+The player's persistent World Tour progress across runs: the starting unlocks they have earned and any run currently in progress.
+_Avoid_: save file, account (a matchmaking account is for the queues), campaign state
+
+**Tour run**:
+One roguelite attempt across the five tournament countries from Run Setup to clearing Thailand or Run Over.
+_Avoid_: campaign, ladder (that is the one-player arcade sequence), session
+
+**Tour build**:
+A fighter's active combination of era style, grafted moves, elemental effects, mutators, and tag partner within a Tour run.
+_Avoid_: loadout (the third row of the Style card), kit, build (bare, when a crate build is meant)
+
+**Upgrade card**:
+One selectable improvement offered in a three-card draft during a Tour run.
+_Avoid_: perk, boon, power-up
+
+**Loss burn**:
+Sacrificing banked upgrade cards after losing a World Tour match to stay in the Tour run rather than taking Run Over.
+_Avoid_: continue, penalty, tax
+
+**Grafted move**:
+A meterless attack special or command normal borrowed from another era style of the same fighter into a Tour build.
+_Avoid_: custom move, cross-character move, borrowed move
+
+**Specialist**:
+A World Tour CPU opponent whose Tour build focuses on one extreme theme, such as fire, chill, speed, or *Rainbow* rules.
+_Avoid_: boss (reserved for the ten 1987 opponents and country finales), elite
+
+**Tag partner**:
+The second fighter recruited into a Tour run who swaps in on Active Tag or fights alongside the lead fighter in a Country Finale.
+_Avoid_: assist, ally (Dramatic Battle's teammate)
+
+**Active Tag**:
+Handing point control between the lead fighter and the tag partner during a World Tour fight.
+_Avoid_: tag-in, morph, character swap
+
+**Tour course**:
+A non-match World Tour stop, such as a side-scrolling prop run or a remixed breaking challenge, played against the clock for upgrade cards.
+_Avoid_: bonus stage (the 1987 ladder's breaking interlude), minigame (on `Bonus stage`'s avoid list)
+
+**Prop**:
+A breakable target or dodgeable hazard placed along a Tour course.
+_Avoid_: item, obstacle, gimmick
+
+**Starting unlock**:
+A fighter, era style, or starting relic earned from Tour runs for selection on Run Setup in future runs.
+_Avoid_: roster unlock (every other mode starts fully unlocked), keepsake (as the category)
 
 ## Art pipeline
 
@@ -487,7 +534,7 @@ _Avoid_: relay, match host, lobby server
 
 **Matchmaking account**:
 A player's name, password and recovery code on a matchmaking service, needed for the queues and for nothing else.
-_Avoid_: profile (the World Tour profile is campaign state), player tag (the account-free name shown in rooms), login
+_Avoid_: profile (the World Tour profile is World Tour progress), player tag (the account-free name shown in rooms), login
 
 **Ranked**:
 The queue whose matches move the player's rating and rank.

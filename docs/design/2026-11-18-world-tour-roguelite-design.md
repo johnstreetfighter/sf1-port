@@ -153,3 +153,26 @@ This design supersedes the World Tour portion of `ADR-0016` while leaving `ADR-0
 - Exact `BackgroundBank` course tilemaps, prop placement scripts, and Bronze/Silver/Gold thresholds for the side-scrolling minigame and remixed 1987 bonus stages.
 - Exact per-fighter entry-strike move IDs and frame timing for Active Tag handoffs.
 - Exact interaction rules when opposing elemental statuses overlap on the same target (e.g., whether Fire thaws Ice or both tick concurrently).
+
+## Settled in grilling (2026-11-18)
+
+Every item here is the maintainer's answer. Where this section and the text above differ, this section wins.
+
+- **Words (`CONTEXT.md`):** Use **Match** / `in_match` (never "bout" / `in_bout`), **Tour course** (never "minigame" or "bonus stage"), **Tour run**, **Tour build** (never "loadout"), **Upgrade card**, **Loss burn**, **Grafted move**, **Specialist**, **Tag partner**, **Active Tag**, **Prop**, **Starting unlock**, and the updated **World Tour profile**.
+- **Drafts, Loss burns, Starting Relics, and `PURE RUN`:**
+  - Drawn rounds (Double KO / tied Time Over) grant no draft; winning Round 1 opens `1` Upgrade card draft before Round 2, and winning the match-deciding round opens `2` back-to-back drafts at match end (final round pick + match-win bonus = `3` total).
+  - Loss burns enforce **leaf-first order** (`Rank 3 -> Rank 2 -> Rank 1`; partner-assigned Era Style and Grafted move cards must be burned before the Partner Contract itself; burning an Era Style reverts that fighter to their run-start style).
+  - An equipped **Starting Relic** counts as `1` burnable card in the tray, acting as a Fight-1 safety net if lost early.
+  - `PURE RUN: ON` grants zero mid-run cards and equips no Starting Relic, making it a **1CC Ironman** challenge (`1` match loss = Run Over) whose Country Boss clears still earn Starting unlocks.
+- **Grafted moves:**
+  - Only **direct-attack command normals and meterless attack specials** are eligible for Move Grafting; stateful installs (`Denjin Charge`, `Renkiko`, stance switches) are excluded from Move Grafting and represented as Elemental/Major upgrade cards instead.
+  - A Grafted move **overrides** any base move sharing that exact motion + button while equipped (labeled `REPLACES <MOVE>` on the card).
+- **Active Tag, Partner cap, and `2v1` Country Finales:**
+  - A Tour run is capped at **1 Tag partner**; once recruited, subsequent partner cards in drafts become Partner Era-Shift / Rank-Up cards rather than replacing the partner.
+  - Lead and Tag partner each keep their **own persistent Era Gauge state and their own 3 Grafted move slots** across tags within a round (Grafted move cards can be assigned to either fighter when drafted). Tagging out **pauses** active Burn/Chill status timers on the benched fighter while the incoming fighter enters clean.
+  - `2v1` Country Finales run on **`LifebarMode::Independent`** (`960` Sub-HP each). If `P1` is KO'd first while the Tag partner in Slot `2` survives, player control automatically transfers to the surviving partner to finish that round `1v1`. At the next `ROUND_START`, **both** fighters revive at full `960` Sub-HP in their original Lead (`P1_STRUCT`) and Tag partner (`Slot 2`) roles, and clearing Thailand always plays the **Lead fighter's** congratulatory ending (crediting both fighters on the Run Clear summary).
+- **Tour courses:**
+  - In side-scrolling Tour courses, `P1` faces the horizontal direction they walk (`Left` turns left, `Right` turns right), `CAMERA` ratchets forward one-way (*Super Mario Bros.* style, preventing backtracking past the left screen edge), and floor hazards / dodgeable Props inflict hitstun/knockback and `-TIME` penalties **without draining HP** (no `0`-HP KOs in Tour courses; `TIME` and score alone decide completion and Bronze/Silver/Gold drafts).
+- **Open roadmap issues:**
+  - Supersedes the static-node World Tour items (`19..33`) in `#33` (`BC7`), `#51` (`BW7`), `#64` (`UW8`), and `#215` (`SC23`) so released Bonus Challengers and the stronger Fair CPU plug into World Tour's roguelite pools instead.
+- **Record:** The architectural decision is recorded in [ADR-0028](../adr/0028-world-tour-is-a-roguelite-run-on-the-1987-engine.md).
