@@ -6,10 +6,6 @@ name: Linux release
 
 on:
   workflow_dispatch:
-  # While the Linux build is being brought up on its branch.
-  push:
-    branches:
-      - linux-build
 
 permissions:
   contents: read
