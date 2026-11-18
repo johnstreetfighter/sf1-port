@@ -268,7 +268,7 @@ One roguelite attempt across the five tournament countries from Run Setup to cle
 _Avoid_: campaign, ladder (that is the one-player arcade sequence), session
 
 **Tour build**:
-A fighter's active combination of era style, grafted moves, elemental effects, mutators, and tag partner within a Tour run.
+A fighter's active combination of era style, kit channel infusions, grafted moves, omega masteries, bootleg chips, cursed cards, and tag partner within a Tour run.
 _Avoid_: loadout (the third row of the Style card), kit, build (bare, when a crate build is meant)
 
 **Upgrade card**:
@@ -284,7 +284,7 @@ A meterless attack special or command normal borrowed from another era style of 
 _Avoid_: custom move, cross-character move, borrowed move
 
 **Specialist**:
-A World Tour CPU opponent whose Tour build focuses on one extreme theme, such as fire, chill, speed, or *Rainbow* rules.
+A World Tour CPU opponent whose Tour build focuses on one extreme Lore school or Bootleg chip theme, such as Dark Hado, Illuminati Cryo, Saikyo swagger, or four-times speed.
 _Avoid_: boss (reserved for the ten 1987 opponents and country finales), elite
 
 **Tag partner**:
@@ -304,8 +304,36 @@ A breakable target or dodgeable hazard placed along a Tour course.
 _Avoid_: item, obstacle, gimmick
 
 **Starting unlock**:
-A fighter, era style, or starting relic earned from Tour runs for selection on Run Setup in future runs.
+A starting fighter, starting era style (along with its alternate revisions and loadouts), starting relic, or cursed card earned from Tour runs for future runs.
 _Avoid_: roster unlock (every other mode starts fully unlocked), keepsake (as the category)
+
+**Lore school**:
+One of the eight *Street Fighter* power traditions (*Satsui no Hado*, *Kyoi no Hado*, *Psycho Power*, *Soul Power*, *Spirit Power*, *Agni & Cryo*, *Senjutsu & Assassin Arts*, and *Saikyo & Street Grit*) from which school upgrade cards, ailments, rivalries, and capstones draw.
+_Avoid_: element, faction, class
+
+**Kit channel**:
+One of the five parts of a fighter's moveset (*Normals*, *Specials*, *Projectiles*, *Movement*, and *Defense/Utility*) that holds a single Lore school infusion at Rank 1 to 3.
+_Avoid_: equip slot, move slot
+
+**Ailment**:
+A timed negative condition (*Wither*, *Shock*, *Fear*, *Burn*, *Chill*, *Venom*, *Death-Touch*, or *Oil Drench*) applied to a fighter by a Lore school effect.
+_Avoid_: debuff, status (the engine's fighter state)
+
+**Construct**:
+A persistent or timed combat object placed in the arena or orbiting a fighter by a Lore school effect—such as a *Soul Orb*, *Tengu Stone*, *Psycho Mine*, *Fire Carpet*, or *Spirit Echo*—distinct from ordinary projectiles and Tour course props.
+_Avoid_: projectile (an attack shot), summon, minion, prop (a Tour course target or hazard)
+
+**Bootleg chip**:
+A rule-bending Upgrade card inspired by arcade bootleg boards and remix editions, such as hyper-speed, air specials, normal shockwaves, rising fireball pillars, or chain cancels.
+_Avoid_: mutator, cheat, hack, mod
+
+**Cursed card**:
+A rare, soulbound Upgrade card pairing an uncapped power spike with a proportional permanent drawback for the rest of the Tour run; once taken, it cannot be sacrificed in a Loss burn.
+_Avoid_: corrupt relic, hex, blight
+
+**Omega mastery**:
+A Rank 1 to 3 Upgrade card that enhances an equipped Grafted move with properties such as startup armor, new cancel routes, or juggle launch without costing Era gauge.
+_Avoid_: EX upgrade, move plus
 
 ## Art pipeline
 
