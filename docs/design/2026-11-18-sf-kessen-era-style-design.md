@@ -89,7 +89,7 @@ The maintainer's answers on 2026-11-18.
 8. **ADR-0027** records the family, the round-rationed stocks and the mixed-style rule.
 9. **Clayton Chapman is told before it ships.** Building starts now; the maintainer messages him before the first release that includes `SF KESSEN`. This is a release gate.
 
-## Claude's calls (not yet agreed; correct any of these)
+## Claude's calls, accepted as starting points on 2026-11-18
 
 - **Mixed-style matches:** each rule follows the fighter it constrains. A Kessen fighter suffers proximity guard lag and pays for his wakeup options whoever he faces; an opponent in another style keeps that style's rules. Attack properties (forced posture, juggle points) belong to the attacker's style. This matches how mixed matches work today.
 - **The neutral rules are in the first slice,** because the blueprint treats them as the floor the rest stands on. Two are held back until a fighter needs them: wall jumps wait for the first agile fighter among the nine, and charge-free input in the pose waits for the first charge fighter. Ryu, Ken and Sagat use neither.
@@ -98,7 +98,7 @@ The maintainer's answers on 2026-11-18.
 - **The move list, Training, replays and netplay** are in scope from the first slice. The first two read the same move tables as every other style; the last two follow from determinism.
 - **Chapman's own videos are checked** for Adon, Gen, Birdie, Eagle and any other of the twelve before their sheets are drafted. Where he has designed a fighter, his version leads.
 
-## Claude's calls after the builder's read (not yet agreed)
+## Claude's calls after the builder's read, accepted as starting points on 2026-11-18
 
 A reviewer read this document as a builder and asked what it left open. These are the answers Claude chose; each is a starting point that playtesting may change.
 
