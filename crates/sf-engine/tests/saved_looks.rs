@@ -434,7 +434,8 @@ fn session_on_tune() -> Option<GameSession> {
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     tap(&mut s, with(|i| i.menu.tab_right = true));
     tap(&mut s, with(|i| i.menu.tab_right = true));
-    for _ in 0..5 {
+    // MODE, WINDOW SCALE, GAUGE ART, GAUGE LAYOUT, ASPECT and CRT LOOK, then TUNE.
+    for _ in 0..6 {
         tap(&mut s, with(DOWN));
     }
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "tune");

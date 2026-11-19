@@ -166,7 +166,7 @@ fn two_pads_drive_the_menus_and_a_fight_and_a_pulled_pad_pauses_it() {
     let frame = s.fight_machine().unwrap().state.frame;
     let notice = "P1 PAD DISCONNECTED";
     let out = s.step(rig.idle());
-    assert!(text_at(&out.frame, &font_assets, 10 + (28 - notice.len()) / 2, 8, notice, ink::YELLOW), "the notice is drawn");
+    assert!(text_at(&out.frame, &font_assets, 10 + (28 - notice.len()) / 2, 7, notice, ink::YELLOW), "the notice is drawn");
     // P1 idles: the keyboard's P1 keys reach nothing.
     let held = rig.frame(&[], &[], &[Key::Right, Key::A], None, [false; 2]);
     assert_eq!((held.p1.directions, held.p1.buttons), ([false; 4], [false; 6]));

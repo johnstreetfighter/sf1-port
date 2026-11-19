@@ -1,19 +1,23 @@
-//! The pause box: a small gold frame over the dimmed fight with `RESUME`,
-//! `OVERLAYS` (off, hitboxes, frame meter, both), `LOOK` (the player's
-//! `CRT LOOK`, saved as a Settings change), `GAUGE ART` (ruled, blocks,
-//! plate), `RESTART ROUND` and `QUIT TO MENU`. Training has `RESET
-//! POSITIONS` in `RESTART ROUND`'s place (it keeps the fight's present
-//! settings, spec #238) and a `TRAINING` row, which opens the Training
-//! settings box over the pause box: a `PRESET` row cycling the overhaul
-//! presets, `HOLD COMBO`, which keeps the last combo count up, and `FILL
-//! METERS`, which keeps every era gauge's resource full (both saved in
-//! `settings.toml`). `MOVES` is the last row under every preset: it opens
-//! the fighter's move list (spec #226). Local and Training fights pause
-//! while the box is up; an online caller keeps stepping and passes its
-//! current frame to the same renderer.
+//! The pause box: a small gold frame over the dimmed fight. Its rows run
+//! from what the player does in the fight, to how it is shown, to leaving:
+//! `RESUME`; `MOVES`, which opens the fighter's move list (spec #226);
+//! `RESTART ROUND`; then `OVERLAYS` (off, hitboxes, frame meter, both),
+//! `LOOK` (the player's `CRT LOOK`), `GAUGE ART` (ruled, blocks, plate) and
+//! `GAUGE LAYOUT` (classic, compact; #237), each saved as a Settings
+//! change; and `QUIT TO MENU` last, which asks `QUIT?` with `NO` chosen
+//! before it leaves, as the replay viewer's `QUIT TO REPLAYS` does, so a
+//! slip of the thumb does not end a fight. Training has `RESET POSITIONS` in
+//! `RESTART ROUND`'s place (it keeps the fight's present settings, spec
+//! #238) and a `TRAINING` row above it, which opens the Training settings
+//! box in the pause box's place: a `PRESET` row cycling the overhaul presets,
+//! `HOLD COMBO`, which keeps the last combo count up, and `FILL METERS`,
+//! which keeps every era gauge's resource full (both saved in
+//! `settings.toml`). Local and Training fights pause while the box is up;
+//! an online caller keeps stepping and passes its current frame to the
+//! same renderer.
 
 use sf_video::compositor::{ink, RomFont};
-use sf_video::era_hud::GaugeArt;
+use sf_video::era_hud::{GaugeArt, GaugeLayout};
 use sf_video::render::Frame;
 
 use super::draw::{boxed, dimmed};
@@ -25,14 +29,14 @@ use crate::roster::MenuInput;
 
 /// The box's cells.
 const BOX_COL: usize = 10;
-const BOX_ROW: usize = 6;
+const BOX_ROW: usize = 5;
 const BOX_COLS: usize = 28;
 const BOX_ROWS: usize = 17;
 /// The screen's text rows.
 const SCREEN_ROWS: usize = 28;
 /// The notice line (a pad disconnect, say) and the first item's row.
-const NOTICE_ROW: usize = 8;
-const FIRST_ROW: usize = 10;
+const NOTICE_ROW: usize = 7;
+const FIRST_ROW: usize = 9;
 /// Where labels start and values end.
 const LABEL_COL: usize = 13;
 const VALUE_END_COL: usize = 36;
@@ -185,6 +189,10 @@ pub struct PauseBox {
     /// The Training settings box over it, while it shows.
     settings: Option<TrainingBox>,
     value_motion: [Option<(MenuItem, ValueMotion)>; 2],
+    /// The fight's gauge layout, as the `GAUGE LAYOUT` row shows it.
+    gauge_layout: GaugeLayout,
+    /// The quit row is asking `QUIT?`: whether `YES` is the answer chosen.
+    quit_asked: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,7 +212,26 @@ impl PauseBox {
             notice: None,
             settings: None,
             value_motion: [None; 2],
+            gauge_layout: GaugeLayout::Classic,
+            quit_asked: None,
         }
+    }
+
+    /// Whether the quit row is asking `QUIT?`, and if so whether `YES` is
+    /// the answer chosen. It always starts on `NO`.
+    pub fn asking_to_quit(&self) -> Option<bool> {
+        self.quit_asked
+    }
+
+    /// The same box showing `layout` on its `GAUGE LAYOUT` row.
+    pub fn showing_layout(mut self, layout: GaugeLayout) -> Self {
+        self.gauge_layout = layout;
+        self
+    }
+
+    /// The fight's gauge layout changed while the box is open.
+    pub fn set_gauge_layout(&mut self, layout: GaugeLayout) {
+        self.gauge_layout = layout;
     }
 
     /// The local overlay for an online fight: no restart or Training actions.
@@ -257,34 +284,39 @@ impl PauseBox {
         self.notice.as_deref()
     }
 
-    /// The rows, top to bottom.
+    /// The rows, top to bottom: what the player does in the fight, then
+    /// how it is shown, and leaving last (the maintainer's order,
+    /// 2026-11-18).
     pub fn items(&self) -> &'static [MenuItem] {
         const ONLINE: &[MenuItem] = &[
             MenuItem::Resume,
+            MenuItem::Moves,
             MenuItem::Overlays,
             MenuItem::Look,
             MenuItem::GaugeArt,
+            MenuItem::GaugeLayout,
             MenuItem::QuitToMenu,
-            MenuItem::Moves,
         ];
         const FIGHT: &[MenuItem] = &[
             MenuItem::Resume,
+            MenuItem::Moves,
+            MenuItem::RestartRound,
             MenuItem::Overlays,
             MenuItem::Look,
             MenuItem::GaugeArt,
-            MenuItem::RestartRound,
+            MenuItem::GaugeLayout,
             MenuItem::QuitToMenu,
-            MenuItem::Moves,
         ];
         const TRAINING: &[MenuItem] = &[
             MenuItem::Resume,
+            MenuItem::Moves,
+            MenuItem::TrainingSettings,
+            MenuItem::ResetPositions,
             MenuItem::Overlays,
             MenuItem::Look,
             MenuItem::GaugeArt,
-            MenuItem::ResetPositions,
+            MenuItem::GaugeLayout,
             MenuItem::QuitToMenu,
-            MenuItem::TrainingSettings,
-            MenuItem::Moves,
         ];
         const REPLAY: &[MenuItem] = &[
             MenuItem::Resume, MenuItem::TakeoverP1, MenuItem::TakeoverP2,
@@ -309,9 +341,10 @@ impl PauseBox {
     }
 
     /// Up and down move (wrapping); confirm chooses (`TRAINING` opens the
-    /// settings box, which then takes the inputs); left and right on
-    /// `OVERLAYS`, `LOOK` and `GAUGE ART` choose too (they cycle); back or
-    /// Start resumes.
+    /// settings box, which then takes the inputs; a quit row asks `QUIT?`
+    /// first, and only `YES` chooses it); left and right on `OVERLAYS`,
+    /// `LOOK`, `GAUGE ART` and `GAUGE LAYOUT` choose too (they cycle); back
+    /// or Start resumes.
     pub fn apply(&mut self, input: MenuInput) -> Option<Transition> {
         let transition = self.apply_input(input)?;
         if matches!(transition, Transition::CursorMoved | Transition::Back)
@@ -333,6 +366,24 @@ impl PauseBox {
         }
         let items = self.items();
         let item = items[self.cursor];
+        if let Some(yes) = self.quit_asked.take() {
+            match input {
+                MenuInput::Left | MenuInput::Right => {
+                    self.quit_asked = Some(!yes);
+                    return Some(Transition::CursorMoved);
+                }
+                // Only YES leaves. NO, Back and Start take the question away
+                // and keep the box up.
+                MenuInput::Confirm if yes => return Some(Transition::Choose(item)),
+                MenuInput::Confirm | MenuInput::Back | MenuInput::Start => return Some(Transition::CursorMoved),
+                // Moving away answers NO and moves.
+                MenuInput::Up | MenuInput::Down => {}
+                _ => {
+                    self.quit_asked = Some(yes);
+                    return None;
+                }
+            }
+        }
         match input {
             MenuInput::Up | MenuInput::Down => {
                 let step = if input == MenuInput::Down { 1 } else { items.len() - 1 };
@@ -342,13 +393,17 @@ impl PauseBox {
                 self.cursor = cursor;
                 Some(Transition::CursorMoved)
             }
+            MenuInput::Confirm if matches!(item, MenuItem::QuitToMenu | MenuItem::QuitToReplays) => {
+                self.quit_asked = Some(false);
+                Some(Transition::CursorMoved)
+            }
             MenuInput::Confirm if self.enabled(item) => {
                 if item == MenuItem::TrainingSettings {
                     self.settings = Some(TrainingBox::default());
                 }
                 Some(Transition::Choose(item))
             }
-            MenuInput::Left | MenuInput::Right if matches!(item, MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt) => {
+            MenuInput::Left | MenuInput::Right if matches!(item, MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::GaugeLayout) => {
                 Some(Transition::Choose(item))
             }
             MenuInput::Back | MenuInput::Start => Some(Transition::Choose(MenuItem::Resume)),
@@ -422,7 +477,9 @@ impl PauseBox {
             let col = BOX_COL + (BOX_COLS - notice.chars().count().min(BOX_COLS)) / 2;
             font.text(&mut frame.argb, col, NOTICE_ROW, notice, ink::YELLOW);
         }
-        for (i, item) in self.items().iter().enumerate() {
+        // The Training settings box stands in the rows' place while it is up.
+        let items: &[MenuItem] = if self.settings.is_some() { &[] } else { self.items() };
+        for (i, item) in items.iter().enumerate() {
             let row = Self::item_row(i);
             let color = if !self.enabled(*item) {
                 ink::DIM
@@ -432,11 +489,23 @@ impl PauseBox {
             } else {
                 ink::BLUE
             };
+            if let Some(yes) = self.quit_asked.filter(|_| i == self.cursor) {
+                // `QUIT?` and its two answers, the chosen one in yellow
+                // with the arrow before it.
+                font.text(&mut frame.argb, LABEL_COL, row, "QUIT?", ink::YELLOW);
+                let yes_col = VALUE_END_COL - 3;
+                let no_col = yes_col - 5;
+                font.text(&mut frame.argb, no_col, row, "NO", if yes { ink::BLUE } else { ink::YELLOW });
+                font.text(&mut frame.argb, yes_col, row, "YES", if yes { ink::YELLOW } else { ink::BLUE });
+                font.text(&mut frame.argb, if yes { yes_col } else { no_col } - 1, row, ">", ink::YELLOW);
+                continue;
+            }
             font.text(&mut frame.argb, LABEL_COL, row, item.label(), color);
             let value = match item {
                 MenuItem::Overlays => overlay,
                 MenuItem::Look => look,
                 MenuItem::GaugeArt => gauge_art.label(),
+                MenuItem::GaugeLayout => self.gauge_layout.label(),
                 _ => continue,
             };
             draw_value(font, &mut frame, (*item, value, color), row, (LABEL_COL, VALUE_END_COL), &cues);
@@ -451,7 +520,7 @@ impl PauseBox {
 /// `None` means the item is an action. A value can also flash on its own.
 fn value_direction(item: MenuItem, input: MenuInput) -> Option<Option<ValueDirection>> {
     match item {
-        MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::LivePreset
+        MenuItem::Overlays | MenuItem::Look | MenuItem::GaugeArt | MenuItem::GaugeLayout | MenuItem::LivePreset
         | MenuItem::TrainingDrill | MenuItem::ComboTrial => Some(ValueDirection::from_input(input)),
         MenuItem::HoldCombo | MenuItem::FillMeters => Some(None),
         _ => None,

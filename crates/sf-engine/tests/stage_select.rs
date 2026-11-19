@@ -942,7 +942,9 @@ fn the_rule_starts_over_when_players_leave_for_the_menu() {
     assert_eq!(tap(&mut s, p2_confirm()), "drive");
     to_fight_loop(&mut s);
     assert_eq!(tap(&mut s, with(|i| i.menu.start = true)), "pause");
-    assert_eq!(choose(&mut s, 5), "main menu", "QUIT TO MENU");
+    assert_eq!(choose(&mut s, 7), "pause", "QUIT TO MENU asks first");
+    assert_eq!(tap(&mut s, with(|i| i.p1.directions[RIGHT] = true)), "pause", "YES");
+    assert_eq!(tap(&mut s, confirm()), "main menu", "QUIT TO MENU");
     assert_eq!(tap(&mut s, confirm()), "multi player");
     assert_eq!(tap(&mut s, confirm()), "select", "Local");
     lock_fighters(&mut s, Mode::Local);
@@ -1031,7 +1033,9 @@ fn a_shared_stage_cycles_across_rematch_and_reselect_until_the_main_menu() {
         s.step(idle());
     }
     assert_eq!(tap(&mut s, with(|i| i.menu.start = true)), "pause");
-    assert_eq!(choose(&mut s, 5), "main menu");
+    assert_eq!(choose(&mut s, 7), "pause", "QUIT TO MENU asks first");
+    assert_eq!(tap(&mut s, with(|i| i.p1.directions[RIGHT] = true)), "pause", "YES");
+    assert_eq!(tap(&mut s, confirm()), "main menu");
     assert_eq!(tap(&mut s, confirm()), "multi player");
     assert_eq!(tap(&mut s, confirm()), "select");
     lock_fighters(&mut s, Mode::Local);

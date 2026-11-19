@@ -606,10 +606,13 @@ fn spectator_pause_keeps_playback_live_and_has_no_restart_or_fighter_forfeit() {
     room.press(2, MenuInput::Start);
     assert_eq!(room.peers[2].screen(), "pause");
     let before = room.peers[2].spectator_frame().unwrap();
-    room.peers[2].step(key(MenuInput::Down));
-    room.dispatch(2);
-    room.peers[2].step(FrameInputs::default());
-    room.dispatch(2);
+    for _ in 0..2 {
+        // RESUME, MOVES, then OVERLAYS
+        room.peers[2].step(key(MenuInput::Down));
+        room.dispatch(2);
+        room.peers[2].step(FrameInputs::default());
+        room.dispatch(2);
+    }
     let output = room.peers[2].step(key(MenuInput::Confirm));
     assert_eq!(output.transition, Some(Transition::Choose(MenuItem::Overlays)),
         "an observer can change local overlays instead of restarting native match state");
@@ -618,7 +621,10 @@ fn spectator_pause_keeps_playback_live_and_has_no_restart_or_fighter_forfeit() {
     room.dispatch(2);
     for _ in 0..30 { room.tick(); }
     assert!(room.peers[2].spectator_frame().unwrap() > before, "a local observer menu keeps confirmed playback moving");
-    for _ in 0..3 { room.press(2, MenuInput::Down); }
+    for _ in 0..4 { /* OVERLAYS to QUIT TO MENU */ room.press(2, MenuInput::Down); }
+    room.press(2, MenuInput::Confirm);
+    assert_eq!(room.peers[2].screen(), "pause", "QUIT TO MENU asks first");
+    room.press(2, MenuInput::Right);
     room.press(2, MenuInput::Confirm);
     assert_eq!(room.peers[2].screen(), "online");
     assert!(room.peers[..2].iter().all(|peer| peer.fight().is_some()), "leaving observation does not forfeit either fighter");

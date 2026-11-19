@@ -131,6 +131,7 @@ impl EraPreview {
     ) -> Result<(), FightEvent> {
         let mut fight = Self::start(assets, &self.data, [p1, p2])?;
         fight.set_gauge_art(self.fight.gauge_art());
+        fight.set_gauge_layout(self.fight.gauge_layout());
         self.fight = fight;
         self.next_fixture = [0; 2];
         Ok(())

@@ -573,7 +573,7 @@ fn online_pause_and_moves_keep_simulating_neutral_input_and_resume_without_a_hel
             },
         );
     }
-    for _ in 0..3 {
+    for _ in 0..4 {
         assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
         assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
     }
@@ -581,14 +581,15 @@ fn online_pause_and_moves_keep_simulating_neutral_input_and_resume_without_a_hel
     assert_eq!(art[1].transition, Some(Transition::Choose(MenuItem::GaugeArt)));
     assert_ne!(paused.peers[1].fight().unwrap().gauge_art(), control.peers[1].fight().unwrap().gauge_art());
     assert_eq!(paused.peers[1].settings().gauge_art, paused.peers[1].fight().unwrap().gauge_art());
-    for _ in 0..2 {
-        assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
+    // From GAUGE ART (row 4) up three rows to MOVES (row 1).
+    for _ in 0..3 {
+        assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Up));
         assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
     }
     let moves = assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Confirm));
     assert!(
         moves[1].panel.is_some(),
-        "the sixth online pause row opens MOVES"
+        "the second online pause row opens MOVES"
     );
     assert!(paused.peers[1].move_list().is_some());
     assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
@@ -742,21 +743,20 @@ fn client_controller_loss_uses_physical_p1_but_opens_the_assigned_fighters_live_
         font.text(
             &mut expected,
             12,
-            8,
+            7,
             "CONTROLLER DISCONNECTED",
             sf_video::compositor::ink::YELLOW,
         );
         assert!(
-            (64..72).all(|y| lost[1].frame.argb[y * 384 + 96..y * 384 + 280]
+            (56..64).all(|y| lost[1].frame.argb[y * 384 + 96..y * 384 + 280]
                 == expected[y * 384 + 96..y * 384 + 280]),
             "the public live pause frame shows the exact controller notice"
         );
     }
     assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
-    for _ in 0..5 {
-        assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
-        assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
-    }
+    // RESUME, then MOVES.
+    assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Down));
+    assert_live_neutral_step(&mut paused, &mut control, FrameInputs::default());
     assert_live_neutral_step(&mut paused, &mut control, key(MenuInput::Confirm));
     assert_eq!(
         paused.peers[1].move_list().unwrap().fighter(),
@@ -1313,9 +1313,16 @@ fn rehosting_allocates_beyond_every_seen_epoch_and_retires_old_input_datagrams()
 fn quitting_a_live_match_sends_forfeit_returns_both_online_and_old_forfeits_stay_retired() {
     let mut pair = Pair::round_live();
     pair.pulse(1, MenuInput::Start);
-    for _ in 0..4 {
-        pair.pulse(1, MenuInput::Down);
+    for _ in 0..6 {
+        pair.pulse(1, MenuInput::Down); // the last of the seven rows
     }
+    // QUIT TO MENU asks first: Confirm, Right (YES), Confirm.
+    let asked = pair.pulse(1, MenuInput::Confirm);
+    assert_eq!(asked[1].screen, "pause", "the question keeps the box up");
+    assert!(pair.packets.iter().all(|(_, packet)| !matches!(packet,
+        NetPacket::Input { count, bits, .. } if bits[..usize::from(*count)].contains(&0x8000))),
+        "no forfeit is sent by asking");
+    pair.pulse(1, MenuInput::Right);
     let quit = pair.pulse(1, MenuInput::Confirm);
     assert_eq!(
         quit[1].screen, "online",
@@ -1497,8 +1504,9 @@ fn changing_a_local_look_online_keeps_the_clients_own_configuration_for_persiste
         "active online rules belong to the host"
     );
     pair.pulse(1, MenuInput::Start);
-    pair.pulse(1, MenuInput::Down);
-    pair.pulse(1, MenuInput::Down);
+    pair.pulse(1, MenuInput::Down); // MOVES
+    pair.pulse(1, MenuInput::Down); // OVERLAYS
+    pair.pulse(1, MenuInput::Down); // LOOK
     let changed = pair.pulse(1, MenuInput::Confirm);
     assert!(
         changed[1].settings_changed,

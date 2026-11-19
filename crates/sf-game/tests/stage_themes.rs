@@ -534,11 +534,16 @@ fn raw_pitch_and_per_voice_tone_controls_reach_the_real_fights_music_cpu() {
     // path as an ordinary score, rather than leaving a held raw note behind.
     assert_eq!(f.step(with(|i| i.menu.start = true)).screen, "pause");
     f.step(idle());
-    for _ in 0..5 {
-        f.step(with(|i| i.p1.directions[2] = true));
+    for _ in 0..7 {
+        f.step(with(|i| i.p1.directions[2] = true)); // to QUIT TO MENU, the eighth row
         f.step(idle());
     }
     let leaving = f.pushed.len();
+    f.step(with(|i| i.menu.confirm = true));
+    f.step(idle());
+    assert_eq!(f.session.screen(), "pause", "QUIT TO MENU asks first");
+    f.step(with(|i| i.p1.directions[0] = true)); // YES
+    f.step(idle());
     f.step(with(|i| i.menu.confirm = true));
     for _ in 0..30 { f.step(idle()); }
     assert_eq!(f.session.screen(), "main menu");
@@ -629,14 +634,19 @@ fn a_theme_does_not_outlive_its_fight_into_the_menus_or_the_faithful_cabinet() {
     let at = f.asked(TEST_THEME).unwrap();
     assert!(f.loudest(at + 1.0, 1.0) > 0.05);
     assert!(f.sound.has_tune_table());
-    // Pause, then QUIT TO MENU (the pause box's sixth row).
+    // Pause, then QUIT TO MENU (the pause box's eighth row, with its YES).
     assert_eq!(f.step(with(|i| i.menu.start = true)).screen, "pause");
     f.step(idle());
-    for _ in 0..5 {
+    for _ in 0..7 {
         f.step(with(|i| i.p1.directions[2] = true));
         f.step(idle());
     }
     let left = f.pushed.len();
+    f.step(with(|i| i.menu.confirm = true));
+    f.step(idle());
+    assert_eq!(f.session.screen(), "pause", "QUIT TO MENU asks first");
+    f.step(with(|i| i.p1.directions[0] = true)); // YES
+    f.step(idle());
     f.step(with(|i| i.menu.confirm = true));
     for _ in 0..20 {
         f.step(idle());

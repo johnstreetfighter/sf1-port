@@ -391,8 +391,8 @@ fn the_hold_row_keeps_the_last_count_and_round_trips_through_settings_toml() {
     // under PRESET.
     s.step(start());
     s.step(idle());
-    for _ in 0..6 {
-        tap(&mut s, with(|i| i.p1.directions[DOWN] = true));
+    for _ in 0..2 {
+        tap(&mut s, with(|i| i.p1.directions[DOWN] = true)); // RESUME, MOVES, then TRAINING
     }
     let out = tap(&mut s, confirm());
     let row = TrainingBox::item_row(1);

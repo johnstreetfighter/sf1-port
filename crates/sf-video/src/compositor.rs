@@ -153,6 +153,8 @@ pub struct OverhaulScene<'a> {
     pub ally2_gauge: Option<era_hud::EraGauge>,
     pub ally2_gauge_presentation: Option<era_hud::GaugePresentation>,
     pub gauge_art: GaugeArt,
+    /// Where and how large the gauges are drawn.
+    pub gauge_layout: era_hud::GaugeLayout,
     /// Rows the gauge corners sit above the bottom, for the Training frame
     /// meter (see [`era_hud::lift_above_rows`]).
     pub hud_lift: usize,
@@ -188,6 +190,7 @@ impl OverhaulScene<'static> {
         ally2_gauge: None,
         ally2_gauge_presentation: None,
         gauge_art: GaugeArt::Ruled,
+        gauge_layout: era_hud::GaugeLayout::Classic,
         hud_lift: 0,
         font: None,
         callouts: CalloutFrame::NONE,
@@ -259,8 +262,8 @@ pub fn present_with_move_effects(
     for spark in scene.heavy_impacts {
         draw_heavy_impact(&mut argb, *spark);
     }
-    era_hud::draw_lifted_presented(
-        &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.font,
+    era_hud::draw_laid_out(
+        &mut argb, &scene.callouts.gauges(scene.hud), scene.gauge_art, scene.gauge_layout, scene.font,
         scene.hud_lift, scene.gauge_presentation,
     );
     if let Some(gauge) = &scene.ally2_gauge {

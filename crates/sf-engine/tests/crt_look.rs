@@ -186,8 +186,8 @@ fn session_on_crt_look() -> Option<GameSession> {
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     tap(&mut s, with(|i| i.menu.tab_right = true));
     tap(&mut s, with(|i| i.menu.tab_right = true));
-    // SCALE, FULLSCREEN, ASPECT and GAUGE ART are above it.
-    for _ in 0..4 {
+    // SCALE, FULLSCREEN, ASPECT, GAUGE ART and GAUGE LAYOUT are above it.
+    for _ in 0..5 {
         tap(&mut s, with(|i| i.p1.directions[2] = true));
     }
     Some(s)

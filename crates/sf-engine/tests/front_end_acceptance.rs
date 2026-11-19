@@ -147,6 +147,18 @@ fn pause_row(s: &mut GameSession, row: usize) -> FrameOutput {
     s.step(confirm())
 }
 
+/// Open the pause box and quit from row `row`: QUIT TO MENU asks first, so
+/// the quit is Confirm, Right (to YES), Confirm. The last frame's output is
+/// the one returned.
+fn pause_quit(s: &mut GameSession, row: usize) -> FrameOutput {
+    let out = pause_row(s, row);
+    assert_ne!(out.transition, Some(Transition::Choose(MenuItem::QuitToMenu)), "QUIT TO MENU asks before it quits");
+    assert_eq!(s.screen(), "pause", "the question keeps the box up");
+    s.step(idle());
+    tap(s, stick(RIGHT));
+    s.step(confirm())
+}
+
 #[test]
 fn the_front_end_from_power_on_to_exit() {
     if !Path::new(ROMS).is_dir() {
@@ -195,7 +207,7 @@ fn the_front_end_from_power_on_to_exit() {
     let out = tap(&mut s, confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::Rematch)));
     to_fight_loop(&mut s);
-    let out = pause_row(&mut s, 5);
+    let out = pause_quit(&mut s, 7);
     assert_eq!((out.screen, out.transition), ("main menu", Some(Transition::Choose(MenuItem::QuitToMenu))));
     println!("local done");
 
@@ -211,17 +223,17 @@ fn the_front_end_from_power_on_to_exit() {
     to_fight_loop(&mut s);
     assert_eq!(pause_row(&mut s, 0).transition, Some(Transition::Choose(MenuItem::Resume)));
     assert_eq!(s.screen(), "fight");
-    assert_eq!(pause_row(&mut s, 1).transition, Some(Transition::Choose(MenuItem::Overlays)));
+    assert_eq!(pause_row(&mut s, 4).transition, Some(Transition::Choose(MenuItem::Overlays)));
     assert_eq!(s.fight().unwrap().overlay(), OverlayMode::Hitboxes);
     tap(&mut s, start()); // the box closes
     for _ in 0..120 {
         s.step(with(|i| i.p1.directions[RIGHT] = true));
     }
     let round_start = s.fight().unwrap().round_start().expect("a round has started").clone();
-    assert_eq!(pause_row(&mut s, 4).transition, Some(Transition::Choose(MenuItem::ResetPositions)));
+    assert_eq!(pause_row(&mut s, 3).transition, Some(Transition::Choose(MenuItem::ResetPositions)));
     assert_eq!(s.fight_machine().unwrap().save_snapshot(), round_start, "the round's start, bit for bit");
     // TRAINING opens the settings box, whose PRESET row cycles the live preset.
-    assert_eq!(pause_row(&mut s, 6).transition, Some(Transition::Choose(MenuItem::TrainingSettings)));
+    assert_eq!(pause_row(&mut s, 2).transition, Some(Transition::Choose(MenuItem::TrainingSettings)));
     s.step(idle());
     let out = s.step(confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::LivePreset)));
@@ -230,7 +242,7 @@ fn the_front_end_from_power_on_to_exit() {
     for _ in 0..120 {
         s.step(idle());
     }
-    let out = pause_row(&mut s, 5);
+    let out = pause_quit(&mut s, 8);
     assert_eq!(out.screen, "main menu");
     println!("training cpu done");
 
@@ -247,7 +259,7 @@ fn the_front_end_from_power_on_to_exit() {
     for _ in 0..300 {
         s.step(p1_attacks(0));
     }
-    assert_eq!(pause_row(&mut s, 5).screen, "main menu");
+    assert_eq!(pause_quit(&mut s, 8).screen, "main menu");
     println!("training dummy done");
 
     // Settings: on every tab, change the first row, then RESET TAB (up

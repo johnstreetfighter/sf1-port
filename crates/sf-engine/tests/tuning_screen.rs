@@ -280,9 +280,9 @@ fn session_on_tune(look: &str) -> Option<GameSession> {
     assert_eq!(tap(&mut s, with(|i| i.menu.confirm = true)).screen, "settings");
     tap(&mut s, with(|i| i.menu.tab_right = true));
     tap(&mut s, with(|i| i.menu.tab_right = true));
-    // MODE (the first live row), WINDOW SCALE, GAUGE ART, ASPECT and CRT
-    // LOOK are above it.
-    for _ in 0..5 {
+    // MODE (the first live row), WINDOW SCALE, GAUGE ART, GAUGE LAYOUT,
+    // ASPECT and CRT LOOK are above it.
+    for _ in 0..6 {
         tap(&mut s, with(DOWN));
     }
     Some(s)

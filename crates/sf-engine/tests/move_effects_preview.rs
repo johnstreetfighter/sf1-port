@@ -84,8 +84,8 @@ fn the_new_effects_are_on_and_the_pause_menu_has_no_choice() {
     assert_eq!(session.step(start).transition, Some(Transition::Paused));
     session.step(FrameInputs::default());
 
-    // UP from RESUME wraps to the last row, which is MOVES again; RIGHT
-    // on it changes nothing.
+    // UP from RESUME wraps to the last row, which is QUIT TO MENU; RIGHT
+    // on it changes nothing (it does not ask, and it does not quit).
     let up = FrameInputs {
         p1: pad(UP, None),
         ..FrameInputs::default()
@@ -99,7 +99,7 @@ fn the_new_effects_are_on_and_the_pause_menu_has_no_choice() {
     assert_eq!(session.step(right).transition, None);
     for training in [false, true] {
         let items = PauseBox::open(training).items();
-        assert_eq!(items.last(), Some(&MenuItem::Moves));
+        assert_eq!(items.last(), Some(&MenuItem::QuitToMenu));
         assert!(items.iter().all(|item| item.label() != "MOVE EFFECTS"));
     }
     assert!(session.fight().unwrap().move_effects_on());

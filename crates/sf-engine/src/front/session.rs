@@ -1114,6 +1114,7 @@ impl GameSession {
                     .map_or(u64::from(self.frames), |connection| connection.rules().seed);
                 Self::seed_replay_fight(&mut fight, seed);
                 fight.set_gauge_art(self.settings.gauge_art);
+                fight.set_gauge_layout(self.settings.gauge_layout);
                 fight.set_screen_shake(self.settings.screen_shake);
                 fight.set_hold_combo(self.settings.hold_combo);
                 let recording = self.begin_replay_recording(&fight, flag, seed);
@@ -1700,7 +1701,7 @@ impl GameSession {
                     play.paused_by = if online { local_side } else { 0 };
                     play.stop_recorded_try();
                     play.pause = Some(if online { PauseBox::with_online_notice(notice) }
-                        else { PauseBox::with_notice(training, notice) });
+                        else { PauseBox::with_notice(training, notice) }.showing_layout(play.fight.gauge_layout()));
                     return Some(Transition::Paused);
                 }
             }
@@ -1728,7 +1729,8 @@ impl GameSession {
             play.paused_by = if online { local_side }
                 else { (0..2).find(|&s| pad_edge(prev, now, s, |m| m.start)).unwrap_or(0) };
             play.stop_recorded_try();
-            play.pause = Some(if online { PauseBox::open_online() } else { PauseBox::open(training) });
+            play.pause = Some(if online { PauseBox::open_online() } else { PauseBox::open(training) }
+                .showing_layout(play.fight.gauge_layout()));
             return Some(Transition::Paused);
         }
         None
@@ -1836,6 +1838,23 @@ impl GameSession {
                             self.settings.gauge_art = art;
                             self.settings_changed = true;
                             // The paused fight behind the box shows the new art.
+                            let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
+                            play.last = play.fight.render(assets);
+                        }
+                        MenuItem::GaugeLayout => {
+                            // The fight and the Settings value change together.
+                            let layout = match event {
+                                MenuInput::Left => play.fight.gauge_layout().prev(),
+                                _ => play.fight.gauge_layout().next(),
+                            };
+                            changed = layout != play.fight.gauge_layout();
+                            play.fight.set_gauge_layout(layout);
+                            if let Some(pause) = &mut play.pause {
+                                pause.set_gauge_layout(layout);
+                            }
+                            self.settings.gauge_layout = layout;
+                            self.settings_changed = true;
+                            // The paused fight behind the box shows the new layout.
                             let assets = fight_assets(&self.assets, &self.bank_assets, play.fight.setup().config.preset);
                             play.last = play.fight.render(assets);
                         }

@@ -346,8 +346,8 @@ fn replay_applies_a_pause_menu_restart_before_the_next_recorded_pad() {
                 tap(&mut session, input(|i| i.menu.start = true)).transition,
                 Some(Transition::Paused)
             );
-            for _ in 0..4 {
-                tap(&mut session, stick(2));
+            for _ in 0..2 {
+                tap(&mut session, stick(2)); // RESUME, MOVES, then RESTART ROUND
             }
             assert_eq!(
                 session.step(confirm()).transition,
@@ -371,9 +371,16 @@ fn replay_applies_a_pause_menu_restart_before_the_next_recorded_pad() {
         tap(&mut session, input(|i| i.menu.start = true)).transition,
         Some(Transition::Paused)
     );
-    for _ in 0..5 {
-        tap(&mut session, stick(2));
+    for _ in 0..7 {
+        tap(&mut session, stick(2)); // the last of the eight rows
     }
+    // QUIT TO MENU asks first: Confirm, Right (YES), Confirm.
+    assert_ne!(
+        tap(&mut session, confirm()).transition,
+        Some(Transition::Choose(MenuItem::QuitToMenu))
+    );
+    assert_eq!(session.screen(), "pause", "the question keeps the box up");
+    tap(&mut session, stick(0));
     assert_eq!(
         tap(&mut session, confirm()).transition,
         Some(Transition::Choose(MenuItem::QuitToMenu))

@@ -206,6 +206,122 @@ impl GaugeArt {
     }
 }
 
+/// Where and how large the era gauges are drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GaugeLayout {
+    /// 8 pixels in from the side and 8 up, a 96-pixel bar and its label.
+    #[default]
+    Classic,
+    /// The same gauges shorter and without labels, flush in the bottom
+    /// corners: the eight rows under the lowest row a cornered fighter is
+    /// drawn in, so his crouching kicks and sweeps stay in view.
+    Compact,
+}
+
+impl GaugeLayout {
+    pub const ALL: [GaugeLayout; 2] = [GaugeLayout::Classic, GaugeLayout::Compact];
+
+    /// The Settings and pause box value, in the ROM font's character set.
+    pub const fn label(self) -> &'static str {
+        match self {
+            GaugeLayout::Classic => "CLASSIC",
+            GaugeLayout::Compact => "COMPACT",
+        }
+    }
+
+    /// The `settings.toml` value.
+    pub const fn slug(self) -> &'static str {
+        match self {
+            GaugeLayout::Classic => "classic",
+            GaugeLayout::Compact => "compact",
+        }
+    }
+
+    pub fn from_slug(s: &str) -> Option<GaugeLayout> {
+        GaugeLayout::ALL.into_iter().find(|layout| layout.slug() == s)
+    }
+
+    /// The layout after this one, wrapping.
+    pub fn next(self) -> GaugeLayout {
+        GaugeLayout::ALL[(self as usize + 1) % GaugeLayout::ALL.len()]
+    }
+
+    /// The layout before this one, wrapping.
+    pub fn prev(self) -> GaugeLayout {
+        GaugeLayout::ALL[(self as usize + GaugeLayout::ALL.len() - 1) % GaugeLayout::ALL.len()]
+    }
+
+    /// The layout `art` is drawn in. Compact is drawn in Ruled only until
+    /// Blocks and Plate have their compact drawings (#238).
+    fn in_art(self, art: GaugeArt) -> GaugeLayout {
+        match art {
+            GaugeArt::Ruled => self,
+            GaugeArt::Blocks | GaugeArt::Plate => GaugeLayout::Classic,
+        }
+    }
+
+    const fn metrics(self) -> Metrics {
+        match self {
+            GaugeLayout::Classic => Metrics {
+                edge: CORNER_EDGE,
+                bottom: CORNER_BOTTOM,
+                bar: BAR_WIDTH,
+                main: MAIN_ROW,
+                second: SECOND_ROW,
+                gap: ROW_GAP,
+                labels: true,
+                lower_rule: true,
+            },
+            // Two rows of four fill the eight rows under the feet: each is
+            // a rule, two fill rows and its shadow, which is also the gap.
+            GaugeLayout::Compact => Metrics {
+                edge: 0,
+                bottom: 0,
+                bar: 54,
+                main: 4,
+                second: 4,
+                gap: 0,
+                labels: false,
+                lower_rule: false,
+            },
+        }
+    }
+}
+
+/// A layout's measurements.
+#[derive(Clone, Copy)]
+struct Metrics {
+    /// Pixels from the screen's side to the corner.
+    edge: usize,
+    /// Rows left clear under the corner.
+    bottom: usize,
+    /// Interior width of a full-length bar.
+    bar: usize,
+    /// The main row's height and the second row's.
+    main: usize,
+    second: usize,
+    /// Rows between the two.
+    gap: usize,
+    /// Whether an Era Signature label follows each row.
+    labels: bool,
+    /// Whether Ruled closes its fill with a second rule above the shadow.
+    lower_rule: bool,
+}
+
+impl Metrics {
+    /// The tallest a corner draws: both rows and the gap between them.
+    const fn height(self) -> usize {
+        self.main + self.gap + self.second
+    }
+
+    /// Rows from the screen's bottom to the corner's, `lift` rows up. The
+    /// lift is measured for Classic (see [`lift_above_rows`]); a layout with
+    /// a different margin sits on the same rows.
+    const fn bottom_at(self, lift: usize) -> usize {
+        if lift == 0 { self.bottom } else { CORNER_BOTTOM + lift }
+    }
+}
+
 /// The HUD pens, boot text-palette entries (`TEXT_PALETTE_ROM`) written as
 /// text colour / pen. The ROM's own health bar and PLAYER1 label draw with
 /// colours 1 and 4; `era_hud_pens_are_the_rom_palette` checks every value
@@ -303,11 +419,28 @@ pub fn draw_lifted_presented(
     art: GaugeArt,
     font: Option<&RomFont<'_>>,
     lift: usize,
+    presentations: [Option<GaugePresentation>; 2],
+) {
+    draw_laid_out(argb, hud, art, GaugeLayout::Classic, font, lift, presentations);
+}
+
+/// Draws the gauges in `layout`, with optional Era Signatures and meter
+/// feedback. Every layout shares this drawing, so a gauge animates the
+/// same way in each.
+pub fn draw_laid_out(
+    argb: &mut [u32],
+    hud: &EraHud,
+    art: GaugeArt,
+    layout: GaugeLayout,
+    font: Option<&RomFont<'_>>,
+    lift: usize,
     [p1, p2]: [Option<GaugePresentation>; 2],
 ) {
+    let metrics = layout.in_art(art).metrics();
     for (side, gauge, presentation) in [(Side::P1, hud.p1, p1), (Side::P2, hud.p2, p2)] {
         if let Some(gauge) = gauge {
-            draw_corner(&mut Corner { argb, side }, &gauge, art, font, lift, MAIN_ROW, presentation);
+            let corner = &mut Corner { argb, side, edge: metrics.edge };
+            draw_corner(corner, &gauge, art, font, metrics, lift, metrics.main, presentation);
         }
     }
 }
@@ -321,11 +454,13 @@ pub(crate) fn draw_ally2_presented(
     lift: usize,
     presentation: Option<GaugePresentation>,
 ) {
+    let metrics = GaugeLayout::Classic.metrics();
     draw_corner(
-        &mut Corner { argb, side: Side::P1 },
+        &mut Corner { argb, side: Side::P1, edge: metrics.edge },
         gauge,
         art,
         font,
+        metrics,
         lift.saturating_add(CORNER_HEIGHT + ROW_GAP),
         SECOND_ROW,
         presentation,
@@ -337,13 +472,15 @@ pub(crate) fn draw_ally2_presented(
 struct Corner<'a> {
     argb: &'a mut [u32],
     side: Side,
+    /// Pixels from the screen's side to local column 0.
+    edge: usize,
 }
 
 impl Corner<'_> {
     fn screen_x(&self, lx: usize) -> usize {
         match self.side {
-            Side::P1 => CORNER_EDGE + lx,
-            Side::P2 => WIDTH - 1 - CORNER_EDGE - lx,
+            Side::P1 => self.edge + lx,
+            Side::P2 => (WIDTH - 1 - self.edge).wrapping_sub(lx),
         }
     }
 
@@ -369,14 +506,15 @@ fn draw_corner(
     gauge: &EraGauge,
     art: GaugeArt,
     font: Option<&RomFont<'_>>,
+    metrics: Metrics,
     lift: usize,
     main_height: usize,
     presentation: Option<GaugePresentation>,
 ) {
-    let height = main_height + gauge.second.map_or(0, |_| ROW_GAP + SECOND_ROW);
-    let bottom = HEIGHT.saturating_sub(CORNER_BOTTOM.saturating_add(lift));
+    let height = main_height + gauge.second.map_or(0, |_| metrics.gap + metrics.second);
+    let bottom = HEIGHT.saturating_sub(metrics.bottom_at(lift));
     let Some(top) = bottom.checked_sub(height) else { return };
-    let floor = bottom.saturating_sub(CORNER_HEIGHT);
+    let floor = bottom.saturating_sub(metrics.height());
     let levelled = std::iter::once(gauge.main)
         .chain(gauge.second)
         .any(|row| matches!(row, GaugeRow::Level { .. }));
@@ -387,18 +525,21 @@ fn draw_corner(
     let bar_x = if levelled { lead } else { 0 };
     let main = (top, main_height, gauge.main, Ink::GOLD, presentation.map(|gauge| gauge.main));
     let second = gauge.second.map(|row| {
-        (top + main_height + ROW_GAP, SECOND_ROW, row, Ink::LAVENDER, presentation.and_then(|gauge| gauge.second))
+        let y0 = top + main_height + metrics.gap;
+        (y0, metrics.second, row, Ink::LAVENDER, presentation.and_then(|gauge| gauge.second))
     });
     for (i, (y0, height, row, ink, presentation)) in std::iter::once(main).chain(second).enumerate() {
-        let avail = (CORNER_WIDTH - bar_x).min(BAR_WIDTH + 2);
-        let at = Slot { x0: bar_x, avail, floor, y0, height };
+        // A level's lettering comes out of the bar where it is wider than
+        // the digit column (Plate's `LV`), so the corner keeps its width.
+        let avail = (DIGIT_COLUMN + metrics.bar + 2 - bar_x).min(metrics.bar + 2);
+        let at = Slot { x0: bar_x, avail, floor, y0, height, lower_rule: metrics.lower_rule, labelled: metrics.labels };
         let paint = RowPaint::new(row, presentation, corner.side);
         let end = match art {
             GaugeArt::Ruled => draw_row(corner, at, row, ink, paint, font),
             GaugeArt::Blocks => draw_blocks_row(corner, at, row, ink, paint, font),
             GaugeArt::Plate => draw_plate_row(corner, at, row, i == 1, paint, font),
         };
-        if let Some(presentation) = presentation {
+        if let Some(presentation) = presentation.filter(|_| metrics.labels) {
             draw_label(corner, end + 1, at, presentation.kind, paint);
         }
     }
@@ -438,17 +579,21 @@ fn draw_row(
     font: Option<&RomFont<'_>>,
 ) -> usize {
     let Slot { x0, y0, height, .. } = at;
+    let bar = at.avail - 2;
     let state = row.state();
     let rule = paint.rail(if state == GaugeState::Greyed { pens::GREY } else { pens::RULE });
+    let rule = paint.cue().filter(|_| !at.labelled).unwrap_or(rule);
     let shadow = paint.shadow(pens::SHADOW);
-    let fill_rows = height - 3;
+    // A rule, the fill, a second rule where the layout has room for one,
+    // and the shadow.
+    let fill_rows = height - if at.lower_rule { 3 } else { 2 };
     // Interior columns carry their stock position. Dividers and caps are `None`.
-    let mut columns = Vec::with_capacity(BAR_WIDTH + 2);
+    let mut columns = Vec::with_capacity(bar + 2);
     columns.push(None);
     match row {
         GaugeRow::Stock { cells, full, part, .. } => {
             let cells = cells.max(1) as usize;
-            let cell_w = (BAR_WIDTH - (cells - 1)) / cells;
+            let cell_w = (bar - (cells - 1)) / cells;
             for cell in 0..cells {
                 if cell > 0 {
                     columns.push(None);
@@ -464,7 +609,7 @@ fn draw_row(
             }
         }
         GaugeRow::Level { fill, length, .. } | GaugeRow::Bar { fill, length, .. } => {
-            let width = length.px(BAR_WIDTH).max(1);
+            let width = length.px(bar).max(1);
             let lit = fill.px(width);
             columns.extend((0..width).map(|i| Some(GaugeColumn::continuous(i, width, lit))));
             if let (GaugeRow::Level { level, .. }, Some(font)) = (row, font) {
@@ -501,7 +646,9 @@ fn draw_row(
                     let pen = paint.fill(ink, column, fy, pens::SHADOW);
                     corner.put(lx, y0 + 1 + fy, pen);
                 }
-                corner.put(lx, y0 + height - 2, rule);
+                if at.lower_rule {
+                    corner.put(lx, y0 + height - 2, rule);
+                }
                 corner.put(lx, y0 + height - 1, shadow);
             }
         }
@@ -528,6 +675,11 @@ struct Slot {
     floor: usize,
     y0: usize,
     height: usize,
+    /// Ruled closes its fill with a second rule (see [`Metrics`]).
+    lower_rule: bool,
+    /// An Era Signature label follows the row. Without one, the row's rule
+    /// carries the label's spend cue.
+    labelled: bool,
 }
 
 /// A bevelled box `w` by `h` from local (`x`, `y`): `light` along the top

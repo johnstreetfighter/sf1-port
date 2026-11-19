@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use sf_video::announcer::AnnouncerVoice;
 use sf_video::compositor::{fallback_text, ink, RomFont};
-use sf_video::era_hud::GaugeArt;
+use sf_video::era_hud::{GaugeArt, GaugeLayout};
 use sf_video::render::{Frame, HEIGHT, WIDTH};
 
 use super::tune::TypedKey;
@@ -45,6 +45,9 @@ pub struct Settings {
     /// How the era gauges are drawn (the Video tab's `GAUGE ART`). A
     /// player's own look: never in the match config or the netplay handshake.
     pub gauge_art: GaugeArt,
+    /// Where and how large the era gauges are drawn (the Video tab's
+    /// `GAUGE LAYOUT`).
+    pub gauge_layout: GaugeLayout,
     /// The picture's shape on the window (the Video tab's `ASPECT`).
     pub aspect: Aspect,
     /// Volumes, 0 to 10.
@@ -364,6 +367,7 @@ impl Default for Settings {
             screen_shake: true,
             frame_delay_ms: 0,
             gauge_art: GaugeArt::Ruled,
+            gauge_layout: GaugeLayout::Classic,
             aspect: Aspect::default(),
             master: 10,
             fm: 10,
@@ -490,6 +494,7 @@ impl Settings {
              screen_shake = {}\n\
              frame_delay_ms = {}\n\
              gauge_art = \"{}\"\n\
+             gauge_layout = \"{}\"\n\
              aspect = \"{}\"\n\
              master = {}\n\
              fm = {}\n\
@@ -519,6 +524,7 @@ impl Settings {
             self.screen_shake,
             self.frame_delay_ms,
             self.gauge_art.slug(),
+            self.gauge_layout.slug(),
             self.aspect.slug(),
             self.master,
             self.fm,
@@ -647,6 +653,12 @@ impl Settings {
                         .as_deref()
                         .and_then(GaugeArt::from_slug)
                         .ok_or_else(|| format!("line {n}: expected \"ruled\", \"blocks\" or \"plate\" for '{k}'"))?;
+                }
+                "gauge_layout" => {
+                    s.gauge_layout = unquoted(v)
+                        .as_deref()
+                        .and_then(GaugeLayout::from_slug)
+                        .ok_or_else(|| format!("line {n}: expected \"classic\" or \"compact\" for '{k}'"))?;
                 }
                 "aspect" => {
                     s.aspect = unquoted(v)
@@ -864,6 +876,7 @@ pub enum Row {
     /// `MODE`: fullscreen or windowed.
     Fullscreen,
     GaugeArt,
+    GaugeLayout,
     Aspect,
     CrtLook,
     /// Opens the tuning screen; disabled while `CRT LOOK` is `OFF`.
@@ -936,6 +949,7 @@ pub fn rows(tab: Tab) -> Vec<Row> {
             Row::Fullscreen,
             Row::Scale,
             Row::GaugeArt,
+            Row::GaugeLayout,
             Row::Heading("MONITOR"),
             Row::Aspect,
             Row::CrtLook,
@@ -1167,6 +1181,7 @@ impl SettingsScreen {
             Row::Fullscreen => "MODE",
             Row::Aspect => "ASPECT",
             Row::GaugeArt => "GAUGE ART",
+            Row::GaugeLayout => "GAUGE LAYOUT",
             Row::CrtLook => "CRT LOOK",
             Row::TuneLook => "TUNE CRT LOOK >",
             Row::Vsync => "VSYNC",
@@ -1259,6 +1274,7 @@ impl SettingsScreen {
             Row::FrameDelay => format!("{}MS", self.frame_delay()),
             Row::Aspect => self.settings.aspect.label().to_string(),
             Row::GaugeArt => self.settings.gauge_art.label().to_string(),
+            Row::GaugeLayout => self.settings.gauge_layout.label().to_string(),
             Row::CrtLook => match self.looks.iter().find(|l| l.id == self.look()) {
                 Some(look) => look.name.clone(),
                 None => self.look().to_ascii_uppercase(),
@@ -1344,6 +1360,10 @@ impl SettingsScreen {
                 let art = self.settings.gauge_art;
                 self.settings.gauge_art = if delta < 0 { art.prev() } else { art.next() };
             }
+            Row::GaugeLayout => {
+                let layout = self.settings.gauge_layout;
+                self.settings.gauge_layout = if delta < 0 { layout.prev() } else { layout.next() };
+            }
             Row::CrtLook => {
                 // An id not in the list (it stepped from nowhere) starts
                 // from OFF, as does a look that failed (it shows OFF); the
@@ -1426,6 +1446,7 @@ impl SettingsScreen {
                 self.settings.frame_delay_ms = first.frame_delay_ms;
                 self.settings.aspect = first.aspect;
                 self.settings.gauge_art = first.gauge_art;
+                self.settings.gauge_layout = first.gauge_layout;
                 self.settings.crt_look = first.crt_look;
                 self.failed_look = None;
                 self.notice = None;
@@ -1640,7 +1661,7 @@ impl SettingsScreen {
                     self.reset_tab();
                     Some(Transition::ValueChanged)
                 }
-                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::ScreenShake | Row::Aspect | Row::GaugeArt | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
+                row @ (Row::Toggle(_) | Row::FullCast | Row::FourCountries | Row::WhatIfStyles | Row::Fullscreen | Row::Vsync | Row::ScreenShake | Row::Aspect | Row::GaugeArt | Row::GaugeLayout | Row::MoveInputs | Row::Scheme(_) | Row::CrtLook | Row::WiredOnly | Row::NetplayHud | Row::InputDelay) if !self.dim(row) => {
                     if let Row::Toggle(i) = row {
                         if TOGGLES[i].frames.is_some() {
                             return None;

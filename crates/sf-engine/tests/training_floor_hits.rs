@@ -383,10 +383,10 @@ fn a_combo_of_hits_at_the_floor_shows_its_full_damage_under_hold_combo() {
     assert_eq!(shown, Some(ComboCount { hits: string.len() as u16, damage: Some(full) }), "every hit, at its full damage");
 }
 
-/// Open the pause box and confirm RESET POSITIONS (its fifth row).
+/// Open the pause box and confirm RESET POSITIONS (its fourth row).
 fn reset_positions(s: &mut GameSession) {
     tap(s, with(|i| i.menu.start = true));
-    for _ in 0..4 {
+    for _ in 0..3 {
         tap(s, down());
     }
     let out = s.step(confirm());

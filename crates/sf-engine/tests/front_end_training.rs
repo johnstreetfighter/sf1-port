@@ -27,7 +27,7 @@ use sf_engine::run::PowerOnMachine;
 use sf_engine::tasks::Io;
 use sf_video::compositor::{ink, small_glyph, RomFont};
 use sf_video::decode::decode_char_tile;
-use sf_video::era_hud::GaugeArt;
+use sf_video::era_hud::{GaugeArt, GaugeLayout};
 use sf_video::render::{render_frame, Frame, WIDTH};
 use sf_video::romset::{load_assets, Assets};
 
@@ -214,7 +214,9 @@ fn overlays_restart_round_and_quit_to_menu() {
     let attract = s.attract_machine().save_snapshot();
     // OVERLAYS cycles off, hitboxes, frame meter, both.
     tap(&mut s, start());
-    tap(&mut s, down());
+    for _ in 0..3 {
+        tap(&mut s, down()); // RESUME, MOVES, RESTART ROUND, then OVERLAYS
+    }
     for mode in [OverlayMode::Hitboxes, OverlayMode::FrameMeter, OverlayMode::Both, OverlayMode::Off, OverlayMode::Hitboxes] {
         assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::Overlays)));
         assert_eq!(s.fight().unwrap().overlay(), mode);
@@ -231,8 +233,8 @@ fn overlays_restart_round_and_quit_to_menu() {
     let round_start = s.fight().unwrap().round_start().expect("a round has started").clone();
     assert_ne!(s.fight_machine().unwrap().save_snapshot(), round_start);
     tap(&mut s, start());
-    for _ in 0..4 {
-        tap(&mut s, down());
+    for _ in 0..2 {
+        tap(&mut s, down()); // RESUME, MOVES, then RESTART ROUND
     }
     let out = s.step(confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::RestartRound)));
@@ -240,11 +242,15 @@ fn overlays_restart_round_and_quit_to_menu() {
     assert_eq!(s.fight_machine().unwrap().save_snapshot(), round_start, "bit for bit");
     s.step(idle());
 
-    // QUIT TO MENU: the Main Menu at once, the attract as it was.
+    // QUIT TO MENU asks first; YES goes to the Main Menu, the attract as it was.
     tap(&mut s, start());
-    for _ in 0..5 {
-        tap(&mut s, down());
+    for _ in 0..7 {
+        tap(&mut s, down()); // the last of the eight rows
     }
+    let out = tap(&mut s, confirm());
+    assert_ne!(out.transition, Some(Transition::Choose(MenuItem::QuitToMenu)), "the quit asks before it quits");
+    assert_eq!(out.screen, "pause");
+    tap(&mut s, with(|i| i.p1.directions[RIGHT] = true));
     let out = s.step(confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::QuitToMenu)));
     assert_eq!(out.screen, "main menu");
@@ -264,8 +270,8 @@ fn the_gauge_art_row_changes_the_live_fight_and_the_settings_value() {
     let out = s.step(start());
     s.step(idle());
     let col = PauseBox::label_col();
-    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(3), "GAUGE ART", ink::BLUE));
-    for _ in 0..3 {
+    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(5), "GAUGE ART", ink::BLUE));
+    for _ in 0..5 {
         tap(&mut s, down());
     }
     let fight_frame = s.fight_machine().unwrap().state.frame;
@@ -279,7 +285,7 @@ fn the_gauge_art_row_changes_the_live_fight_and_the_settings_value() {
         assert_eq!(s.screen(), "pause");
     }
     let shown = settled_value(&mut s);
-    assert!(text_at(&shown.frame, &a, 36 - "BLOCKS".len(), PauseBox::item_row(3), "BLOCKS", ink::YELLOW));
+    assert!(text_at(&shown.frame, &a, 36 - "BLOCKS".len(), PauseBox::item_row(5), "BLOCKS", ink::YELLOW));
 
     // A rapid reversal replaces the cue, and wrapping follows the input.
     let step = |s: &mut GameSession, dir, want: GaugeArt| {
@@ -290,7 +296,7 @@ fn the_gauge_art_row_changes_the_live_fight_and_the_settings_value() {
         assert_eq!(s.fight_machine().unwrap().state.frame, fight_frame);
         let mut settled = s.clone();
         let resting = settled_value(&mut settled).frame;
-        let row = PauseBox::item_row(3);
+        let row = PauseBox::item_row(5);
         let start = (36 - want.label().len()) * 8;
         let end = 36 * 8;
         let tick = if dir == LEFT { start - 6 } else { end + 6 };
@@ -319,14 +325,13 @@ fn look(id: &str, name: &str) -> LookName {
 }
 
 #[test]
-fn the_look_row_sits_above_gauge_art_in_every_pause_box() {
+fn the_look_row_sits_directly_above_gauge_art_and_quit_to_menu_is_last_in_every_pause_box() {
     for training in [false, true] {
         let items = PauseBox::open(training).items();
-        assert_eq!(
-            items[..4],
-            [MenuItem::Resume, MenuItem::Overlays, MenuItem::Look, MenuItem::GaugeArt],
-            "training: {training}"
-        );
+        let look = items.iter().position(|&i| i == MenuItem::Look).expect("a LOOK row");
+        assert_eq!(items[look + 1], MenuItem::GaugeArt, "training: {training}");
+        assert_eq!(items[look + 2], MenuItem::GaugeLayout, "training: {training}");
+        assert_eq!(*items.last().unwrap(), MenuItem::QuitToMenu, "training: {training}");
     }
     assert_eq!(MenuItem::Look.label(), "LOOK");
     // Long names are cut to the cells between the label and the box's edge.
@@ -348,9 +353,9 @@ fn the_look_row_steps_the_full_list_over_the_live_fight_and_saves_as_a_settings_
     let out = s.step(start());
     s.step(idle());
     let col = PauseBox::label_col();
-    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(2), "LOOK", ink::BLUE));
-    assert!(text_at(&out.frame, &a, 36 - "ARCADE CABINET".len(), PauseBox::item_row(2), "ARCADE CABINET", ink::BLUE));
-    for _ in 0..2 {
+    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(4), "LOOK", ink::BLUE));
+    assert!(text_at(&out.frame, &a, 36 - "ARCADE CABINET".len(), PauseBox::item_row(4), "ARCADE CABINET", ink::BLUE));
+    for _ in 0..4 {
         tap(&mut s, down());
     }
     let paused = s.step(idle()).frame;
@@ -378,11 +383,11 @@ fn the_look_row_steps_the_full_list_over_the_live_fight_and_saves_as_a_settings_
     let shown = settled_value(&mut s).frame;
     let short = short_look_name(&long.name);
     assert!(short.chars().count() <= LOOK_CELLS);
-    assert!(text_at(&shown, &a, 36 - short.chars().count(), PauseBox::item_row(2), &short, ink::YELLOW));
-    assert!(text_at(&shown, &a, col, PauseBox::item_row(2), "LOOK", ink::YELLOW));
+    assert!(text_at(&shown, &a, 36 - short.chars().count(), PauseBox::item_row(4), &short, ink::YELLOW));
+    assert!(text_at(&shown, &a, col, PauseBox::item_row(4), "LOOK", ink::YELLOW));
     // The fight behind the box is the look's to draw, not the engine's: every
     // other row of the frame is as it was before the look was touched.
-    let (row, rows) = (PauseBox::item_row(2) * 8, 8);
+    let (row, rows) = (PauseBox::item_row(4) * 8, 8);
     for (i, (a, b)) in paused.argb.iter().zip(&shown.argb).enumerate() {
         let y = i / WIDTH;
         assert!(a == b || (row..row + rows).contains(&y), "pixel row {y} changed");
@@ -522,8 +527,8 @@ fn up() -> FrameInputs {
 const UP: usize = 3;
 
 /// Training's pause box rows by name.
-const RESET_POSITIONS_ROW: usize = 4;
-const TRAINING_ROW: usize = 6;
+const RESET_POSITIONS_ROW: usize = 3;
+const TRAINING_ROW: usize = 2;
 
 /// Open the pause box and put the cursor on `row`; the box's last frame.
 fn pause_on(s: &mut GameSession, row: usize) -> FrameOutput {
@@ -547,38 +552,54 @@ fn title_drawn(frame: &Frame, a: &Assets) -> bool {
 }
 
 #[test]
-fn trainings_pause_box_has_eight_rows_with_moves_last_and_the_other_fights_keep_seven() {
+fn the_pause_boxes_have_nine_training_rows_eight_local_rows_and_seven_online_rows_with_quit_last() {
     assert_eq!(
         PauseBox::open(true).items(),
         [
             MenuItem::Resume,
+            MenuItem::Moves,
+            MenuItem::TrainingSettings,
+            MenuItem::ResetPositions,
             MenuItem::Overlays,
             MenuItem::Look,
             MenuItem::GaugeArt,
-            MenuItem::ResetPositions,
+            MenuItem::GaugeLayout,
             MenuItem::QuitToMenu,
-            MenuItem::TrainingSettings,
-            MenuItem::Moves,
         ]
     );
     assert_eq!(
         PauseBox::open(false).items(),
         [
             MenuItem::Resume,
+            MenuItem::Moves,
+            MenuItem::RestartRound,
             MenuItem::Overlays,
             MenuItem::Look,
             MenuItem::GaugeArt,
-            MenuItem::RestartRound,
+            MenuItem::GaugeLayout,
             MenuItem::QuitToMenu,
+        ]
+    );
+    assert_eq!(
+        PauseBox::open_online().items(),
+        [
+            MenuItem::Resume,
             MenuItem::Moves,
+            MenuItem::Overlays,
+            MenuItem::Look,
+            MenuItem::GaugeArt,
+            MenuItem::GaugeLayout,
+            MenuItem::QuitToMenu,
         ]
     );
     assert_eq!(MenuItem::ResetPositions.label(), "RESET POSITIONS");
     assert_eq!(MenuItem::TrainingSettings.label(), "TRAINING");
     assert_eq!(MenuItem::RestartRound.label(), "RESTART ROUND");
-    // The eighth row and the box's foot are on the 28-row screen.
-    assert!(PauseBox::item_row(7) + 2 <= 28);
-    // The settings box sits inside the pause box, FILL METERS under HOLD COMBO.
+    // The ninth row and the box's foot are on the 28-row screen.
+    assert!(PauseBox::item_row(8) + 2 <= 28);
+    // The settings box sits inside the pause box, FILL METERS under HOLD COMBO,
+    // and ends above the pause box's last two rows (GAUGE LAYOUT, QUIT TO MENU),
+    // which are not drawn while it is open.
     assert_eq!(TrainingBox::items(), [MenuItem::LivePreset, MenuItem::HoldCombo, MenuItem::FillMeters,
         MenuItem::TrainingDrill, MenuItem::ComboTrial]);
     assert_eq!(MenuItem::FillMeters.label(), "FILL METERS");
@@ -587,7 +608,7 @@ fn trainings_pause_box_has_eight_rows_with_moves_last_and_the_other_fights_keep_
 }
 
 #[test]
-fn the_pause_boxes_draw_trainings_eight_rows_and_locals_seven() {
+fn the_pause_boxes_draw_trainings_nine_rows_and_locals_eight() {
     let Some(a) = assets() else { return };
     let font_assets = load_assets(ROMS, MANIFEST).unwrap();
     let col = PauseBox::label_col();
@@ -595,26 +616,26 @@ fn the_pause_boxes_draw_trainings_eight_rows_and_locals_seven() {
     // COMBO row (they are in the settings box).
     let mut s = dummy_fight(a);
     let out = s.step(start());
-    let rows = ["RESUME", "OVERLAYS", "LOOK", "GAUGE ART", "RESET POSITIONS", "QUIT TO MENU", "TRAINING", "MOVES"];
+    let rows = ["RESUME", "MOVES", "TRAINING", "RESET POSITIONS", "OVERLAYS", "LOOK", "GAUGE ART", "GAUGE LAYOUT", "QUIT TO MENU"];
     for (i, label) in rows.iter().enumerate() {
         let color = if i == 0 { ink::YELLOW } else { ink::BLUE };
         assert!(text_at(&out.frame, &font_assets, col, PauseBox::item_row(i), label, color), "row {i}: {label}");
     }
-    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(4), "RESTART ROUND", ink::BLUE));
-    // Local: RESTART ROUND, QUIT TO MENU, MOVES, and nothing under it.
+    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(2), "RESTART ROUND", ink::BLUE));
+    // Local: RESTART ROUND where Training has TRAINING, QUIT TO MENU last, and nothing under it.
     let mut s = local_fight(load_assets(ROMS, MANIFEST).unwrap());
     let out = s.step(start());
-    let rows = ["RESUME", "OVERLAYS", "LOOK", "GAUGE ART", "RESTART ROUND", "QUIT TO MENU", "MOVES"];
+    let rows = ["RESUME", "MOVES", "RESTART ROUND", "OVERLAYS", "LOOK", "GAUGE ART", "GAUGE LAYOUT", "QUIT TO MENU"];
     for (i, label) in rows.iter().enumerate() {
         let color = if i == 0 { ink::YELLOW } else { ink::BLUE };
         assert!(text_at(&out.frame, &font_assets, col, PauseBox::item_row(i), label, color), "Local row {i}: {label}");
     }
-    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(6), "TRAINING", ink::BLUE));
-    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(7), "MOVES", ink::BLUE));
+    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(2), "TRAINING", ink::BLUE));
+    assert!(!text_at(&out.frame, &font_assets, col, PauseBox::item_row(8), "QUIT TO MENU", ink::BLUE));
 }
 
 #[test]
-fn the_training_row_opens_the_settings_box_over_the_pause_box() {
+fn the_training_row_opens_the_settings_box_and_the_pause_box_draws_no_rows_under_it() {
     let Some(a) = assets() else { return };
     let font_assets = load_assets(ROMS, MANIFEST).unwrap();
     let mut s = dummy_fight(a);
@@ -633,11 +654,21 @@ fn the_training_row_opens_the_settings_box_over_the_pause_box() {
     assert!(text_at(&out.frame, &font_assets, end - value.len(), rows[0], value, ink::YELLOW), "the preset's name");
     assert!(text_at(&out.frame, &font_assets, end - 3, rows[1], "OFF", ink::BLUE), "HOLD COMBO's value");
     assert!(text_at(&out.frame, &font_assets, end - 3, rows[2], "OFF", ink::BLUE), "FILL METERS' value");
-    // It covers the pause box's rows under it, and leaves the foot: the
-    // cursor on TRAINING, and MOVES.
-    assert!(!text_at(&out.frame, &font_assets, PauseBox::label_col(), PauseBox::item_row(2), "LOOK", ink::BLUE));
-    assert!(text_at(&out.frame, &font_assets, PauseBox::label_col(), PauseBox::item_row(TRAINING_ROW), "TRAINING", ink::YELLOW));
-    assert!(text_at(&out.frame, &font_assets, PauseBox::label_col(), PauseBox::item_row(7), "MOVES", ink::BLUE));
+    // While it is open the pause box draws none of its own rows, whether the
+    // settings box covers their place or not.
+    let pcol = PauseBox::label_col();
+    for (i, label) in ["RESUME", "MOVES", "RESET POSITIONS", "OVERLAYS", "LOOK", "GAUGE ART", "GAUGE LAYOUT", "QUIT TO MENU"].iter().enumerate() {
+        let row = PauseBox::item_row(if i < 2 { i } else { i + 1 });
+        assert!(!text_at(&out.frame, &font_assets, pcol, row, label, ink::BLUE), "{label} is not drawn");
+        assert!(!text_at(&out.frame, &font_assets, pcol, row, label, ink::YELLOW), "{label} is not drawn");
+    }
+    for color in [ink::BLUE, ink::YELLOW] {
+        assert!(!text_at(&out.frame, &font_assets, pcol, PauseBox::item_row(TRAINING_ROW), "TRAINING", color), "TRAINING is not drawn at its row");
+    }
+    // Back shows the rows again, the cursor on TRAINING.
+    let out = tap(&mut s, back());
+    assert!(text_at(&out.frame, &font_assets, pcol, PauseBox::item_row(TRAINING_ROW), "TRAINING", ink::YELLOW), "the cursor is on TRAINING");
+    assert!(text_at(&out.frame, &font_assets, pcol, PauseBox::item_row(8), "QUIT TO MENU", ink::BLUE), "the rows are back");
 }
 
 #[test]
@@ -743,7 +774,7 @@ fn back_leaves_the_settings_box_for_the_pause_box_on_training_and_start_resumes_
     assert!(!title_drawn(&out.frame, &font_assets), "the settings box is gone");
     let (col, row) = (PauseBox::label_col(), PauseBox::item_row(TRAINING_ROW));
     assert!(text_at(&out.frame, &font_assets, col, row, "TRAINING", ink::YELLOW), "the cursor is on TRAINING");
-    assert!(text_at(&out.frame, &font_assets, col, PauseBox::item_row(2), "LOOK", ink::BLUE), "the rows it covered are back");
+    assert!(text_at(&out.frame, &font_assets, col, PauseBox::item_row(5), "LOOK", ink::BLUE), "the rows are drawn again");
     // Confirm opens it again, with the cursor back on PRESET.
     let out = tap(&mut s, confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::TrainingSettings)));
@@ -832,7 +863,7 @@ fn restart_round_in_local_still_restores_the_whole_snapshot() {
     for _ in 0..200 {
         s.step(with(|i| i.p1.directions[RIGHT] = true));
     }
-    pause_on(&mut s, 4);
+    pause_on(&mut s, 2);
     let out = s.step(confirm());
     assert_eq!(out.transition, Some(Transition::Choose(MenuItem::RestartRound)));
     assert_eq!(s.fight_machine().unwrap().save_snapshot(), round_start, "bit for bit, configuration included");
@@ -905,8 +936,7 @@ fn reset_positions_after_turning_fill_meters_on_leaves_it_on_in_the_machine_the_
     assert!(text_at(&out.frame, &font_assets, end - 2, TrainingBox::item_row(2), "ON", ink::BLUE));
     // A second reset keeps it too.
     tap(&mut s, back());
-    tap(&mut s, up());
-    tap(&mut s, up());
+    tap(&mut s, down()); // from TRAINING to RESET POSITIONS
     assert_eq!(tap(&mut s, confirm()).transition, Some(Transition::Choose(MenuItem::ResetPositions)));
     assert!(s.fight_machine().unwrap().match_config().fill_meters);
 }
@@ -933,4 +963,48 @@ fn fill_meters_is_stamped_on_a_training_fight_from_the_saved_setting_and_means_n
     assert_eq!(s.fight_machine().unwrap().match_config().roster.mode, PlayMode::Versus);
     assert!(!s.fight_machine().unwrap().match_config().fill_meters);
     assert!(!s.fight().unwrap().setup().config.fill_meters);
+}
+
+/// #237 (CG1): GAUGE LAYOUT in the pause box, under GAUGE ART. It changes
+/// the live fight and the saved setting together, as GAUGE ART does.
+#[test]
+fn the_gauge_layout_row_changes_the_live_fight_and_the_settings_value() {
+    let Some(a) = assets() else { return };
+    let settings = Settings { gauge_layout: GaugeLayout::Compact, ..Settings::default() };
+    let mut s = local_fight_with(load_assets(ROMS, MANIFEST).unwrap(), settings);
+    assert_eq!(s.fight().unwrap().gauge_layout(), GaugeLayout::Compact, "a fight opens in the saved layout");
+    let out = s.step(start());
+    s.step(idle());
+    let col = PauseBox::label_col();
+    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(5), "GAUGE ART", ink::BLUE));
+    assert!(text_at(&out.frame, &a, col, PauseBox::item_row(6), "GAUGE LAYOUT", ink::BLUE));
+    for _ in 0..6 {
+        tap(&mut s, down());
+    }
+    for layout in [GaugeLayout::Classic, GaugeLayout::Compact] {
+        let out = tap(&mut s, confirm());
+        assert_eq!(out.transition, Some(Transition::Choose(MenuItem::GaugeLayout)));
+        assert!(out.settings_changed, "{layout:?}: the settings file is saved");
+        assert_eq!(s.fight().unwrap().gauge_layout(), layout);
+        assert_eq!(s.settings().gauge_layout, layout);
+        assert_eq!(s.screen(), "pause");
+    }
+    let shown = settled_value(&mut s);
+    assert!(text_at(&shown.frame, &a, 36 - "COMPACT".len(), PauseBox::item_row(6), "COMPACT", ink::YELLOW));
+    // Left steps back; with two values that is the other one.
+    s.step(with(|input| input.p1.directions[LEFT] = true));
+    assert_eq!(s.settings().gauge_layout, GaugeLayout::Classic);
+    assert!(!s.fight().unwrap().setup().config.to_toml().contains("gauge_layout"));
+}
+
+#[test]
+fn gauge_layout_sits_under_gauge_art_in_every_pause_box() {
+    for training in [false, true] {
+        let items = PauseBox::open(training).items();
+        let art = items.iter().position(|&i| i == MenuItem::GaugeArt).expect("a GAUGE ART row");
+        assert_eq!(items[art..art + 2], [MenuItem::GaugeArt, MenuItem::GaugeLayout], "training: {training}");
+    }
+    let online = PauseBox::open_online().items();
+    let art = online.iter().position(|&i| i == MenuItem::GaugeArt).expect("a GAUGE ART row");
+    assert_eq!(online[art..art + 2], [MenuItem::GaugeArt, MenuItem::GaugeLayout]);
 }

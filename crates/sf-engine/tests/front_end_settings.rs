@@ -20,7 +20,7 @@ use sf_engine::moves::InputNotation;
 use sf_engine::roster::{MenuInput, TournamentFighter};
 use sf_video::announcer::{AnnouncerLine, AnnouncerVoice};
 use sf_video::compositor::{fallback_text, ink, RomFont};
-use sf_video::era_hud::GaugeArt;
+use sf_video::era_hud::{GaugeArt, GaugeLayout};
 use sf_video::render::{HEIGHT, WIDTH};
 use sf_video::romset::{load_assets, Assets};
 
@@ -374,6 +374,7 @@ fn the_gameplay_rows_wording_and_values() {
             s_("MODE", "FULLSCREEN"),
             s_("WINDOW SCALE", "3X"),
             s_("GAUGE ART", "RULED"),
+            s_("GAUGE LAYOUT", "CLASSIC"),
             s_("MONITOR", ""),
             s_("ASPECT", "TRUE 4:3"),
             s_("CRT LOOK", "ARCADE CABINET"),
@@ -728,8 +729,8 @@ fn the_aspect_row_changes_the_picture_at_once_and_is_saved_on_leaving() {
     for _ in 0..2 {
         tap(&mut s, with(|i| i.menu.tab_right = true));
     }
-    // MODE, then WINDOW SCALE, GAUGE ART (DISPLAY) and ASPECT (MONITOR).
-    for _ in 0..3 {
+    // MODE, then WINDOW SCALE, GAUGE ART, GAUGE LAYOUT (DISPLAY) and ASPECT (MONITOR).
+    for _ in 0..4 {
         tap(&mut s, with(|i| i.p1.directions[2] = true));
     }
     // Each press shows in the very step that takes it, the file untouched.
@@ -874,4 +875,35 @@ fn the_match_config_carries_fill_meters_off_in_every_preset_and_does_not_save_it
         assert!(!text.contains("fill_meters"), "{preset:?}");
         assert!(!MatchConfig::from_toml(&text).unwrap().fill_meters, "{preset:?}");
     }
+}
+
+/// #237 (CG1): the gauge layout is a Video tab row under GAUGE ART, saved
+/// with the other settings and never part of the match config.
+#[test]
+fn gauge_layout_sits_under_gauge_art_cycles_classic_and_compact_and_is_saved() {
+    let mut s = at_label(2, "GAUGE LAYOUT");
+    assert_eq!(s.value(s.row()), "CLASSIC", "today's layout is the default");
+    assert_eq!(s.apply(MenuInput::Right), Some(Transition::ValueChanged));
+    assert_eq!(s.value(s.row()), "COMPACT");
+    assert_eq!(s.settings().gauge_layout, GaugeLayout::Compact);
+    assert_eq!(s.apply(MenuInput::Right), Some(Transition::ValueChanged));
+    assert_eq!(s.settings().gauge_layout, GaugeLayout::Classic, "two values wrap");
+    assert_eq!(s.apply(MenuInput::Left), Some(Transition::ValueChanged));
+    assert_eq!(s.settings().gauge_layout, GaugeLayout::Compact);
+    s.apply(MenuInput::Up);
+    assert_eq!(s.label(s.row()), "GAUGE ART", "the row above");
+    while s.row() != Row::ResetTab {
+        s.apply(MenuInput::Down);
+    }
+    s.apply(MenuInput::Confirm);
+    assert_eq!(s.settings().gauge_layout, GaugeLayout::Classic, "RESET TAB");
+
+    let saved = Settings { gauge_layout: GaugeLayout::Compact, ..Settings::default() };
+    assert!(saved.to_toml().contains("gauge_layout = \"compact\""));
+    assert_eq!(Settings::from_toml(&saved.to_toml()).unwrap().gauge_layout, GaugeLayout::Compact);
+    // A settings file from before the row loads CLASSIC, and a stray value is refused.
+    let old: String = saved.to_toml().lines().filter(|l| !l.starts_with("gauge_layout")).collect::<Vec<_>>().join("\n");
+    assert_eq!(Settings::from_toml(&old).unwrap().gauge_layout, GaugeLayout::Classic);
+    assert!(Settings::from_toml("gauge_layout = \"sideways\"\n").is_err());
+    assert!(!MatchConfig::default().to_toml().contains("gauge_layout"));
 }

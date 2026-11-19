@@ -504,10 +504,10 @@ fn hit_once_into_the_wait(s: &mut GameSession, w: &mut Watch) {
     assert!(w.last[1].health < FULL);
 }
 
-/// Open the pause box and confirm RESET POSITIONS (its fifth row).
+/// Open the pause box and confirm RESET POSITIONS (its fourth row).
 fn reset_positions(s: &mut GameSession) {
     tap(s, with(|i| i.menu.start = true));
-    for _ in 0..4 {
+    for _ in 0..3 {
         tap(s, down());
     }
     let out = s.step(confirm());

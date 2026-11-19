@@ -241,6 +241,7 @@ impl GameSession {
         fight.set_satsui_art(self.satsui_art.clone());
         fight.set_selected_styles([Some(replay.p1_style), Some(replay.p2_style)]);
         fight.set_gauge_art(self.settings.gauge_art);
+        fight.set_gauge_layout(self.settings.gauge_layout);
         fight.set_screen_shake(self.settings.screen_shake);
         Self::seed_replay_fight(&mut fight, replay.seed);
         let assets = fight_assets(&self.assets, &self.bank_assets, setup.config.preset);

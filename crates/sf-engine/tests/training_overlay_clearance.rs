@@ -105,7 +105,9 @@ fn training(a: Assets) -> GameSession {
 /// Cycles the pause box's OVERLAYS row to `mode` and resumes.
 fn set_overlay(s: &mut GameSession, mode: OverlayMode) {
     tap(s, start());
-    tap(s, down());
+    for _ in 0..4 {
+        tap(s, down()); // RESUME, MOVES, TRAINING, RESET POSITIONS, then OVERLAYS
+    }
     while s.fight().unwrap().overlay() != mode {
         tap(s, confirm());
     }
@@ -306,9 +308,9 @@ fn a_fights_gauges_are_drawn_in_the_chosen_gauge_art() {
         s.step(idle());
     }
     let ruled = s.step(idle()).frame;
-    // The pause box's GAUGE ART row (under LOOK): Right moves Ruled to Blocks.
+    // The pause box's GAUGE ART row (the seventh in a Training box, under LOOK): Right moves Ruled to Blocks.
     tap(&mut s, start());
-    for _ in 0..3 {
+    for _ in 0..6 {
         tap(&mut s, down());
     }
     tap(&mut s, with(|i| i.p1.directions[0] = true));
@@ -335,7 +337,7 @@ fn the_paused_fight_shows_a_gauge_art_change_behind_the_pause_box() {
         s.step(idle());
     }
     tap(&mut s, start());
-    for _ in 0..3 {
+    for _ in 0..6 {
         tap(&mut s, down());
     }
     let before = s.step(idle()).frame;
@@ -360,9 +362,9 @@ fn reset_positions_clears_the_abandoned_attempts_call_outs() {
     s.push_callouts(&[CalloutEvent::new(Side::P1, CalloutKind::Counter)]);
     s.step(idle());
     assert!(!s.fight().unwrap().callouts().frame().is_empty());
-    // The pause box's RESET POSITIONS (the fifth row).
+    // The pause box's RESET POSITIONS (the fourth row).
     tap(&mut s, start());
-    for _ in 0..4 {
+    for _ in 0..3 {
         tap(&mut s, down());
     }
     tap(&mut s, confirm());

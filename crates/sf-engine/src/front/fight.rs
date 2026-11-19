@@ -16,7 +16,7 @@ use sf_video::announcer::AnnouncerLine;
 use sf_video::background_bank::BackgroundBank;
 use sf_video::callouts::{draw, draw_strip, draw_strip_inputs, regions, CalloutBoard, CalloutEvent, CalloutFrame, CalloutKind, Side, Strip};
 use sf_video::compositor::{present, present_with_move_effects, AfterimageTrail, EraHud, OverhaulScene, PaletteTint, PresentMode, RomFont, SurfaceImpactBurst};
-use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeRow, GaugeState};
+use sf_video::era_hud::{EraGauge, Fill, GaugeArt, GaugeLayout, GaugeRow, GaugeState};
 use sf_video::render::{
     capture_sprite_pose_with_art, render_frame, render_frame_edited, render_frame_staged_with_art,
     render_frame_staged_with_motion, render_frame_staged_with_tints, Frame, SpriteArt, SpriteArtOverride, SpriteTint, TextEdits, TextSpan,
@@ -416,6 +416,8 @@ pub struct Fight {
     overlay: OverlayMode,
     /// The active gauge art from Settings or the pause box.
     gauge_art: GaugeArt,
+    /// Where and how large the gauges are drawn (the `GAUGE LAYOUT` setting).
+    gauge_layout: GaugeLayout,
     gauge_effects: GaugeEffects,
     /// Short presentation cues indexed by displayed lifebar.
     lifebar_trails: LifebarTrails,
@@ -604,7 +606,7 @@ impl Fight {
         let Self {
             machine, setup, country, black, over, continuing, round_start,
             last_flow, show, read, fed_reads,
-            sounds: _, overlay: _, gauge_art: _, gauge_effects: _, impact_visuals: _, screen_shake: _, callouts: _, pending_callouts: _,
+            sounds: _, overlay: _, gauge_art: _, gauge_layout: _, gauge_effects: _, impact_visuals: _, screen_shake: _, callouts: _, pending_callouts: _,
             lifebar_trails: _, round_motion: _, timer_motion: _,
             pending_combos: _, reader: _, combo: _, moments: _, hold_combo: _,
             era_hud: _, trails: _, stock_move_effects: _, move_effects: _, satsui_art: _,
@@ -656,7 +658,7 @@ impl Fight {
         // Exhaustive destructuring makes new wrapper fields require an audit.
         let Self {
             machine, setup, country, black, sounds, over, continuing,
-            overlay: _, gauge_art: _, gauge_effects, impact_visuals, screen_shake: _, selected_styles: _, round_start, last_flow, callouts,
+            overlay: _, gauge_art: _, gauge_layout: _, gauge_effects, impact_visuals, screen_shake: _, selected_styles: _, round_start, last_flow, callouts,
             lifebar_trails, round_motion, timer_motion,
             pending_callouts, pending_combos, reader, read, fed_reads,
             combo, moments, hold_combo, era_hud, trails, stock_move_effects: _, move_effects,
@@ -819,6 +821,7 @@ impl Fight {
             continuing: None,
             overlay: OverlayMode::Off,
             gauge_art: GaugeArt::default(),
+            gauge_layout: GaugeLayout::default(),
             gauge_effects: GaugeEffects::default(),
             lifebar_trails: LifebarTrails::default(),
             round_motion: RoundMotion::default(),
@@ -1075,6 +1078,16 @@ impl Fight {
 
     pub fn set_gauge_art(&mut self, art: GaugeArt) {
         self.gauge_art = art;
+    }
+
+    /// The gauge layout this fight is drawn in.
+    pub fn gauge_layout(&self) -> GaugeLayout {
+        self.gauge_layout
+    }
+
+    /// A presentation setting like the gauge art: it is not fight state.
+    pub fn set_gauge_layout(&mut self, layout: GaugeLayout) {
+        self.gauge_layout = layout;
     }
 
     /// Whether the new move effects are drawn: always under Definitive
@@ -2208,6 +2221,7 @@ impl Fight {
                         ally2_gauge: ally2_gauge.map(|gauge| self.callouts.ally2_gauge(gauge)),
                         ally2_gauge_presentation: ally2.map(|corner| self.gauge_effects.present(2, corner)),
                         gauge_art: self.gauge_art,
+                        gauge_layout: self.gauge_layout,
                         hud_lift: gauge_lift(meter),
                         stage: Some(&stage),
                         afterimages: [0, 1].map(|side| Some(if preview && self.move_effects.zanei_rush()[side] {

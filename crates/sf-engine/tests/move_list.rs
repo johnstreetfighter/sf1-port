@@ -619,7 +619,7 @@ fn start_in_the_list_resumes_the_fight_and_a_lost_pad_closes_it_to_the_pause_box
     assert_eq!(out.screen, "pause");
     let notice = "P1 PAD DISCONNECTED";
     let col = 10 + (28 - notice.len()) / 2;
-    assert!(text_in(&out.frame.argb, 384, &a, col, 8, notice, ink::YELLOW), "the notice shows");
+    assert!(text_in(&out.frame.argb, 384, &a, col, 7, notice, ink::YELLOW), "the notice shows");
 }
 
 fn p2_of(s: &GameSession) -> TournamentFighter {

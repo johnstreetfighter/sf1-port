@@ -315,9 +315,16 @@ fn local_cards_darken_the_portraits_update_the_badge_and_remember_each_era() {
         tap(&mut session, |i| i.menu.start = true).transition,
         Some(Transition::Paused)
     );
-    for _ in 0..5 {
-        tap(&mut session, |i| i.p1.directions[2] = true);
+    for _ in 0..7 {
+        tap(&mut session, |i| i.p1.directions[2] = true); // the last of the eight rows
     }
+    // QUIT TO MENU asks first: Confirm, Right (YES), Confirm.
+    assert_ne!(
+        tap(&mut session, |i| i.menu.confirm = true).transition,
+        Some(Transition::Choose(MenuItem::QuitToMenu))
+    );
+    assert_eq!(session.screen(), "pause", "the question keeps the box up");
+    tap(&mut session, |i| i.p1.directions[0] = true);
     assert_eq!(
         tap(&mut session, |i| i.menu.confirm = true).transition,
         Some(Transition::Choose(MenuItem::QuitToMenu))

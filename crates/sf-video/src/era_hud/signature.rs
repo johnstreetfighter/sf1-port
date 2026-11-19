@@ -345,6 +345,20 @@ impl RowPaint {
         Palette { body, light, rail, track }
     }
 
+    /// The flash of a payment just made (amber) or a charge just begun
+    /// (cream). A label shows it on its emblem and underline; a layout
+    /// without labels shows it on the row's rule.
+    pub(super) fn cue(self) -> Option<u32> {
+        let info = self.presentation?;
+        if info.spend_age.is_some_and(|age| age < 10) {
+            Some(DRAIN_AMBER)
+        } else if info.charge.is_some_and(|charge| charge.age < 10) {
+            Some(super::pens::CREAM)
+        } else {
+            None
+        }
+    }
+
     pub(super) fn digit(self, original: [u32; 3]) -> [u32; 3] {
         let Some(p) = self.presentation else { return original };
         let Palette { body, light, .. } = self.shown();
@@ -446,15 +460,7 @@ pub(super) fn draw_label(corner: &mut Corner<'_>, lx: usize, at: Slot, kind: Gau
         GaugeKind::Sf6Drive if paint.state != GaugeState::Greyed => color(0x9af16e),
         _ => paint.shown().light,
     };
-    let cue = paint.presentation.and_then(|info| {
-        if info.spend_age.is_some_and(|age| age < 10) {
-            Some(DRAIN_AMBER)
-        } else if info.charge.is_some_and(|charge| charge.age < 10) {
-            Some(super::pens::CREAM)
-        } else {
-            None
-        }
-    });
+    let cue = paint.cue();
     let mut draw = |gx, bitmap: [u8; 5], ink, flip| {
         for (row, bits) in bitmap.into_iter().enumerate() {
             for col in 0..3 {

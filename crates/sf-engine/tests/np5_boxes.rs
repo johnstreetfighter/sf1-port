@@ -66,19 +66,27 @@ fn online_pause_has_only_network_safe_rows_and_renders_the_live_frame_and_notice
     let mut pause = PauseBox::open_online();
     let items = [
         MenuItem::Resume,
+        MenuItem::Moves,
         MenuItem::Overlays,
         MenuItem::Look,
         MenuItem::GaugeArt,
+        MenuItem::GaugeLayout,
         MenuItem::QuitToMenu,
-        MenuItem::Moves,
     ];
     assert_eq!(pause.items(), items);
     for item in items {
-        assert_eq!(
-            pause.apply(MenuInput::Confirm),
-            Some(Transition::Choose(item))
-        );
+        if item == MenuItem::QuitToMenu {
+            // Quitting asks first; Down takes the question away and moves on.
+            assert_eq!(pause.apply(MenuInput::Confirm), Some(Transition::CursorMoved));
+            assert_eq!(pause.asking_to_quit(), Some(false));
+        } else {
+            assert_eq!(
+                pause.apply(MenuInput::Confirm),
+                Some(Transition::Choose(item))
+            );
+        }
         assert_eq!(pause.apply(MenuInput::Down), Some(Transition::CursorMoved));
+        assert_eq!(pause.asking_to_quit(), None);
     }
     assert_eq!(
         pause.apply(MenuInput::Back),
@@ -89,9 +97,13 @@ fn online_pause_has_only_network_safe_rows_and_renders_the_live_frame_and_notice
         Some(Transition::Choose(MenuItem::Resume))
     );
     pause.apply(MenuInput::Up);
+    assert_eq!(pause.apply(MenuInput::Confirm), Some(Transition::CursorMoved));
+    assert_eq!(pause.asking_to_quit(), Some(false));
+    assert_eq!(pause.apply(MenuInput::Right), Some(Transition::CursorMoved));
+    assert_eq!(pause.asking_to_quit(), Some(true));
     assert_eq!(
         pause.apply(MenuInput::Confirm),
-        Some(Transition::Choose(MenuItem::Moves))
+        Some(Transition::Choose(MenuItem::QuitToMenu))
     );
     assert!(PauseBox::open(false)
         .items()
@@ -129,17 +141,18 @@ fn online_pause_has_only_network_safe_rows_and_renders_the_live_frame_and_notice
         &shown,
         &font,
         12,
-        8,
+        7,
         "CONTROLLER DISCONNECTED",
         ink::YELLOW
     ));
     for (index, label) in [
         "RESUME",
+        "MOVES",
         "OVERLAYS",
         "LOOK",
         "GAUGE ART",
+        "GAUGE LAYOUT",
         "QUIT TO MENU",
-        "MOVES",
     ]
     .into_iter()
     .enumerate()

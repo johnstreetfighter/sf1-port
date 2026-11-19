@@ -479,7 +479,9 @@ fn leaving_a_fight_stops_the_track() {
         r.step(idle());
     }
     assert!(r.stops().is_empty(), "paused: {:?}", r.cues);
-    assert_eq!(r.choose(5), "main menu", "QUIT TO MENU");
+    assert_eq!(r.choose(7), "pause", "QUIT TO MENU asks first");
+    assert_eq!(r.tap(with(|i| i.p1.directions[RIGHT] = true)), "pause", "YES");
+    assert_eq!(r.tap(confirm()), "main menu", "QUIT TO MENU");
     assert_eq!(r.stops().len(), 1, "{:?}", r.cues);
 }
 
