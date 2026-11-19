@@ -268,7 +268,7 @@ pub fn present_with_move_effects(
     );
     if let Some(gauge) = &scene.ally2_gauge {
         era_hud::draw_ally2_presented(
-            &mut argb, gauge, scene.gauge_art, scene.font, scene.hud_lift,
+            &mut argb, gauge, scene.gauge_art, scene.gauge_layout, scene.font, scene.hud_lift,
             scene.ally2_gauge_presentation,
         );
     }
