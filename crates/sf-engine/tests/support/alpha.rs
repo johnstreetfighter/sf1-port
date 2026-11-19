@@ -520,7 +520,8 @@ pub fn local_fight_p2_ryu(
     wait_for_fight(&mut session);
     let [_, p2] = session.fight_machine().unwrap().era_fighters();
     assert_eq!(p2.fighter, Some(TournamentFighter::Ryu));
-    assert_eq!((p2.style.revision, p2.style.loadout), (revision, loadout));
+    let pick = p2.pick();
+    assert_eq!((pick.revision, pick.loadout), (revision, loadout));
     session
 }
 

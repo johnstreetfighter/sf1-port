@@ -79,6 +79,7 @@ const PUNCH_MASK: u8 = 0b000111;
 const KICK_MASK: u8 = 0b111000;
 
 pub(crate) mod st_ken_kicks;
+pub mod stun;
 
 const ALPHA_REVISIONS: &[Revision] = &[Revision::Sfz1, Revision::Sfz2, Revision::Sfz2A, Revision::Sfz3];
 const ALPHA_3: &[Revision] = &[Revision::Sfz3];
@@ -523,7 +524,7 @@ pub struct EraFighterState {
     sagat_charge: bool,
     pub(crate) charged_tiger_blow: bool,
     death_mark: Option<DeathMark>,
-    dizzy_frames: u8,
+    pub(crate) dizzy_frames: u8,
     active_alpha_slot: u8,
     active_alpha_super_level: u8,
     guard_power: GuardPower,
@@ -534,15 +535,16 @@ pub struct EraFighterState {
     tour: world_tour::TourFighter,
     evil_ryu_kit: EvilRyuKit,
     kessen: Option<KessenState>,
+    pub(crate) stun: stun::StunState,
 }
 
-crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v13", {
+crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v14", {
     style, fighter, sub_hp, max_sub_hp, super_meter, super_capacity, unified_gauge, what_if,
     super_motion, extra_motion, st_ken_kick_motions, st_ken_heel_requested, alpha_counter_motion, custom_frames, sf3, sf4, sf5, sf6, what_if_kit, alpha_motions,
     alpha_buttons, alpha_previous_buttons, punch_taps, punch_tap_window, pair_held, pair_released, repeated_kick, held_windup_frames,
     gen_crane, command_throw_damage, sagat_charge, charged_tiger_blow, death_mark, dizzy_frames,
     active_alpha_slot, active_alpha_super_level, guard_power, move_hits, juggle_count, st_ryu_air_reaction,
-    attack_reached_active, tour, evil_ryu_kit, kessen,
+    attack_reached_active, tour, evil_ryu_kit, kessen, stun,
 });
 
 impl EraFighterState {
@@ -563,6 +565,27 @@ impl EraFighterState {
     /// `None` for a fighter in any other style.
     pub fn versatile_stocks(&self) -> Option<u8> {
         self.kessen.map(|kessen| kessen.versatile)
+    }
+
+    /// Whether the style card picked `SF KESSEN` for him.
+    pub fn is_kessen(&self) -> bool {
+        self.kessen.is_some()
+    }
+
+    /// The stun he has built (KS17): it empties when its timer runs out,
+    /// and a full total dizzies him.
+    pub fn stun(&self) -> u8 {
+        self.stun.points
+    }
+
+    /// The stun that dizzies him now: it rises with each dizzy this match.
+    pub fn stun_limit(&self) -> u8 {
+        self.stun.limit()
+    }
+
+    /// Dizzy: he cannot act until it ends or he is hit.
+    pub fn is_dizzy(&self) -> bool {
+        self.dizzy_frames != 0
     }
 
     fn kessen_ration(&self) -> Option<crate::era::KessenRation> {
@@ -1479,6 +1502,9 @@ impl Bus<'_> {
                 },
                 // Evil Ryu has no SF KESSEN kit yet: an awakened Ryu drops the meters.
                 kessen: kessen.filter(|_| profile.is_none()),
+                // A new round empties the stun; the match's dizzies still
+                // raise the limit.
+                stun: if carried { previous.stun.next_round() } else { stun::StunState::default() },
                 ..EraFighterState::default()
             };
             next.set_gauge_mode(self.era_gauge_mode(index));
@@ -2332,7 +2358,15 @@ impl Bus<'_> {
                     }
                 }
                 state.guard_power.tick(guarding);
-                state.dizzy_frames = state.dizzy_frames.saturating_sub(1);
+                state.stun.tick();
+                // A stun dizzy counts down only while he stands in it, so
+                // the hit reaction that led to it does not use it up.
+                if !state.stun.dizzied || ready {
+                    state.dizzy_frames = state.dizzy_frames.saturating_sub(1);
+                }
+                if state.dizzy_frames == 0 {
+                    state.stun.recovered();
+                }
                 if let Some(mark) = &mut state.death_mark {
                     mark.frames -= 1;
                     if mark.frames == 0 {

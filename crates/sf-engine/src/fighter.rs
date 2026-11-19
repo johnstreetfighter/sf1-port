@@ -39,6 +39,7 @@ use crate::data_bank::{
 use crate::machine::MachineState;
 use crate::roster::PlayMode;
 
+mod kessen_stun;
 mod move_effects;
 mod ryu_walk_pacing;
 mod st_ryu_contact;
@@ -3644,6 +3645,7 @@ impl Bus<'_> {
         }
         if !is_chip {
             self.era_alpha_damage_effects(owner, ps, move_id, alpha_level);
+            self.kessen_stun_hit(owner, ps, me, move_id, projectile.is_some());
         }
         let record = damage.div_ceil(crate::era_fight::SUB_HP_PER_POINT).min(u16::from(u8::MAX)) as u8;
         self.training_hit(ps, record);
@@ -6532,6 +6534,9 @@ impl Bus<'_> {
             if self.era_dizzy(ps) && matches!(self.eb(me, 0xa), 2..=4 | 8) {
                 self.start_move(me, ps, 1);
             }
+            if self.era_dizzy(ps) {
+                self.kessen_dizzy_sway(me, ps);
+            }
             self.ww(ps, 0);
             self.clear_neg_edge_latches_for_player(ps);
             self.clear_recovery_buffer(ps);
@@ -7517,6 +7522,7 @@ impl Bus<'_> {
         use crate::era_fight::SF2_EXTRA_SPECIAL;
         use crate::roster::TournamentFighter::{Ken, Ryu, Sagat};
 
+        self.kessen_stun_move_started(ps);
         self.era_sf4_started(ps, move_id);
         self.sf6_started(ps, move_id);
         self.sf5_on_move_started(ps, move_id);

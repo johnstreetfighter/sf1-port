@@ -500,6 +500,14 @@ _Avoid_: cancel window
 The frames a hit fighter can't act. Under the classic rules it is his whole 1987 hit reaction, during which he can't be hit; under true combos it is the attacking move's, and a ground reaction can be hit.
 _Avoid_: stagger, hit reaction (that is the animation)
 
+**Stun**:
+The build-up a hit adds toward a dizzy, by the attacking move's value. It empties when its timer runs out. Only `SF KESSEN` attackers deal it so far.
+_Avoid_: dizzy damage, stun meter (a bare "stun" is never hitstun)
+
+**Dizzy**:
+The state a full stun leaves a fighter in: he cannot act, can be hit, and recovers after its time or on the next hit.
+_Avoid_: stunned, dazed
+
 **Blockstun**:
 The frames a guarding fighter is held in his guard after blocking a hit. The 1987 game has none; true combos give each move its own.
 _Avoid_: guard stun
