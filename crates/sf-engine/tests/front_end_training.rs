@@ -1008,3 +1008,24 @@ fn gauge_layout_sits_under_gauge_art_in_every_pause_box() {
     let art = online.iter().position(|&i| i == MenuItem::GaugeArt).expect("a GAUGE ART row");
     assert_eq!(online[art..art + 2], [MenuItem::GaugeArt, MenuItem::GaugeLayout]);
 }
+
+/// While `QUIT?` is asked the row's one arrow is beside the chosen answer:
+/// the cursor's own arrow is not drawn (the maintainer, 2026-11-18).
+#[test]
+fn the_quit_question_draws_one_arrow_beside_the_answer() {
+    let Some(a) = assets() else { return };
+    let mut s = local_fight(load_assets(ROMS, MANIFEST).unwrap());
+    tap(&mut s, start());
+    let out = tap(&mut s, up()); // wraps to QUIT TO MENU
+    let (cursor_col, row) = (PauseBox::label_col() - 2, PauseBox::item_row(7));
+    assert!(text_at(&out.frame, &a, cursor_col, row, ">", ink::YELLOW), "the cursor's arrow");
+    tap(&mut s, confirm());
+    let out = s.step(idle());
+    assert!(text_at(&out.frame, &a, PauseBox::label_col(), row, "QUIT?", ink::YELLOW));
+    assert!(!text_at(&out.frame, &a, cursor_col, row, ">", ink::YELLOW), "no arrow at the left");
+    assert!(text_at(&out.frame, &a, 36 - 3 - 5 - 1, row, ">NO", ink::YELLOW), "the arrow is before NO");
+    tap(&mut s, with(|i| i.p1.directions[RIGHT] = true));
+    let out = s.step(idle());
+    assert!(text_at(&out.frame, &a, 36 - 3 - 1, row, ">YES", ink::YELLOW), "and moves to YES");
+    assert!(!text_at(&out.frame, &a, cursor_col, row, ">", ink::YELLOW));
+}

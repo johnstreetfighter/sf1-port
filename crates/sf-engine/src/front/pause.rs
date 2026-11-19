@@ -484,14 +484,16 @@ impl PauseBox {
             let color = if !self.enabled(*item) {
                 ink::DIM
             } else if i == self.cursor {
-                font.text(&mut frame.argb, LABEL_COL - 2, row, ">", ink::YELLOW);
+                if self.quit_asked.is_none() {
+                    font.text(&mut frame.argb, LABEL_COL - 2, row, ">", ink::YELLOW);
+                }
                 ink::YELLOW
             } else {
                 ink::BLUE
             };
             if let Some(yes) = self.quit_asked.filter(|_| i == self.cursor) {
-                // `QUIT?` and its two answers, the chosen one in yellow
-                // with the arrow before it.
+                // `QUIT?` and its two answers, the chosen one in yellow, and
+                // the only arrow on the row: the answer is all that moves.
                 font.text(&mut frame.argb, LABEL_COL, row, "QUIT?", ink::YELLOW);
                 let yes_col = VALUE_END_COL - 3;
                 let no_col = yes_col - 5;
