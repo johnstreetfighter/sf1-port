@@ -27,6 +27,10 @@ const CORNER: i16 = 40;
 
 /// A reach to assume for the opponent's attacks until one is seen.
 const DEFAULT_FOE_REACH: i16 = 66;
+/// The farthest the edge of his reach is put, however far a travelling
+/// special has carried an attack box: movement around the edge is for his
+/// normals.
+const EDGE_CAP: i16 = 100;
 /// Frames from a knockdown showing to the opponent being free, until the
 /// CPU has seen one: about a sweep's, as Training's Ryu shows it.
 const DEFAULT_RISE: u16 = 43;
@@ -110,6 +114,12 @@ pub(super) struct Judge {
     foe_attack_grounded: bool,
     /// The longest any of the opponent's attack boxes has been seen to reach.
     foe_reach: i16,
+    /// How far his ground attacks have been seen to reach from where he
+    /// stood as each began (a step in the move counted), with no guess
+    /// before one is seen (0 until then): the edge of his reach, for
+    /// movement around it. And where he stood as his current one began.
+    foe_reach_seen: i16,
+    foe_attack_from: i16,
     /// Frames left of "it was blocked".
     blocked: u8,
     /// The opponent was knocked down on the last frame judged, the frame
@@ -127,6 +137,8 @@ impl Default for Judge {
             foe_attack_met: false,
             foe_attack_grounded: false,
             foe_reach: DEFAULT_FOE_REACH,
+            foe_reach_seen: 0,
+            foe_attack_from: 0,
             blocked: 0,
             foe_down: false,
             foe_down_since: 0,
@@ -146,11 +158,17 @@ impl Judge {
                 self.foe_attack_shown = false;
                 self.foe_attack_met = false;
                 self.foe_attack_grounded = foe_was.is_some_and(|was| !was.jumping());
+                self.foe_attack_from = foe_was.map_or(foe.x, |was| was.x);
             }
             if foe.active {
                 self.foe_attack_shown = true;
                 let toward_me = if me.x >= foe.x { 1 } else { -1 };
-                self.foe_reach = self.foe_reach.max(((foe.front - foe.x) * toward_me).clamp(16, 120));
+                let reach = ((foe.front - foe.x) * toward_me).clamp(16, 120);
+                self.foe_reach = self.foe_reach.max(reach);
+                if self.foe_attack_grounded && !foe.jumping() {
+                    let from_start = ((foe.front - self.foe_attack_from) * toward_me).clamp(16, EDGE_CAP);
+                    self.foe_reach_seen = self.foe_reach_seen.max(from_start);
+                }
                 // The box's forward edge at or past the near edge of the
                 // CPU's hurtbox: it reached him, guarded or not.
                 let near = if toward_me > 0 { me.hurt.0 } else { me.hurt.1 };
@@ -220,6 +238,22 @@ impl Judge {
         Judged { situation, corner: cornered(&me) || cornered(&foe), foe_cornered: cornered(&foe) }
     }
 
+    /// The edge of the opponent's reach: the farthest his ground attacks
+    /// have been seen to reach from where he stood as each began (capped at
+    /// [`EDGE_CAP`]), or a guess until one is seen.
+    pub(super) fn foe_edge(&self) -> i16 {
+        if self.foe_reach_seen > 0 { self.foe_reach_seen } else { DEFAULT_FOE_REACH }
+    }
+
+    /// Something is coming at the CPU in `view`, the frame last judged: a
+    /// projectile in front of it, or an attack whose box has not yet come
+    /// and gone (its start-up or its active frames, not its recovery).
+    pub(super) fn coming(&self, view: Percept) -> bool {
+        // An attack whose box has been shown and is gone is in recovery.
+        let recovering = self.foe_attack_shown && !view.foe.active;
+        view.shot_coming() || (view.foe.attacking() && !recovering)
+    }
+
     /// The machine frame a knocked-down opponent is expected to be free on,
     /// while he is down.
     pub(super) fn rise_at(&self) -> Option<u32> {
@@ -257,6 +291,20 @@ pub(super) enum Act {
     /// Walk in while he is down, then hold a guard over the opponent's
     /// rise, so a reversal meets it and can be punished.
     GuardRise,
+    /// Walk, in or out, to stand just outside the opponent's reach as the
+    /// CPU has seen it ([`EDGE_OUT`] past it). Never back out from a
+    /// cornered opponent.
+    Edge,
+    /// A short walk in, across the edge of his reach, or back out of it:
+    /// an opening he may swing at and whiff. Never back out from a
+    /// cornered opponent.
+    Step { forward: bool },
+    /// Its projectile, when none of its own is on screen; otherwise
+    /// nothing is pressed (the outcome is `Nothing`).
+    Shot,
+    /// Walk, in or out, to this gap from the opponent: the spacing the
+    /// next step works from. Never back out from a cornered opponent.
+    Space(i16),
 }
 
 impl Act {
@@ -267,7 +315,11 @@ impl Act {
             Act::Reach { .. }
                 | Act::Route(_)
                 | Act::Meaty { .. }
-                | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach)
+                | Act::Edge
+                | Act::Space(_)
+                | Act::Step { forward: true }
+                | Act::Shot
+                | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach | Choice::JumpIn)
         )
     }
 
@@ -278,6 +330,17 @@ impl Act {
     }
 }
 
+/// Frames past a route's last pad by which what it met shows (its last
+/// hit can be a projectile's, some frames after its fighter is free).
+pub(super) const ROUTE_WATCH: u32 = 16;
+/// What a route the CPU has seen drop costs it in score, for each drop it
+/// has seen more than landings; one seen to drop this many times more is
+/// no longer taken in the fight.
+pub(super) const DROP_COST: i32 = 12;
+pub(super) const DROPS_KEPT: u8 = 3;
+/// Frames an opponent must be seen standing in one place before a route
+/// from neutral is begun on him.
+pub(super) const SETTLED_FRAMES: u32 = 4;
 /// Frames the CPU may walk in to start a route: from neutral, and to
 /// punish a whiff, when the recovering opponent will not wait long.
 pub(super) const NEUTRAL_WALK: u8 = 20;
@@ -288,6 +351,26 @@ pub(super) const LANDING_LEAD: i16 = 6;
 
 /// A walk covers about two pixels a frame.
 const WALK_SPEED: i16 = 2;
+/// How much nearer than its widest start a ground route is still taken.
+/// The book proves each route from its widest start; much nearer, a normal
+/// can come out as its close version, with other timing, and the route
+/// drops (seen in play: Ryu's SF6 medium punch into a Hadoken from 30 to
+/// 38 pixels where the book has 52). Punishes are proven from close and
+/// keep no such bound.
+const ROUTE_NEAR: i16 = 8;
+/// How far outside the opponent's reach an [`Act::Edge`] stands, and how
+/// near that counts as there.
+pub(super) const EDGE_OUT: i16 = 8;
+pub(super) const EDGE_NEAR: i16 = 4;
+/// The longest an [`Act::Edge`] goes on walking and looking, from its
+/// first walk, before the plan moves on wherever it stands.
+pub(super) const EDGE_FRAMES: u32 = 90;
+/// The most frames an [`Act::Edge`] walks before it looks again.
+pub(super) const EDGE_WALK: i16 = 8;
+/// Frames of an [`Act::Step`]: about 12 to 18 pixels at Ryu's walk, across
+/// the edge of his reach and back.
+pub(super) const STEP_FRAMES: u32 = 4;
+pub(super) const STEP_SPREAD: u32 = 3;
 
 /// What the moment allows when the CPU looks for a route.
 pub(super) struct Moment<'a> {
@@ -317,6 +400,7 @@ impl Moment<'_> {
             && route.super_spent <= self.meters[0]
             && route.drive_spent <= self.meters[1]
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
+            && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
     }
 
     /// Frames to walk before the route reaches from here.
@@ -389,6 +473,17 @@ impl RouteRun {
         Some(stick | u16::from(buttons) << 4)
     }
 
+    /// It ran to its end (no slip cut it) and is a combo of two steps or
+    /// more.
+    pub(super) fn combo_in_full(&self) -> bool {
+        self.route().is_some_and(|route| route.steps.len() >= 2 && usize::from(self.stop) == route.len())
+    }
+
+    /// It is still walking in, before the route's first pad.
+    pub(super) fn walking(&self) -> bool {
+        self.at < u16::from(self.walk)
+    }
+
     /// Note what the frame shows of the route.
     pub(super) fn watch(&mut self, view: Percept) {
         self.hit |= view.foe.reacting();
@@ -430,8 +525,13 @@ pub(super) struct GamePlan {
     pub corner_bonus: i32,
     /// Taken up only while the opponent is cornered.
     pub cornered_only: bool,
+    /// Taken up only while the gap to the opponent is in this range.
+    pub gap: (i16, i16),
     pub steps: &'static [Step],
 }
+
+/// Any gap.
+const ANY: (i16, i16) = (i16::MIN, i16::MAX);
 
 const fn step(act: Act, then: [Option<u8>; 5]) -> Step {
     Step { act, then }
@@ -444,26 +544,32 @@ const fn always(next: Option<u8>) -> [Option<u8>; 5] {
 
 /// Ryu in the SF6 era style, close neutral: walk to crouching medium kick
 /// range and press it. On a hit (it knocks down in this engine) follow him
-/// in and time the same kick to his rise; on a guard walk in and throw; on
-/// a whiff give ground and guard.
+/// in and time the same kick to his rise, or, if he rises out of its reach,
+/// walk in and poke again; on a guard walk in and throw; on a whiff give
+/// ground and guard.
 const RYU_SF6_POKE: [Step; 6] = [
     step(Act::Reach { crouch: true, button: 4 }, always(Some(1))),
     step(Act::Do(Choice::Normal { crouch: true, button: 4 }), [Some(2), Some(3), Some(4), None, None]),
-    step(Act::Meaty { crouch: true, button: 4 }, always(None)),
+    step(Act::Meaty { crouch: true, button: 4 }, [None, None, None, None, Some(0)]),
     step(Act::Do(Choice::Throw), always(None)),
     step(Act::Do(Choice::Retreat), always(Some(5))),
     step(Act::Do(Choice::Guard), always(None)),
 ];
 
-/// Ryu in the SF6 era style, close neutral: walk in and enter a ground
-/// route from the book. On a guard walk in and throw; on a whiff give
-/// ground and guard.
-const RYU_SF6_ROUTE: [Step; 4] = [
-    step(Act::Route(Reach::Ground), [None, Some(1), Some(2), None, None]),
+/// Ryu in the SF6 era style, close neutral: take the spacing the book's
+/// ground routes start from, then walk in and enter one. On a guard walk in
+/// and throw; on a whiff give ground and guard.
+const RYU_SF6_ROUTE: [Step; 5] = [
+    step(Act::Space(ROUTE_SPACE), always(Some(1))),
+    step(Act::Route(Reach::Ground), [None, Some(2), Some(3), None, None]),
     step(Act::Do(Choice::Throw), always(None)),
-    step(Act::Do(Choice::Retreat), always(Some(3))),
+    step(Act::Do(Choice::Retreat), always(Some(4))),
     step(Act::Do(Choice::Guard), always(None)),
 ];
+
+/// The gap the route plan takes before entering a ground route: a little
+/// inside the widest start of most of Ryu's SF6 ground routes (52 to 58).
+const ROUTE_SPACE: i16 = 50;
 
 /// Ryu in the SF6 era style, after an attack was guarded: a short wait,
 /// then a medium punch that hits him if he pressed a button in the gap. On
@@ -491,16 +597,63 @@ const RYU_SF6_MEATY: [Step; 4] = [
 /// so a reversal is guarded and its whiff punished.
 const RYU_SF6_BAIT: [Step; 1] = [step(Act::GuardRise, always(None))];
 
-const RYU_SF6: [GamePlan; 7] = [
-    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, steps: &RYU_SF6_POKE },
-    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, steps: &RYU_SF6_ROUTE },
-    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, steps: &RYU_SF6_FRAME_TRAP },
-    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, steps: &RYU_SF6_WALK_THROW },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, steps: &RYU_SF6_MEATY },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 58, corner_bonus: -10, cornered_only: false, steps: &RYU_SF6_BAIT },
+/// Ryu in the SF6 era style, in neutral: stand just outside the opponent's
+/// reach, step in across its edge and back out, and out again while it
+/// watches what he does; back to the edge and in and out once more, so a
+/// button he presses at the CPU whiffs (the whiff is punished as any is);
+/// then walk in and press crouching medium kick, followed as the poke is.
+/// The watch outlasts the reaction delay, so a button pressed at the first
+/// step is seen before the second, and it is spent moving, not standing.
+const RYU_SF6_HOVER: [Step; 13] = [
+    step(Act::Edge, always(Some(1))),
+    step(Act::Step { forward: true }, always(Some(2))),
+    step(Act::Step { forward: false }, always(Some(3))),
+    step(Act::Step { forward: false }, always(Some(4))),
+    step(Act::Edge, always(Some(5))),
+    step(Act::Step { forward: true }, always(Some(6))),
+    step(Act::Step { forward: false }, always(Some(7))),
+    step(Act::Reach { crouch: true, button: 4 }, always(Some(8))),
+    step(Act::Do(Choice::Normal { crouch: true, button: 4 }), [Some(9), Some(10), Some(11), None, None]),
+    step(Act::Meaty { crouch: true, button: 4 }, [None, None, None, None, Some(7)]),
+    step(Act::Do(Choice::Throw), always(None)),
+    step(Act::Do(Choice::Retreat), always(Some(12))),
+    step(Act::Do(Choice::Guard), always(None)),
+];
+
+/// Ryu in the SF6 era style, far off: a projectile, then walk in behind it
+/// to take the space it wins, to the edge of the opponent's reach.
+const RYU_SF6_SHOT: [Step; 3] = [
+    step(Act::Shot, always(Some(1))),
+    step(Act::Do(Choice::Approach), always(Some(2))),
+    step(Act::Edge, always(None)),
+];
+
+/// Ryu in the SF6 era style, from the range a forward jump carries him to
+/// the opponent: a jump-in with an attack on the way down.
+const RYU_SF6_JUMP_IN: [Step; 1] = [step(Act::Do(Choice::JumpIn), always(None))];
+
+/// The gap a projectile is thrown from (a fireball from closer is jumped
+/// on its way out), and the gaps a forward jump-in lands on him from.
+const SHOT_GAP: i16 = 90;
+const JUMP_IN_GAP: (i16, i16) = (70, 150);
+
+const RYU_SF6: [GamePlan; 11] = [
+    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE },
+    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE },
+    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP },
+    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 58, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT },
     // A cornered opponent out of reach (its own guarded attacks push it
     // back off him): walk him down rather than let him out.
-    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, steps: &RYU_SF6_POKE },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE },
+    // Scores set by the measuring run (240 Ryu SF6 mirror matches a side
+    // against the old Fair CPU): the projectile from afar won the most and
+    // the jump-in least.
+    GamePlan { situation: Situation::NeutralClose, score: 61, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER },
+    GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT },
+    GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN },
 ];
 
 /// The game plans a fighter has in an era style. A pair with none plays
@@ -512,6 +665,14 @@ pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily
     }
 }
 
+/// The CPU's live attack box reaches the near edge of the opponent's
+/// hurtbox in `view`.
+fn reached(view: Percept) -> bool {
+    let toward = if view.foe.x >= view.me.x { 1 } else { -1 };
+    let near = if toward > 0 { view.foe.hurt.0 } else { view.foe.hurt.1 };
+    view.me.active && (view.me.front - near) * toward >= 0
+}
+
 /// Where the CPU is in a game plan.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Running {
@@ -521,22 +682,11 @@ pub(super) struct Running {
     /// The step's action has been pressed, on this step of the machine.
     pub acted: bool,
     pub pressed: u32,
-    /// The frame a timed step's walk in, before it acts, will last be seen
-    /// on (0 for no walk yet).
-    pub walked: u32,
     /// The machine step the plan began on.
     pub began: u32,
 }
 
 impl Running {
-    /// The gap to the opponent now, as far as a timed step's walk in can
-    /// tell: the CPU sees its own steps `reaction` frames late, so those it
-    /// has walked since the frame seen are counted at a walk's pace.
-    pub(super) fn gap_now(&self, view: Percept) -> i16 {
-        let unseen = self.walked.saturating_sub(view.frame).min(60) as i16;
-        view.gap() - unseen * WALK_SPEED
-    }
-
     /// What has come of the pressed normal `(crouch, button)` as far as
     /// `view` shows, once it shows anything: `reach` is that normal's.
     pub(super) fn outcome(&self, view: Percept, reach: i16) -> Option<Outcome> {
@@ -545,7 +695,9 @@ impl Running {
         }
         if view.foe.reacting() {
             Some(Outcome::Hit)
-        } else if view.me.attacking() && view.foe.guarding() && view.gap() <= reach + 8 {
+        } else if view.me.attacking() && view.foe.guarding() && view.gap() <= reach + 8 && reached(view) {
+            // Guarded: his guard pose alone is drawn as soon as an attack
+            // is near, so its attack box must be seen to reach him.
             Some(Outcome::Guard)
         } else if view.foe.jumping() {
             Some(Outcome::Jumped)
@@ -564,10 +716,10 @@ crate::canonical::canonical_enum!(Situation, "FairCpuSituation.v1";
     OpponentWhiffed => 5, Defending => 6, KnockedDown => 7,
 );
 crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v2", { situation, corner, foe_cornered });
-crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v3", {
-    foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, blocked, foe_down, foe_down_since, rise_frames,
+crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v4", {
+    foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
 });
-crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v2", { plan, step, acted, pressed, walked, began });
+crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v3", { plan, step, acted, pressed, began });
 crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v1", {
     fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded,
 });
@@ -590,7 +742,7 @@ mod tests {
         changed[0].judged.situation = Situation::ItHit;
         changed[1].judged.corner = true;
         changed[2].judge.blocked = 3;
-        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, walked: 0, began: 4 });
+        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, began: 4 });
         for cpu in &changed {
             assert_ne!(hash(cpu), hash(&plain), "{cpu:?}");
         }
@@ -620,15 +772,23 @@ mod tests {
     fn only_routes_the_rules_the_stance_the_meter_and_the_distance_allow_are_taken() {
         let routes = &ryu_sf6().routes;
         let all = [Reach::Ground, Reach::Punish];
+        // Each route from its own widest start, unless the distance is what
+        // is checked.
+        let at = |m: &Moment<'_>, r: &Route| Moment { gap: r.gap, reaches: m.reaches, ..*m }.allows(r);
         let open = moment(&all);
-        assert!(routes.iter().all(|r| open.allows(r)), "with everything in its favour every route is allowed");
-        let only = |m: &Moment, keep: &dyn Fn(&Route) -> bool| routes.iter().all(|r| m.allows(r) == keep(r));
+        assert!(routes.iter().all(|r| at(&open, r)), "with everything in its favour every route is allowed");
+        let only = |m: &Moment, keep: &dyn Fn(&Route) -> bool| routes.iter().all(|r| at(m, r) == keep(r));
         assert!(only(&moment(&[Reach::Ground]), &|r| r.reach == Reach::Ground));
         assert!(only(&Moment { era: false, ..moment(&all) }, &|r| !r.true_combos && !r.cancels));
         assert!(only(&Moment { crouching: true, ..moment(&all) }, &|r| r.stances.contains(&Stance::Crouching)));
         assert!(only(&Moment { meters: [0, 60_000], ..moment(&all) }, &|r| r.super_spent == 0));
-        assert!(only(&Moment { gap: 50, ..moment(&all) }, &|r| r.gap >= 50));
-        assert!(only(&Moment { gap: 50, walk: 3, ..moment(&all) }, &|r| r.gap >= 44));
+        // From 50 pixels: routes whose widest start is 50 or more, and no
+        // more than `ROUTE_NEAR` past it; a walk of 3 frames reaches 6 more.
+        let from = |m: &Moment, keep: &dyn Fn(&Route) -> bool| routes.iter().all(|r| m.allows(r) == keep(r));
+        let near = |r: &Route| r.reach != Reach::Ground || r.gap <= 50 + ROUTE_NEAR;
+        assert!(from(&Moment { gap: 50, ..moment(&all) }, &|r| r.gap >= 50 && near(r)));
+        assert!(from(&Moment { gap: 50, walk: 3, ..moment(&all) }, &|r| r.gap >= 44 && near(r)));
+        assert!(routes.iter().any(|r| r.gap < 50 - ROUTE_NEAR) && routes.iter().any(|r| r.gap >= 50), "both kinds are in the book");
         assert!(routes.iter().any(|r| !r.stances.contains(&Stance::Crouching)) && routes.iter().any(|r| r.super_spent > 0));
     }
 
@@ -642,6 +802,27 @@ mod tests {
         assert!(low.score(weakest, true) > moment(&[Reach::Ground]).score(strongest, false));
         let full = moment(&[Reach::Ground]);
         assert!(full.score(strongest, true) < full.score(strongest, false));
+    }
+
+    #[test]
+    fn far_neutral_plans_walk_in_and_throw_projectiles() {
+        let far: Vec<&GamePlan> = RYU_SF6.iter().filter(|p| p.situation == Situation::NeutralFar && !p.cornered_only).collect();
+        let has = |act: &dyn Fn(Act) -> bool| far.iter().any(|p| p.steps.iter().any(|s| act(s.act)));
+        assert!(has(&|a| a == Act::Shot), "a projectile from afar");
+        assert!(has(&|a| matches!(a, Act::Edge | Act::Do(Choice::Approach))), "walking in to take space");
+        assert!(has(&|a| a == Act::Do(Choice::JumpIn)), "a jump-in from its range");
+        // The projectile only from far enough off, the jump-in only from the
+        // range a forward jump carries him.
+        for plan in &far {
+            if plan.steps[0].act == Act::Shot {
+                assert!(plan.gap.0 >= SHOT_GAP);
+            }
+            if plan.steps[0].act == Act::Do(Choice::JumpIn) {
+                assert_eq!(plan.gap, JUMP_IN_GAP);
+            }
+        }
+        let close = RYU_SF6.iter().filter(|p| p.situation == Situation::NeutralClose);
+        assert!(close.clone().any(|p| p.steps.iter().any(|s| matches!(s.act, Act::Step { forward: false }))), "stepping out at close range");
     }
 
     #[test]

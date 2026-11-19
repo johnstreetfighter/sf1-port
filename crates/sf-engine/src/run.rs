@@ -1701,11 +1701,15 @@ impl PowerOnMachine {
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
         } else {
-            self.step_utility_cpu(slot, me, foe, fighter, family, &ctx, Some((pad, idle)))
+            self.step_utility_cpu(slot, me, foe, fighter, family, &ctx, Some((pad, idle)));
+            // The stronger play holds back a walk in it sees an attack or
+            // a projectile coming into.
+            let cpu = self.fair_cpu.as_mut().unwrap();
+            let pad = cpu.hold_walk_in(self.program.toggle_state.utility[slot].pad());
+            cpu.set_utility_pad(pad);
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
         };
-        if !alone {
-            self.fair_cpu.as_mut().unwrap().set_utility_pad(self.program.toggle_state.utility[slot].pad());
-        }
         self.apply_cpu_pad(input);
         true
     }
@@ -1747,9 +1751,12 @@ impl PowerOnMachine {
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
         } else {
-            let input = self.step_utility_cpu(0, P1_STRUCT, P2_STRUCT, fighter, family, &ctx, Some((pad, idle)));
-            self.p1_fair_cpu.as_mut().unwrap().set_utility_pad(self.program.toggle_state.utility[0].pad());
-            input
+            self.step_utility_cpu(0, P1_STRUCT, P2_STRUCT, fighter, family, &ctx, Some((pad, idle)));
+            let cpu = self.p1_fair_cpu.as_mut().unwrap();
+            let pad = cpu.hold_walk_in(self.program.toggle_state.utility[0].pad());
+            cpu.set_utility_pad(pad);
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
         };
         let [right, left, down, up] = input.directions;
         self.set_p1_direction(right, left, down, up);
@@ -2028,6 +2035,12 @@ impl PowerOnMachine {
     /// Whether Player 2's Fair CPU is in the middle of a game plan.
     pub fn fair_cpu_following_game_plan(&self) -> bool {
         self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::following_game_plan)
+    }
+
+    /// The machine step Player 2's Fair CPU began the game plan it is
+    /// following on, if it is following one.
+    pub fn fair_cpu_game_plan_began(&self) -> Option<u32> {
+        self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::game_plan_began)
     }
 
     /// The fair CPU's pad on the last frame, while one plays: (right, left,

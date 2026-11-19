@@ -258,9 +258,9 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v3", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v4", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
-    forced_stronger, judge, judged, game, route, recent_routes, route_outcome,
+    forced_stronger, judge, judged, game, route, recent_routes, route_outcome, walk_in_held, route_drops, route_check,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -391,6 +391,16 @@ impl Percept {
             self.foe.hurt.0 - self.me.x
         } else {
             self.me.x - self.foe.hurt.1
+        }
+    }
+
+    /// From the opponent's centre to the near edge of the CPU fighter's
+    /// hurtbox: what his attacks must reach.
+    fn foe_gap(&self) -> i16 {
+        if self.toward() > 0 {
+            self.foe.x - self.me.hurt.1
+        } else {
+            self.me.hurt.0 - self.foe.x
         }
     }
 
@@ -943,7 +953,36 @@ pub struct FairCpu {
     route: Option<game::RouteRun>,
     recent_routes: [u8; 4],
     route_outcome: Option<game::Outcome>,
+    /// The stick direction toward the opponent while, this frame, the
+    /// stronger play sees an attack or a projectile coming (0 otherwise):
+    /// a walk in that the Utility AI would add is held back
+    /// ([`FairCpu::hold_walk_in`]).
+    walk_in_held: u16,
+    /// What it has seen of its routes in this fight: for each of the
+    /// book's routes (by index), how far drops it saw outnumber routes it
+    /// saw land. A route that keeps dropping in play is taken less, then
+    /// not at all (the book proves routes against one reference position;
+    /// in a fight some drop).
+    route_drops: [u8; ROUTE_SLOTS],
+    /// A route entered in full whose ending it is waiting to see.
+    route_check: Option<RouteCheck>,
 }
+
+/// A route entered in full whose ending the CPU is waiting to see.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct RouteCheck {
+    /// The route's index in the fighter's book.
+    index: u8,
+    /// The view frame that shows how it ended.
+    at: u32,
+    /// The route has been seen to hit him.
+    hit: bool,
+}
+
+crate::canonical::canonical_struct!(RouteCheck, "FairCpuRouteCheck.v1", { index, at, hit });
+
+/// Routes of one book whose drops the CPU remembers.
+const ROUTE_SLOTS: usize = 32;
 
 impl Default for FairCpu {
     fn default() -> Self {
@@ -967,6 +1006,9 @@ impl Default for FairCpu {
             route: None,
             recent_routes: [0; 4],
             route_outcome: None,
+            walk_in_held: 0,
+            route_drops: [0; ROUTE_SLOTS],
+            route_check: None,
         }
     }
 }
@@ -983,6 +1025,12 @@ impl FairCpu {
     /// The pad given on the last step.
     pub fn pad(&self) -> u16 {
         self.pad
+    }
+
+    /// The stronger play is on for this CPU: by the match's switch, or
+    /// forced for the measuring run.
+    fn stronger(&self, ctx: &Context) -> bool {
+        ctx.stronger || self.forced_stronger
     }
 
     /// Play the stronger game whatever the match's switch says.
@@ -1003,6 +1051,12 @@ impl FairCpu {
         self.game.is_some()
     }
 
+    /// The machine step the game plan it is following began on: two plans
+    /// followed back to back are told apart by it.
+    pub fn game_plan_began(&self) -> Option<u32> {
+        self.game.map(|run| run.began)
+    }
+
     /// Whether it is entering a route from its route book.
     pub fn entering_route(&self) -> bool {
         self.route.is_some()
@@ -1011,6 +1065,17 @@ impl FairCpu {
     /// Whether its pad is its own alone this frame: a game plan or a route.
     pub(crate) fn owns_pad(&self) -> bool {
         self.game.is_some() || self.route.is_some()
+    }
+
+    /// `pad`, from the Utility AI, unless it is a walk toward the opponent
+    /// while the stronger play sees an attack or a projectile coming: then
+    /// nothing. With the switch off it is always `pad`.
+    pub(crate) fn hold_walk_in(&self, pad: u16) -> u16 {
+        if self.walk_in_held != 0 && pad == self.walk_in_held {
+            0
+        } else {
+            pad
+        }
     }
 
     /// Record what frame `p.frame` showed.
@@ -1057,10 +1122,13 @@ impl FairCpu {
             self.game = None;
             self.route = None;
             self.recent_routes = [0; 4];
+            self.route_drops = [0; ROUTE_SLOTS];
+            self.route_check = None;
             self.route_outcome = None;
         }
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.seen(f));
+        self.walk_in_held = 0;
         let pad = match view {
             Some(view) if in_fight && view.fighting => {
                 let before = self.seen(view.frame - 1).filter(|b| b.fighting);
@@ -1091,9 +1159,12 @@ impl FairCpu {
             self.seeded = true;
         }
         self.learn(view, before);
-        let stronger = ctx.stronger || self.forced_stronger;
+        let stronger = self.stronger(ctx);
         if stronger {
             self.judged = self.judge.judge(view, before, self.longest_reach());
+            if self.judge.coming(view) {
+                self.walk_in_held = if view.toward() > 0 { RIGHT } else { LEFT };
+            }
             if view.me.reacting() {
                 // Being hit ends whatever it was following.
                 self.game = None;
@@ -1102,9 +1173,23 @@ impl FairCpu {
         if view.me.reacting() {
             self.route = None;
         }
+        if let Some(RouteCheck { index, at, hit }) = self.route_check.filter(|_| stronger) {
+            let hit = hit || view.foe.reacting();
+            if view.frame >= at {
+                // Once it hit: landed if he is still in a hit reaction or
+                // knocked down, dropped if he is free again. A route that
+                // never hit dropped nothing.
+                if let Some(drops) = self.route_drops.get_mut(usize::from(index)).filter(|_| hit) {
+                    *drops = if view.foe.reacting() { drops.saturating_sub(1) } else { drops.saturating_add(1).min(game::DROPS_KEPT) };
+                }
+                self.route_check = None;
+            } else {
+                self.route_check = Some(RouteCheck { index, at, hit });
+            }
+        }
         if self.route.is_some() {
             // A route is entered to its end, or to where it is cut.
-            return self.next_route_pad(view);
+            return self.next_route_pad(step, view, stronger);
         }
         if let Some(before) = before {
             let interruptible = self.plan.interruptible();
@@ -1112,13 +1197,18 @@ impl FairCpu {
             // knockdown plans: the era kit's answer to a hit (a super on
             // the hit confirm) would only whiff over him.
             let foe_down = stronger && self.judged.situation == Situation::OpponentKnockedDown;
-            let era_response = ctx.era.filter(|tactics| !foe_down && (interruptible || tactics.can_interrupt()))
+            // A ground attack he starts out of its reach is left to whiff,
+            // not guarded or parried: the CPU stays free to move and to
+            // punish it.
+            let baiting = stronger && self.out_of_reach(step, view);
+            let era_response = ctx.era.filter(|tactics| !foe_down && !baiting && (interruptible || tactics.can_interrupt()))
                 .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before));
             if let Some(plan) = era_response {
                 self.plan = plan;
                 self.game = None;
             } else if interruptible {
-                if let Some(plan) = self.react(step, view, before, ctx) {
+                let answer = self.react(step, view, before, ctx).filter(|plan| !(baiting && matches!(plan.kind, PlanKind::Guard { .. })));
+                if let Some(plan) = answer {
                     // A threat it answers ends the game plan it was following.
                     self.plan = plan;
                     self.game = None;
@@ -1134,20 +1224,24 @@ impl FairCpu {
         }
         if self.route.is_some() {
             // An answer that is a route: a punish.
-            return self.next_route_pad(view);
+            return self.next_route_pad(step, view, stronger);
         }
         if self.plan.done() {
             if let Some(plan) = self.follow_game_plan(step, view, ctx) {
                 self.plan = plan;
+                if self.route.is_some() {
+                    // A step that is a route: its first pad is this frame's.
+                    return self.next_route_pad(step, view, stronger);
+                }
                 return self.next_pad(step, view, ctx);
             }
-            if !self.ready(view) {
+            if !self.ready(step, view, stronger) {
                 return 0;
             }
             let era = ctx.era.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view));
             self.plan = match era {
                 Some(plan) => plan,
-                None if stronger && self.start_game_plan(step, ctx) => {
+                None if stronger && self.start_game_plan(step, view, ctx) => {
                     self.follow_game_plan(step, view, ctx).unwrap_or_else(|| self.choose(step, view, ctx))
                 }
                 None => self.choose(step, view, ctx),
@@ -1155,7 +1249,7 @@ impl FairCpu {
         }
         if self.route.is_some() {
             // A game plan's step that is a route.
-            return self.next_route_pad(view);
+            return self.next_route_pad(step, view, stronger);
         }
         self.next_pad(step, view, ctx)
     }
@@ -1163,8 +1257,15 @@ impl FairCpu {
     /// The next pad of the route being entered, turned to face the
     /// opponent as it faced him when the route began. What came of it is
     /// kept for the game plan that chose it.
-    fn next_route_pad(&mut self, view: Percept) -> u16 {
+    fn next_route_pad(&mut self, step: u32, view: Percept, stronger: bool) -> u16 {
         let Some(mut run) = self.route else { return 0 };
+        if stronger && run.walking() && self.judge.coming(view) {
+            // Its walk in, before the route's first press, stops for an
+            // attack or a projectile it sees coming: the route is dropped.
+            self.route = None;
+            self.route_outcome = Some(game::Outcome::Nothing);
+            return 0;
+        }
         run.watch(view);
         let pad = run.pad();
         match pad {
@@ -1176,6 +1277,11 @@ impl FairCpu {
             None => {
                 self.route = None;
                 self.route_outcome = Some(run.outcome());
+                // A combo entered in full is watched to its end: whether he
+                // is still reeling once its last hit has had time to land.
+                if run.combo_in_full() {
+                    self.route_check = Some(RouteCheck { index: run.index, at: step + game::ROUTE_WATCH, hit: false });
+                }
                 0
             }
         }
@@ -1204,9 +1310,12 @@ impl FairCpu {
         };
         let mut options: Vec<(usize, i32)> = Vec::new();
         for (index, route) in book.routes.iter().enumerate() {
-            if moment.allows(route) {
+            let drops = self.route_drops.get(index).copied().unwrap_or(0);
+            if moment.allows(route) && drops < game::DROPS_KEPT {
                 let recent = self.recent_routes.contains(&(index as u8 + 1));
-                options.push((index, moment.score(route, recent) + self.rng.below(12) as i32));
+                // A route it has seen drop in this fight scores lower.
+                let dropped = i32::from(drops) * game::DROP_COST;
+                options.push((index, moment.score(route, recent) - dropped + self.rng.below(12) as i32));
             }
         }
         if options.is_empty() {
@@ -1245,11 +1354,15 @@ impl FairCpu {
     /// Take up a game plan for the situation, if its fighter and era style
     /// have one and the level's decision quality chooses it over the single
     /// choices. Among several the best score wins, after a little noise.
-    fn start_game_plan(&mut self, step: u32, ctx: &Context) -> bool {
+    fn start_game_plan(&mut self, step: u32, view: Percept, ctx: &Context) -> bool {
         let table = game::plans(ctx.kit.fighter, ctx.family);
         let mut best: Option<(u8, i32)> = None;
+        let gap = view.gap();
         for (index, plan) in table.iter().enumerate() {
-            if plan.situation == self.judged.situation && (!plan.cornered_only || self.judged.foe_cornered) {
+            if plan.situation == self.judged.situation
+                && (!plan.cornered_only || self.judged.foe_cornered)
+                && (plan.gap.0..=plan.gap.1).contains(&gap)
+            {
                 // A cornered opponent is pressed harder.
                 let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
                 let score = plan.score + corner + self.rng.below(12) as i32;
@@ -1262,7 +1375,7 @@ impl FairCpu {
         if !self.rng.chance(ctx.level.quality()) {
             return false;
         }
-        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, walked: 0, began: step });
+        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step });
         true
     }
 
@@ -1272,6 +1385,7 @@ impl FairCpu {
     /// plan is being followed, or it has just ended.
     fn follow_game_plan(&mut self, step: u32, view: Percept, ctx: &Context) -> Option<Plan> {
         use game::{Act, Outcome};
+        let stronger = self.stronger(ctx);
         let mut run = self.game?;
         if step.saturating_sub(run.began) > game::PLAN_FRAMES {
             // Something kept it from finishing: let go of the plan.
@@ -1283,10 +1397,10 @@ impl FairCpu {
         // A plan has few steps, and each pass either returns or moves on one.
         for _ in 0..8 {
             let Some(at) = table.get(usize::from(run.plan)).and_then(|plan| plan.steps.get(usize::from(run.step))) else { break };
-            // It does not walk or attack into an attack it has seen start:
-            // the plan ends, and its answer to the attack takes over.
+            // It does not walk or attack into an attack or a projectile it
+            // has seen start: the plan ends, and its answer takes over.
             let commits = !run.acted && at.act.commits();
-            if commits && view.foe.attacking() {
+            if commits && (view.foe.attacking() || view.shot_coming()) {
                 break;
             }
             // An attack thrown at a knocked-down opponent is wasted: a plan
@@ -1302,11 +1416,66 @@ impl FairCpu {
                 break;
             }
             let outcome = match (at.act, run.acted) {
+                (Act::Edge | Act::Space(_), acted) => {
+                    self.game = Some(run);
+                    if !self.ready(step, view, stronger) {
+                        return Some(wait);
+                    }
+                    // How far off its mark it stands, positive too far out:
+                    // its own place felt as it is now, his seen late.
+                    let felt = self.felt(step, view);
+                    let off = match at.act {
+                        Act::Space(target) => felt.gap() - target,
+                        _ => felt.foe_gap() - (self.judge.foe_edge() + game::EDGE_OUT),
+                    };
+                    if off.abs() <= game::EDGE_NEAR || (off < 0 && self.judged.foe_cornered) || (acted && step > run.pressed + game::EDGE_FRAMES) {
+                        Outcome::Nothing
+                    } else {
+                        // A few frames at a time, looking again after each.
+                        let frames = ((off.abs() + 1) / 2).clamp(1, game::EDGE_WALK) as u32;
+                        if !acted {
+                            run.pressed = step;
+                        }
+                        run.acted = true;
+                        self.game = Some(run);
+                        return Some(walk(off > 0, felt, frames));
+                    }
+                }
+                (Act::Step { forward }, false) => {
+                    if !forward && self.judged.foe_cornered {
+                        Outcome::Nothing
+                    } else {
+                        self.game = Some(run);
+                        if !self.ready(step, view, stronger) {
+                            return Some(wait);
+                        }
+                        let frames = game::STEP_FRAMES + self.rng.below(game::STEP_SPREAD);
+                        run.acted = true;
+                        run.pressed = step;
+                        self.game = Some(run);
+                        return Some(walk(forward, view, frames));
+                    }
+                }
+                (Act::Shot, false) => {
+                    if view.my_shot || ctx.kit.projectile.is_none() {
+                        Outcome::Nothing
+                    } else {
+                        self.game = Some(run);
+                        if !self.ready(step, view, stronger) {
+                            return Some(wait);
+                        }
+                        run.acted = true;
+                        run.pressed = step;
+                        self.game = Some(run);
+                        return Some(self.plan_for(Choice::Special(Role::Projectile), step, view, ctx, false));
+                    }
+                }
                 (Act::Reach { crouch, button }, false) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
-                    if view.gap() > reach {
+                    let gap = self.felt(step, view).gap();
+                    if gap > reach {
                         // A walk covers about two pixels a frame.
-                        let frames = ((view.gap() - reach + 1) / 2).clamp(1, 40) as usize;
+                        let frames = ((gap - reach + 1) / 2).clamp(1, 40) as usize;
                         let forward = if view.toward() > 0 { RIGHT } else { LEFT };
                         run.acted = true;
                         run.pressed = step;
@@ -1317,7 +1486,7 @@ impl FairCpu {
                 }
                 (Act::Do(choice), false) => {
                     self.game = Some(run);
-                    if !self.ready(view) {
+                    if !self.ready(step, view, stronger) {
                         return Some(wait);
                     }
                     run.acted = true;
@@ -1327,10 +1496,20 @@ impl FairCpu {
                 }
                 (Act::Route(reach), false) => {
                     self.game = Some(run);
-                    if !self.ready(view) {
+                    if !self.ready(step, view, stronger) {
                         return Some(wait);
                     }
-                    if !self.take_route(ctx, view, &[reach], game::NEUTRAL_WALK) {
+                    // A route is not begun on an opponent it has just seen
+                    // moving (where he is now is not where it saw him), nor
+                    // before it has seen its own last attack through to its
+                    // end (what that attack met is what it goes on from).
+                    if !self.foe_settled(view) || view.me.attacking() {
+                        return Some(wait);
+                    }
+                    // The distance a route needs is judged from where it
+                    // feels its own fighter now.
+                    let felt = self.felt(step, view);
+                    if !self.take_route(ctx, felt, &[reach], game::NEUTRAL_WALK) {
                         break;
                     }
                     run.acted = true;
@@ -1349,10 +1528,10 @@ impl FairCpu {
                         }
                     }
                     self.game = Some(run);
-                    if !self.ready(view) {
+                    if !self.ready(step, view, stronger) {
                         return Some(wait);
                     }
-                    if run.gap_now(view) > reach + 4 {
+                    if self.felt(step, view).gap() > reach + 4 {
                         // Out of reach as he rises: the moment is lost.
                         Outcome::Nothing
                     } else {
@@ -1426,7 +1605,6 @@ impl FairCpu {
                 Some(next) => {
                     run.step = next;
                     run.acted = false;
-                    run.walked = 0;
                 }
                 None => break,
             }
@@ -1437,11 +1615,9 @@ impl FairCpu {
 
     /// A frame of a timed step's walk in toward a knocked-down opponent, or
     /// of waiting once within `reach` of him; the plan is kept with it.
-    fn close_in(&mut self, mut run: game::Running, step: u32, view: Percept, reach: i16) -> Plan {
-        let walk = self.ready(view) && run.gap_now(view) > reach;
-        if walk {
-            run.walked = step + 1;
-        }
+    fn close_in(&mut self, run: game::Running, step: u32, view: Percept, reach: i16) -> Plan {
+        // Its own place is felt as it is now; his is seen late.
+        let walk = self.ready(step, view, true) && self.felt(step, view).gap() > reach;
         self.game = Some(run);
         if walk {
             Plan::of(PlanKind::Walk, &[if view.toward() > 0 { RIGHT } else { LEFT }])
@@ -1450,10 +1626,66 @@ impl FairCpu {
         }
     }
 
-    /// The CPU's own fighter, as last seen, can start something, and it has
-    /// seen its last action begin.
-    fn ready(&self, view: Percept) -> bool {
-        (view.me.free() || view.me.guarding()) && view.frame >= self.settle
+    /// The plan's next pad walks toward the opponent: the stick forward
+    /// alone, in a walk or before an attack's first button.
+    fn walking_in_next(&self, view: Percept) -> bool {
+        let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+        let walk = match self.plan.kind {
+            PlanKind::Walk => true,
+            PlanKind::Act => self.plan.press_to_come(),
+            _ => false,
+        };
+        walk && !self.plan.done() && self.plan.pads[usize::from(self.plan.at)] == forward
+    }
+
+    /// `view` shows the opponent in a ground attack, with no projectile
+    /// coming, while the CPU is out of his reach (as far as it has seen his
+    /// attacks go, from where it feels its own place): one that will whiff.
+    fn out_of_reach(&self, step: u32, view: Percept) -> bool {
+        view.foe.attacking()
+            && !view.foe.jumping()
+            && !view.shot_coming()
+            && self.felt(step, view).foe_gap() > self.judge.foe_edge()
+    }
+
+    /// The opponent has stood in one place over the last few frames `view`
+    /// and those before it show.
+    fn foe_settled(&self, view: Percept) -> bool {
+        (1..=game::SETTLED_FRAMES).all(|back| self.seen(view.frame.saturating_sub(back)).is_some_and(|was| was.foe.x == view.foe.x))
+    }
+
+    /// `view` with its own fighter as the last frame shows him: a player
+    /// feels where his own fighter stands, and sees the opponent through
+    /// the reaction delay.
+    fn felt(&self, step: u32, view: Percept) -> Percept {
+        match self.seen(step.saturating_sub(1)).filter(|now| now.fighting) {
+            Some(now) => Percept { me: now.me, ..view },
+            None => view,
+        }
+    }
+
+    /// The CPU's own fighter can start something, and it has seen its last
+    /// action begin. The old play goes by its fighter as `view` shows him;
+    /// the stronger play feels its own fighter as he is now (a player feels
+    /// when his fighter can move again) and sees the opponent through the
+    /// delay.
+    fn ready(&self, step: u32, view: Percept, stronger: bool) -> bool {
+        if stronger {
+            let me = self.felt(step, view).me;
+            (me.free() || me.guarding()) && self.settled(step, view, true)
+        } else {
+            (view.me.free() || view.me.guarding()) && self.settled(step, view, false)
+        }
+    }
+
+    /// It has seen its last action begin: in `view`, or for the stronger
+    /// play, which feels its own fighter, on the last frame.
+    fn settled(&self, step: u32, view: Percept, stronger: bool) -> bool {
+        if stronger {
+            self.seen(step.saturating_sub(1)).map_or(view.frame, |now| now.frame) >= self.settle
+        } else {
+            view.frame >= self.settle
+        }
     }
 
     /// Learn a normal's reach from its attack box, seen live in front of the
@@ -1518,6 +1750,14 @@ impl FairCpu {
 
     /// The next pad of the plan.
     fn next_pad(&mut self, step: u32, view: Percept, ctx: &Context) -> u16 {
+        if self.stronger(ctx) && self.judge.coming(view) && self.walking_in_next(view) {
+            // It does not walk into an attack or a projectile it has seen:
+            // the walk (or the walk before an attack) is dropped, and what
+            // it does instead is chosen on the next frame.
+            self.plan = Plan::default();
+            self.settle = 0;
+            return 0;
+        }
         let back = if view.toward() > 0 { LEFT } else { RIGHT };
         if let PlanKind::Await { choice, wait } = self.plan.kind {
             if !view.foe.jumping() {
@@ -1531,7 +1771,14 @@ impl FairCpu {
             self.plan = self.plan_for(choice, step, view, ctx, true);
         }
         if let PlanKind::Guard { low, min, clear, held } = self.plan.kind {
-            let threat = view.threat();
+            // The stronger play keeps guarding while an attack is still
+            // coming, not through its recovery: then it is free to act.
+            let recovering = self.stronger(ctx)
+                && view.foe.attacking()
+                && !view.foe.jumping()
+                && !view.shot_coming()
+                && !self.judge.coming(view);
+            let threat = if recovering { None } else { view.threat() };
             let throw_threat = ctx.throws
                 && !view.foe.reacting()
                 && (view.dist() <= 48
@@ -1649,7 +1896,7 @@ impl FairCpu {
         // goes too, and under true combos (SP17) the guard is then locked in
         // blockstun, which the CPU cannot see the end of.
         let whiffed = foe.attacking() && !foe.active && was.active && !foe.jumping() && !view.me.guarding() && !before.me.guarding();
-        let stronger = ctx.stronger || self.forced_stronger;
+        let stronger = self.stronger(ctx);
         // The stronger play knows a whiff by its attack box never reaching
         // the CPU, so a move it guarded in case can be a whiff too.
         let whiff_seen = stronger
@@ -1664,13 +1911,14 @@ impl FairCpu {
             let ground = if view.me.jumping() { None } else { Some(view.me.y) };
             ground.is_some_and(|ground| fall > 0 && (ground - foe.y) <= fall * game::LANDING_LEAD)
         };
-        if whiff_seen && landing_soon && view.frame >= self.settle {
+        if whiff_seen && landing_soon && self.settled(step, view, stronger) {
             use crate::route_book::Reach;
-            if self.take_route(ctx, view, &[Reach::Punish, Reach::Ground], game::PUNISH_WALK) {
+            let felt = self.felt(step, view);
+            if self.take_route(ctx, felt, &[Reach::Punish, Reach::Ground], game::PUNISH_WALK) {
                 return Some(Plan::default());
             }
         }
-        if whiffed && view.me.free() && view.frame >= self.settle {
+        if whiffed && view.me.free() && self.settled(step, view, stronger) {
             let reach = self.reach[0][2].max(self.reach[0][5]) + 6;
             if view.gap() <= reach && self.rng.chance(level.quality()) {
                 let cancel_role = if ctx.kit.cancels_with(Role::AntiAir) {
@@ -1753,7 +2001,10 @@ impl FairCpu {
         // as tactics are SP22's.
         let open = !threatened && !foe_busy;
         let mut options: Vec<(Choice, i32)> = vec![(Choice::Wait, level.wait())];
-        if threatened {
+        let stronger = self.stronger(ctx);
+        if stronger && self.judge.coming(view) {
+            // The stronger play does not walk into what it sees coming.
+        } else if threatened {
             options.push((Choice::Approach, 4));
         } else if gap > longest - 8 {
             options.push((Choice::Approach, 40 + i32::from((gap - longest).clamp(0, 80)) / 2));
@@ -1761,7 +2012,6 @@ impl FairCpu {
             options.push((Choice::Approach, 6));
         }
         // The stronger play gives a cornered opponent no ground.
-        let stronger = ctx.stronger || self.forced_stronger;
         let cornering = stronger && self.judged.foe_cornered;
         if !cornering {
             options.push((Choice::Retreat, if gap < 24 { 26 } else { 8 }));
@@ -1948,7 +2198,7 @@ impl FairCpu {
                 }
                 let dir = if self.rng.chance(70) { fwd } else { back };
                 let b = if self.rng.chance(50) { 2 } else { 5 };
-                if ctx.stronger || self.forced_stronger {
+                if self.stronger(ctx) {
                     // The engine throws only from a standing fighter, not
                     // one walking: stop, then the direction and the button
                     // on the same frame.
@@ -2037,6 +2287,13 @@ impl FairCpu {
             })
             .collect()
     }
+}
+
+/// A walk of `frames` frames toward the opponent as `view` shows him, or
+/// away from him.
+fn walk(toward: bool, view: Percept, frames: u32) -> Plan {
+    let right = toward == (view.toward() > 0);
+    Plan::of(PlanKind::Walk, &[if right { RIGHT } else { LEFT }; PLAN_CAP][..(frames as usize).min(PLAN_CAP)])
 }
 
 fn alpha_motion(entry: &MoveEntry, facing_right: bool, strength: usize, clean: bool) -> Vec<u16> {
@@ -2367,6 +2624,15 @@ mod tests {
                 punished += usize::from(cpu.react(100, view, before, &c).is_some_and(|p| p.kind == PlanKind::Act));
             }
             assert_eq!(punished > 0, !guarded, "guarded {guarded}: {punished} punishes");
+        }
+    }
+
+    #[test]
+    fn every_route_book_fits_the_drops_the_cpu_remembers() {
+        // Route indices are kept as `u8` and drops per route in a fixed
+        // array: a larger book would leave routes untracked.
+        for book in crate::route_book::books() {
+            assert!(book.routes.len() <= ROUTE_SLOTS, "{:?} {:?}: {} routes", book.fighter, book.revision, book.routes.len());
         }
     }
 

@@ -172,6 +172,13 @@ fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
     Some(s)
 }
 
+/// The local ROM set and art pack the fights need are here. A test that
+/// finds them missing skips; one that finds them measures, and an empty
+/// count then fails it.
+fn roms_present() -> bool {
+    Path::new(ROMS).is_dir() && Path::new(PACK).is_dir()
+}
+
 /// The fight's machine, lifted out of the session at the fight loop: the
 /// tests step it bare, with Player 1's pad set here and Player 2's by the
 /// Fair CPU inside it.
@@ -261,49 +268,56 @@ fn sparring_pad(i: u32, v: &Percept) -> (u8, u8) {
 
 #[test]
 fn the_nine_situations_are_judged_from_the_delayed_view_only() {
-    let Some(mut m) = machine(true) else { return };
     let delay = Level::VeryHard.reaction();
-    let mut shown: HashMap<u32, Percept> = HashMap::new();
     let mut met: HashMap<Situation, u32> = HashMap::new();
     let (mut cornered, mut open) = (0u32, 0u32);
-    for i in 0..9_600u32 {
-        let v = seen(&m);
-        let (dirs, buttons) = sparring_pad(i, &v);
-        step(&mut m, dirs, buttons);
-        let frame = m.state.frame;
-        shown.insert(frame, seen(&m));
-        let judged = m.fair_cpu_situation().unwrap();
-        // The pad for frame `frame` answered the frame `delay` earlier.
-        let Some(view) = shown.get(&(frame - delay)).copied().filter(|v| v.fighting) else { continue };
-        let (me, foe) = (view.me, view.foe);
-        let why = format!("frame {frame}: {judged:?} from {view:?}");
-        match judged.situation {
-            Situation::KnockedDown => assert!(knocked_down(me.move_id, me.state), "{why}"),
-            Situation::OpponentKnockedDown => assert!(knocked_down(foe.move_id, foe.state), "{why}"),
-            Situation::ItHit => assert!(foe.reacting(), "{why}"),
-            Situation::Defending => assert!(foe.attacking() || foe.jumping() || view.shot || me.reacting(), "{why}"),
-            Situation::OpponentWhiffed => assert!(foe.attacking() && !foe.active, "{why}"),
-            Situation::ItWasBlocked => {
-                let guarded = (0..=14).filter_map(|back| shown.get(&(frame - delay - back))).any(|v| v.foe.guarding() && v.me.attacking());
-                assert!(guarded, "{why}");
-            }
-            Situation::NeutralFar | Situation::NeutralClose => {
-                assert!(!foe.attacking() && !foe.jumping() && !foe.reacting() && !me.reacting(), "{why}");
-                if judged.situation == Situation::NeutralFar {
-                    assert!(gap(&view) > 56, "{why}");
-                } else {
-                    assert!(gap(&view) <= 128, "{why}");
+    // Over a few fights, so that every situation turning up does not rest
+    // on one run of the CPU's random choices.
+    let fights = starts(true);
+    if fights.is_empty() {
+        return;
+    }
+    for mut m in fights {
+        let mut shown: HashMap<u32, Percept> = HashMap::new();
+        for i in 0..9_600u32 {
+            let v = seen(&m);
+            let (dirs, buttons) = sparring_pad(i, &v);
+            step(&mut m, dirs, buttons);
+            let frame = m.state.frame;
+            shown.insert(frame, seen(&m));
+            let judged = m.fair_cpu_situation().unwrap();
+            // The pad for frame `frame` answered the frame `delay` earlier.
+            let Some(view) = shown.get(&(frame - delay)).copied().filter(|v| v.fighting) else { continue };
+            let (me, foe) = (view.me, view.foe);
+            let why = format!("frame {frame}: {judged:?} from {view:?}");
+            match judged.situation {
+                Situation::KnockedDown => assert!(knocked_down(me.move_id, me.state), "{why}"),
+                Situation::OpponentKnockedDown => assert!(knocked_down(foe.move_id, foe.state), "{why}"),
+                Situation::ItHit => assert!(foe.reacting(), "{why}"),
+                Situation::Defending => assert!(foe.attacking() || foe.jumping() || view.shot || me.reacting(), "{why}"),
+                Situation::OpponentWhiffed => assert!(foe.attacking() && !foe.active, "{why}"),
+                Situation::ItWasBlocked => {
+                    let guarded = (0..=14).filter_map(|back| shown.get(&(frame - delay - back))).any(|v| v.foe.guarding() && v.me.attacking());
+                    assert!(guarded, "{why}");
+                }
+                Situation::NeutralFar | Situation::NeutralClose => {
+                    assert!(!foe.attacking() && !foe.jumping() && !foe.reacting() && !me.reacting(), "{why}");
+                    if judged.situation == Situation::NeutralFar {
+                        assert!(gap(&view) > 56, "{why}");
+                    } else {
+                        assert!(gap(&view) <= 128, "{why}");
+                    }
                 }
             }
+            let near_wall = |x: i16| !(165..=355).contains(&x);
+            if judged.corner {
+                assert!(near_wall(me.x) || near_wall(foe.x), "{why}");
+                cornered += 1;
+            } else {
+                open += 1;
+            }
+            *met.entry(judged.situation).or_default() += 1;
         }
-        let near_wall = |x: i16| !(165..=355).contains(&x);
-        if judged.corner {
-            assert!(near_wall(me.x) || near_wall(foe.x), "{why}");
-            cornered += 1;
-        } else {
-            open += 1;
-        }
-        *met.entry(judged.situation).or_default() += 1;
     }
     for situation in [
         Situation::NeutralFar,
@@ -371,6 +385,8 @@ fn pokes(m: &mut PowerOnMachine, partner: Partner, frames: u32) -> Vec<Poke> {
     // whether the game plan is still going.
     let mut live: Option<(Poke, u32, bool)> = None;
     let mut pressed = false;
+    // The game plan the poke was pressed in (plans can follow back to back).
+    let mut plan_began: Option<u32> = None;
     for _ in 0..frames {
         let v = seen(m);
         let following = m.fair_cpu_following_game_plan();
@@ -393,6 +409,7 @@ fn pokes(m: &mut PowerOnMachine, partner: Partner, frames: u32) -> Vec<Poke> {
             if let Some((poke, _, _)) = live.take() {
                 out.push(poke);
             }
+            plan_began = m.fair_cpu_game_plan_began();
             live = Some((
                 Poke { met: Met::Whiff, followed: 0, threw_projectile: false, punched: false, projectile_input: false, since_down: 99, again: false, heavy_with_direction: false, gave_ground: 0, guarded: 0 },
                 0,
@@ -408,7 +425,7 @@ fn pokes(m: &mut PowerOnMachine, partner: Partner, frames: u32) -> Vec<Poke> {
                     poke.met = Met::Guard;
                 }
             }
-            *going &= following && !m.fair_cpu_entering_route();
+            *going &= following && !m.fair_cpu_entering_route() && m.fair_cpu_game_plan_began() == plan_began;
             if *going {
                 let back = if v.me.x >= v.foe.x { R } else { L };
                 poke.followed = *since;
@@ -445,7 +462,7 @@ fn one_game_plan_takes_a_different_next_step_after_a_hit_a_guard_and_a_whiff() {
     // slip, and the CPU goes by what it sees, so a whiff into an opponent
     // walking back, drawn in his guard pose, is a guard to it.
     let find = |partner: Partner, met: Met, shows: &dyn Fn(&Poke) -> bool| {
-        let all: Vec<Poke> = fights.iter().flat_map(|m| pokes(&mut m.clone(), partner, 6_000)).collect();
+        let all: Vec<Poke> = fights.iter().flat_map(|m| pokes(&mut m.clone(), partner, 9_000)).collect();
         let met_it: Vec<Poke> = all.iter().copied().filter(|p| p.met == met).collect();
         assert!(!met_it.is_empty(), "no poke {met:?} against {partner:?}: {all:?}");
         let shown = met_it.iter().copied().find(|p| shows(p)).unwrap_or_else(|| panic!("{met:?}: {met_it:?}"));
@@ -473,8 +490,8 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
     let delay = Level::VeryHard.reaction();
     // Sixty frames from `m`, Player 1 pressing a standing heavy punch at
     // once or doing nothing: the frame his attack first shows, the frame
-    // the game plan stops being followed, and the frames the CPU then held
-    // its stick away from him with no button.
+    // the game plan stops being followed, and the frames the CPU then
+    // guarded or parried.
     let play = |m: &PowerOnMachine, attack: bool| {
         let mut m = m.clone();
         let from = m.state.frame;
@@ -491,8 +508,10 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
             }
             let (dirs, buttons) = cpu_pad(&m);
             let back = if v.me.x >= v.foe.x { R } else { L };
+            // A guard (the stick held away, no button) or the era style's
+            // Drive Parry (medium punch and kick together): an answer.
             if ended.is_some() && !v.me.reacting() {
-                guard_frames += u32::from(dirs & back != 0 && buttons == 0);
+                guard_frames += u32::from((dirs & back != 0 && buttons == 0) || buttons == MP | MK);
             }
         }
         (shown, ended.unwrap_or(u32::MAX), guard_frames)
@@ -504,7 +523,9 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         let mut began = false;
         for _ in 0..3_000 {
             let v = seen(&m);
-            step(&mut m, if gap(&v) > 66 { toward(&v) } else { 0 }, 0);
+            // Close enough that his standing heavy punch reaches (about 52
+            // pixels from his centre and a step): an attack it must answer.
+            step(&mut m, if gap(&v) > 40 { toward(&v) } else { 0 }, 0);
             // A plan begun while he is on his feet, free to attack.
             let foe_down = m.fair_cpu_situation().is_some_and(|j| j.situation == Situation::OpponentKnockedDown);
             if m.fair_cpu_following_game_plan() && !foe_down && !down(&seen(&m).foe) {
@@ -525,12 +546,13 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         // Never sooner than the reaction delay after the attack showed.
         assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}");
         // Cut short as the attack is first seen, where the same plan left
-        // alone went on, and a guard held after it: the threat answered.
-        if ended <= shown + delay + 3 && left_alone > ended + 3 && guard_frames >= 5 {
+        // alone went on, and a guard or a parry after it (the parry's input
+        // is four frames): the threat answered.
+        if ended <= shown + delay + 3 && left_alone > ended + 3 && guard_frames >= 3 {
             interrupted += 1;
         }
     }
-    assert!(interrupted >= 2, "an attack seen during a game plan cut it short and was guarded in {interrupted} of 16 tries");
+    assert!(interrupted >= 2, "an attack seen during a game plan cut it short and was guarded or parried in {interrupted} of 16 tries");
 }
 
 #[test]
@@ -596,6 +618,8 @@ struct RouteSeen {
     after_whiff: bool,
     /// The CPU's fighter was on Player 1's left when it began.
     facing_right: bool,
+    /// The CPU has begun an attack of its own since the route ended.
+    closed: bool,
 }
 
 impl RouteSeen {
@@ -644,6 +668,7 @@ fn routes_seen(m: &mut PowerOnMachine, frames: u32, mut pad: impl FnMut(u32, &Pe
         let v = seen(m);
         let (dirs, buttons) = pad(i, &v);
         let cpu_health = v.me.health;
+        let was_me = v.me;
         step(m, dirs, buttons);
         let v = seen(m);
         // Player 1's attack box went away without touching the CPU: a whiff.
@@ -678,8 +703,13 @@ fn routes_seen(m: &mut PowerOnMachine, frames: u32, mut pad: impl FnMut(u32, &Pe
             let (dirs, buttons) = cpu_pad(m);
             if in_route {
                 run.pads.push((dirs, buttons));
+            } else if v.me.attacking() && !was_me.attacking() {
+                // An attack of its own begun from a free fighter after the
+                // route (not the route's own cancel): what it hits is not
+                // the route's.
+                run.closed = true;
             }
-            if v.foe.reacting() {
+            if v.foe.reacting() && !run.closed {
                 run.combo = run.combo.max(combo);
                 run.first_hit.get_or_insert(i - *began);
             }
@@ -702,18 +732,24 @@ fn standing_in_reach(_: u32, v: &Percept) -> (u8, u8) {
 
 #[test]
 fn a_hit_from_a_route_is_followed_by_the_routes_further_hits_and_the_routes_vary() {
-    let Some(mut m) = machine(true) else { return };
-    let runs = routes_seen(&mut m, 6_000, standing_in_reach);
+    // Over a few fights, so that the variety does not rest on one run of
+    // the CPU's random choices.
+    let runs: Vec<RouteSeen> = starts(true).iter().flat_map(|m| routes_seen(&mut m.clone(), 6_000, standing_in_reach)).collect();
+    if !roms_present() {
+        return;
+    }
     let combos: Vec<&RouteSeen> = runs.iter().filter(|r| r.combo >= 2).collect();
     assert!(combos.len() >= 4, "routes that combo: {} of {}: {runs:?}", combos.len(), runs.len());
     // More than one press in it: the further hits come from its later steps,
-    // pressed before the first hit could be seen.
-    for run in &combos {
+    // pressed before the first hit could be seen. (A route cut short by a
+    // slip can still combo with what the CPU does next, which is not the
+    // route's: only routes entered in full are checked.)
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    for run in combos.iter().filter(|r| r.route(book).is_some_and(|(route, steps)| steps == route.steps.len())) {
         let presses = run.pads.windows(2).filter(|w| w[0].1 == 0 && w[1].1 != 0).count() + usize::from(run.pads[0].1 != 0);
         assert!(presses >= 2 || run.combo >= 3, "{run:?}");
     }
     // Which of the book's routes each was, entered in full.
-    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
     let distinct: std::collections::HashSet<String> = combos
         .iter()
         .filter_map(|r| r.route(book).filter(|(route, steps)| *steps == route.steps.len()).map(|(route, _)| route.name()))
@@ -723,33 +759,39 @@ fn a_hit_from_a_route_is_followed_by_the_routes_further_hits_and_the_routes_vary
 
 #[test]
 fn a_whiff_in_reach_is_punished_with_a_route_not_one_heavy_normal() {
-    let Some(mut m) = machine(true) else { return };
     // Player 1 whiffs a Shoryuken, a move with a long recovery, whenever
     // the CPU is just out of its reach, and walks in when it is farther.
-    let mut started: Option<u32> = None;
-    let pad = |i: u32, v: &Percept| {
-        let f = toward(v);
-        if let Some(at) = started {
-            let motion = [(f, 0), (f, 0), (D, 0), (D, 0), (D | f, HP), (D | f, HP), (0, 0)];
-            if let Some(&pad) = motion.get((i - at) as usize) {
-                return pad;
+    // Summed over a few fights.
+    let mut runs: Vec<RouteSeen> = Vec::new();
+    for mut m in starts(true) {
+        let mut started: Option<u32> = None;
+        let pad = |i: u32, v: &Percept| {
+            let f = toward(v);
+            if let Some(at) = started {
+                let motion = [(f, 0), (f, 0), (D, 0), (D, 0), (D | f, HP), (D | f, HP), (0, 0)];
+                if let Some(&pad) = motion.get((i - at) as usize) {
+                    return pad;
+                }
+                if i - at < 90 {
+                    return (0, 0);
+                }
+                started = None;
             }
-            if i - at < 90 {
-                return (0, 0);
+            let g = gap(v);
+            if (60..=90).contains(&g) && v.foe.free() {
+                started = Some(i);
+                (f, 0)
+            } else if g > 90 {
+                (f, 0)
+            } else {
+                (0, 0)
             }
-            started = None;
-        }
-        let g = gap(v);
-        if (60..=90).contains(&g) && v.foe.free() {
-            started = Some(i);
-            (f, 0)
-        } else if g > 90 {
-            (f, 0)
-        } else {
-            (0, 0)
-        }
-    };
-    let runs = routes_seen(&mut m, 12_000, pad);
+        };
+        runs.extend(routes_seen(&mut m, 12_000, pad));
+    }
+    if !roms_present() {
+        return;
+    }
     let punishes: Vec<&RouteSeen> = runs.iter().filter(|r| r.after_whiff).collect();
     assert!(!punishes.is_empty(), "no route followed a whiff: {runs:?}");
     let landed: Vec<_> = punishes.iter().filter(|r| r.combo >= 2).collect();
@@ -764,8 +806,11 @@ fn a_whiff_in_reach_is_punished_with_a_route_not_one_heavy_normal() {
 
 #[test]
 fn a_route_is_taken_only_with_the_meter_it_spends() {
-    let Some(mut m) = machine(true) else { return };
-    let runs = routes_seen(&mut m, 9_000, standing_in_reach);
+    // Summed over a few fights.
+    let runs: Vec<RouteSeen> = starts(true).iter().flat_map(|m| routes_seen(&mut m.clone(), 9_000, standing_in_reach)).collect();
+    if !roms_present() {
+        return;
+    }
     assert!(runs.len() >= 4, "{runs:?}");
     // A Super Art's least cost is one bar. A route begun with less never
     // spends any; one begun with a bar or more may.
@@ -776,8 +821,11 @@ fn a_route_is_taken_only_with_the_meter_it_spends() {
 
 #[test]
 fn at_easy_a_route_is_sometimes_dropped_partway() {
-    let Some(mut m) = machine_at(true, 1) else { return };
-    let runs = routes_seen(&mut m, 20_000, standing_in_reach);
+    // Summed over a few fights.
+    let runs: Vec<RouteSeen> = starts_at(true, 1).iter().flat_map(|m| routes_seen(&mut m.clone(), 20_000, standing_in_reach)).collect();
+    if !roms_present() {
+        return;
+    }
     let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
     // A run that matches a route of the book only cut short at one of its
     // steps, and is no route of the book itself, is a dropped route.
@@ -811,7 +859,12 @@ fn cpu_pressed(m: &PowerOnMachine, last: &mut u8) -> bool {
 /// has stood still a while, so a test's counts do not rest on one run of
 /// the CPU's random choices (any change to its play reshuffles them).
 fn starts(stronger: bool) -> Vec<PowerOnMachine> {
-    let Some(m) = machine(stronger) else { return Vec::new() };
+    starts_at(stronger, 4)
+}
+
+/// The same, at `difficulty`.
+fn starts_at(stronger: bool, difficulty: u8) -> Vec<PowerOnMachine> {
+    let Some(m) = machine_at(stronger, difficulty) else { return Vec::new() };
     [0u32, 97, 211]
         .iter()
         .map(|&idle| {
@@ -1118,31 +1171,343 @@ fn with_the_opponent_cornered_it_presses_more_and_gives_less_ground() {
 
 #[test]
 fn inside_a_game_plan_it_does_not_start_an_attack_into_one_it_has_seen_start() {
-    let Some(mut m) = machine(true) else { return };
     let delay = Level::VeryHard.reaction();
-    let mut shown: HashMap<u32, Percept> = HashMap::new();
-    let mut last = 0u8;
     let mut presses = 0;
-    let mut was_route = false;
-    for i in 0..24_000u32 {
-        let v = seen(&m);
-        let r = i.wrapping_mul(2_654_435_761) >> 9;
-        let pad = if i % 23 == 0 { (0, 1 << (r % 6)) } else if gap(&v) > 70 { (toward(&v), 0) } else { (0, 0) };
-        let following = m.fair_cpu_following_game_plan();
-        step(&mut m, pad.0, pad.1);
-        let frame = m.state.frame;
-        shown.insert(frame, seen(&m));
-        let route_began = m.fair_cpu_entering_route() && !was_route;
-        was_route = m.fair_cpu_entering_route();
-        // A press, or a route begun, inside a game plan.
-        let pressed = (cpu_pressed(&m, &mut last) && !was_route) || route_began;
-        // The view this press was decided on, and the frame before it.
-        let (Some(view), Some(before)) = (shown.get(&(frame - delay)), shown.get(&(frame - delay - 1))) else { continue };
-        if pressed && following {
-            presses += 1;
-            let started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
-            assert!(!started, "frame {frame}: a plan's attack pressed as it saw his attack start: {view:?}");
+    // Summed over a few fights, so the count does not rest on one run of
+    // the CPU's random choices.
+    for mut m in starts(true) {
+        let mut shown: HashMap<u32, Percept> = HashMap::new();
+        let mut last = 0u8;
+        let mut was_route = false;
+        for i in 0..12_000u32 {
+            let v = seen(&m);
+            let r = i.wrapping_mul(2_654_435_761) >> 9;
+            let pad = if i % 23 == 0 { (0, 1 << (r % 6)) } else if gap(&v) > 70 { (toward(&v), 0) } else { (0, 0) };
+            let following = m.fair_cpu_following_game_plan();
+            step(&mut m, pad.0, pad.1);
+            let frame = m.state.frame;
+            shown.insert(frame, seen(&m));
+            let route_began = m.fair_cpu_entering_route() && !was_route;
+            was_route = m.fair_cpu_entering_route();
+            // A press, or a route begun, inside a game plan.
+            let pressed = (cpu_pressed(&m, &mut last) && !was_route) || route_began;
+            // The view this press was decided on, and the frame before it.
+            let (Some(view), Some(before)) = (shown.get(&(frame - delay)), shown.get(&(frame - delay - 1))) else { continue };
+            if pressed && following {
+                presses += 1;
+                let started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
+                assert!(!started, "frame {frame}: a plan's attack pressed as it saw his attack start: {view:?}");
+            }
         }
     }
+    if !roms_present() {
+        return;
+    }
     assert!(presses >= 10, "attacks pressed inside game plans: {presses}");
+}
+
+// SC6 (#198): purposeful movement in neutral.
+
+/// From Player 1's centre to the near edge of the CPU fighter's hurtbox:
+/// what Player 1's attacks must reach.
+fn reach_gap(v: &Percept) -> i16 {
+    if v.me.x >= v.foe.x { v.me.hurt.0 - v.foe.x } else { v.foe.x - v.me.hurt.1 }
+}
+
+/// What the CPU's fighter did in neutral over `frames` against a Player 1
+/// who throws out a Shoryuken when he sees the CPU come into his reach, 10
+/// frames after it does (a quick person's reaction). (His normals recover
+/// within about 5 to 19 frames of their box going, inside the CPU's
+/// 12-frame reaction at Very Difficult: a whiffed normal cannot be punished
+/// on sight. A whiffed Shoryuken can.)
+#[derive(Clone, Copy, Debug, Default)]
+struct Hover {
+    /// Turns from walking in to walking out with Player 1's reach edge
+    /// near (within 24 pixels of the farthest his attacks have reached).
+    edge_turns: u32,
+    /// Player 1's Shoryukens whose box never reached the CPU.
+    whiffs: u32,
+    /// Of those, the ones he began within 20 frames of an edge turn: he
+    /// swung at the CPU's step in, and it had stepped back out.
+    drawn: u32,
+    /// Routes begun within 30 frames of a drawn whiff's box going, and
+    /// those that hit him.
+    punished: u32,
+    landed: u32,
+}
+
+fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
+    let mut m = start.clone();
+    let mut out = Hover::default();
+    // Player 1's longest attack box seen, from his centre, and the
+    // distance he swings from (a little inside it).
+    let mut p1_reach: i16 = 50;
+    let mut poked_at: Option<u32> = None;
+    let mut poke_after_turn = false;
+    let (mut p1_active, mut p1_contact) = (false, false);
+    // The CPU's last sideways movement (+1 toward him, -1 away) and the
+    // frame of its last edge turn.
+    let mut moving = 0i16;
+    let mut turned_at: Option<u32> = None;
+    let mut drawn_at: Option<u32> = None;
+    let mut punish_at: Option<u32> = None;
+    let mut was_route = false;
+    let mut gaps = [i16::MAX; 10];
+    for i in 0..frames {
+        let v = seen(&m);
+        // He swings at the CPU as he sees it come into his reach.
+        let seen_gap = gaps[i as usize % 10];
+        gaps[i as usize % 10] = reach_gap(&v);
+        let near = seen_gap <= p1_reach;
+        let pad = match poked_at {
+            Some(at) if i - at < 7 => {
+                let f = toward(&v);
+                [(f, 0), (f, 0), (D, 0), (D, 0), (D | f, HP), (D | f, HP), (0, 0)][(i - at) as usize]
+            }
+            Some(at) if i - at < 90 => (0, 0),
+            _ if near && v.foe.free() && v.me.free() => {
+                poked_at = Some(i);
+                poke_after_turn = turned_at.is_some_and(|t| i - t <= 20);
+                (toward(&v), 0)
+            }
+            // Out of a corner, and in from beyond a projectile's range: the
+            // fight stays in the open, around the edge of his reach.
+            _ if v.foe.x < 114 + 50 || v.foe.x > 400 - 50 || gap(&v) > 90 => (toward(&v), 0),
+            _ => (0, 0),
+        };
+        let cpu_health = v.me.health;
+        step(&mut m, pad.0, pad.1);
+        let after = seen(&m);
+        // The CPU's own walking (not pushback from a hit or a guard).
+        let to_p1: i16 = if after.foe.x >= after.me.x { 1 } else { -1 };
+        let dx = (after.me.x - v.me.x) * to_p1;
+        if after.me.free() && v.me.free() && !after.me.guarding() && dx != 0 {
+            let dir = dx.signum();
+            if moving > 0 && dir < 0 && (reach_gap(&after) - p1_reach).abs() <= 24 {
+                out.edge_turns += 1;
+                turned_at = Some(i);
+            }
+            moving = dir;
+        }
+        if after.foe.active {
+            p1_active = true;
+            p1_reach = p1_reach.max((after.foe.front - after.foe.x) * -to_p1);
+            let toward_cpu = -to_p1;
+            let edge = if toward_cpu > 0 { after.me.hurt.0 } else { after.me.hurt.1 };
+            p1_contact |= after.me.reacting() || after.me.health < cpu_health || (after.foe.front - edge) * toward_cpu >= 0;
+        } else if p1_active {
+            p1_contact |= after.me.reacting() || after.me.health < cpu_health;
+            if !p1_contact {
+                out.whiffs += 1;
+                if poke_after_turn {
+                    out.drawn += 1;
+                    drawn_at = Some(i);
+                }
+            }
+            p1_active = false;
+            p1_contact = false;
+        }
+        let in_route = m.fair_cpu_entering_route();
+        if in_route && !was_route && drawn_at.is_some_and(|at| i - at <= 30) {
+            out.punished += 1;
+            punish_at = Some(i);
+            drawn_at = None;
+        }
+        was_route = in_route;
+        if after.foe.reacting() && punish_at.is_some_and(|at| i - at <= 60) {
+            out.landed += 1;
+            punish_at = None;
+        }
+    }
+    out
+}
+
+fn hover_sum(stronger: bool) -> Hover {
+    starts(stronger).iter().map(|m| hover(m, 10_000)).fold(Hover::default(), |a, h| Hover {
+        edge_turns: a.edge_turns + h.edge_turns,
+        whiffs: a.whiffs + h.whiffs,
+        drawn: a.drawn + h.drawn,
+        punished: a.punished + h.punished,
+        landed: a.landed + h.landed,
+    })
+}
+
+#[test]
+fn in_neutral_it_steps_in_and_out_at_the_edge_of_the_opponents_reach_and_punishes_the_whiff_it_draws() {
+    let new = hover_sum(true);
+    let old = hover_sum(false);
+    if !roms_present() {
+        return;
+    }
+    eprintln!("stronger {new:?}\nold {old:?}");
+    assert!(new.edge_turns >= 60, "turns from in to out at the edge of his reach: {new:?}");
+    assert!(2 * new.edge_turns >= 3 * old.edge_turns, "the old Fair CPU turns there by chance: {new:?} against {old:?}");
+    assert!(new.drawn >= 10 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
+    assert!(new.punished >= 3 && new.landed >= 3, "drawn whiffs punished with a route, and landed: {new:?}");
+}
+
+#[test]
+fn in_far_neutral_it_follows_game_plans_that_take_space_and_throw_projectiles_from_afar() {
+    // Player 1 keeps his distance away from the walls: he jumps back while
+    // the CPU is near, walks out of a corner when he is in one, and
+    // otherwise stands still, guarding nothing. Only far neutral away from
+    // the corner is counted (a cornered opponent has a plan of its own).
+    let run = |start: &PowerOnMachine| {
+        let mut m = start.clone();
+        let (mut far, mut far_in_plan, mut far_shots, mut far_walk_in) = (0u32, 0u32, 0u32, 0u32);
+        // The game plan being followed, and whether it began in far neutral;
+        // frames since the CPU last held the stick down, and its buttons.
+        let (mut plan, mut plan_far) = (None, false);
+        let (mut since_down, mut last_buttons) = (99u32, 0u8);
+        for i in 0..9_000u32 {
+            let v = seen(&m);
+            let walled = v.foe.x < 114 + 50 || v.foe.x > 400 - 50;
+            let pad = if walled {
+                (toward(&v), 0)
+            } else if gap(&v) < 130 && v.foe.free() {
+                (U | away(&v), 0)
+            } else {
+                (0, 0)
+            };
+            let judged_far = m.fair_cpu_situation().is_some_and(|j| j.situation == Situation::NeutralFar && !j.foe_cornered);
+            let following = m.fair_cpu_following_game_plan();
+            step(&mut m, pad.0, pad.1);
+            let after = seen(&m);
+            let began = m.fair_cpu_game_plan_began();
+            if began != plan {
+                plan = began;
+                plan_far = began.is_some() && m.fair_cpu_situation().is_some_and(|j| j.situation == Situation::NeutralFar);
+            }
+            // A projectile's input (a punch with the stick forward soon after
+            // it was held down) inside a game plan begun in far neutral.
+            let (dirs, buttons) = cpu_pad(&m);
+            let forward = if after.me.x >= after.foe.x { L } else { R };
+            let punch = buttons & (LP | MP | HP) & !last_buttons != 0;
+            if i >= 300 && punch && dirs & forward != 0 && since_down <= 8 && began.is_some() && plan_far {
+                far_shots += 1;
+            }
+            // Walking in, inside a game plan begun in far neutral.
+            let to_p1: i16 = if after.foe.x >= after.me.x { 1 } else { -1 };
+            if i >= 300 && began.is_some() && plan_far && after.me.free() && (after.me.x - v.me.x) * to_p1 > 0 {
+                far_walk_in += 1;
+            }
+            since_down = if dirs & D != 0 && buttons == 0 { 0 } else { since_down + 1 };
+            last_buttons = buttons;
+            if i < 300 || !judged_far {
+                continue;
+            }
+            far += 1;
+            far_in_plan += u32::from(following);
+        }
+        [far, far_in_plan, far_shots, far_walk_in]
+    };
+    let [far, in_plan, shots, walk_in] =
+        starts(true).iter().map(run).fold([0u32; 4], |a, r| std::array::from_fn(|k| a[k] + r[k]));
+    if !roms_present() {
+        return;
+    }
+    eprintln!("far frames {far}, in a game plan {in_plan}, projectile inputs from a plan begun far {shots}, frames walking in inside a plan begun far {walk_in}");
+    // Far neutral is mostly spent in a game plan, walking in is part of it,
+    // and projectiles are thrown from plans begun far off. (Far neutral is
+    // short against this CPU, which closes in fast; the plans' contents are
+    // pinned by the unit test `far_neutral_plans_walk_in_and_throw_projectiles`.)
+    assert!(in_plan * 2 >= far, "far neutral followed by a game plan: {in_plan} of {far} frames");
+    assert!(walk_in >= 30, "frames walking in to take space inside a game plan begun far: {walk_in}");
+    assert!(shots >= 1, "projectiles thrown from afar inside a game plan: {shots}");
+}
+
+#[test]
+fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
+    let delay = Level::VeryHard.reaction();
+    let run = |start: &PowerOnMachine| {
+        let mut m = start.clone();
+        // Each frame shown, and whether it showed something coming at the
+        // CPU: a projectile in front of it, or an attack whose box has not
+        // yet come and gone (start-up or active, not recovery).
+        let mut coming: HashMap<u32, (bool, u8)> = HashMap::new();
+        let (mut box_seen, mut last_move) = (false, 0u8);
+        let (mut walks, mut walks_into, mut route_pressed) = (0u32, Vec::new(), false);
+        let mut shots = 0u32;
+        let mut had_shot = false;
+        for i in 0..10_000u32 {
+            let v = seen(&m);
+            let f = toward(&v);
+            // Player 1: projectiles from afar, buttons up close, walking in
+            // between, on a cycle.
+            let t = i % 160;
+            let pad = if gap(&v) > 110 {
+                match t {
+                    0..=2 => (D, 0),
+                    3..=5 => (D | f, 0),
+                    6..=9 => (f, LP),
+                    10..=60 => (0, 0),
+                    _ => (f, 0),
+                }
+            } else if t % 37 < 3 {
+                (0, [HP, HK, MK][(i / 37 % 3) as usize])
+            } else if t < 80 {
+                (0, 0)
+            } else {
+                (f, 0)
+            };
+            let was_route = m.fair_cpu_entering_route();
+            step(&mut m, pad.0, pad.1);
+            let frame = m.state.frame;
+            let shown = seen(&m);
+            if shown.foe.attacking() {
+                if shown.foe.move_id != last_move {
+                    box_seen = false;
+                }
+                box_seen |= shown.foe.active;
+                last_move = shown.foe.move_id;
+            } else {
+                box_seen = false;
+                last_move = 0;
+            }
+            let recovering = box_seen && !shown.foe.active;
+            let to_p1: i16 = if shown.foe.x >= shown.me.x { 1 } else { -1 };
+            let shot_coming = shown.shot && (shown.shot_x - shown.me.x) * to_p1 > -16;
+            // And which way was toward Player 1 as that frame showed it.
+            let forward = if shown.foe.x >= shown.me.x { R } else { L };
+            coming.insert(frame, (shot_coming || (shown.foe.attacking() && !recovering), forward));
+            if shown.shot && !had_shot {
+                shots += 1;
+            }
+            had_shot = shown.shot;
+            // A route's walk in is its pads before its first button.
+            let in_route = m.fair_cpu_entering_route();
+            let (dirs, buttons) = cpu_pad(&m);
+            if !in_route || !was_route {
+                route_pressed = false;
+            }
+            route_pressed |= in_route && buttons != 0;
+            // Toward him as the view it decided on showed it (a jump over
+            // it turns the fighters round before it can see that).
+            let Some(&(seen_coming, forward)) = coming.get(&(frame - delay)) else { continue };
+            let walking_in = dirs == forward && buttons == 0 && !route_pressed;
+            if i < 300 || !walking_in || !shown.me.free() || down(&shown.foe) {
+                continue;
+            }
+            walks += 1;
+            if seen_coming {
+                walks_into.push(frame);
+            }
+        }
+        (walks, walks_into, shots)
+    };
+    let mut total = (0u32, Vec::new(), 0u32);
+    for m in starts(true) {
+        let (w, into, s) = run(&m);
+        total.0 += w;
+        total.1.extend(into);
+        total.2 += s;
+    }
+    let (walks, into, shots) = total;
+    if !roms_present() {
+        return;
+    }
+    eprintln!("frames walking in {walks}, projectiles thrown at it {shots}, walking in with something coming {}", into.len());
+    assert!(shots >= 15, "Player 1 threw projectiles: {shots}");
+    assert!(walks >= 500, "frames walking in: {walks}");
+    assert!(into.is_empty(), "frames it walked in on a view showing an attack or projectile coming: {into:?}");
 }
