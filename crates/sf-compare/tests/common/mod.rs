@@ -15,12 +15,15 @@ pub const FIXTURE_HEIGHT: usize = 2;
 
 /// A fresh, uniquely named directory under the system temp directory,
 /// removed with its contents when the returned guard is dropped (also when
-/// the test panics), so repeated test runs leave nothing behind.
+/// the test panics), so repeated test runs leave nothing behind. The count
+/// tells apart directories made in one process, where the clock can repeat.
 pub fn temp_dir(test_name: &str) -> TempDir {
+    static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let dir = std::env::temp_dir().join(format!(
-        "sf-compare-test-{}-{}-{}",
+        "sf-compare-test-{}-{}-{}-{}",
         test_name,
         std::process::id(),
+        MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()

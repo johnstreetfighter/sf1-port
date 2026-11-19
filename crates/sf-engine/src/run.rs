@@ -213,14 +213,17 @@ pub fn run_idle_capture(
 pub struct ScratchDir(std::path::PathBuf);
 
 impl ScratchDir {
-    /// A fresh directory named `label-<pid>-<nanos>` (not yet created; the
-    /// capture writers create it).
+    /// A fresh directory named `label-<pid>-<nanos>-<count>` (not yet
+    /// created; the capture writers create it). The count tells apart
+    /// directories made in one process, where the clock can repeat.
     pub fn new(label: &str) -> Self {
+        static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let count = MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
-        ScratchDir(std::env::temp_dir().join(format!("{label}-{}-{nanos}", std::process::id())))
+        ScratchDir(std::env::temp_dir().join(format!("{label}-{}-{nanos}-{count}", std::process::id())))
     }
 }
 
@@ -2738,6 +2741,16 @@ mod tests {
             },
             "p1_left releases left at frame+hold"
         );
+    }
+
+    /// #258: tests in one process make these at the same moment, and the
+    /// clock can give them the same reading.
+    #[test]
+    fn scratch_dirs_made_in_one_process_never_share_a_name() {
+        let made: Vec<ScratchDir> = (0..200).map(|_| ScratchDir::new("sf-engine-test-same")).collect();
+        for (i, one) in made.iter().enumerate() {
+            assert!(made[..i].iter().all(|other| **other != **one), "{} twice", one.display());
+        }
     }
 
     #[test]

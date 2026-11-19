@@ -2,6 +2,7 @@ use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn sf_dev(args: &[&str], path: &Path) -> Output {
@@ -21,15 +22,36 @@ fn assert_success(output: Output) {
     );
 }
 
+/// #258: the two tests here run at once in one process, and the clock can
+/// give both the same reading.
+#[test]
+fn temp_folders_made_in_one_process_never_share_a_name() {
+    let folders: Vec<PathBuf> = (0..200).map(|_| temp_folder_name()).collect();
+    for (i, folder) in folders.iter().enumerate() {
+        assert!(!folders[..i].contains(folder), "{} twice", folder.display());
+    }
+}
+
 fn temp_folder() -> PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let folder =
-        std::env::temp_dir().join(format!("sf1-authored-combo-{}-{stamp}", std::process::id()));
+    let folder = temp_folder_name_at(stamp);
     fs::create_dir(&folder).unwrap();
     folder
+}
+
+fn temp_folder_name() -> PathBuf {
+    temp_folder_name_at(0)
+}
+
+/// The process id and clock tell runs apart; the count tells apart folders
+/// made in one process, where the clock can repeat.
+fn temp_folder_name_at(stamp: u128) -> PathBuf {
+    static MADE: AtomicU64 = AtomicU64::new(0);
+    let count = MADE.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("sf1-authored-combo-{}-{stamp}-{count}", std::process::id()))
 }
 
 fn assert_failure(output: Output, expected: &str) {
