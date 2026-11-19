@@ -16,6 +16,7 @@
 use super::{Body, Choice, Percept};
 use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
+use crate::route_book::{Reach, Route, Stance};
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
 /// counts as the corner. Measured by walking Ryu into each wall of
@@ -83,10 +84,13 @@ fn cornered(body: &Body) -> bool {
 /// What judging remembers from one seen frame to the next.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Judge {
-    /// The opponent's current attack has shown a live attack box, and has
-    /// met the CPU's fighter (a guard or a hit).
+    /// The opponent's current attack has shown a live attack box, and that
+    /// box has reached the CPU's fighter (or hit him).
     foe_attack_shown: bool,
     foe_attack_met: bool,
+    /// The opponent's current attack began on the ground: one that rises
+    /// (a Shoryuken) is still a whiff to punish as it falls.
+    foe_attack_grounded: bool,
     /// The longest any of the opponent's attack boxes has been seen to reach.
     foe_reach: i16,
     /// Frames left of "it was blocked".
@@ -95,7 +99,7 @@ pub(super) struct Judge {
 
 impl Default for Judge {
     fn default() -> Self {
-        Judge { foe_attack_shown: false, foe_attack_met: false, foe_reach: DEFAULT_FOE_REACH, blocked: 0 }
+        Judge { foe_attack_shown: false, foe_attack_met: false, foe_attack_grounded: false, foe_reach: DEFAULT_FOE_REACH, blocked: 0 }
     }
 }
 
@@ -109,13 +113,20 @@ impl Judge {
             if foe_was.is_none_or(|was| !was.attacking() || was.move_id != foe.move_id) {
                 self.foe_attack_shown = false;
                 self.foe_attack_met = false;
+                self.foe_attack_grounded = foe_was.is_some_and(|was| !was.jumping());
             }
             if foe.active {
                 self.foe_attack_shown = true;
                 let toward_me = if me.x >= foe.x { 1 } else { -1 };
                 self.foe_reach = self.foe_reach.max(((foe.front - foe.x) * toward_me).clamp(16, 120));
+                // The box's forward edge at or past the near edge of the
+                // CPU's hurtbox: it reached him, guarded or not.
+                let near = if toward_me > 0 { me.hurt.0 } else { me.hurt.1 };
+                if (foe.front - near) * toward_me >= 0 {
+                    self.foe_attack_met = true;
+                }
             }
-            if me.reacting() || me.guarding() {
+            if me.reacting() {
                 self.foe_attack_met = true;
             }
         } else {
@@ -144,7 +155,7 @@ impl Judge {
             Situation::ItWasBlocked
         } else if foe.attacking()
             && !foe.active
-            && !foe.jumping()
+            && (!foe.jumping() || self.foe_attack_grounded)
             && self.foe_attack_shown
             && !self.foe_attack_met
             && view.gap() <= my_reach + WHIFF_MARGIN
@@ -179,6 +190,138 @@ pub(super) enum Act {
     Reach { crouch: bool, button: usize },
     /// One of the CPU's actions, pressed as it presses it today.
     Do(Choice),
+    /// A route from the fighter's route book that starts this way, entered
+    /// whole from its opener: its first cancel is committed before any hit
+    /// is seen. With no route allowed, the plan ends.
+    Route(Reach),
+}
+
+/// Frames the CPU may walk in to start a route: from neutral, and to
+/// punish a whiff, when the recovering opponent will not wait long.
+pub(super) const NEUTRAL_WALK: u8 = 20;
+pub(super) const PUNISH_WALK: u8 = 6;
+/// Frames before a falling opponent lands at which a punish begins: about
+/// the time a route's opener takes to reach him.
+pub(super) const LANDING_LEAD: i16 = 6;
+
+/// A walk covers about two pixels a frame.
+const WALK_SPEED: i16 = 2;
+
+/// What the moment allows when the CPU looks for a route.
+pub(super) struct Moment<'a> {
+    pub reaches: &'a [Reach],
+    /// An era style is in force: it brings true combos and cancels with it.
+    pub era: bool,
+    pub true_combos: bool,
+    pub cancels: bool,
+    pub crouching: bool,
+    pub meters: [u16; 2],
+    pub corner: bool,
+    pub gap: i16,
+    pub walk: u8,
+    /// In health bar points.
+    pub foe_health: u16,
+}
+
+impl Moment<'_> {
+    /// The route can be taken now.
+    pub(super) fn allows(&self, route: &Route) -> bool {
+        let stance = if self.crouching { Stance::Crouching } else { Stance::Standing };
+        self.reaches.contains(&route.reach)
+            && (!route.true_combos || self.true_combos || self.era)
+            && (!route.cancels || self.cancels || self.era)
+            && route.stances.contains(&stance)
+            && (!route.corner || self.corner)
+            && route.super_spent <= self.meters[0]
+            && route.drive_spent <= self.meters[1]
+            && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
+    }
+
+    /// Frames to walk before the route reaches from here.
+    pub(super) fn walk_frames(&self, route: &Route) -> u8 {
+        ((self.gap - route.gap).max(0) + WALK_SPEED - 1).div_euclid(WALK_SPEED).min(i16::from(self.walk)) as u8
+    }
+
+    /// How good the route is now: one that wins the round above all;
+    /// otherwise its damage, a knockdown at its end, and meter kept; a
+    /// route taken lately scores lower.
+    pub(super) fn score(&self, route: &Route, recent: bool) -> i32 {
+        let points = i32::from(route.damage / 20);
+        if points >= i32::from(self.foe_health) && self.foe_health > 0 {
+            return 10_000 + points;
+        }
+        let meter = i32::from(route.super_spent) / 4 + i32::from(route.drive_spent) / 8;
+        points * 4 + if route.knockdown { 12 } else { 0 } - meter - if recent { 30 } else { 0 }
+    }
+}
+
+/// A route being entered: which one, where it is in its script, where it
+/// stops (a slip cuts it short), and what the CPU has seen of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct RouteRun {
+    fighter: TournamentFighter,
+    revision: crate::era::Revision,
+    loadout: crate::era::Loadout,
+    pub index: u8,
+    walk: u8,
+    pub at: u16,
+    stop: u16,
+    facing_right: bool,
+    hit: bool,
+    guarded: bool,
+}
+
+impl RouteRun {
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn new(
+        fighter: TournamentFighter,
+        revision: crate::era::Revision,
+        loadout: crate::era::Loadout,
+        index: u8,
+        walk: u8,
+        stop: u16,
+        facing_right: bool,
+    ) -> Self {
+        RouteRun { fighter, revision, loadout, index, walk, at: 0, stop, facing_right, hit: false, guarded: false }
+    }
+
+    fn route(&self) -> Option<&'static Route> {
+        crate::route_book::book(self.fighter, self.revision, self.loadout)?.routes.get(usize::from(self.index))
+    }
+
+    /// The pad for this frame of the run, the walk first: `None` when the
+    /// route is over or cut.
+    pub(super) fn pad(&self) -> Option<u16> {
+        let forward = if self.facing_right { super::RIGHT } else { super::LEFT };
+        if self.at < u16::from(self.walk) {
+            return Some(forward);
+        }
+        let frame = self.at - u16::from(self.walk);
+        if frame >= self.stop {
+            return None;
+        }
+        let (stick, buttons) = self.route()?.pad_at(usize::from(frame))?;
+        // Routes are written for an attacker facing right.
+        let stick = u16::from(stick);
+        let stick = if self.facing_right { stick } else { (stick & !3) | ((stick & 1) << 1) | ((stick & 2) >> 1) };
+        Some(stick | u16::from(buttons) << 4)
+    }
+
+    /// Note what the frame shows of the route.
+    pub(super) fn watch(&mut self, view: Percept) {
+        self.hit |= view.foe.reacting();
+        self.guarded |= view.foe.guarding() && view.me.attacking();
+    }
+
+    pub(super) fn outcome(&self) -> Outcome {
+        if self.hit {
+            Outcome::Hit
+        } else if self.guarded {
+            Outcome::Guard
+        } else {
+            Outcome::Whiff
+        }
+    }
 }
 
 /// One step of a game plan: what to do, and the step that follows each
@@ -225,7 +368,20 @@ const RYU_SF6_POKE: [Step; 6] = [
     step(Act::Do(Choice::Guard), always(None)),
 ];
 
-const RYU_SF6: [GamePlan; 1] = [GamePlan { situation: Situation::NeutralClose, score: 60, steps: &RYU_SF6_POKE }];
+/// Ryu in the SF6 era style, close neutral: walk in and enter a ground
+/// route from the book. On a guard walk in and throw; on a whiff give
+/// ground and guard.
+const RYU_SF6_ROUTE: [Step; 4] = [
+    step(Act::Route(Reach::Ground), [None, Some(1), Some(2), None, None]),
+    step(Act::Do(Choice::Throw), always(None)),
+    step(Act::Do(Choice::Retreat), always(Some(3))),
+    step(Act::Do(Choice::Guard), always(None)),
+];
+
+const RYU_SF6: [GamePlan; 2] = [
+    GamePlan { situation: Situation::NeutralClose, score: 60, steps: &RYU_SF6_POKE },
+    GamePlan { situation: Situation::NeutralClose, score: 62, steps: &RYU_SF6_ROUTE },
+];
 
 /// The game plans a fighter has in an era style. A pair with none plays
 /// the CPU's single choices.
@@ -277,8 +433,12 @@ crate::canonical::canonical_enum!(Situation, "FairCpuSituation.v1";
     OpponentWhiffed => 5, Defending => 6, KnockedDown => 7,
 );
 crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v1", { situation, corner });
-crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v1", { foe_attack_shown, foe_attack_met, foe_reach, blocked });
+crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v2", { foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, blocked });
 crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v1", { plan, step, acted, pressed, began });
+crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v1", {
+    fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded,
+});
+crate::canonical::canonical_enum!(Outcome, "FairCpuOutcome.v1"; Hit => 0, Guard => 1, Whiff => 2, Jumped => 3, Nothing => 4);
 
 #[cfg(test)]
 mod tests {
@@ -302,6 +462,53 @@ mod tests {
             assert_ne!(hash(cpu), hash(&plain), "{cpu:?}");
         }
         assert_ne!(hash(&plain.force_stronger(true)), hash(&plain));
+    }
+
+    fn ryu_sf6() -> &'static crate::route_book::RouteBook {
+        crate::route_book::book(TournamentFighter::Ryu, crate::era::Revision::Sf6, crate::era::Loadout::Standard).unwrap()
+    }
+
+    fn moment(reaches: &[Reach]) -> Moment<'_> {
+        Moment {
+            reaches,
+            era: true,
+            true_combos: false,
+            cancels: false,
+            crouching: false,
+            meters: [300, 60_000],
+            corner: false,
+            gap: 20,
+            walk: 0,
+            foe_health: 48,
+        }
+    }
+
+    #[test]
+    fn only_routes_the_rules_the_stance_the_meter_and_the_distance_allow_are_taken() {
+        let routes = &ryu_sf6().routes;
+        let all = [Reach::Ground, Reach::Punish];
+        let open = moment(&all);
+        assert!(routes.iter().all(|r| open.allows(r)), "with everything in its favour every route is allowed");
+        let only = |m: &Moment, keep: &dyn Fn(&Route) -> bool| routes.iter().all(|r| m.allows(r) == keep(r));
+        assert!(only(&moment(&[Reach::Ground]), &|r| r.reach == Reach::Ground));
+        assert!(only(&Moment { era: false, ..moment(&all) }, &|r| !r.true_combos && !r.cancels));
+        assert!(only(&Moment { crouching: true, ..moment(&all) }, &|r| r.stances.contains(&Stance::Crouching)));
+        assert!(only(&Moment { meters: [0, 60_000], ..moment(&all) }, &|r| r.super_spent == 0));
+        assert!(only(&Moment { gap: 50, ..moment(&all) }, &|r| r.gap >= 50));
+        assert!(only(&Moment { gap: 50, walk: 3, ..moment(&all) }, &|r| r.gap >= 44));
+        assert!(routes.iter().any(|r| !r.stances.contains(&Stance::Crouching)) && routes.iter().any(|r| r.super_spent > 0));
+    }
+
+    #[test]
+    fn a_route_that_wins_the_round_scores_above_any_that_does_not_and_a_recent_one_lower() {
+        let routes = &ryu_sf6().routes;
+        let weakest = routes.iter().min_by_key(|r| r.damage).unwrap();
+        let strongest = routes.iter().max_by_key(|r| r.damage).unwrap();
+        // The opponent has just less health than the weakest route does.
+        let low = Moment { foe_health: weakest.damage / 20, ..moment(&[Reach::Ground]) };
+        assert!(low.score(weakest, true) > moment(&[Reach::Ground]).score(strongest, false));
+        let full = moment(&[Reach::Ground]);
+        assert!(full.score(strongest, true) < full.score(strongest, false));
     }
 
     #[test]

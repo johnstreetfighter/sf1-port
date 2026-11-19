@@ -1692,7 +1692,7 @@ impl PowerOnMachine {
         let idle = cpu.utility_idle();
         // While it follows a game plan (spec `#192`) the pad is the Fair
         // CPU's alone: the Utility AI adds no command of its own.
-        let following = cpu.following_game_plan();
+        let following = cpu.owns_pad();
         let alone = family == crate::era::EraFamily::Sf1987 || following;
         let input = if alone {
             if following {
@@ -1739,7 +1739,7 @@ impl PowerOnMachine {
         let cpu = self.p1_fair_cpu.as_mut().unwrap();
         let pad = cpu.press(step, in_fight, &ctx);
         let idle = cpu.utility_idle();
-        let following = cpu.following_game_plan();
+        let following = cpu.owns_pad();
         let input = if family == crate::era::EraFamily::Sf1987 || following {
             if following {
                 self.program.toggle_state.utility[0].drop_macro();
@@ -2018,6 +2018,11 @@ impl PowerOnMachine {
     /// while one plays (the stronger play only, spec `#192`).
     pub fn fair_cpu_situation(&self) -> Option<crate::fair_cpu::Judged> {
         self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::situation)
+    }
+
+    /// Whether Player 2's Fair CPU is entering a route from its route book.
+    pub fn fair_cpu_entering_route(&self) -> bool {
+        self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::entering_route)
     }
 
     /// Whether Player 2's Fair CPU is in the middle of a game plan.

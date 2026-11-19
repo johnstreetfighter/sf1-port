@@ -173,6 +173,34 @@ impl Route {
         self.steps.iter().map(|s| s.name.as_str()).collect::<Vec<_>>().join(", ")
     }
 
+    /// The pad on frame `frame` of the route's script with its recorded
+    /// waits, if the script lasts that long.
+    pub fn pad_at(&self, frame: usize) -> Option<Pad> {
+        let mut at = frame;
+        for step in &self.steps {
+            let wait = usize::from(step.wait);
+            if at < wait {
+                return Some((step.hold, 0));
+            }
+            at -= wait;
+            if at < step.pads.len() {
+                return Some(step.pads[at]);
+            }
+            at -= step.pads.len();
+        }
+        None
+    }
+
+    /// The script frame step `index` begins on (its wait's first frame).
+    pub fn step_start(&self, index: usize) -> usize {
+        self.steps[..index.min(self.steps.len())].iter().map(|s| usize::from(s.wait) + s.pads.len()).sum()
+    }
+
+    /// The script's length in frames, with the recorded waits.
+    pub fn len(&self) -> usize {
+        self.step_start(self.steps.len())
+    }
+
     /// The route as pad frames, with each step's wait as given by `waits`
     /// (the recorded ones when `None`).
     pub fn script(&self, waits: Option<&[u8]>) -> Vec<Pad> {

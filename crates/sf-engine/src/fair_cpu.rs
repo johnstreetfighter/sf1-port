@@ -256,9 +256,9 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v2", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v3", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
-    forced_stronger, judge, judged, game,
+    forced_stronger, judge, judged, game, route, recent_routes, route_outcome,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -333,6 +333,11 @@ impl Body {
     /// Guarding: the standing or crouching guard (moves 4 and 8).
     pub fn guarding(&self) -> bool {
         self.present && matches!(self.move_id, 4 | 8)
+    }
+
+    /// Crouching, as his pose's state byte says (`+9` bit 2).
+    pub fn crouching(&self) -> bool {
+        self.present && self.state & 4 != 0
     }
 
     /// Free to start something: not attacking, hit, or in the air.
@@ -647,8 +652,11 @@ pub struct Context {
     /// situations and game plans ([`game`]).
     pub stronger: bool,
     /// The era style its fighter plays in, where one is in force: game
-    /// plans are looked up by fighter and era style.
+    /// plans and route books are looked up by fighter and era style.
     family: Option<crate::era::EraFamily>,
+    style: Option<(crate::era::Revision, crate::era::Loadout)>,
+    /// Its own Super meter and Drive gauge, as its gauges show them.
+    meters: [u16; 2],
 }
 
 impl Context {
@@ -663,6 +671,8 @@ impl Context {
             throws: toggles.throws,
             stronger: false,
             family: None,
+            style: None,
+            meters: [0; 2],
         }
     }
 
@@ -679,6 +689,8 @@ impl Context {
         let mut context = Self::new(level, kit, &config.toggles);
         context.era = Some(Tactics::of(state, &entries, config, level, control));
         context.family = Some(state.style.family);
+        context.style = Some((state.style.revision, state.style.loadout));
+        context.meters = [u16::from(state.super_meter), state.sf6_drive_points().unwrap_or(0)];
         context
     }
 
@@ -915,6 +927,12 @@ pub struct FairCpu {
     judge: game::Judge,
     judged: Judged,
     game: Option<game::Running>,
+    /// The route it is entering, the routes it took last (the book's index
+    /// plus one; 0 for none; kept across rounds, a cut route counting as
+    /// taken), and what came of the last route it entered.
+    route: Option<game::RouteRun>,
+    recent_routes: [u8; 4],
+    route_outcome: Option<game::Outcome>,
 }
 
 impl Default for FairCpu {
@@ -936,6 +954,9 @@ impl Default for FairCpu {
             judge: game::Judge::default(),
             judged: Judged::default(),
             game: None,
+            route: None,
+            recent_routes: [0; 4],
+            route_outcome: None,
         }
     }
 }
@@ -972,6 +993,16 @@ impl FairCpu {
         self.game.is_some()
     }
 
+    /// Whether it is entering a route from its route book.
+    pub fn entering_route(&self) -> bool {
+        self.route.is_some()
+    }
+
+    /// Whether its pad is its own alone this frame: a game plan or a route.
+    pub(crate) fn owns_pad(&self) -> bool {
+        self.game.is_some() || self.route.is_some()
+    }
+
     /// Record what frame `p.frame` showed.
     pub fn observe(&mut self, p: Percept) {
         self.seen[p.frame as usize % RING] = p;
@@ -988,7 +1019,7 @@ impl FairCpu {
     /// A neutral pause can accept a new tactic. A zero pad inside a motion,
     /// timed anti-air or stance plan must stay with that plan.
     pub(crate) fn utility_idle(&self) -> bool {
-        self.pad == 0 && self.game.is_none() && (self.plan.done() || self.plan.kind == PlanKind::Idle)
+        self.pad == 0 && !self.owns_pad() && (self.plan.done() || self.plan.kind == PlanKind::Idle)
     }
 
     /// What frame `frame` showed, if the CPU still holds it.
@@ -1014,6 +1045,9 @@ impl FairCpu {
             self.judge = game::Judge::default();
             self.judged = Judged::default();
             self.game = None;
+            self.route = None;
+            self.recent_routes = [0; 4];
+            self.route_outcome = None;
         }
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.seen(f));
@@ -1025,6 +1059,8 @@ impl FairCpu {
             _ => {
                 self.plan = Plan::default();
                 self.game = None;
+                self.route = None;
+                self.route_outcome = None;
                 self.judge = game::Judge::default();
                 self.judged = Judged::default();
                 0
@@ -1053,6 +1089,13 @@ impl FairCpu {
                 self.game = None;
             }
         }
+        if view.me.reacting() {
+            self.route = None;
+        }
+        if self.route.is_some() {
+            // A route is entered to its end, or to where it is cut.
+            return self.next_route_pad(view);
+        }
         if let Some(before) = before {
             let interruptible = self.plan.interruptible();
             let era_response = ctx.era.filter(|tactics| interruptible || tactics.can_interrupt())
@@ -1067,6 +1110,10 @@ impl FairCpu {
                     self.game = None;
                 }
             }
+        }
+        if self.route.is_some() {
+            // An answer that is a route: a punish.
+            return self.next_route_pad(view);
         }
         if self.plan.done() {
             if let Some(plan) = self.follow_game_plan(step, view, ctx) {
@@ -1085,7 +1132,88 @@ impl FairCpu {
                 None => self.choose(step, view, ctx),
             };
         }
+        if self.route.is_some() {
+            // A game plan's step that is a route.
+            return self.next_route_pad(view);
+        }
         self.next_pad(step, view, ctx)
+    }
+
+    /// The next pad of the route being entered, turned to face the
+    /// opponent as it faced him when the route began. What came of it is
+    /// kept for the game plan that chose it.
+    fn next_route_pad(&mut self, view: Percept) -> u16 {
+        let Some(mut run) = self.route else { return 0 };
+        run.watch(view);
+        let pad = run.pad();
+        match pad {
+            Some(pad) => {
+                run.at += 1;
+                self.route = Some(run);
+                pad
+            }
+            None => {
+                self.route = None;
+                self.route_outcome = Some(run.outcome());
+                0
+            }
+        }
+    }
+
+    /// Take a route from the fighter's route book that starts in one of
+    /// `reaches` and that the moment allows: the rules in force, the
+    /// opponent's stance, its meters, the corner, and the distance, closed
+    /// by a walk of at most `walk` frames. The level's decision quality
+    /// takes the best scored, as for its other choices; a slip of its
+    /// execution cuts the route short. False when none is allowed.
+    fn take_route(&mut self, ctx: &Context, view: Percept, reaches: &[crate::route_book::Reach], walk: u8) -> bool {
+        let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
+        let Some(book) = crate::route_book::book(fighter, revision, loadout) else { return false };
+        let moment = game::Moment {
+            reaches,
+            era: ctx.era.is_some(),
+            true_combos: ctx.true_combos,
+            cancels: ctx.cancels,
+            crouching: view.foe.crouching(),
+            meters: ctx.meters,
+            corner: self.judged.corner,
+            gap: view.gap(),
+            walk,
+            foe_health: view.foe.health,
+        };
+        let mut options: Vec<(usize, i32)> = Vec::new();
+        for (index, route) in book.routes.iter().enumerate() {
+            if moment.allows(route) {
+                let recent = self.recent_routes.contains(&(index as u8 + 1));
+                options.push((index, moment.score(route, recent) + self.rng.below(12) as i32));
+            }
+        }
+        if options.is_empty() {
+            return false;
+        }
+        options.sort_by_key(|o| std::cmp::Reverse(o.1));
+        let pick = if options.len() == 1 || self.rng.chance(ctx.level.quality()) {
+            options[0].0
+        } else {
+            options[1 + self.rng.below((options.len() - 1).min(3) as u32) as usize].0
+        };
+        let route = &book.routes[pick];
+        // Execution: a slip drops the route after one of its steps.
+        let pressure = view.me.health < view.foe.health || view.dist() < 60;
+        let clean = ctx.level.execution().saturating_sub(if pressure { (100 - ctx.level.execution()) / 2 } else { 0 });
+        let stop = if route.steps.len() >= 2 && !self.rng.chance(clean) {
+            route.step_start(1 + self.rng.below(route.steps.len() as u32 - 1) as usize)
+        } else {
+            route.len()
+        };
+        let walk = moment.walk_frames(route);
+        self.recent_routes.rotate_right(1);
+        self.recent_routes[0] = pick as u8 + 1;
+        self.route = Some(game::RouteRun::new(fighter, revision, loadout, pick as u8, walk, stop as u16, !view.me.facing_left));
+        self.route_outcome = None;
+        self.last_normal = None;
+        self.plan = Plan::default();
+        true
     }
 
     /// Its longest normal, as far as it knows.
@@ -1156,6 +1284,24 @@ impl FairCpu {
                     self.game = Some(run);
                     return Some(self.plan_for(choice, step, view, ctx, false));
                 }
+                (Act::Route(reach), false) => {
+                    self.game = Some(run);
+                    if !self.ready(view) {
+                        return Some(wait);
+                    }
+                    if !self.take_route(ctx, view, &[reach], game::NEUTRAL_WALK) {
+                        break;
+                    }
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    return Some(Plan::default());
+                }
+                (Act::Route(_), true) => match self.route_outcome.take() {
+                    Some(outcome) => outcome,
+                    None if self.route.is_some() => return Some(wait),
+                    None => Outcome::Nothing,
+                },
                 (Act::Do(Choice::Normal { crouch, button }), true) => {
                     match run.outcome(view, self.reach[usize::from(crouch)][button]) {
                         Some(outcome) => outcome,
@@ -1375,6 +1521,27 @@ impl FairCpu {
         // goes too, and under true combos (SP17) the guard is then locked in
         // blockstun, which the CPU cannot see the end of.
         let whiffed = foe.attacking() && !foe.active && was.active && !foe.jumping() && !view.me.guarding() && !before.me.guarding();
+        let stronger = ctx.stronger || self.forced_stronger;
+        // The stronger play knows a whiff by its attack box never reaching
+        // the CPU, so a move it guarded in case can be a whiff too.
+        let whiff_seen = stronger
+            && self.judged.situation == Situation::OpponentWhiffed
+            && (view.me.free() || view.me.guarding())
+            && self.rng.chance(level.quality());
+        // A whiffed attack still in the air is punished as it lands: as the
+        // CPU sees it fall, it starts the route so its opener meets him on
+        // the ground. Rising, or with the ground unknown, it waits.
+        let landing_soon = !foe.jumping() || {
+            let fall = foe.y - was.y;
+            let ground = if view.me.jumping() { None } else { Some(view.me.y) };
+            ground.is_some_and(|ground| fall > 0 && (ground - foe.y) <= fall * game::LANDING_LEAD)
+        };
+        if whiff_seen && landing_soon && view.frame >= self.settle {
+            use crate::route_book::Reach;
+            if self.take_route(ctx, view, &[Reach::Punish, Reach::Ground], game::PUNISH_WALK) {
+                return Some(Plan::default());
+            }
+        }
         if whiffed && view.me.free() && view.frame >= self.settle {
             let reach = self.reach[0][2].max(self.reach[0][5]) + 6;
             if view.gap() <= reach && self.rng.chance(level.quality()) {
