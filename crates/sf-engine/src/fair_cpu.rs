@@ -62,8 +62,10 @@
 //! same fight, RESET POSITIONS included.
 
 mod era;
+mod focus;
 mod game;
 pub(crate) use era::EraControl;
+pub use focus::Focus;
 pub use game::{Judged, Situation};
 use era::Tactics;
 
@@ -80,8 +82,9 @@ use sf_video::callouts::Side;
 /// is being fought.
 pub const FIGHT_LOOP: u32 = 0x3eafa;
 
-/// Percepts kept: more than the slowest level's delay and the frame before it.
-const RING: usize = 32;
+/// Percepts kept: more than the slowest level's slower delay and the frame
+/// before it.
+const RING: usize = 40;
 /// The longest plan, in pad frames.
 const PLAN_CAP: usize = 48;
 
@@ -146,6 +149,25 @@ impl Level {
             Level::Hard => 15,
             Level::VeryHard => 12,
         }
+    }
+
+    /// The stronger play's slower delay (SC7, `#199`): frames from a frame
+    /// being shown to its inputs answering anything but its focus, which it
+    /// answers at [`Level::reaction`].
+    pub const fn unfocused_reaction(self) -> u32 {
+        match self {
+            Level::Easy => 32,
+            Level::Normal => 24,
+            Level::Hard => 20,
+            Level::VeryHard => 17,
+        }
+    }
+
+    /// How close an opponent walking in must come for it to answer him as
+    /// a throw threat: a throw's range, the ground a walk covers while the
+    /// CPU's focused delay passes, and a little more.
+    const fn throw_engage(self) -> i16 {
+        46 + self.reaction() as i16 + 8
     }
 
     /// Extra frames before a motion special given in answer to something
@@ -258,9 +280,10 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v4", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v5", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
     forced_stronger, judge, judged, game, route, recent_routes, route_outcome, walk_in_held, route_drops, route_check,
+    focus, action_frame, last_view,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -966,6 +989,23 @@ pub struct FairCpu {
     route_drops: [u8; ROUTE_SLOTS],
     /// A route entered in full whose ending it is waiting to see.
     route_check: Option<RouteCheck>,
+    /// The stronger play's focus (SC7, `#199`), the frame its last view of
+    /// the opponent's actions came from, and that view as it saw it: the
+    /// frame before the next one, so an action it has not been shown yet
+    /// is seen to start when it shows.
+    focus: Focus,
+    action_frame: u32,
+    last_view: Percept,
+}
+
+/// What the Fair CPU watches for, and the frame its last view of the
+/// opponent's actions came from: the frame its reaction delay shows, or an
+/// earlier one while a new action that is not its focus is not yet the
+/// slower delay old (SC7, `#199`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Attention {
+    pub focus: Focus,
+    pub action_frame: u32,
 }
 
 /// A route entered in full whose ending the CPU is waiting to see.
@@ -1009,6 +1049,9 @@ impl Default for FairCpu {
             walk_in_held: 0,
             route_drops: [0; ROUTE_SLOTS],
             route_check: None,
+            focus: Focus::default(),
+            action_frame: 0,
+            last_view: Percept::default(),
         }
     }
 }
@@ -1044,6 +1087,12 @@ impl FairCpu {
     /// judges none and this stays at its default.
     pub fn situation(&self) -> Judged {
         self.judged
+    }
+
+    /// What it watches for, and the frame its last view of the opponent's
+    /// actions came from.
+    pub fn attention(&self) -> Attention {
+        Attention { focus: self.focus, action_frame: self.action_frame }
     }
 
     /// Whether it is in the middle of a game plan.
@@ -1125,14 +1174,37 @@ impl FairCpu {
             self.route_drops = [0; ROUTE_SLOTS];
             self.route_check = None;
             self.route_outcome = None;
+            self.focus = Focus::default();
+            self.action_frame = 0;
+            self.last_view = Percept::default();
         }
+        let stronger = self.stronger(ctx);
         let delay = ctx.level.reaction();
-        let view = step.checked_sub(delay).and_then(|f| self.seen(f));
+        let view = step.checked_sub(delay).and_then(|f| self.shown(f, step, ctx.level, stronger));
         self.walk_in_held = 0;
         let pad = match view {
-            Some(view) if in_fight && view.fighting => {
-                let before = self.seen(view.frame - 1).filter(|b| b.fighting);
-                self.decide(step, view, before, ctx)
+            Some((view, action_frame)) if in_fight && view.fighting => {
+                let before = if stronger && self.last_view.frame == view.frame - 1 && self.last_view.frame != 0 {
+                    Some(self.last_view)
+                } else {
+                    self.shown(view.frame - 1, step - 1, ctx.level, stronger).map(|(b, _)| b)
+                }
+                .filter(|b| b.fighting);
+                self.action_frame = action_frame;
+                self.last_view = view;
+                let pad = self.decide(step, view, before, ctx);
+                if stronger {
+                    self.focus = self
+                        .game
+                        .and_then(|run| {
+                            game::plans(ctx.kit.fighter, ctx.family)
+                                .get(usize::from(run.plan))?
+                                .steps
+                                .get(usize::from(run.step))
+                        })
+                        .map_or_else(|| focus::situation_focus(self.judged.situation), focus::step_focus);
+                }
+                pad
             }
             _ => {
                 self.plan = Plan::default();
@@ -1141,11 +1213,95 @@ impl FairCpu {
                 self.route_outcome = None;
                 self.judge = game::Judge::default();
                 self.judged = Judged::default();
+                self.focus = Focus::default();
+                self.action_frame = 0;
+                self.last_view = Percept::default();
                 0
             }
         };
         self.pad = pad;
         pad
+    }
+
+    /// What frame `frame` showed, as the CPU sees it on step `step`, and the
+    /// frame its view of the opponent's actions comes from. The old play
+    /// sees the frame as it was. The stronger play (SC7, `#199`) sees a new
+    /// action of the opponent's that is not its focus only once it is the
+    /// slower delay old: until then the opponent's pose, height, attack box
+    /// and projectile are as they were the frame before that action began,
+    /// moved with him to where the frame shows him. Positions, health and
+    /// its own fighter are as the frame shows them. A new action that is its
+    /// focus shows at once, and with it everything up to that frame. Its
+    /// focus is the one it holds as it decides: an action it comes to watch
+    /// for, or one before its focus showing, can show before the slower
+    /// delay.
+    fn shown(&self, frame: u32, step: u32, level: Level, stronger: bool) -> Option<(Percept, u32)> {
+        let mut view = self.seen(frame)?;
+        if !stronger {
+            return Some((view, frame));
+        }
+        let engage = level.throw_engage();
+        let from = step.saturating_sub(level.unfocused_reaction()) + 1;
+        let mut hidden_from = None;
+        for f in from.max(1)..=frame {
+            let (Some(v), Some(b)) = (self.seen(f), self.seen(f - 1)) else { continue };
+            if !v.fighting || !b.fighting {
+                continue;
+            }
+            if self.event_shows(self.focus, &v, &b, engage) {
+                hidden_from = None;
+            } else if hidden_from.is_none() && Focus::ALL.iter().any(|&event| self.event_shows(event, &v, &b, engage)) {
+                hidden_from = Some(f);
+            }
+        }
+        // Guarding and hit reactions are what came of its own attacks:
+        // those it sees at the focused delay, whatever else is hidden.
+        let outcome = view.foe.guarding() || view.foe.reacting();
+        let Some(f) = hidden_from.filter(|_| !outcome) else { return Some((view, frame)) };
+        let was = self.seen(f - 1)?;
+        let dx = view.foe.x - was.foe.x;
+        view.foe = Body {
+            x: view.foe.x,
+            health: view.foe.health,
+            present: view.foe.present,
+            front: was.foe.front + dx,
+            hurt: (was.foe.hurt.0 + dx, was.foe.hurt.1 + dx),
+            ..was.foe
+        };
+        (view.shot, view.shot_x, view.shot_half) = (was.shot, was.shot_x, was.shot_half);
+        Some((view, f - 1))
+    }
+
+    /// `view`, the frame after `before`, shows `event` starting. A whiff is
+    /// an attack whose box goes without having reached the CPU's fighter
+    /// on any frame of it the CPU still holds, as judging counts one.
+    fn event_shows(&self, event: Focus, view: &Percept, before: &Percept, engage: i16) -> bool {
+        event.shows(view, before, engage) && (event != Focus::Whiff || !self.attack_met(view.frame))
+    }
+
+    /// The opponent's attack drawn on frame `frame` reached the CPU's
+    /// fighter (or hit him) on some earlier frame of it.
+    fn attack_met(&self, frame: u32) -> bool {
+        let Some(now) = self.seen(frame) else { return false };
+        let mut f = frame;
+        while f > 1 && frame - f < RING as u32 - 1 {
+            f -= 1;
+            let Some(v) = self.seen(f) else { return false };
+            if !v.foe.attacking() || v.foe.move_id != now.foe.move_id {
+                return false;
+            }
+            if v.me.reacting() {
+                return true;
+            }
+            if v.foe.active {
+                let toward_me = if v.me.x >= v.foe.x { 1 } else { -1 };
+                let near = if toward_me > 0 { v.me.hurt.0 } else { v.me.hurt.1 };
+                if (v.foe.front - near) * toward_me >= 0 {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     fn decide(&mut self, step: u32, view: Percept, before: Option<Percept>, ctx: &Context) -> u16 {
@@ -1955,7 +2111,7 @@ impl FairCpu {
             && !foe.reacting()
             && foe.move_id == 2
         {
-            let engage = 46 + (level.reaction() as i16) + 8;
+            let engage = level.throw_engage();
             if dist <= engage
                 && (was.move_id != 2 || before.dist() > engage)
                 && self.rng.chance(level.guard())
@@ -2538,6 +2694,95 @@ mod tests {
                 let f = first_diff.unwrap_or_else(|| panic!("{preset:?} {level:?}: the attack never changed the pad"));
                 assert!(f >= shown + level.reaction(), "{preset:?} {level:?}: answered on {f}, shown on {shown}");
             }
+        }
+    }
+
+    #[test]
+    fn with_the_stronger_play_nothing_seen_more_recently_than_the_applicable_delay_changes_the_pad() {
+        // The two-frame rule (SC7, `#199`). The applicable delay is the focused
+        // one for a new action of the opponent's that is the CPU's focus and
+        // for everything that is not a new action (positions, health, its
+        // own fighter), and the slower one for any other new action.
+        //
+        // Two stronger CPUs with the same past, the opponent out of reach,
+        // so each watches for a jump. One is then shown a jump (its focus),
+        // an attack (a new action, not its focus) or the opponent standing
+        // closer (no new action). Their pads stay the same until the frame
+        // is the applicable delay old. The jump and the attack are answered
+        // on that frame in some of the tries; the step in, which nothing
+        // answers at once, changes the pad before the slower delay in some.
+        let mut jump = body(440);
+        jump.move_id = 9;
+        let mut attack = body(440);
+        attack.move_id = 0x10;
+        attack.state = 0xc2;
+        for preset in [RulesetPreset::ClassicCompetitive, RulesetPreset::DefinitiveOverhaul] {
+            for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                let mut c = Context::new(
+                    level,
+                    Kit::of(TournamentFighter::Ryu, preset, Some(RYU_SLOTS)),
+                    &CoreToggles::for_preset(preset),
+                );
+                c.stronger = true;
+                let mut answered_at_once = std::collections::HashMap::new();
+                for seed in 1..=24u64 {
+                    for (shown_body, delay, what) in [
+                        (jump, level.reaction(), "jump"),
+                        (attack, level.unfocused_reaction(), "attack"),
+                        (body(340), level.reaction(), "step in"),
+                    ] {
+                        let mut a = FairCpu::seeded(seed);
+                        for f in 1..=40 {
+                            a.observe(percept(f, body(440)));
+                        }
+                        for f in 41..=80 {
+                            a.press(f, true, &c);
+                            a.observe(percept(f, body(440)));
+                        }
+                        assert_eq!(a.attention().focus, Focus::Jump, "{preset:?} {level:?}: watching for a jump");
+                        let mut b = a;
+                        let shown = 81;
+                        let mut first_diff = None;
+                        for f in shown..shown + 120 {
+                            let (pa, pb) = (a.press(f, true, &c), b.press(f, true, &c));
+                            if pa != pb && first_diff.is_none() {
+                                first_diff = Some(f);
+                            }
+                            a.observe(percept(f, body(440)));
+                            b.observe(percept(f, shown_body));
+                        }
+                        // The level's guard chance may leave one unanswered.
+                        let Some(f) = first_diff else { continue };
+                        let why = format!("{preset:?} {level:?} seed {seed}: the {what}");
+                        assert!(f >= shown + delay, "{why}: answered on {f}, shown on {shown}");
+                        let at_once = if what == "step in" { f < shown + level.unfocused_reaction() } else { f == shown + delay };
+                        if at_once {
+                            *answered_at_once.entry(what).or_insert(0) += 1;
+                        }
+                    }
+                }
+                for what in ["jump", "attack", "step in"] {
+                    assert!(
+                        answered_at_once.get(what).is_some_and(|&n| n >= 1),
+                        "{preset:?} {level:?}: the {what} answered at its delay: {answered_at_once:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_motion_special_given_in_answer_keeps_its_extra_cost() {
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            let mut c = ctx(level);
+            c.stronger = true;
+            let view = percept(100, body(360));
+            let lead = |answer: bool| {
+                let mut cpu = FairCpu::seeded(7);
+                let plan = cpu.plan_for(Choice::Special(Role::AntiAir), 112, view, &c, answer);
+                plan.pads[..usize::from(plan.len)].iter().take_while(|&&pad| pad == 0).count()
+            };
+            assert_eq!(lead(true), lead(false) + level.special_cost(), "{level:?}");
         }
     }
 
