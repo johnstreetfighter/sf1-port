@@ -1230,6 +1230,8 @@ pub struct PowerOnSnapshot {
     pub fair_cpu: Option<crate::fair_cpu::FairCpu>,
     /// The Dramatic boss controller and the controller for solo Ally 2.
     pub dramatic_cpu: Option<Box<[crate::fair_cpu::FairCpu; 2]>>,
+    /// The measuring run's Fair CPU on Player 1's pad (SC1, `#193`).
+    pub p1_fair_cpu: Option<Box<crate::fair_cpu::FairCpu>>,
 }
 
 /// The common authoritative state of a live machine and a saved snapshot.
@@ -1245,15 +1247,16 @@ struct PowerOnGameplay<'a> {
     freeze_vblank_cycles: &'a Option<u32>,
     fair_cpu: &'a Option<crate::fair_cpu::FairCpu>,
     dramatic_cpu: Option<&'a [crate::fair_cpu::FairCpu; 2]>,
+    p1_fair_cpu: Option<&'a crate::fair_cpu::FairCpu>,
 }
 
 impl crate::canonical::Canonical for PowerOnGameplay<'_> {
     fn encode(&self, out: &mut crate::canonical::CanonicalHasher) {
         let Self {
             state, work, match_config, toggle_state, training, scheduler, io,
-            freeze_vblank_cycles, fair_cpu, dramatic_cpu,
+            freeze_vblank_cycles, fair_cpu, dramatic_cpu, p1_fair_cpu,
         } = self;
-        out.tag("PowerOnGameplay.v2");
+        out.tag("PowerOnGameplay.v3");
         state.encode(out);
         work.encode(out);
         match_config.encode(out);
@@ -1264,6 +1267,7 @@ impl crate::canonical::Canonical for PowerOnGameplay<'_> {
         freeze_vblank_cycles.encode(out);
         fair_cpu.encode(out);
         dramatic_cpu.encode(out);
+        p1_fair_cpu.encode(out);
     }
 }
 
@@ -1272,12 +1276,13 @@ impl PowerOnSnapshot {
         use crate::canonical::Canonical;
         let Self {
             state, work, match_config, toggle_state, training, scheduler, io,
-            freeze_vblank_cycles, fair_cpu, dramatic_cpu,
+            freeze_vblank_cycles, fair_cpu, dramatic_cpu, p1_fair_cpu,
             unrecovered: _, effect_stream_calls: _, latch_writes: _, overlay: _,
         } = self;
         PowerOnGameplay {
             state, work, match_config, toggle_state, training, scheduler, io,
             freeze_vblank_cycles, fair_cpu, dramatic_cpu: dramatic_cpu.as_deref(),
+            p1_fair_cpu: p1_fair_cpu.as_deref(),
         }.encode(out);
         // Untranslated-address sets and overlay history are diagnostics.
         // latch_writes is emitted audio history; MachineState's actual latch
@@ -1312,7 +1317,7 @@ mod canonical_gameplay_tests {
         let mut machine = PowerOnMachine::new(Vec::new());
         let original = machine.save_snapshot();
         let expected = checksum(&machine);
-        let changes: [(&str, fn(&mut PowerOnSnapshot)); 8] = [
+        let changes: [(&str, fn(&mut PowerOnSnapshot)); 9] = [
             ("work RAM", |s| s.work[0] ^= 1),
             ("numeric rules", |s| s.match_config.toggles.recovery_buffer_window += 1),
             ("modern-rule state", |s| s.toggle_state.combo.hitstun[0] = 1),
@@ -1320,6 +1325,7 @@ mod canonical_gameplay_tests {
             ("freeze timing", |s| s.freeze_vblank_cycles = Some(1)),
             ("training wait", |s| s.training.since_contact[0] = 1),
             ("fair CPU", |s| s.fair_cpu = Some(crate::fair_cpu::FairCpu::new())),
+            ("Player 1 Fair CPU", |s| s.p1_fair_cpu = Some(Box::new(crate::fair_cpu::FairCpu::new()))),
             ("scheduler continuation", |s| {
                 let mut work = vec![0; 0x6000];
                 let slot = (crate::tasks::slot_address(1) - 0xff8000) as usize;
@@ -1393,13 +1399,18 @@ pub struct PowerOnMachine {
     /// Boss and, in solo Dramatic Battle, Ally 2. Allocate their perception
     /// histories only in Dramatic so other fights keep small snapshots.
     dramatic_cpu: Option<Box<[crate::fair_cpu::FairCpu; 2]>>,
+    /// A Fair CPU on Player 1's pad too, for the measuring run (SC1,
+    /// `#193`): a developer tool sets it, no game mode does. It plays only
+    /// in a two-pad fight whose Player 2 the Fair CPU already plays. Boxed
+    /// so other fights keep small snapshots.
+    p1_fair_cpu: Option<Box<crate::fair_cpu::FairCpu>>,
 }
 
 impl PowerOnMachine {
     pub(crate) fn encode_gameplay(&self, out: &mut crate::canonical::CanonicalHasher) {
         use crate::canonical::Canonical;
         let Self {
-            state, program, scheduler, io, freeze_vblank_cycles, fair_cpu, dramatic_cpu,
+            state, program, scheduler, io, freeze_vblank_cycles, fair_cpu, dramatic_cpu, p1_fair_cpu,
             latch_writes: _, overlay: _,
         } = self;
         let crate::fighter::Program {
@@ -1410,6 +1421,7 @@ impl PowerOnMachine {
         PowerOnGameplay {
             state, work, match_config, toggle_state, training, scheduler, io,
             freeze_vblank_cycles, fair_cpu, dramatic_cpu: dramatic_cpu.as_deref(),
+            p1_fair_cpu: p1_fair_cpu.as_deref(),
         }.encode(out);
         // ROM/immutable bank compatibility is checked by NP3, not rehashed
         // here on every frame. Local diagnostics/audio history are excluded.
@@ -1459,6 +1471,7 @@ impl PowerOnMachine {
             overlay: crate::overlay::OverlayState::default(),
             fair_cpu: None,
             dramatic_cpu: None,
+            p1_fair_cpu: None,
         }
     }
 
@@ -1611,9 +1624,13 @@ impl PowerOnMachine {
         }
         self.dramatic_cpu = None;
         let cpu = !scripted_p2 && self.fair_cpu_press();
+        let p1_cpu = cpu && self.p1_fair_cpu_press();
         self.step_frame();
         if cpu {
             self.fair_cpu_observe();
+        }
+        if p1_cpu {
+            self.p1_fair_cpu_observe();
         }
         self.program.toggle_state.scripted_cpu_pad = false;
         self.program.toggle_state.cpu_drive_reserve = [0; 3];
@@ -1684,6 +1701,57 @@ impl PowerOnMachine {
         }
         self.apply_cpu_pad(input);
         true
+    }
+
+    /// Put a Fair CPU on each pad of a two-pad fight, each with its own
+    /// random numbers from `seed` (SC1, `#193`: the measuring run). Player
+    /// 2's is the one the match configuration asks for; Player 1's plays
+    /// only beside it.
+    pub(crate) fn seed_measuring_cpus(&mut self, seed: u64) {
+        use crate::fair_cpu::FairCpu;
+        self.seed_utility_cpu(seed);
+        self.fair_cpu = Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)));
+        self.p1_fair_cpu = Some(Box::new(FairCpu::seeded(0xbb67_ae85_84ca_a73b ^ seed.rotate_left(33))));
+    }
+
+    /// The measuring run's Fair CPU on Player 1's pad: what
+    /// [`Self::fair_cpu_press`] does for Player 2 in a two-pad fight, with
+    /// the sides exchanged.
+    fn p1_fair_cpu_press(&mut self) -> bool {
+        use crate::fair_cpu::pad_parts;
+        use crate::fighter::{P1_STRUCT, P2_STRUCT};
+        if self.p1_fair_cpu.is_none() || matches!(self.program.work[0x4002], 2 | 4) {
+            return false;
+        }
+        let fighter = self.program.match_config.roster.p1;
+        let family = self.program.toggle_state.era.fighters[0].style.family;
+        let ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT);
+        let in_fight = self.in_fight();
+        let step = self.state.frame + 1;
+        let cpu = self.p1_fair_cpu.as_mut().unwrap();
+        let pad = cpu.press(step, in_fight, &ctx);
+        let idle = cpu.utility_idle();
+        let input = if family == crate::era::EraFamily::Sf1987 {
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
+        } else {
+            let input = self.step_utility_cpu(0, P1_STRUCT, P2_STRUCT, fighter, family, &ctx, Some((pad, idle)));
+            self.p1_fair_cpu.as_mut().unwrap().set_utility_pad(self.program.toggle_state.utility[0].pad());
+            input
+        };
+        let [right, left, down, up] = input.directions;
+        self.set_p1_direction(right, left, down, up);
+        self.set_p1_buttons(input.buttons);
+        true
+    }
+
+    fn p1_fair_cpu_observe(&mut self) {
+        let p = crate::fair_cpu::perceive(
+            self.state.frame, self.in_fight(), &self.program.work, &self.state.objectram, sf_video::callouts::Side::P1,
+        );
+        if let Some(cpu) = self.p1_fair_cpu.as_mut() {
+            cpu.observe(p);
+        }
     }
 
     /// P2's logical cabinet pad after any CPU or Training script supplied it.
@@ -2371,6 +2439,7 @@ impl PowerOnMachine {
             overlay: self.overlay.clone(),
             fair_cpu: self.fair_cpu,
             dramatic_cpu: self.dramatic_cpu.clone(),
+            p1_fair_cpu: self.p1_fair_cpu.clone(),
         }
     }
 
@@ -2392,6 +2461,7 @@ impl PowerOnMachine {
         self.overlay = snapshot.overlay.clone();
         self.fair_cpu = snapshot.fair_cpu;
         self.dramatic_cpu.clone_from(&snapshot.dramatic_cpu);
+        self.p1_fair_cpu.clone_from(&snapshot.p1_fair_cpu);
     }
 }
 

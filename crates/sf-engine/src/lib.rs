@@ -57,6 +57,7 @@ pub mod impact;
 pub mod jukebox;
 pub mod fighter;
 pub mod machine;
+pub mod measure;
 pub mod mirror;
 pub mod moves;
 pub mod mugen_extract;
