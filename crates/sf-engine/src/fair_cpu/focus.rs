@@ -37,7 +37,8 @@ pub enum Focus {
     Attack,
     /// The opponent's attack box going without having met it: a whiff.
     Whiff,
-    /// An attack begun straight from a knockdown or the rise from one.
+    /// His wake-up: an attack, a walk or a jump begun straight from a
+    /// knockdown or the rise from one.
     Reversal,
     /// The opponent walking into throw range.
     WalkIn,
@@ -58,7 +59,11 @@ impl Focus {
             Focus::Projectile => view.shot && !before.shot && view.shot_coming(),
             Focus::Attack => attack_started && !knocked_down(&was),
             Focus::Whiff => foe.attacking() && was.active && !foe.active && !view.me.reacting(),
-            Focus::Reversal => attack_started && knocked_down(&was),
+            Focus::Reversal => {
+                let walked = matches!(foe.move_id, 2 | 3) && !matches!(was.move_id, 2 | 3);
+                let jumped = matches!(foe.move_id, 9..=0xb) && !was.jumping();
+                knocked_down(&was) && (attack_started || walked || jumped)
+            }
             Focus::WalkIn => {
                 foe.move_id == 2 && !foe.attacking() && view.dist() <= engage && (was.move_id != 2 || before.dist() > engage)
             }

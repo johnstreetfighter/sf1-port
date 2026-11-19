@@ -514,7 +514,9 @@ fn one_game_plan_takes_a_different_next_step_after_a_hit_a_guard_and_a_whiff() {
 
 #[test]
 fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
-    let Some(start) = machine(true) else { return };
+    if !roms_present() {
+        return;
+    }
     let (fast, slow) = (Level::VeryHard.reaction(), Level::VeryHard.unfocused_reaction());
     // Sixty frames from `m`, Player 1 pressing a standing heavy punch at
     // once or doing nothing: the frame his attack first shows and the delay
@@ -527,16 +529,25 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         let from = m.state.frame;
         let (mut shown, mut ended, mut guard_frames) = (None, None, 0u32);
         let mut delay = slow;
+        let mut from_down = false;
         for _ in 0..60 {
             let pressing = attack && m.state.frame < from + 3;
+            let before = seen(&m);
             step(&mut m, 0, if pressing { HP } else { 0 });
             let v = seen(&m);
             if shown.is_none() && v.foe.attacking() {
                 shown = Some(m.state.frame);
+                from_down = down(&before.foe);
             }
-            let watching = m.fair_cpu_attention().unwrap().focus == Focus::Attack;
-            if shown.is_some_and(|shown| m.state.frame + 1 == shown + fast) && watching {
-                delay = fast;
+            // Watched: a button, or his wake-up when the attack began
+            // straight from a knockdown (SC6 sets that focus over him).
+            let focus = m.fair_cpu_attention().unwrap().focus;
+            let watching = focus == Focus::Attack || (focus == Focus::Reversal && from_down);
+            // Watched as it came into its focused delay, or watched for at
+            // any step after that before its slower delay: it can show then,
+            // never sooner than the focused delay.
+            if shown.is_some_and(|shown| (shown + fast..shown + slow).contains(&(m.state.frame + 1))) && watching {
+                delay = delay.min((m.state.frame + 1).saturating_sub(shown.unwrap()).max(fast));
             }
             if ended.is_none() && !m.fair_cpu_following_game_plan() {
                 ended = Some(m.state.frame);
@@ -552,42 +563,47 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         (shown.map(|shown| (shown, delay)), ended.unwrap_or(u32::MAX), guard_frames)
     };
     let mut interrupted = 0;
-    // The attack comes a different number of frames into the plan each try.
-    for wait in 0..16u32 {
-        let mut m = start.clone();
-        let mut began = false;
-        for _ in 0..3_000 {
-            let v = seen(&m);
-            // Close enough that his standing heavy punch reaches (about 52
-            // pixels from his centre and a step): an attack it must answer.
-            step(&mut m, if gap(&v) > 40 { toward(&v) } else { 0 }, 0);
-            // A plan begun while he is on his feet, free to attack.
-            let foe_down = m.fair_cpu_situation().is_some_and(|j| j.situation == Situation::OpponentKnockedDown);
-            if m.fair_cpu_following_game_plan() && !foe_down && !down(&seen(&m).foe) {
-                began = true;
+    let mut tries = 0;
+    // Moments of a few fights where the CPU follows a game plan, Player 1
+    // is on his feet and free to attack, and the plan left alone would go
+    // on past the slower delay: sixteen of them, at least 8 frames apart.
+    // (Against this CPU he is seldom free at such a moment.)
+    for start in starts(true) {
+        let mut m = start;
+        let mut last_try = 0u32;
+        for _ in 0..30_000 {
+            if tries == 16 {
                 break;
             }
-        }
-        assert!(began, "a game plan began");
-        for _ in 0..wait {
-            step(&mut m, 0, 0);
-        }
-        if !m.fair_cpu_following_game_plan() {
-            continue;
-        }
-        let (_, left_alone, _) = play(&m, false);
-        let (shown, ended, guard_frames) = play(&m, true);
-        let Some((shown, delay)) = shown else { continue };
-        // Never sooner than the delay that applies after the attack showed.
-        assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}, delay {delay}");
-        // Cut short as the attack is first seen, where the same plan left
-        // alone went on, and a guard or a parry after it (the parry's input
-        // is four frames): the threat answered.
-        if ended <= shown + delay + 3 && left_alone > ended + 3 && guard_frames >= 3 {
-            interrupted += 1;
+            let v = seen(&m);
+            // In reach of his standing heavy punch (its box about 52 pixels
+            // from his centre, after a 16-pixel step): an attack it must answer.
+            step(&mut m, if gap(&v) > 60 { toward(&v) } else { 0 }, 0);
+            let v = seen(&m);
+            let foe_down = m.fair_cpu_situation().is_some_and(|j| j.situation == Situation::OpponentKnockedDown);
+            if !m.fair_cpu_following_game_plan() || foe_down || down(&v.foe) || !v.foe.free() || m.state.frame < last_try + 8 {
+                continue;
+            }
+            let (_, left_alone, _) = play(&m, false);
+            if left_alone <= m.state.frame + slow + 8 {
+                continue;
+            }
+            last_try = m.state.frame;
+            let (shown, ended, guard_frames) = play(&m, true);
+            let Some((shown, delay)) = shown else { continue };
+            tries += 1;
+            // Never sooner than the delay that applies after the attack showed.
+            assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}, delay {delay}");
+            // Cut short as the attack is first seen, where the same plan left
+            // alone went on, and a guard or a parry after it (the parry's input
+            // is four frames): the threat answered.
+            if ended <= shown + delay + 3 && left_alone > ended + 3 && guard_frames >= 3 {
+                interrupted += 1;
+            }
         }
     }
-    assert!(interrupted >= 2, "an attack seen during a game plan cut it short and was guarded or parried in {interrupted} of 16 tries");
+    assert!(tries >= 8, "moments tried: {tries}");
+    assert!(interrupted >= 2, "an attack seen during a game plan cut it short and was guarded or parried in {interrupted} of {tries} tries");
 }
 
 #[test]
@@ -1457,18 +1473,17 @@ fn in_far_neutral_it_follows_game_plans_that_take_space_and_throw_projectiles_fr
 
 #[test]
 fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
-    let delay = Level::VeryHard.reaction();
     let run = |start: &PowerOnMachine| {
         let mut m = start.clone();
-        // Each frame shown, and whether it showed something coming at the
-        // CPU: a projectile in front of it, or an attack whose box has not
-        // yet come and gone (start-up or active, not recovery).
-        let mut coming: HashMap<u32, (bool, u8)> = HashMap::new();
+        // Each frame shown, and over the views the CPU decided from (SC7:
+        // an attack it was not watching for shows only at its slower
+        // delay), whether its attack box has been seen to come and go.
+        let mut shown_at: HashMap<u32, Percept> = HashMap::new();
         let (mut box_seen, mut last_move) = (false, 0u8);
         let (mut walks, mut walks_into, mut route_pressed) = (0u32, Vec::new(), false);
         let mut shots = 0u32;
         let mut had_shot = false;
-        for i in 0..10_000u32 {
+        for i in 0..14_000u32 {
             let v = seen(&m);
             let f = toward(&v);
             // Player 1: projectiles from afar, buttons up close, walking in
@@ -1493,22 +1508,30 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
             step(&mut m, pad.0, pad.1);
             let frame = m.state.frame;
             let shown = seen(&m);
-            if shown.foe.attacking() {
-                if shown.foe.move_id != last_move {
+            shown_at.insert(frame, shown);
+            // The view the CPU decided this frame's pad from, as it saw it.
+            let Some(attention) = m.fair_cpu_attention() else { continue };
+            let Some(view) = as_seen(&shown_at, frame, attention) else { continue };
+            if view.foe.attacking() {
+                if view.foe.move_id != last_move {
                     box_seen = false;
                 }
-                box_seen |= shown.foe.active;
-                last_move = shown.foe.move_id;
+                box_seen |= view.foe.active;
+                last_move = view.foe.move_id;
             } else {
                 box_seen = false;
                 last_move = 0;
             }
-            let recovering = box_seen && !shown.foe.active;
-            let to_p1: i16 = if shown.foe.x >= shown.me.x { 1 } else { -1 };
-            let shot_coming = shown.shot && (shown.shot_x - shown.me.x) * to_p1 > -16;
-            // And which way was toward Player 1 as that frame showed it.
-            let forward = if shown.foe.x >= shown.me.x { R } else { L };
-            coming.insert(frame, (shot_coming || (shown.foe.attacking() && !recovering), forward));
+            // Something coming at it in that view: a projectile in front of
+            // it, or an attack whose box has not yet come and gone (start-up
+            // or active, not recovery).
+            let recovering = box_seen && !view.foe.active;
+            let to_p1: i16 = if view.foe.x >= view.me.x { 1 } else { -1 };
+            let shot_coming = view.shot && (view.shot_x - view.me.x) * to_p1 > -16;
+            let seen_coming = shot_coming || (view.foe.attacking() && !recovering);
+            // Toward him as that view showed it (a jump over it turns the
+            // fighters round before it can see that).
+            let forward = if view.foe.x >= view.me.x { R } else { L };
             if shown.shot && !had_shot {
                 shots += 1;
             }
@@ -1520,9 +1543,6 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
                 route_pressed = false;
             }
             route_pressed |= in_route && buttons != 0;
-            // Toward him as the view it decided on showed it (a jump over
-            // it turns the fighters round before it can see that).
-            let Some(&(seen_coming, forward)) = coming.get(&(frame - delay)) else { continue };
             let walking_in = dirs == forward && buttons == 0 && !route_pressed;
             if i < 300 || !walking_in || !shown.me.free() || down(&shown.foe) {
                 continue;
@@ -1603,7 +1623,7 @@ fn its_focus_is_answered_at_the_focused_delay_and_anything_else_at_the_slower_on
         let mut shown: HashMap<u32, Percept> = HashMap::new();
         let mut attention: HashMap<u32, Attention> = HashMap::new();
         let mut pads = HashMap::new();
-        for i in 0..8_000u32 {
+        for i in 0..16_000u32 {
             let v = seen(&m);
             let (dirs, buttons) = focus_pad(i, &v);
             step(&mut m, dirs, buttons);

@@ -1194,15 +1194,20 @@ impl FairCpu {
                 self.last_view = view;
                 let pad = self.decide(step, view, before, ctx);
                 if stronger {
-                    self.focus = self
-                        .game
-                        .and_then(|run| {
-                            game::plans(ctx.kit.fighter, ctx.family)
-                                .get(usize::from(run.plan))?
-                                .steps
-                                .get(usize::from(run.step))
-                        })
-                        .map_or_else(|| focus::situation_focus(self.judged.situation), focus::step_focus);
+                    // Over a knocked-down opponent it watches his wake-up,
+                    // whatever step it is on (walking in or timing an attack).
+                    self.focus = if self.judged.situation == Situation::OpponentKnockedDown {
+                        focus::situation_focus(Situation::OpponentKnockedDown)
+                    } else {
+                        self.game
+                            .and_then(|run| {
+                                game::plans(ctx.kit.fighter, ctx.family)
+                                    .get(usize::from(run.plan))?
+                                    .steps
+                                    .get(usize::from(run.step))
+                            })
+                            .map_or_else(|| focus::situation_focus(self.judged.situation), focus::step_focus)
+                    };
                 }
                 pad
             }

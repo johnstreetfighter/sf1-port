@@ -621,11 +621,10 @@ const RYU_SF6_HOVER: [Step; 13] = [
 ];
 
 /// Ryu in the SF6 era style, far off: a projectile, then walk in behind it
-/// to take the space it wins, to the edge of the opponent's reach.
-const RYU_SF6_SHOT: [Step; 3] = [
+/// to take the space it wins.
+const RYU_SF6_SHOT: [Step; 2] = [
     step(Act::Shot, always(Some(1))),
-    step(Act::Do(Choice::Approach), always(Some(2))),
-    step(Act::Edge, always(None)),
+    step(Act::Do(Choice::Approach), always(None)),
 ];
 
 /// Ryu in the SF6 era style, from the range a forward jump carries him to
@@ -643,7 +642,7 @@ const RYU_SF6: [GamePlan; 11] = [
     GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP },
     GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW },
     GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 58, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 52, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT },
     // A cornered opponent out of reach (its own guarded attacks push it
     // back off him): walk him down rather than let him out.
     GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE },
