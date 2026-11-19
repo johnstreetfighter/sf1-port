@@ -27,6 +27,21 @@ const CORNER: i16 = 40;
 
 /// A reach to assume for the opponent's attacks until one is seen.
 const DEFAULT_FOE_REACH: i16 = 66;
+/// Frames from a knockdown showing to the opponent being free, until the
+/// CPU has seen one: about a sweep's, as Training's Ryu shows it.
+const DEFAULT_RISE: u16 = 43;
+/// Frames one knockdown seen moves the CPU's idea of their length, at most.
+const RISE_STEP: i64 = 3;
+/// Frames before a rising opponent is free at which a timed attack is
+/// pressed: a little under a quick normal's start-up, so it is out just
+/// after he rises. (This engine lets a hit land on a knockdown's last
+/// frame and knock him down again; six frames' lead met that frame.)
+pub(super) const MEATY_LEAD: u32 = 4;
+/// Frames a guard held over a rise lasts past it, for a reversal to show.
+pub(super) const BAIT_FRAMES: u32 = 24;
+/// Frames before a rising opponent is free at which the guard over his
+/// rise goes up, ending the walk in.
+pub(super) const GUARD_LEAD: u32 = 4;
 /// Frames "it was blocked" outlasts the last frame its attack was seen on a
 /// guard: about the time a guarded normal takes to recover.
 const BLOCKED_FRAMES: u8 = 14;
@@ -69,11 +84,13 @@ pub enum Situation {
 pub struct Judged {
     pub situation: Situation,
     pub corner: bool,
+    /// The opponent is the one near a wall.
+    pub foe_cornered: bool,
 }
 
 /// Knocked down or rising: a hit reaction drawn off the ground (state bit 0,
 /// as a sweep's and a launch's are), or the rise from a throw.
-fn knocked_down(body: &Body) -> bool {
+pub(super) fn knocked_down(body: &Body) -> bool {
     body.present && (body.move_id == crate::combo::throw::GET_UP_MOVE || (body.move_id >= 0x30 && body.state & 1 != 0))
 }
 
@@ -95,11 +112,26 @@ pub(super) struct Judge {
     foe_reach: i16,
     /// Frames left of "it was blocked".
     blocked: u8,
+    /// The opponent was knocked down on the last frame judged, the frame
+    /// his knockdown was first seen, and how long a knockdown lasts until
+    /// he is free, as the CPU has seen them last.
+    foe_down: bool,
+    foe_down_since: u32,
+    rise_frames: u16,
 }
 
 impl Default for Judge {
     fn default() -> Self {
-        Judge { foe_attack_shown: false, foe_attack_met: false, foe_attack_grounded: false, foe_reach: DEFAULT_FOE_REACH, blocked: 0 }
+        Judge {
+            foe_attack_shown: false,
+            foe_attack_met: false,
+            foe_attack_grounded: false,
+            foe_reach: DEFAULT_FOE_REACH,
+            blocked: 0,
+            foe_down: false,
+            foe_down_since: 0,
+            rise_frames: DEFAULT_RISE,
+        }
     }
 }
 
@@ -143,6 +175,23 @@ impl Judge {
             self.blocked = self.blocked.saturating_sub(1);
         }
 
+        // A knockdown's length, from the first frame it shows to the first
+        // frame he is free, learned as a person learns it by watching.
+        let down = knocked_down(&foe);
+        if down && !self.foe_down {
+            self.foe_down_since = view.frame;
+        } else if !down && self.foe_down && foe.free() {
+            let seen = view.frame.saturating_sub(self.foe_down_since);
+            if (20..=150).contains(&seen) {
+                // The usual length: one sighting moves it a few frames at
+                // most, so an odd long knockdown (about one in five lasts
+                // twice the usual) does not throw the timing off.
+                let shift = (i64::from(seen) - i64::from(self.rise_frames)).clamp(-RISE_STEP, RISE_STEP);
+                self.rise_frames = (i64::from(self.rise_frames) + shift) as u16;
+            }
+        }
+        self.foe_down = down;
+
         let situation = if knocked_down(&me) {
             Situation::KnockedDown
         } else if me.reacting() {
@@ -168,7 +217,13 @@ impl Judge {
         } else {
             Situation::NeutralClose
         };
-        Judged { situation, corner: cornered(&me) || cornered(&foe) }
+        Judged { situation, corner: cornered(&me) || cornered(&foe), foe_cornered: cornered(&foe) }
+    }
+
+    /// The machine frame a knocked-down opponent is expected to be free on,
+    /// while he is down.
+    pub(super) fn rise_at(&self) -> Option<u32> {
+        self.foe_down.then(|| self.foe_down_since + u32::from(self.rise_frames))
     }
 }
 
@@ -194,6 +249,33 @@ pub(super) enum Act {
     /// whole from its opener: its first cancel is committed before any hit
     /// is seen. With no route allowed, the plan ends.
     Route(Reach),
+    /// Against a knocked-down opponent, walk in while he is down and press
+    /// this normal so it is out as he rises, from the knockdown's length as
+    /// the CPU has seen it. Out of its reach when the moment comes, nothing
+    /// is pressed (the outcome is `Nothing`).
+    Meaty { crouch: bool, button: usize },
+    /// Walk in while he is down, then hold a guard over the opponent's
+    /// rise, so a reversal meets it and can be punished.
+    GuardRise,
+}
+
+impl Act {
+    /// The step commits it to walking in or attacking.
+    pub(super) fn commits(self) -> bool {
+        matches!(
+            self,
+            Act::Reach { .. }
+                | Act::Route(_)
+                | Act::Meaty { .. }
+                | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach)
+        )
+    }
+
+    /// The step waits for a knocked-down opponent's rise, or walks in to
+    /// meet it: it is no waste against him while he is down.
+    pub(super) fn meets_the_rise(self) -> bool {
+        matches!(self, Act::Meaty { .. } | Act::GuardRise | Act::Reach { .. })
+    }
 }
 
 /// Frames the CPU may walk in to start a route: from neutral, and to
@@ -344,6 +426,10 @@ impl Step {
 pub(super) struct GamePlan {
     pub situation: Situation,
     pub score: i32,
+    /// Added to the score while the opponent is cornered.
+    pub corner_bonus: i32,
+    /// Taken up only while the opponent is cornered.
+    pub cornered_only: bool,
     pub steps: &'static [Step],
 }
 
@@ -357,12 +443,13 @@ const fn always(next: Option<u8>) -> [Option<u8>; 5] {
 }
 
 /// Ryu in the SF6 era style, close neutral: walk to crouching medium kick
-/// range and press it. On a hit throw a projectile to keep him pinned; on a
-/// guard walk in and throw; on a whiff give ground and guard.
+/// range and press it. On a hit (it knocks down in this engine) follow him
+/// in and time the same kick to his rise; on a guard walk in and throw; on
+/// a whiff give ground and guard.
 const RYU_SF6_POKE: [Step; 6] = [
     step(Act::Reach { crouch: true, button: 4 }, always(Some(1))),
     step(Act::Do(Choice::Normal { crouch: true, button: 4 }), [Some(2), Some(3), Some(4), None, None]),
-    step(Act::Do(Choice::Special(super::Role::Projectile)), always(None)),
+    step(Act::Meaty { crouch: true, button: 4 }, always(None)),
     step(Act::Do(Choice::Throw), always(None)),
     step(Act::Do(Choice::Retreat), always(Some(5))),
     step(Act::Do(Choice::Guard), always(None)),
@@ -378,9 +465,42 @@ const RYU_SF6_ROUTE: [Step; 4] = [
     step(Act::Do(Choice::Guard), always(None)),
 ];
 
-const RYU_SF6: [GamePlan; 2] = [
-    GamePlan { situation: Situation::NeutralClose, score: 60, steps: &RYU_SF6_POKE },
-    GamePlan { situation: Situation::NeutralClose, score: 62, steps: &RYU_SF6_ROUTE },
+/// Ryu in the SF6 era style, after an attack was guarded: a short wait,
+/// then a medium punch that hits him if he pressed a button in the gap. On
+/// a guard again the pressure has run out: give ground and guard.
+const RYU_SF6_FRAME_TRAP: [Step; 4] = [
+    step(Act::Do(Choice::Wait), always(Some(1))),
+    step(Act::Do(Choice::Normal { crouch: false, button: 1 }), [None, Some(2), Some(2), None, None]),
+    step(Act::Do(Choice::Retreat), always(Some(3))),
+    step(Act::Do(Choice::Guard), always(None)),
+];
+
+/// After an attack was guarded: walk in and throw.
+const RYU_SF6_WALK_THROW: [Step; 1] = [step(Act::Do(Choice::Throw), always(None))];
+
+/// Against a knocked-down opponent: walk to crouching medium kick range
+/// and time it to meet his rise. On a guard throw; on a whiff back off.
+const RYU_SF6_MEATY: [Step; 4] = [
+    step(Act::Meaty { crouch: true, button: 4 }, [None, Some(1), Some(2), None, None]),
+    step(Act::Do(Choice::Throw), always(None)),
+    step(Act::Do(Choice::Retreat), always(Some(3))),
+    step(Act::Do(Choice::Guard), always(None)),
+];
+
+/// Against a knocked-down opponent: walk in close and guard over his rise,
+/// so a reversal is guarded and its whiff punished.
+const RYU_SF6_BAIT: [Step; 1] = [step(Act::GuardRise, always(None))];
+
+const RYU_SF6: [GamePlan; 7] = [
+    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, steps: &RYU_SF6_POKE },
+    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, steps: &RYU_SF6_ROUTE },
+    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, steps: &RYU_SF6_FRAME_TRAP },
+    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, steps: &RYU_SF6_WALK_THROW },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, steps: &RYU_SF6_MEATY },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 58, corner_bonus: -10, cornered_only: false, steps: &RYU_SF6_BAIT },
+    // A cornered opponent out of reach (its own guarded attacks push it
+    // back off him): walk him down rather than let him out.
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, steps: &RYU_SF6_POKE },
 ];
 
 /// The game plans a fighter has in an era style. A pair with none plays
@@ -401,11 +521,22 @@ pub(super) struct Running {
     /// The step's action has been pressed, on this step of the machine.
     pub acted: bool,
     pub pressed: u32,
+    /// The frame a timed step's walk in, before it acts, will last be seen
+    /// on (0 for no walk yet).
+    pub walked: u32,
     /// The machine step the plan began on.
     pub began: u32,
 }
 
 impl Running {
+    /// The gap to the opponent now, as far as a timed step's walk in can
+    /// tell: the CPU sees its own steps `reaction` frames late, so those it
+    /// has walked since the frame seen are counted at a walk's pace.
+    pub(super) fn gap_now(&self, view: Percept) -> i16 {
+        let unseen = self.walked.saturating_sub(view.frame).min(60) as i16;
+        view.gap() - unseen * WALK_SPEED
+    }
+
     /// What has come of the pressed normal `(crouch, button)` as far as
     /// `view` shows, once it shows anything: `reach` is that normal's.
     pub(super) fn outcome(&self, view: Percept, reach: i16) -> Option<Outcome> {
@@ -432,9 +563,11 @@ crate::canonical::canonical_enum!(Situation, "FairCpuSituation.v1";
     NeutralFar => 0, NeutralClose => 1, ItHit => 2, ItWasBlocked => 3, OpponentKnockedDown => 4,
     OpponentWhiffed => 5, Defending => 6, KnockedDown => 7,
 );
-crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v1", { situation, corner });
-crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v2", { foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, blocked });
-crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v1", { plan, step, acted, pressed, began });
+crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v2", { situation, corner, foe_cornered });
+crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v3", {
+    foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, blocked, foe_down, foe_down_since, rise_frames,
+});
+crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v2", { plan, step, acted, pressed, walked, began });
 crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v1", {
     fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded,
 });
@@ -457,7 +590,7 @@ mod tests {
         changed[0].judged.situation = Situation::ItHit;
         changed[1].judged.corner = true;
         changed[2].judge.blocked = 3;
-        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, began: 4 });
+        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, walked: 0, began: 4 });
         for cpu in &changed {
             assert_ne!(hash(cpu), hash(&plain), "{cpu:?}");
         }

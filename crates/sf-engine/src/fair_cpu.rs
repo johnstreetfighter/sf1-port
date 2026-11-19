@@ -91,6 +91,8 @@ pub const LEFT: u16 = 2;
 pub const DOWN: u16 = 4;
 pub const UP: u16 = 8;
 const BUTTON0: u16 = 0x10;
+/// All six buttons' pad bits.
+const BUTTONS: u16 = 0x3f0;
 
 /// The pad bit of button `b` (0 LP, 1 MP, 2 HP, 3 LK, 4 MK, 5 HK).
 const fn button(b: usize) -> u16 {
@@ -825,6 +827,14 @@ impl Plan {
     fn interruptible(&self) -> bool {
         self.done() || matches!(self.kind, PlanKind::Idle | PlanKind::Walk | PlanKind::Guard { .. })
     }
+
+    /// An action whose first button is still to come: nothing it does has
+    /// begun yet (a crouching normal holds the stick down a frame first).
+    fn press_to_come(&self) -> bool {
+        self.kind == PlanKind::Act
+            && self.pads[..usize::from(self.len)].iter().any(|&pad| pad & BUTTONS != 0)
+            && self.pads[..usize::from(self.at.min(self.len))].iter().all(|&pad| pad & BUTTONS == 0)
+    }
 }
 
 /// The options the CPU weighs.
@@ -1098,7 +1108,11 @@ impl FairCpu {
         }
         if let Some(before) = before {
             let interruptible = self.plan.interruptible();
-            let era_response = ctx.era.filter(|tactics| interruptible || tactics.can_interrupt())
+            // The stronger play leaves a knocked-down opponent to its
+            // knockdown plans: the era kit's answer to a hit (a super on
+            // the hit confirm) would only whiff over him.
+            let foe_down = stronger && self.judged.situation == Situation::OpponentKnockedDown;
+            let era_response = ctx.era.filter(|tactics| !foe_down && (interruptible || tactics.can_interrupt()))
                 .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before));
             if let Some(plan) = era_response {
                 self.plan = plan;
@@ -1109,6 +1123,13 @@ impl FairCpu {
                     self.plan = plan;
                     self.game = None;
                 }
+            }
+            // A game plan's attack not yet begun is not pressed into an
+            // attack it has just seen start: it guards instead.
+            let foe_started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
+            if stronger && self.game.is_some() && self.plan.press_to_come() && foe_started {
+                self.plan = Plan::guard(view.foe.low_attack(), 0);
+                self.game = None;
             }
         }
         if self.route.is_some() {
@@ -1228,8 +1249,10 @@ impl FairCpu {
         let table = game::plans(ctx.kit.fighter, ctx.family);
         let mut best: Option<(u8, i32)> = None;
         for (index, plan) in table.iter().enumerate() {
-            if plan.situation == self.judged.situation {
-                let score = plan.score + self.rng.below(12) as i32;
+            if plan.situation == self.judged.situation && (!plan.cornered_only || self.judged.foe_cornered) {
+                // A cornered opponent is pressed harder.
+                let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
+                let score = plan.score + corner + self.rng.below(12) as i32;
                 if best.is_none_or(|(_, top)| score > top) {
                     best = Some((index as u8, score));
                 }
@@ -1239,7 +1262,7 @@ impl FairCpu {
         if !self.rng.chance(ctx.level.quality()) {
             return false;
         }
-        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step });
+        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, walked: 0, began: step });
         true
     }
 
@@ -1260,6 +1283,24 @@ impl FairCpu {
         // A plan has few steps, and each pass either returns or moves on one.
         for _ in 0..8 {
             let Some(at) = table.get(usize::from(run.plan)).and_then(|plan| plan.steps.get(usize::from(run.step))) else { break };
+            // It does not walk or attack into an attack it has seen start:
+            // the plan ends, and its answer to the attack takes over.
+            let commits = !run.acted && at.act.commits();
+            if commits && view.foe.attacking() {
+                break;
+            }
+            // An attack thrown at a knocked-down opponent is wasted: a plan
+            // for another situation ends there, and the knockdown's plans,
+            // which time their attack to his rise, take over.
+            if commits && !at.act.meets_the_rise() && self.judged.situation == Situation::OpponentKnockedDown {
+                break;
+            }
+            // Against a cornered opponent it gives no ground: where a plan
+            // would back off and guard, it ends, and the pressure goes on
+            // with the next plan for the situation.
+            if !run.acted && at.act == Act::Do(Choice::Retreat) && self.judged.foe_cornered {
+                break;
+            }
             let outcome = match (at.act, run.acted) {
                 (Act::Reach { crouch, button }, false) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
@@ -1297,8 +1338,79 @@ impl FairCpu {
                     self.game = Some(run);
                     return Some(Plan::default());
                 }
-                (Act::Route(_), true) => match self.route_outcome.take() {
+                (Act::Meaty { crouch, button }, false) => {
+                    // While he is down it walks in; pressed `MEATY_LEAD`
+                    // frames before he is expected to be free, or at once
+                    // if he is already up.
+                    let reach = self.reach[usize::from(crouch)][button] - 4;
+                    if let Some(rise) = self.judge.rise_at() {
+                        if step + game::MEATY_LEAD < rise {
+                            return Some(self.close_in(run, step, view, reach));
+                        }
+                    }
+                    self.game = Some(run);
+                    if !self.ready(view) {
+                        return Some(wait);
+                    }
+                    if run.gap_now(view) > reach + 4 {
+                        // Out of reach as he rises: the moment is lost.
+                        Outcome::Nothing
+                    } else {
+                        run.acted = true;
+                        run.pressed = step;
+                        self.game = Some(run);
+                        return Some(self.plan_for(Choice::Normal { crouch, button }, step, view, ctx, false));
+                    }
+                }
+                // Pressed into his rise: what it met shows once he is up.
+                // Down again after that (the attack knocked him down) is
+                // its hit, read below.
+                (Act::Meaty { .. }, true)
+                    if game::knocked_down(&view.foe) && view.frame > run.pressed && view.frame <= run.pressed + game::MEATY_LEAD =>
+                {
+                    self.game = Some(run);
+                    return Some(wait);
+                }
+                (Act::Meaty { crouch, button }, true) => match run.outcome(view, self.reach[usize::from(crouch)][button]) {
                     Some(outcome) => outcome,
+                    None => return Some(wait),
+                },
+                (Act::GuardRise, false) => {
+                    let close = self.reach[0][1] - 4;
+                    let rise = self.judge.rise_at();
+                    if let Some(rise) = rise {
+                        if step + game::GUARD_LEAD < rise {
+                            return Some(self.close_in(run, step, view, close));
+                        }
+                    }
+                    let until = rise.unwrap_or(step) + game::BAIT_FRAMES;
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    let frames = until.saturating_sub(step).clamp(8, 120) as u16;
+                    // Crouching: a standing guard with nothing coming is a
+                    // walk back. It rises to meet an attack that needs it.
+                    return Some(Plan::guard(true, frames));
+                }
+                (Act::Route(_), true) => match self.route_outcome {
+                    // Its last attack can still be out as its pads end: what
+                    // it meets is seen before the plan goes on.
+                    Some(Outcome::Whiff) if view.foe.reacting() => {
+                        self.route_outcome = None;
+                        Outcome::Hit
+                    }
+                    Some(Outcome::Whiff) if view.me.attacking() && view.foe.guarding() => {
+                        self.route_outcome = None;
+                        Outcome::Guard
+                    }
+                    Some(Outcome::Whiff) if view.me.attacking() => {
+                        self.game = Some(run);
+                        return Some(wait);
+                    }
+                    Some(outcome) => {
+                        self.route_outcome = None;
+                        outcome
+                    }
                     None if self.route.is_some() => return Some(wait),
                     None => Outcome::Nothing,
                 },
@@ -1314,12 +1426,28 @@ impl FairCpu {
                 Some(next) => {
                     run.step = next;
                     run.acted = false;
+                    run.walked = 0;
                 }
                 None => break,
             }
         }
         self.game = None;
         None
+    }
+
+    /// A frame of a timed step's walk in toward a knocked-down opponent, or
+    /// of waiting once within `reach` of him; the plan is kept with it.
+    fn close_in(&mut self, mut run: game::Running, step: u32, view: Percept, reach: i16) -> Plan {
+        let walk = self.ready(view) && run.gap_now(view) > reach;
+        if walk {
+            run.walked = step + 1;
+        }
+        self.game = Some(run);
+        if walk {
+            Plan::of(PlanKind::Walk, &[if view.toward() > 0 { RIGHT } else { LEFT }])
+        } else {
+            Plan::of(PlanKind::Idle, &[0])
+        }
     }
 
     /// The CPU's own fighter, as last seen, can start something, and it has
@@ -1632,7 +1760,12 @@ impl FairCpu {
         } else {
             options.push((Choice::Approach, 6));
         }
-        options.push((Choice::Retreat, if gap < 24 { 26 } else { 8 }));
+        // The stronger play gives a cornered opponent no ground.
+        let stronger = ctx.stronger || self.forced_stronger;
+        let cornering = stronger && self.judged.foe_cornered;
+        if !cornering {
+            options.push((Choice::Retreat, if gap < 24 { 26 } else { 8 }));
+        }
         if gap < 100 && !foe_busy {
             options.push((Choice::Guard, level.anticipate() + if threatened { 30 } else { 0 }));
         }
@@ -1706,7 +1839,7 @@ impl FairCpu {
         if (70..150).contains(&gap) && open {
             options.push((Choice::JumpIn, 30));
         }
-        if gap < 60 && open {
+        if gap < 60 && open && !cornering {
             options.push((Choice::JumpBack, 6));
         }
         let choice = self.pick(&mut options, level);
@@ -1815,10 +1948,17 @@ impl FairCpu {
                 }
                 let dir = if self.rng.chance(70) { fwd } else { back };
                 let b = if self.rng.chance(50) { 2 } else { 5 };
-                for i in 0..10 {
-                    pads.push(if i % 3 == 1 { dir | button(b) } else { dir });
+                if ctx.stronger || self.forced_stronger {
+                    // The engine throws only from a standing fighter, not
+                    // one walking: stop, then the direction and the button
+                    // on the same frame.
+                    pads.extend([0, 0, dir | button(b), dir | button(b), 0]);
+                } else {
+                    for i in 0..10 {
+                        pads.push(if i % 3 == 1 { dir | button(b) } else { dir });
+                    }
+                    pads.push(0);
                 }
-                pads.push(0);
                 self.settle = settle_after(pads.len().min(PLAN_CAP) as u32);
                 Plan::of(PlanKind::Act, &pads)
             }
