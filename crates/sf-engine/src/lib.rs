@@ -64,6 +64,7 @@ pub mod mugen_extract;
 pub mod overlay;
 pub mod replay;
 pub mod roster;
+pub mod route_book;
 pub mod run;
 pub mod session_io;
 mod control;
