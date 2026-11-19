@@ -8,11 +8,11 @@ Each line says where it comes from: **blueprint** (Clayton Chapman's design, as 
 
 Sagat wins by paid power. His high and low Tiger Shots hold the opponent at range, and his Versatile stocks buy Scar charges that turn his Tiger Uppercut and Tiger Knee into armoured moves and lengthen his Super. *(blueprint: "paid power")*
 
-What he gives up: he is the largest body of the first three, so more routes work on him. He has no command normal and no air special, so he has no air exit from the Special Pose. Without charges his Tiger Knee misses crouchers and his raw heavy Tiger Uppercut is a large risk. *(ours, drawn from the blueprint's notes and from what he has in the game)*
+What he gives up: he is the tallest body of the first three, so more routes work on him. He has no command normal and no air special, so he has no air exit from the Special Pose. Without charges his Tiger Knee misses crouchers and his raw heavy Tiger Uppercut is a large risk. *(ours, drawn from the blueprint's notes and from what he has in the game)*
 
 ## 2. Body
 
-- **Hurtbox tier:** large. *(ours; no size tier exists in code yet, and the design documents call him the tallest of the cast)*
+- **Hurtbox tier:** tall. *(ours; no size tier exists in code yet, and the design documents call him the tallest of the cast)*
 - **Wall jump:** no. *(blueprint: agile fighters only)*
 
 ## 3. Normals
@@ -39,7 +39,7 @@ All from **ST**, which already has them with measured boxes.
 
 | Move | Input | Source | Notes |
 |---|---|---|---|
-| Tiger Shot | quarter-circle forward + punch | ST | High. Passes over a crouching small or medium body. Stands a crouching large victim up. |
+| Tiger Shot | quarter-circle forward + punch | ST | High. Passes over a crouching small or medium body. Stands a crouching tall or wide victim up. |
 | Low Tiger Shot | quarter-circle forward + kick | ST | Low. Must be blocked or jumped. Stands a crouching victim up. |
 | Tiger Knee | down, forward, up-forward + kick | ST | Two hits, moves him forward. Passes over a crouching small or medium body. *(the miss on crouchers is ours, read from the blueprint giving "hits crouchers" to the charged version)* |
 | Tiger Uppercut | forward, down, down-forward + punch | ST | Invincible on the way up. The heavy version keeps its Super Turbo damage and leaves him in a counter-hit state for the whole of its recovery, not only its startup and active frames. *(blueprint)* |
@@ -112,7 +112,7 @@ Everything above is built from moves and frames Sagat already has. New behaviour
 - the charged Tiger Knee's reach on crouchers and its guard damage;
 - Tiger Genocide's ender, chosen by the charges held;
 - the heavy Tiger Uppercut's longer counter-hit state;
-- the large hurtbox tier, with Tiger Shot and Tiger Knee reach by tier;
+- the tall hurtbox tier, with Tiger Shot and Tiger Knee reach by tier;
 - the wakeup attack as a sequence;
 - the target combo link.
 

@@ -35,7 +35,7 @@ All from **ST** (New Ken), which already has them with measured boxes.
 
 Rules for all three:
 
-- **Link into crouching light kick by tier** *(blueprint)*. Starting values *(ours)*: against a large body all three link; against a medium body Kama Barai and Osoto Mawashi link; against a small body only Kama Barai links.
+- **Link into crouching light kick by tier** *(blueprint)*. Starting values *(ours)*: against a tall or wide body all three link; against a medium body Kama Barai and Osoto Mawashi link; against a small body only Kama Barai links.
 - **The ST heel follow-up is left out** *(ours)*. Its place is taken by the kara cancel and the EX move below, so he does not get the same extension twice.
 - Alpha's Inazuma Kakato Wari is not in the kit, except as an EX ender (section 6).
 
@@ -53,10 +53,10 @@ Rules for all three:
 
 | Move | Input | Source | Notes |
 |---|---|---|---|
-| Hadoken | quarter-circle forward + punch | ST | Stands a crouching victim up. Slower to recover than Ryu's. Its first frames may be kara-cancelled into either Level 3. |
+| Hadoken | quarter-circle forward + punch | ST | Stands a crouching victim up. Slower to recover than Ryu's. |
 | Shoryuken, light and medium | forward, down, down-forward + punch | ST | Invincible on the way up. One hit against an airborne victim. |
 | Flaming Shoryuken, heavy | forward, down, down-forward + heavy punch | ST move, Alpha's flames | Three hits. See section 10 for its posture rule. Only the last hit juggles. *(blueprint)* |
-| Hurricane Kick | quarter-circle back + kick | ST, blueprint rules | The heavy version flies over medium and large crouching bodies and hits from behind. See section 10. |
+| Hurricane Kick | quarter-circle back + kick | ST, blueprint rules | The heavy version flies over medium, tall and wide crouching bodies and hits from behind. See section 10. |
 | Air Hurricane Kick | quarter-circle back + kick in the air | ST | Kept as his one air special, so he has a pose exit in the air, as Ryu has. *(ours)* |
 | **Level 1:** Shoryureppa | two quarter-circles forward + punch | ST | One Super stock. May juggle. |
 | **Level 3:** Shinryuken | two quarter-circles forward + kick | Alpha, SF3, SF4, SF5 | Two Super stocks. The rising pillar: an anti-air and a close trap ender. |
@@ -64,7 +64,7 @@ Rules for all three:
 
 Both Level 3s do less damage than Ryu's Shin Shoryuken *(blueprint: "lower in damage")*. Starting value *(ours)*: three quarters of it. The maintainer chose the two, 2026-11-18.
 
-**The fireball trap** *(blueprint; the mechanism is ours)*: the Hadoken's first frames, before the fireball leaves his hands, may be cancelled into either Level 3. The opponent who jumps on seeing the throw meets Shinryuken; the one who stays down and tries to walk in meets Guren Senpukyaku.
+**The fireball trap** *(blueprint)*: this is the general three-stock privilege, not a rule of Ken's own. While he holds three or more Versatile stocks, the free kara cancel takes the Hadoken's startup into either Level 3; below three he has no trap. *(the maintainer chose the general rule over an exception for Ken, 2026-11-18)* The opponent who jumps on seeing the throw meets Shinryuken; the one who stays down and tries to walk in meets Guren Senpukyaku.
 
 **Left out on purpose** *(ours, following the blueprint's "no filler")*: Jinrai Kick and Quick Dash from SF6, the plain Shippu Jinraikyaku Super (it exists here as the EX move), Shinryu Reppa and Dragonlash Flame.
 
@@ -104,7 +104,7 @@ Choosing an ender by button already has a precedent in the engine (Sagat's what-
 
 Routes the blueprint names, which the tests should prove:
 
-- Heavy flaming Shoryuken on a standing victim, who is forced to crouch; pose; heavy Hurricane Kick over a medium or large body, hitting from behind; standing heavy punch.
+- Heavy flaming Shoryuken on a standing victim, who is forced to crouch; pose; heavy Hurricane Kick over a medium, tall or wide body, hitting from behind; standing heavy punch.
 - The same against a small body: the Hurricane Kick does not cross over, so the route ends.
 - Command kick, crouching light kick, by tier as in section 3.
 - Command kick, kara cancel into Dragonlash Kick, once; a second kara cancel in the same combo does not come out.
@@ -113,7 +113,7 @@ Routes the blueprint names, which the tests should prove:
 ## 10. Posture overrides
 
 - **Heavy flaming Shoryuken:** a flame special would keep the victim's posture. This one forces a crouch on its first hit instead. *(blueprint)*
-- **Heavy Hurricane Kick:** against a crouching medium or large body it passes over, hits from behind and stands the victim up, leaving time to link standing heavy punch. Against a crouching small body, and against any standing body, it hits from the front as usual. *(blueprint; the small-body case is ours)*
+- **Heavy Hurricane Kick:** against a crouching medium, tall or wide body it passes over, hits from behind and stands the victim up, leaving time to link standing heavy punch. Against a crouching small body, and against any standing body, it hits from the front as usual. *(blueprint; the small-body case is ours)*
 - **Dragonlash Kick:** keeps posture, as any flame special.
 - Light and medium Shoryuken, Hadoken and the lighter Hurricane Kicks follow the general rule and stand a crouching victim up.
 
@@ -122,7 +122,6 @@ Routes the blueprint names, which the tests should prove:
 Everything above is built from moves and frames Ken already has. New behaviour, not new drawings:
 
 - the kara cancel, which no fighter in the engine has, and its once-per-combo count;
-- the Hadoken's kara cancel into a Level 3;
 - command-kick links that depend on the victim's hurtbox tier;
 - the EX Shippu Jinraikyaku as a sequence with four enders;
 - the heavy Shoryuken's forced crouch and its last-hit-only juggle;
