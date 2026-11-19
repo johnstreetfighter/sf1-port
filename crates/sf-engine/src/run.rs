@@ -1690,13 +1690,20 @@ impl PowerOnMachine {
         let cpu = self.fair_cpu.get_or_insert_with(FairCpu::new);
         let pad = cpu.press(step, in_fight, &ctx);
         let idle = cpu.utility_idle();
-        let input = if family == crate::era::EraFamily::Sf1987 {
+        // While it follows a game plan (spec `#192`) the pad is the Fair
+        // CPU's alone: the Utility AI adds no command of its own.
+        let following = cpu.following_game_plan();
+        let alone = family == crate::era::EraFamily::Sf1987 || following;
+        let input = if alone {
+            if following {
+                self.program.toggle_state.utility[slot].drop_macro();
+            }
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
         } else {
             self.step_utility_cpu(slot, me, foe, fighter, family, &ctx, Some((pad, idle)))
         };
-        if family != crate::era::EraFamily::Sf1987 {
+        if !alone {
             self.fair_cpu.as_mut().unwrap().set_utility_pad(self.program.toggle_state.utility[slot].pad());
         }
         self.apply_cpu_pad(input);
@@ -1707,11 +1714,12 @@ impl PowerOnMachine {
     /// random numbers from `seed` (SC1, `#193`: the measuring run). Player
     /// 2's is the one the match configuration asks for; Player 1's plays
     /// only beside it.
-    pub(crate) fn seed_measuring_cpus(&mut self, seed: u64) {
+    pub(crate) fn seed_measuring_cpus(&mut self, seed: u64, stronger: [bool; 2]) {
         use crate::fair_cpu::FairCpu;
         self.seed_utility_cpu(seed);
-        self.fair_cpu = Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)));
-        self.p1_fair_cpu = Some(Box::new(FairCpu::seeded(0xbb67_ae85_84ca_a73b ^ seed.rotate_left(33))));
+        self.fair_cpu = Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)).force_stronger(stronger[1]));
+        self.p1_fair_cpu =
+            Some(Box::new(FairCpu::seeded(0xbb67_ae85_84ca_a73b ^ seed.rotate_left(33)).force_stronger(stronger[0])));
     }
 
     /// The measuring run's Fair CPU on Player 1's pad: what
@@ -1731,7 +1739,11 @@ impl PowerOnMachine {
         let cpu = self.p1_fair_cpu.as_mut().unwrap();
         let pad = cpu.press(step, in_fight, &ctx);
         let idle = cpu.utility_idle();
-        let input = if family == crate::era::EraFamily::Sf1987 {
+        let following = cpu.following_game_plan();
+        let input = if family == crate::era::EraFamily::Sf1987 || following {
+            if following {
+                self.program.toggle_state.utility[0].drop_macro();
+            }
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
         } else {
@@ -1794,7 +1806,7 @@ impl PowerOnMachine {
             cfg.gauge_mode = crate::era::GaugeMode::Unified;
         }
         let level = Level::from_difficulty(cfg.difficulty);
-        if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
+        let mut context = if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
             && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
         {
             use crate::fighter::WORK_BASE;
@@ -1822,7 +1834,10 @@ impl PowerOnMachine {
             Context::with_era(level, fighter, slots, cfg, era, control)
         } else {
             Context::new(level, Kit::of(fighter, cfg.preset, slots), &cfg.toggles)
-        }
+        };
+        // Dramatic Battle's CPUs keep the old play until SC23 (`#215`).
+        context.stronger = cfg.stronger_cpu && cfg.dramatic.is_none();
+        context
     }
 
     pub(crate) fn seed_dramatic_cpu(&mut self, seed: u64) {
@@ -1997,6 +2012,17 @@ impl PowerOnMachine {
         if let Some(cpu) = self.fair_cpu.as_mut() {
             cpu.observe(p);
         }
+    }
+
+    /// The situation Player 2's Fair CPU last judged the fight to be in,
+    /// while one plays (the stronger play only, spec `#192`).
+    pub fn fair_cpu_situation(&self) -> Option<crate::fair_cpu::Judged> {
+        self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::situation)
+    }
+
+    /// Whether Player 2's Fair CPU is in the middle of a game plan.
+    pub fn fair_cpu_following_game_plan(&self) -> bool {
+        self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::following_game_plan)
     }
 
     /// The fair CPU's pad on the last frame, while one plays: (right, left,

@@ -62,7 +62,9 @@
 //! same fight, RESET POSITIONS included.
 
 mod era;
+mod game;
 pub(crate) use era::EraControl;
+pub use game::{Judged, Situation};
 use era::Tactics;
 
 use crate::config::{CoreToggles, RulesetPreset};
@@ -254,8 +256,9 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v1", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v2", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
+    forced_stronger, judge, judged, game,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -640,6 +643,12 @@ pub struct Context {
     /// Throws and throw techs (`throws`, SP19): close `Forward/Back + HP/HK`
     /// throws, and techs inside the 7-frame window.
     pub throws: bool,
+    /// The developer-only switch for the stronger play (spec `#192`):
+    /// situations and game plans ([`game`]).
+    pub stronger: bool,
+    /// The era style its fighter plays in, where one is in force: game
+    /// plans are looked up by fighter and era style.
+    family: Option<crate::era::EraFamily>,
 }
 
 impl Context {
@@ -652,6 +661,8 @@ impl Context {
             true_combos: toggles.true_combos,
             cancels: toggles.cancels,
             throws: toggles.throws,
+            stronger: false,
+            family: None,
         }
     }
 
@@ -667,6 +678,7 @@ impl Context {
         let kit = Kit::from_moves(fighter, slots, entries.iter().copied());
         let mut context = Self::new(level, kit, &config.toggles);
         context.era = Some(Tactics::of(state, &entries, config, level, control));
+        context.family = Some(state.style.family);
         context
     }
 
@@ -895,6 +907,14 @@ pub struct FairCpu {
     fighter: Option<TournamentFighter>,
     /// The pad given on the last step.
     pad: u16,
+    /// The measuring run plays the stronger game on this side whatever the
+    /// match's switch says (SC1, `#193`: new against old).
+    forced_stronger: bool,
+    /// The stronger play (spec `#192`): what judging remembers, the
+    /// situation it last judged, and the game plan being followed.
+    judge: game::Judge,
+    judged: Judged,
+    game: Option<game::Running>,
 }
 
 impl Default for FairCpu {
@@ -912,6 +932,10 @@ impl Default for FairCpu {
             shot_far: 0,
             fighter: None,
             pad: 0,
+            forced_stronger: false,
+            judge: game::Judge::default(),
+            judged: Judged::default(),
+            game: None,
         }
     }
 }
@@ -930,6 +954,24 @@ impl FairCpu {
         self.pad
     }
 
+    /// Play the stronger game whatever the match's switch says.
+    pub(crate) fn force_stronger(mut self, on: bool) -> Self {
+        self.forced_stronger = on;
+        self
+    }
+
+    /// The situation the stronger play last judged the fight to be in, from
+    /// the frame its reaction delay showed it. A CPU playing the old game
+    /// judges none and this stays at its default.
+    pub fn situation(&self) -> Judged {
+        self.judged
+    }
+
+    /// Whether it is in the middle of a game plan.
+    pub fn following_game_plan(&self) -> bool {
+        self.game.is_some()
+    }
+
     /// Record what frame `p.frame` showed.
     pub fn observe(&mut self, p: Percept) {
         self.seen[p.frame as usize % RING] = p;
@@ -946,7 +988,7 @@ impl FairCpu {
     /// A neutral pause can accept a new tactic. A zero pad inside a motion,
     /// timed anti-air or stance plan must stay with that plan.
     pub(crate) fn utility_idle(&self) -> bool {
-        self.pad == 0 && (self.plan.done() || self.plan.kind == PlanKind::Idle)
+        self.pad == 0 && self.game.is_none() && (self.plan.done() || self.plan.kind == PlanKind::Idle)
     }
 
     /// What frame `frame` showed, if the CPU still holds it.
@@ -969,6 +1011,9 @@ impl FairCpu {
             self.shot_far = 0;
             self.plan = Plan::default();
             self.settle = 0;
+            self.judge = game::Judge::default();
+            self.judged = Judged::default();
+            self.game = None;
         }
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.seen(f));
@@ -979,6 +1024,9 @@ impl FairCpu {
             }
             _ => {
                 self.plan = Plan::default();
+                self.game = None;
+                self.judge = game::Judge::default();
+                self.judged = Judged::default();
                 0
             }
         };
@@ -997,26 +1045,135 @@ impl FairCpu {
             self.seeded = true;
         }
         self.learn(view, before);
+        let stronger = ctx.stronger || self.forced_stronger;
+        if stronger {
+            self.judged = self.judge.judge(view, before, self.longest_reach());
+            if view.me.reacting() {
+                // Being hit ends whatever it was following.
+                self.game = None;
+            }
+        }
         if let Some(before) = before {
             let interruptible = self.plan.interruptible();
             let era_response = ctx.era.filter(|tactics| interruptible || tactics.can_interrupt())
                 .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before));
             if let Some(plan) = era_response {
                 self.plan = plan;
+                self.game = None;
             } else if interruptible {
                 if let Some(plan) = self.react(step, view, before, ctx) {
+                    // A threat it answers ends the game plan it was following.
                     self.plan = plan;
+                    self.game = None;
                 }
             }
         }
         if self.plan.done() {
+            if let Some(plan) = self.follow_game_plan(step, view, ctx) {
+                self.plan = plan;
+                return self.next_pad(step, view, ctx);
+            }
             if !self.ready(view) {
                 return 0;
             }
-            self.plan = ctx.era.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view))
-                .unwrap_or_else(|| self.choose(step, view, ctx));
+            let era = ctx.era.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view));
+            self.plan = match era {
+                Some(plan) => plan,
+                None if stronger && self.start_game_plan(step, ctx) => {
+                    self.follow_game_plan(step, view, ctx).unwrap_or_else(|| self.choose(step, view, ctx))
+                }
+                None => self.choose(step, view, ctx),
+            };
         }
         self.next_pad(step, view, ctx)
+    }
+
+    /// Its longest normal, as far as it knows.
+    fn longest_reach(&self) -> i16 {
+        self.reach[0].iter().chain(self.reach[1].iter()).copied().max().unwrap_or(60)
+    }
+
+    /// Take up a game plan for the situation, if its fighter and era style
+    /// have one and the level's decision quality chooses it over the single
+    /// choices. Among several the best score wins, after a little noise.
+    fn start_game_plan(&mut self, step: u32, ctx: &Context) -> bool {
+        let table = game::plans(ctx.kit.fighter, ctx.family);
+        let mut best: Option<(u8, i32)> = None;
+        for (index, plan) in table.iter().enumerate() {
+            if plan.situation == self.judged.situation {
+                let score = plan.score + self.rng.below(12) as i32;
+                if best.is_none_or(|(_, top)| score > top) {
+                    best = Some((index as u8, score));
+                }
+            }
+        }
+        let Some((plan, _)) = best else { return false };
+        if !self.rng.chance(ctx.level.quality()) {
+            return false;
+        }
+        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step });
+        true
+    }
+
+    /// The next pads of the game plan being followed, when its last ones
+    /// are over: the step's action, a frame of waiting to see what came of
+    /// it, or the action of the step that outcome leads to. `None` when no
+    /// plan is being followed, or it has just ended.
+    fn follow_game_plan(&mut self, step: u32, view: Percept, ctx: &Context) -> Option<Plan> {
+        use game::{Act, Outcome};
+        let mut run = self.game?;
+        if step.saturating_sub(run.began) > game::PLAN_FRAMES {
+            // Something kept it from finishing: let go of the plan.
+            self.game = None;
+            return None;
+        }
+        let table = game::plans(ctx.kit.fighter, ctx.family);
+        let wait = Plan::of(PlanKind::Idle, &[0]);
+        // A plan has few steps, and each pass either returns or moves on one.
+        for _ in 0..8 {
+            let Some(at) = table.get(usize::from(run.plan)).and_then(|plan| plan.steps.get(usize::from(run.step))) else { break };
+            let outcome = match (at.act, run.acted) {
+                (Act::Reach { crouch, button }, false) => {
+                    let reach = self.reach[usize::from(crouch)][button] - 4;
+                    if view.gap() > reach {
+                        // A walk covers about two pixels a frame.
+                        let frames = ((view.gap() - reach + 1) / 2).clamp(1, 40) as usize;
+                        let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                        run.acted = true;
+                        run.pressed = step;
+                        self.game = Some(run);
+                        return Some(Plan::of(PlanKind::Walk, &[forward; PLAN_CAP][..frames]));
+                    }
+                    Outcome::Nothing
+                }
+                (Act::Do(choice), false) => {
+                    self.game = Some(run);
+                    if !self.ready(view) {
+                        return Some(wait);
+                    }
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    return Some(self.plan_for(choice, step, view, ctx, false));
+                }
+                (Act::Do(Choice::Normal { crouch, button }), true) => {
+                    match run.outcome(view, self.reach[usize::from(crouch)][button]) {
+                        Some(outcome) => outcome,
+                        None => return Some(wait),
+                    }
+                }
+                (_, true) => Outcome::Nothing,
+            };
+            match at.next(outcome) {
+                Some(next) => {
+                    run.step = next;
+                    run.acted = false;
+                }
+                None => break,
+            }
+        }
+        self.game = None;
+        None
     }
 
     /// The CPU's own fighter, as last seen, can start something, and it has

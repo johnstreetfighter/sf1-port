@@ -70,6 +70,9 @@ pub struct MeasureSpec {
     pub styles: [(Revision, Loadout); 2],
     pub difficulty: u8,
     pub seed: u64,
+    /// Which sides play the stronger Fair CPU's game (spec `#192`); the
+    /// others play the old one.
+    pub stronger: [bool; 2],
 }
 
 /// What one side did in a match. See the module docs for each count.
@@ -118,7 +121,7 @@ impl SideReport {
 impl MatchReport {
     /// The column headings of [`Self::row`], tab-separated.
     pub fn header() -> String {
-        let mut out = String::from("p1\tp1_style\tp2\tp2_style\tlevel\tseed\tended\twinner\tframes\tlive_frames");
+        let mut out = String::from("p1\tp1_style\tp1_cpu\tp2\tp2_style\tp2_cpu\tlevel\tseed\tended\twinner\tframes\tlive_frames");
         for side in ["p1", "p2"] {
             for column in ["rounds", "attacks_per_min", "idle_pct", "openings", "hits_per_opening", "damage_per_opening", "follow_rate"] {
                 out.push_str(&format!("\t{side}_{column}"));
@@ -130,13 +133,16 @@ impl MatchReport {
     /// This match as one tab-separated row.
     pub fn row(&self) -> String {
         let style = |(revision, loadout): (Revision, Loadout)| format!("{revision:?}/{loadout:?}");
+        let cpu = |stronger: bool| if stronger { "new" } else { "old" };
         let s = &self.spec;
         format!(
-            "{:?}\t{}\t{:?}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{:?}\t{}\t{}\t{:?}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
             s.fighters[0],
             style(s.styles[0]),
+            cpu(s.stronger[0]),
             s.fighters[1],
             style(s.styles[1]),
+            cpu(s.stronger[1]),
             s.difficulty,
             s.seed,
             if self.ended { "yes" } else { "no" },
@@ -191,7 +197,7 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
         .map_err(|event| format!("the fight did not start: {event:?}"))?;
     fight.set_selected_styles(picks.map(Some));
     let mut machine = fight.machine().clone();
-    machine.seed_measuring_cpus(spec.seed);
+    machine.seed_measuring_cpus(spec.seed, spec.stronger);
 
     let mut report = MatchReport { spec: *spec, ended: false, winner: None, frames: 0, live_frames: 0, sides: [SideReport::default(); 2] };
     let mut before: Option<([Body; 2], [u32; 2])> = None;

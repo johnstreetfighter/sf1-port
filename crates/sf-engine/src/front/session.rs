@@ -286,6 +286,9 @@ pub struct GameSession {
     bank_assets: Option<Arc<Assets>>,
     /// Alternate sprite art for the active Arcade awakening.
     satsui_art: Option<Arc<SatsuiArt>>,
+    /// The developer-only switch for the stronger Fair CPU (spec `#192`):
+    /// stamped on every offline fight's match configuration.
+    stronger_cpu: bool,
     /// The extended background bank, given to the machine of every fight
     /// under an overhaul preset (never the attract's, the cabinet's or a
     /// Faithful 1987 fight's).
@@ -408,6 +411,7 @@ impl GameSession {
             assets: Arc::new(assets),
             bank_assets: None,
             satsui_art: None,
+            stronger_cpu: false,
             backgrounds: None,
             data_bank: None,
             previews: OnceLock::new(),
@@ -628,6 +632,13 @@ impl GameSession {
             }
         }
         self.notice = Some(notice);
+    }
+
+    /// Builder: the developer-only switch for the stronger Fair CPU (spec
+    /// `#192`, ADR-0026). A launch flag sets it; no menu does.
+    pub fn with_stronger_cpu(mut self, on: bool) -> Self {
+        self.stronger_cpu = on;
+        self
     }
 
     /// Builder: the settings file's contents.
@@ -1088,6 +1099,9 @@ impl GameSession {
         styles: [Option<StylePick>; 2],
         participants: [ThemeId; 2],
     ) {
+        let mut setup = setup;
+        // The switch is not part of what a netplay session agrees on.
+        setup.config.stronger_cpu = self.stronger_cpu && self.net_setup.is_none();
         let overhaul = setup.config.preset != RulesetPreset::Faithful1987;
         let backgrounds = self.backgrounds.clone().filter(|_| overhaul);
         let data = overhaul.then(|| {

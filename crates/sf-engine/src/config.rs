@@ -258,7 +258,7 @@ impl crate::canonical::Canonical for MatchConfig {
             preset, toggles, roster, fill_meters, p2_fair_cpu,
             p1_scheme: _, p2_scheme: _, modern_control_damage_penalty,
             sf1plus, gauge_mode, disable_comeback_scaling, disable_raw_drive_rush,
-            tour, dramatic, world_tour, difficulty, round_time, evil_ryu_playtest,
+            tour, dramatic, world_tour, difficulty, round_time, evil_ryu_playtest, stronger_cpu,
         } = self;
         out.tag("MatchConfig.v4");
         preset.encode(out);
@@ -277,6 +277,10 @@ impl crate::canonical::Canonical for MatchConfig {
         world_tour.encode(out);
         difficulty.encode(out);
         round_time.encode(out);
+        // Only when on, so every fight without the switch hashes as before.
+        if *stronger_cpu {
+            out.tag("StrongerCpu");
+        }
         match evil_ryu_playtest {
             Some(EvilRyuPlaytest::UltraSf2) => out.tag("EvilRyuUltraSf2"),
             Some(EvilRyuPlaytest::Alpha2) => out.tag("EvilRyuAlpha2"),
@@ -599,6 +603,13 @@ pub struct MatchConfig {
     /// preset changes them.
     pub difficulty: u8,
     pub round_time: u16,
+    /// The developer-only switch for the stronger Fair CPU (spec `#192`,
+    /// ADR-0026): situations, game plans and what later tickets add. Off in
+    /// every preset and never a row in Options: the `--stronger-cpu` launch
+    /// flag sets it. It is not sent to a netplay peer, so the session keeps
+    /// it off in online fights until the route books are part of what a
+    /// session agrees on (SC14, `#206`).
+    pub stronger_cpu: bool,
 }
 
 /// Settings used by the original standalone World Tour prototype (`#111`, `O20`).
@@ -697,6 +708,7 @@ impl MatchConfig {
         Self {
             preset,
             evil_ryu_playtest: None,
+            stronger_cpu: false,
             toggles: CoreToggles::for_preset(preset),
             roster: crate::roster::RosterSettings::for_preset(preset),
             fill_meters: false,

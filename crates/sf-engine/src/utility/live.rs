@@ -62,6 +62,14 @@ impl UtilityState {
         self.len - self.cursor
     }
 
+    /// Forget the command being entered: the Fair CPU has taken the pad
+    /// for a game plan (spec `#192`).
+    pub(crate) fn drop_macro(&mut self) {
+        self.queued = [0; MAX_MACRO_FRAMES];
+        self.cursor = 0;
+        self.len = 0;
+    }
+
     fn replace_macro(&mut self, frames: &[u16]) {
         assert!(!frames.is_empty() && frames.len() <= MAX_MACRO_FRAMES);
         self.queued = [0; MAX_MACRO_FRAMES];

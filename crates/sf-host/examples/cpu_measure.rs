@@ -2,12 +2,14 @@
 //! both pads, one row of numbers per match. Nothing is drawn and no window
 //! opens. What each number means is in `sf_engine::measure`.
 //!
-//! `cargo run -p sf-host --release --example cpu_measure -- <out.tsv> <p1> <p1 style> <p2> <p2 style> <level> <first seed> <count> [threads]`
+//! `cargo run -p sf-host --release --example cpu_measure -- <out.tsv> <p1> <p1 style> <p1 cpu> <p2> <p2 style> <p2 cpu> <level> <first seed> <count> [threads]`
 //!
 //! A fighter is named as on the select screen (`ryu`, `sagat`). A style is a
 //! revision, with a loadout after a slash when it is not the first one:
-//! `sf6`, `st`, `sf3threes/art2`, `sf5/skill1trigger2`. The level is 1 (Easy)
-//! to 4 (Very Difficult), for both sides. Seeds run from `<first seed>` for
+//! `sf6`, `st`, `sf3threes/art2`, `sf5/skill1trigger2`. A side's CPU is `old`
+//! (the Fair CPU players meet today) or `new` (the stronger play of spec
+//! #192, as far as it is built). The level is 1 (Easy) to 4 (Very
+//! Difficult), for both sides. Seeds run from `<first seed>` for
 //! `<count>` matches; the same seed gives the same row.
 //!
 //! Rows are appended to `<out.tsv>` in seed order once every match has
@@ -28,7 +30,7 @@ use sf_video::romset::load_assets;
 
 const ROMS: &str = "tools/reference/local/roms/sf";
 const MANIFEST: &str = "tools/reference/rom-manifest.json";
-const USAGE: &str = "cpu_measure <out.tsv> <p1> <p1 style> <p2> <p2 style> <level> <first seed> <count> [threads]";
+const USAGE: &str = "cpu_measure <out.tsv> <p1> <p1 style> <p1 cpu: old|new> <p2> <p2 style> <p2 cpu: old|new> <level> <first seed> <count> [threads]";
 
 fn plain(text: &str) -> String {
     text.chars().filter(char::is_ascii_alphanumeric).collect::<String>().to_ascii_lowercase()
@@ -57,6 +59,14 @@ fn style(fighter: TournamentFighter, text: &str) -> Result<(Revision, Loadout), 
     Ok((revision, loadout.ok_or_else(|| format!("{revision:?} has no loadout {wanted}"))?))
 }
 
+fn stronger(text: &str) -> Result<bool, String> {
+    match text {
+        "old" => Ok(false),
+        "new" => Ok(true),
+        _ => Err(format!("a CPU is old or new, not {text}\n{USAGE}")),
+    }
+}
+
 fn number<T: std::str::FromStr>(args: &[String], at: usize, what: &str) -> Result<T, String> {
     args.get(at).and_then(|t| t.parse().ok()).ok_or_else(|| format!("{what} missing or not a number\n{USAGE}"))
 }
@@ -65,12 +75,13 @@ fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     let out = PathBuf::from(args.get(1).ok_or(USAGE)?);
     let names = |at: usize| args.get(at).map(String::as_str).ok_or(USAGE);
-    let fighters = [fighter(names(2)?)?, fighter(names(4)?)?];
-    let styles = [style(fighters[0], names(3)?)?, style(fighters[1], names(5)?)?];
-    let difficulty: u8 = number(&args, 6, "level")?;
-    let first: u64 = number(&args, 7, "first seed")?;
-    let count: u64 = number(&args, 8, "count")?;
-    let threads: usize = if args.len() > 9 { number(&args, 9, "threads")? } else { 4 };
+    let fighters = [fighter(names(2)?)?, fighter(names(5)?)?];
+    let styles = [style(fighters[0], names(3)?)?, style(fighters[1], names(6)?)?];
+    let cpus = [stronger(names(4)?)?, stronger(names(7)?)?];
+    let difficulty: u8 = number(&args, 8, "level")?;
+    let first: u64 = number(&args, 9, "first seed")?;
+    let count: u64 = number(&args, 10, "count")?;
+    let threads: usize = if args.len() > 11 { number(&args, 11, "threads")? } else { 4 };
     let threads = threads.max(1);
 
     let assets = load_assets(ROMS, MANIFEST).map_err(|e| e.to_string())?;
@@ -95,7 +106,7 @@ fn run() -> Result<(), String> {
                     let mut rows = Vec::new();
                     loop {
                         let Some(seed) = queue.lock().unwrap().next() else { break };
-                        let spec = MeasureSpec { fighters, styles, difficulty, seed };
+                        let spec = MeasureSpec { fighters, styles, difficulty, seed, stronger: cpus };
                         rows.push((seed, measure_match(&rom, Some(data.clone()), &spec)));
                     }
                     rows

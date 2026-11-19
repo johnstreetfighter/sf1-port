@@ -11,6 +11,7 @@
 //!
 //!   cargo run -p sf-game --release [-- --roms <folder>] [--stage <name>]
 //!   cargo run -p sf-game --release -- --console  # live diagnostic log
+//!   cargo run -p sf-game --release -- --stronger-cpu  # developer only: the stronger Fair CPU (spec #192)
 //!   cargo run -p sf-game --release -- --version
 //!   cargo run -p sf-game --release -- smoke [--roms <folder>]   # the host smoke check
 //!
@@ -393,6 +394,7 @@ impl Game {
             .with_replays(sf_host::replays::load(&self.app_dir, log))
             .with_satsui_art(satsui_body, satsui_fire)
             .with_settings(self.settings.clone())
+            .with_stronger_cpu(self.args.iter().any(|arg| arg == "--stronger-cpu"))
             .with_world_tour_profile(saved_world_tour.clone())
             .with_looks(self.catalogue.names())
             .with_binds(self.bindings.binds(), BindingsTable::default().binds());

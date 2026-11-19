@@ -193,7 +193,13 @@ impl GameSession {
         let replay = Arc::new(replay);
         self.replays.push_front(replay.clone());
         self.replays.truncate(REPLAY_LIMIT);
-        self.saved_replays.push_back(replay);
+        // The replay file does not record the developer-only switch for the
+        // stronger Fair CPU (spec `#192`), so a fight played with it on
+        // would play back wrongly from disk. It stays in this session's
+        // list and is not written.
+        if !replay.config.stronger_cpu {
+            self.saved_replays.push_back(replay);
+        }
         while self.saved_replays.len() > REPLAY_LIMIT {
             self.saved_replays.pop_front();
         }

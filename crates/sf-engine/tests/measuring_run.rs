@@ -15,6 +15,12 @@ const ROMS: &str = "../../tools/reference/local/roms/sf";
 const MANIFEST: &str = "../../tools/reference/rom-manifest.json";
 
 fn ryu_mirror(seed: u64) -> Option<MatchReport> {
+    ryu_mirror_with(seed, [false; 2])
+}
+
+/// A Ryu mirror in the SF6 era style at Very Difficult; `stronger` says
+/// which sides play the stronger Fair CPU's game.
+fn ryu_mirror_with(seed: u64, stronger: [bool; 2]) -> Option<MatchReport> {
     if !Path::new(ROMS).is_dir() {
         eprintln!("skipping: local ROM set not present");
         return None;
@@ -25,6 +31,7 @@ fn ryu_mirror(seed: u64) -> Option<MatchReport> {
         styles: [(Revision::Sf6, Loadout::Standard); 2],
         difficulty: 4,
         seed,
+        stronger,
     };
     // A whole match is deep in the translated program's calls.
     let run = std::thread::Builder::new()
@@ -59,4 +66,15 @@ fn the_same_seed_gives_the_same_report_and_another_seed_another_fight() {
     let Some(first) = ryu_mirror(7) else { return };
     assert_eq!(ryu_mirror(7).unwrap(), first);
     assert_ne!(ryu_mirror(8).unwrap(), first, "the seed reaches the fight");
+}
+
+#[test]
+fn the_new_fair_cpu_can_be_put_against_the_old_on_either_side() {
+    let Some(old) = ryu_mirror(3) else { return };
+    let new_p1 = ryu_mirror_with(3, [true, false]).unwrap();
+    let new_p2 = ryu_mirror_with(3, [false, true]).unwrap();
+    assert!(new_p1.ended && new_p2.ended, "{new_p1:?} {new_p2:?}");
+    assert_ne!(new_p1.sides, old.sides, "the new play on Player 1's pad is another fight");
+    assert_ne!(new_p2.sides, old.sides, "the new play on Player 2's pad is another fight");
+    assert!(new_p1.row().contains("\tnew\t") && new_p1.row().contains("\told\t"), "{}", new_p1.row());
 }
