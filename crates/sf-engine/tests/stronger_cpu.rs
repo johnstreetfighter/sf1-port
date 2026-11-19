@@ -12,7 +12,7 @@ use std::path::Path;
 
 use sf_engine::config::MatchConfig;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, EraFamily, Loadout, Revision};
-use sf_engine::fair_cpu::{perceive, Judged, Level, Percept, Situation};
+use sf_engine::fair_cpu::{perceive, Attention, Body, Focus, Judged, Level, Percept, Situation};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::fight::FightDips;
 use sf_engine::front::menu::MenuItem;
@@ -222,6 +222,29 @@ fn knocked_down(move_id: u8, state: u8) -> bool {
     move_id == 0x28 || (move_id >= 0x30 && state & 1 != 0)
 }
 
+/// The frame the CPU decided from on the step that ended on `frame`, as it
+/// saw it: the frame its focused delay shows, with Player 1's pose, height,
+/// attack box and projectile from the frame its view of his actions came
+/// from (SC7, `#199`: a new action that is not its focus shows only at the
+/// slower delay), moved with him to where he is.
+fn as_seen(shown: &HashMap<u32, Percept>, frame: u32, attention: Attention) -> Option<Percept> {
+    let mut v = *shown.get(&(frame - Level::VeryHard.reaction()))?;
+    if attention.action_frame != v.frame {
+        let was = shown.get(&attention.action_frame)?;
+        let dx = v.foe.x - was.foe.x;
+        v.foe = Body {
+            x: v.foe.x,
+            health: v.foe.health,
+            present: v.foe.present,
+            front: was.foe.front + dx,
+            hurt: (was.foe.hurt.0 + dx, was.foe.hurt.1 + dx),
+            ..was.foe
+        };
+        (v.shot, v.shot_x, v.shot_half) = (was.shot, was.shot_x, was.shot_half);
+    }
+    Some(v)
+}
+
 #[test]
 fn with_the_switch_off_the_cpu_judges_no_situation_and_follows_no_game_plan() {
     let Some(mut m) = machine(false) else { return };
@@ -262,8 +285,9 @@ fn sparring_pad(i: u32, v: &Percept) -> (u8, u8) {
 #[test]
 fn the_nine_situations_are_judged_from_the_delayed_view_only() {
     let Some(mut m) = machine(true) else { return };
-    let delay = Level::VeryHard.reaction();
+    let (fast, slow) = (Level::VeryHard.reaction(), Level::VeryHard.unfocused_reaction());
     let mut shown: HashMap<u32, Percept> = HashMap::new();
+    let mut cpu_saw: HashMap<u32, Percept> = HashMap::new();
     let mut met: HashMap<Situation, u32> = HashMap::new();
     let (mut cornered, mut open) = (0u32, 0u32);
     for i in 0..9_600u32 {
@@ -273,8 +297,12 @@ fn the_nine_situations_are_judged_from_the_delayed_view_only() {
         let frame = m.state.frame;
         shown.insert(frame, seen(&m));
         let judged = m.fair_cpu_situation().unwrap();
-        // The pad for frame `frame` answered the frame `delay` earlier.
-        let Some(view) = shown.get(&(frame - delay)).copied().filter(|v| v.fighting) else { continue };
+        // The pad for frame `frame` answered the frame its focused delay
+        // earlier, with Player 1's new actions as old as its delays allow.
+        let attention = m.fair_cpu_attention().unwrap();
+        let Some(view) = as_seen(&shown, frame, attention).filter(|v| v.fighting) else { continue };
+        assert!((frame - slow..=frame - fast).contains(&attention.action_frame), "frame {frame}: {attention:?}");
+        cpu_saw.insert(frame, view);
         let (me, foe) = (view.me, view.foe);
         let why = format!("frame {frame}: {judged:?} from {view:?}");
         match judged.situation {
@@ -284,7 +312,7 @@ fn the_nine_situations_are_judged_from_the_delayed_view_only() {
             Situation::Defending => assert!(foe.attacking() || foe.jumping() || view.shot || me.reacting(), "{why}"),
             Situation::OpponentWhiffed => assert!(foe.attacking() && !foe.active, "{why}"),
             Situation::ItWasBlocked => {
-                let guarded = (0..=14).filter_map(|back| shown.get(&(frame - delay - back))).any(|v| v.foe.guarding() && v.me.attacking());
+                let guarded = (0..=14).filter_map(|back| cpu_saw.get(&(frame - back))).any(|v| v.foe.guarding() && v.me.attacking());
                 assert!(guarded, "{why}");
             }
             Situation::NeutralFar | Situation::NeutralClose => {
@@ -470,21 +498,28 @@ fn one_game_plan_takes_a_different_next_step_after_a_hit_a_guard_and_a_whiff() {
 #[test]
 fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
     let Some(start) = machine(true) else { return };
-    let delay = Level::VeryHard.reaction();
+    let (fast, slow) = (Level::VeryHard.reaction(), Level::VeryHard.unfocused_reaction());
     // Sixty frames from `m`, Player 1 pressing a standing heavy punch at
-    // once or doing nothing: the frame his attack first shows, the frame
-    // the game plan stops being followed, and the frames the CPU then held
-    // its stick away from him with no button.
+    // once or doing nothing: the frame his attack first shows and the delay
+    // that applies to it (the focused one if the CPU was watching for a
+    // button as the attack came into its focused delay, else the slower
+    // one), the frame the game plan stops being followed, and the frames the
+    // CPU then held its stick away from him with no button.
     let play = |m: &PowerOnMachine, attack: bool| {
         let mut m = m.clone();
         let from = m.state.frame;
         let (mut shown, mut ended, mut guard_frames) = (None, None, 0u32);
+        let mut delay = slow;
         for _ in 0..60 {
             let pressing = attack && m.state.frame < from + 3;
             step(&mut m, 0, if pressing { HP } else { 0 });
             let v = seen(&m);
             if shown.is_none() && v.foe.attacking() {
                 shown = Some(m.state.frame);
+            }
+            let watching = m.fair_cpu_attention().unwrap().focus == Focus::Attack;
+            if shown.is_some_and(|shown| m.state.frame + 1 == shown + fast) && watching {
+                delay = fast;
             }
             if ended.is_none() && !m.fair_cpu_following_game_plan() {
                 ended = Some(m.state.frame);
@@ -495,7 +530,7 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
                 guard_frames += u32::from(dirs & back != 0 && buttons == 0);
             }
         }
-        (shown, ended.unwrap_or(u32::MAX), guard_frames)
+        (shown.map(|shown| (shown, delay)), ended.unwrap_or(u32::MAX), guard_frames)
     };
     let mut interrupted = 0;
     // The attack comes a different number of frames into the plan each try.
@@ -521,9 +556,9 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         }
         let (_, left_alone, _) = play(&m, false);
         let (shown, ended, guard_frames) = play(&m, true);
-        let Some(shown) = shown else { continue };
-        // Never sooner than the reaction delay after the attack showed.
-        assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}");
+        let Some((shown, delay)) = shown else { continue };
+        // Never sooner than the delay that applies after the attack showed.
+        assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}, delay {delay}");
         // Cut short as the attack is first seen, where the same plan left
         // alone went on, and a guard held after it: the threat answered.
         if ended <= shown + delay + 3 && left_alone > ended + 3 && guard_frames >= 5 {
@@ -755,9 +790,10 @@ fn a_whiff_in_reach_is_punished_with_a_route_not_one_heavy_normal() {
     let landed: Vec<_> = punishes.iter().filter(|r| r.combo >= 2).collect();
     assert!(landed.len() >= 2, "punishes of two hits or more: {} of {}: {punishes:?}", landed.len(), punishes.len());
     // Every punish is one of the book's routes, entered in full or dropped
-    // partway by a slip of execution: never a lone heavy normal.
+    // partway by a slip of execution: never a lone heavy normal. A route cut
+    // by a hit while it still walks in pressed nothing to tell it by.
     let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
-    for run in &punishes {
+    for run in punishes.iter().filter(|run| run.pads.iter().any(|&(_, buttons)| buttons != 0)) {
         assert!(run.route(book).is_some(), "a punish is a route: {run:?}");
     }
 }
@@ -1119,8 +1155,8 @@ fn with_the_opponent_cornered_it_presses_more_and_gives_less_ground() {
 #[test]
 fn inside_a_game_plan_it_does_not_start_an_attack_into_one_it_has_seen_start() {
     let Some(mut m) = machine(true) else { return };
-    let delay = Level::VeryHard.reaction();
     let mut shown: HashMap<u32, Percept> = HashMap::new();
+    let mut cpu_saw: HashMap<u32, Percept> = HashMap::new();
     let mut last = 0u8;
     let mut presses = 0;
     let mut was_route = false;
@@ -1136,8 +1172,11 @@ fn inside_a_game_plan_it_does_not_start_an_attack_into_one_it_has_seen_start() {
         was_route = m.fair_cpu_entering_route();
         // A press, or a route begun, inside a game plan.
         let pressed = (cpu_pressed(&m, &mut last) && !was_route) || route_began;
-        // The view this press was decided on, and the frame before it.
-        let (Some(view), Some(before)) = (shown.get(&(frame - delay)), shown.get(&(frame - delay - 1))) else { continue };
+        // The view this press was decided on, and the one before it, as the
+        // CPU saw them.
+        let Some(view) = as_seen(&shown, frame, m.fair_cpu_attention().unwrap()) else { continue };
+        cpu_saw.insert(frame, view);
+        let Some(before) = cpu_saw.get(&(frame - 1)).copied() else { continue };
         if pressed && following {
             presses += 1;
             let started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
@@ -1145,4 +1184,125 @@ fn inside_a_game_plan_it_does_not_start_an_attack_into_one_it_has_seen_start() {
         }
     }
     assert!(presses >= 10, "attacks pressed inside game plans: {presses}");
+}
+
+/// Player 1's pad for the focus fight: in turns of 80 frames he backs off
+/// and jumps in, presses a button where he stands, or walks in and stops,
+/// in an order that does not repeat, so the CPU sees each while watching
+/// for one thing or another.
+fn focus_pad(i: u32, v: &Percept) -> (u8, u8) {
+    let turn = i / 80;
+    let t = i % 80;
+    let r = turn.wrapping_mul(2_654_435_761) >> 11;
+    match r % 3 {
+        0 if t < 40 => (away(v), 0),
+        0 if (50..53).contains(&t) => (U | toward(v), 0),
+        1 if (20..23).contains(&t) => (if r & 8 != 0 { D } else { 0 }, [LP, MP, HP, MK, HK][(r as usize >> 4) % 5]),
+        2 if t < 40 && gap(v) > 40 => (toward(v), 0),
+        _ => (0, 0),
+    }
+}
+
+/// Player 1's attack drawn on frame `f` reached the CPU's fighter (or hit
+/// him) on an earlier frame of it: not a whiff. As the CPU judges it, over
+/// the 39 frames before it that the CPU holds.
+fn met_before(shown: &HashMap<u32, Percept>, f: u32) -> bool {
+    let Some(now) = shown.get(&f) else { return false };
+    for g in (f.saturating_sub(39)..f).rev() {
+        let Some(v) = shown.get(&g) else { return false };
+        if !v.foe.attacking() || v.foe.move_id != now.foe.move_id {
+            return false;
+        }
+        if v.me.reacting() {
+            return true;
+        }
+        if v.foe.active {
+            let toward_me = if v.me.x >= v.foe.x { 1 } else { -1 };
+            let near = if toward_me > 0 { v.me.hurt.0 } else { v.me.hurt.1 };
+            if (v.foe.front - near) * toward_me >= 0 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn its_focus_is_answered_at_the_focused_delay_and_anything_else_at_the_slower_one() {
+    let (fast, slow) = (Level::VeryHard.reaction(), Level::VeryHard.unfocused_reaction());
+    // Player 1's jumps, buttons and whiffs, by whether the CPU was watching
+    // for them as they came into its focused delay: how many, and how many
+    // changed its pad on the step it first saw them.
+    let mut seen_at: HashMap<(Focus, bool), (u32, u32)> = HashMap::new();
+    for mut m in starts(true) {
+        let mut shown: HashMap<u32, Percept> = HashMap::new();
+        let mut attention: HashMap<u32, Attention> = HashMap::new();
+        let mut pads = HashMap::new();
+        for i in 0..8_000u32 {
+            let v = seen(&m);
+            let (dirs, buttons) = focus_pad(i, &v);
+            step(&mut m, dirs, buttons);
+            let frame = m.state.frame;
+            shown.insert(frame, seen(&m));
+            attention.insert(frame, m.fair_cpu_attention().unwrap());
+            pads.insert(frame, cpu_pad(&m));
+        }
+        let first = *shown.keys().min().unwrap();
+        let last = *shown.keys().max().unwrap();
+        for f in first + 40..last - 40 {
+            let (Some(v), Some(b)) = (shown.get(&f), shown.get(&(f - 1))) else { continue };
+            if !v.fighting || !b.fighting {
+                continue;
+            }
+            let (foe, was) = (v.foe, b.foe);
+            let event = if matches!(foe.move_id, 9..=0xb) && !was.jumping() {
+                Focus::Jump
+            } else if foe.attacking() && !was.jumping() && !was.reacting() && (!was.attacking() || was.move_id != foe.move_id) {
+                Focus::Attack
+            } else if foe.attacking() && was.active && !foe.active && !v.me.reacting() && !met_before(&shown, f) {
+                Focus::Whiff
+            } else {
+                continue;
+            };
+            // What the CPU watched for on the step before the frame came into
+            // its focused delay, and the step on which its view of Player 1's
+            // actions first reached the frame.
+            let held = attention[&(f + fast - 1)];
+            if held.action_frame == 0 {
+                continue;
+            }
+            let Some(at) = (f..=f + slow).find(|s| attention[s].action_frame >= f) else {
+                panic!("frame {f}: {event:?} not seen within {slow} frames");
+            };
+            let delay = at - f;
+            let watched = held.focus == event;
+            let why = format!("frame {f}: {event:?} first seen on {at}, watching for {:?}", held.focus);
+            if watched {
+                // Its focus: as soon as its focused delay shows it.
+                assert_eq!(delay, fast, "{why}");
+            } else {
+                // Anything else: at the slower delay, unless its focus showed
+                // after it or it came to watch for it meanwhile, but never
+                // sooner than the focused delay.
+                assert!((fast..=slow).contains(&delay), "{why}");
+                if delay != slow {
+                    continue;
+                }
+            }
+            let entry = seen_at.entry((event, watched)).or_default();
+            entry.0 += 1;
+            entry.1 += u32::from(pads[&at] != pads[&(at - 1)]);
+        }
+    }
+    let sum = |watched: bool| {
+        seen_at.iter().filter(|((_, w), _)| *w == watched).fold((0, 0), |(n, a), (_, &(dn, da))| (n + dn, a + da))
+    };
+    let ((watched, watched_answered), (unwatched, unwatched_answered)) = (sum(true), sum(false));
+    eprintln!("{seen_at:?}");
+    assert!(watched >= 10, "events seen while watching for them: {seen_at:?}");
+    assert!(unwatched >= 10, "events seen while watching for something else: {seen_at:?}");
+    assert!(watched_answered >= 3, "watched events answered as first seen, at the focused delay: {seen_at:?}");
+    assert!(unwatched_answered >= 3, "other events answered as first seen, at the slower delay: {seen_at:?}");
+    // More than one kind of event was watched for.
+    assert!(seen_at.keys().filter(|(_, w)| *w).count() >= 2, "{seen_at:?}");
 }

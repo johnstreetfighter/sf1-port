@@ -2020,6 +2020,13 @@ impl PowerOnMachine {
         self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::situation)
     }
 
+    /// What Player 2's Fair CPU watches for, and the frame its last view of
+    /// the opponent's actions came from, while one plays (the stronger play
+    /// only, SC7, `#199`).
+    pub fn fair_cpu_attention(&self) -> Option<crate::fair_cpu::Attention> {
+        self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::attention)
+    }
+
     /// Whether Player 2's Fair CPU is entering a route from its route book.
     pub fn fair_cpu_entering_route(&self) -> bool {
         self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::entering_route)
