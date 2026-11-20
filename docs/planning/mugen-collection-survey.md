@@ -43,7 +43,7 @@ Decoded with a stdlib-only read-only reader in the session scratchpad (`tools/sf
 | Get-up | Action 5120 is lying → crouch (×1–3) → stance, ROM poses only. That is the same idea as ours, with fewer in-between poses than ours has. |
 | Dizzy | Only Mike has one (action 5400), and it alternates his two hit poses, the same stand-in as ours. |
 | AP2 special stand-ins | Same ROM streams as ours (e.g. Geki's teleport smoke, Lee's kicks). |
-| Sagat crouch block, jump, get-up | Crouch, crouch block and crouch hit are one pose (his crouch, fists up), as ours is. His jump is the ROM knee lift. His get-up is lying → crouch → stance. |
+| Sagat crouch block, jump, get-up | His crouch, crouching block, crouching hit and every crouching attack are one pose: a half-kneel on one knee, not a crouch. Ours is a real crouch with six crouching attack poses (corrected 2026-11-20 from the side-by-side sheets; this row first said his crouch was "fists up, as ours is"). His jump is the ROM knee lift. His get-up is lying → half-kneel → stance. |
 | HUD lettering | Life bars and fonts are M.U.G.E.N screen-pack art, not the ROM font. |
 | Stages, title, intro, music | ROM rips of what we already draw and play from the ROM. |
 
@@ -53,7 +53,7 @@ These are Falchion22's pieced poses where his solution differs from ours. They f
 
 | Fighter | Pose (SFF group) | Ours now | Theirs | Worth it? |
 | --- | --- | --- | --- | --- |
-| Birdie | crouching block (121) | Standing block's upper body on the crouch legs | Arms crossed high before his face on the crouch | Maybe. It reads more like a guard; ours keeps his ROM arms. |
+| Birdie | crouching block (121) | Standing block's upper body on the crouch legs, arms crossed before his face | The same: arms crossed before his face on the crouch | No. Both versions cross his arms, so the two are near twins (corrected 2026-11-20; this row first called the crossed arms a difference). |
 | Lee | crouch (11) | Sweep-end squat, head mirrored, pigtail flying | A forward-facing squat; pigtail placement needs a closer look | Maybe. Only if it fixes the pigtail. |
 | Eagle | crouching stick attacks (400–430), jumping stick attacks (600–620) | Stick-jab arm turned about the shoulder | Both sticks driven forward on the crouch or tuck | Low. Same idea, different arms. |
 | Mike | crouching MK/HK (410, 430), jumping hook (610, 630) | ROM ducking punch for both | A lunging low straight on the crouch | Low. It is close to his ROM ducking punch. |
@@ -87,7 +87,16 @@ If any piece is used, the credits screen and `assets/sf1-port-art/README.md` wou
 2. **ADR-0006.** Fan sprite sets are excluded unless an artist gives permission. Record the permission in a short ADR note, or an amendment to 0006, naming which sets it covers.
 3. **ADR-0003.** No `.sff`/`.snd` files in the repository. Only converted, approved indexed PNGs would go in the pack, with their provenance in `art/`.
 
-## Recommendation
+## Decisions (the maintainer, 2026-11-20, after the side-by-side sheets)
+
+The sheets compared each candidate with ours at 2x on one background. They were not committed (`docs/media/mugen-compare/`).
+
+1. **Mike's crouching block:** use Falchion22's gloves-up crouching block (`A-Mike/sff.sff` group 121), remapped to Mike's ROM pens. It replaces his ROM crouch held as the block in SF1+ and the era styles. The faithful 1987 mode draws from the ROM and does not change.
+2. **Credit:** the line only, without the permission source: "Additional sprite frames for Mike, Eagle and Lee adapted from Falchion22's MUGEN characters, used with permission." It goes in `THIRD_PARTY_NOTICES.md` and the art pack README.
+3. **New moves, design first:** Eagle's two-stick jumping thrust (groups 600/610) and his crouching stick attacks (400/410/430), Lee's jumping punch (600, which reads as a kick) and Lee's jumping kick (650) become new moves in SF1+ and the era styles. The faithful 1987 mode does not change. Nothing is imported or built until the design (inputs, frame data, hitboxes, damage, which era styles get them) is approved.
+4. **Everything else stays ours.** Our versions are as close or closer for Birdie, Lee's crouch family, Sagat, Joe, Adon, Gen, Retsu, Geki and the get-ups.
+
+## Recommendation (as first written)
 
 Skip the collection for the gaps on `art-upgrades.md`: it has nothing for throws, get-ups or dizzy, and our approved crouches and jumping attacks are as good as its pieces. Keep two uses open:
 
