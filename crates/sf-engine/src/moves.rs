@@ -146,6 +146,8 @@ pub enum ButtonClass {
     MediumKick,
     /// Heavy punch alone: a command normal that only HP starts.
     HeavyPunch,
+    /// Heavy kick alone.
+    HeavyKick,
     DirectionOnly,
 }
 
@@ -153,7 +155,7 @@ impl ButtonClass {
     /// The letter the move list writes.
     pub const fn letter(self) -> char {
         match self {
-            Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick => 'K',
+            Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick | Self::HeavyKick => 'K',
             _ => 'P',
         }
     }
@@ -178,12 +180,13 @@ impl ButtonClass {
             Self::MediumPunch => "MP",
             Self::MediumKick => "MK",
             Self::HeavyPunch => "HP",
+            Self::HeavyKick => "HK",
             Self::DirectionOnly => "",
         }
     }
 
     pub const fn kick(self) -> bool {
-        matches!(self, Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick)
+        matches!(self, Self::Kick | Self::KickOnLastDirection | Self::TripleKick | Self::PairKick | Self::MediumKick | Self::HeavyKick)
     }
 
     /// The other class.
@@ -230,6 +233,7 @@ impl ButtonClass {
             Self::MediumPunch => 0b000010,
             Self::MediumKick => 0b010000,
             Self::HeavyPunch => 0b000100,
+            Self::HeavyKick => 0b100000,
             _ => 0,
         }
     }
@@ -1318,6 +1322,21 @@ pub const REGISTRY: &[MoveEntry] = &[
         produces: 0x20,
         call_out: "DIVE THRUST!",
         available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
+    // Lee's knee-up kick (spec #259, CN5): a command normal in a straight-up
+    // or back jump, forward and heavy kick, in place of his jump attack's
+    // stream.
+    MoveEntry {
+        name: "KNEE-UP KICK",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Forward],
+            button: ButtonClass::HeavyKick,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x26,
+        call_out: "KNEE-UP KICK!",
+        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
     },
     // Adon's Rising Jaguar and Jaguar Kick (ticket #258): his 1987 player table
     // puts the Rising Jaguar in the Shoryuken's move on its command, and the

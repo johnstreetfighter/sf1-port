@@ -1608,12 +1608,14 @@ impl Air<'_> {
         Ok(at.expect("a first entry"))
     }
 
-    /// An air command normal that dives (spec #259): one frame of the top
-    /// of the jump at `apex`, `chamber` for `lead` frames moving `step` a
-    /// frame, then `strike` (with `sound`) active all the way down at
-    /// `fall` a frame until his kept centre is his falling pose's at the
-    /// ground, then [`Self::land`] from there. Each pose is placed by its
-    /// anchor, as [`Self::attack`] places its strike.
+    /// An air command normal (spec #259): one frame of the top of the jump
+    /// at `apex`, `chamber` for `lead` frames moving `step` a frame, then
+    /// `strike` (with `sound`) falling `fall` a frame: active all the way
+    /// down until his kept centre is his falling pose's at the ground
+    /// (`active` `None`, a dive), or for `active` frames and then `chamber`
+    /// again, falling the rest of the way unarmed. Then [`Self::land`] from
+    /// there. Each pose is placed by its anchor, as [`Self::attack`] places
+    /// its strike.
     #[allow(clippy::too_many_arguments)]
     fn dive(
         &self,
@@ -1626,11 +1628,14 @@ impl Air<'_> {
         hit_fn: u32,
         fall: (i32, i32),
         sound: u8,
+        active: Option<u8>,
     ) -> Result<u32, String> {
         let into_chamber = (chamber.anchor[1] - self.jump_top.anchor[1]) as i32 - self.jump_top.half().1 + chamber.half().1;
         let into_strike = (strike.anchor[1] - chamber.anchor[1]) as i32 - chamber.half().1 + strike.half().1;
+        let back_to_chamber = (chamber.anchor[1] - strike.anchor[1]) as i32 - strike.half().1 + chamber.half().1;
         let to_chamber = pose_origin_record(region, into_chamber, 0);
         let to_strike = pose_origin_record(region, into_strike, sound);
+        let to_recover = pose_origin_record(region, back_to_chamber, 0);
         let mut s = Stream::new(region, self.jump_top, apex);
         let at = s.travel(self.jump_top, apex, 1, (0, step.1), self.top_boxes, 0x20, 0);
         s.change_origin(to_chamber, into_chamber);
@@ -1639,9 +1644,19 @@ impl Air<'_> {
         // Active until his centre is where his falling pose's would be at
         // the ground; the landing takes the rest.
         let ground_centre = GROUND - self.fall.height() + self.fall.half().1;
-        let centre = s.top + s.pose.half().1;
-        let frames = ((ground_centre - centre) / fall.0).clamp(1, 255) as u8;
-        s.strike(strike, frames, fall, strike_boxes, 0x80, hit_fn);
+        let left = |s: &Stream| ((ground_centre - (s.top + s.pose.half().1)) / fall.0).clamp(1, 255) as u8;
+        match active {
+            None => {
+                let frames = left(&s);
+                s.strike(strike, frames, fall, strike_boxes, 0x80, hit_fn);
+            }
+            Some(frames) => {
+                s.strike(strike, frames, fall, strike_boxes, 0x80, hit_fn);
+                s.change_origin(to_recover, back_to_chamber);
+                let rest = left(&s);
+                s.strike(chamber, rest, fall, chamber_boxes, 0, 0);
+            }
+        }
         self.land(&mut s, fall.1, fall.0)?;
         Ok(at)
     }
@@ -3809,8 +3824,13 @@ mod lee {
 
     /// Boxes for his new poses, as rectangles in each drawing (see
     /// `tests/lee_player.rs`, which checks them against the pens).
-    pub const BOXES: [(&str, PixelBoxes); 9] = [
+    pub const BOXES: [(&str, PixelBoxes); 11] = [
         ("crouch", PixelBoxes { push: [6, 14, 44, 64], head: [11, 2, 25, 14], body: [2, 6, 46, 64], attack: None }),
+        ("knee_up", PixelBoxes { push: [4, 16, 44, 84], head: [7, 2, 19, 12], body: [0, 12, 46, 84], attack: None }),
+        (
+            "knee_up_kick",
+            PixelBoxes { push: [24, 14, 68, 80], head: [37, 2, 49, 12], body: [22, 4, 68, 80], attack: Some([82, 46, 102, 62]) },
+        ),
         ("crouching_block", PixelBoxes { push: [6, 14, 44, 64], head: [11, 2, 25, 14], body: [1, 6, 45, 66], attack: None }),
         (
             "crouching_punch",
@@ -4084,6 +4104,24 @@ mod lee {
             ],
         );
         let neutral_top = (neutral_pose.top_on_ground() + neutral_origin) as u16;
+        // Forward + HK in a straight-up or back jump: the knee-up kick
+        // (spec #259, CN5), a command normal from Falchion22's frames
+        // (ADR-0029): the top of the jump and `3` frames knees up (startup
+        // `4`), the back leg shot out for `8` frames with his straight-up
+        // HK's hit, then knees up again to the ground and his landing. His
+        // forward jump has none: its HK stays his flying kick.
+        let ku = geom("knee_up")?;
+        let kk = geom("knee_up_kick")?;
+        let knees = (ku, boxes("knee_up").bytes(&ku));
+        let kick = (kk, boxes("knee_up_kick").bytes(&kk));
+        let neutral_hk_hit = rom_l(rom, NEUTRAL_KICK_FRAME + 0x1c);
+        for (jump, apex, dx) in [(0u32, neutral, 0), (2, back, -5)] {
+            let stream = air.dive(&mut region, apex, knees, 3, (0, dx), kick, neutral_hk_hit, (3, dx), 0xa2, Some(8))?;
+            region.patch(
+                base + command_normals::CommandNormal::LeeKneeUpKick.jump_offset(jump),
+                &stream.to_be_bytes(),
+            );
+        }
         region.patch(base + bank_header_offset(9) + 4, &neutral_top.to_be_bytes());
         fits(region)
     }
@@ -5492,7 +5530,7 @@ mod eagle {
         let chamber = (dc, boxes("dive_chamber").bytes(&dc));
         let thrust = (dt, boxes("dive_thrust").bytes(&dt));
         for (jump, (apex, dx)) in [(neutral, 0), (forward, 4), (back, -3)].into_iter().enumerate() {
-            let stream = air.dive(&mut region, apex, chamber, 5, (1, dx), thrust, NEUTRAL_LEAP_SMASH_HIT, (4, dx), 0xa1)?;
+            let stream = air.dive(&mut region, apex, chamber, 5, (1, dx), thrust, NEUTRAL_LEAP_SMASH_HIT, (4, dx), 0xa1, None)?;
             region.patch(
                 base + command_normals::CommandNormal::EagleDiveThrust.jump_offset(jump as u32),
                 &stream.to_be_bytes(),

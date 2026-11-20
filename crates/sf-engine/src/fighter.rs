@@ -2053,6 +2053,10 @@ impl Bus<'_> {
             if let Some(mv) = self.pick_preloaded(k, self.rl(entry), me, ps) {
                 self.set_eb(me, 0xa, mv);
                 self.set_eb(me, 0x35, 0);
+                let strength = self.eb(me, 0x34);
+                if let Some(command) = self.air_command_normal(ps, me, true, strength, jump) {
+                    return Resume::LoadAt(command);
+                }
                 return Resume::LoadAt(stream(self, entry));
             }
         }

@@ -297,7 +297,17 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
         text.extend(["SPECIALS", "BISON RUSH ↓↘→ [P]", "IRON UPPER →↓↘ [P]"].map(String::from));
     }
     if fighter == TournamentFighter::Lee && preset != RulesetPreset::Faithful1987 {
-        text.extend(["SPECIALS", "ZESSHOUOHKEN ↓↘→ [P]", "DOUBLE KICK ↓↙← [K]"].map(String::from));
+        text.extend(
+            [
+                "SPECIALS",
+                "ZESSHOUOHKEN ↓↘→ [P]",
+                "DOUBLE KICK ↓↙← [K]",
+                // Spec #259: his knee-up kick, a command normal.
+                "COMMAND NORMALS",
+                "KNEE-UP KICK JUMP→ [HK]",
+            ]
+            .map(String::from),
+        );
     }
     if fighter == TournamentFighter::Gen && preset != RulesetPreset::Faithful1987 {
         text.extend(["SPECIALS", "HYAKURENKO ↓↘→ [P]", "GEKIRO →↓↘ [P]"].map(String::from));

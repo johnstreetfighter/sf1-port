@@ -1172,6 +1172,70 @@ fn geom(l: &Local, name: &str) -> PoseGeom {
     }
 }
 
+/// His knee-up kick (spec #259, CN5): forward + HK in a straight-up or
+/// back jump, with ANYTIME JUMP ATTACKS off (Classic Competitive's own) or
+/// switched on, his own tiles and boxes for 8 active frames. In a forward
+/// jump HK stays his 1987 flying kick, and down-forward + HK in any jump
+/// stays his plain jump HK.
+#[test]
+fn the_knee_up_kick_comes_from_forward_and_heavy_kick_in_a_straight_or_back_jump() {
+    let Some(l) = local_roms() else { return };
+    let kk = geom(&l, "knee_up_kick");
+    let kk_boxes = LEE_BOXES.iter().find(|(n, _)| *n == "knee_up_kick").unwrap().1.bytes(&kk);
+    for anytime in [false, true] {
+        let setting = if anytime { "anytime on" } else { "anytime off" };
+        for (jump, dirs, stick, want) in [
+            ("straight", vec![UP], vec![RIGHT], true),
+            ("back", vec![UP, LEFT], vec![RIGHT], true),
+            ("forward", vec![UP, RIGHT], vec![RIGHT], false),
+            ("straight", vec![UP], vec![DOWN, RIGHT], false),
+            ("straight", vec![UP], vec![], false),
+        ] {
+            let mut config = MatchConfig::from_preset(CLASSIC);
+            config.toggles.anytime_jump_attacks = anytime;
+            let a = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+            let base = GameSession::new(a, config)
+                .with_sprite_bank(&l.art.bank)
+                .with_player_tables(&l.art.catalogues);
+            let mut s = local_with(base, TournamentFighter::Lee);
+            for _ in 0..35 {
+                s.step(with(|i| i.p2.directions[RIGHT] = true));
+            }
+            for _ in 0..30 {
+                s.step(idle());
+            }
+            let mut inputs = vec![hold(&dirs); 2];
+            inputs.extend(vec![hold(&stick); 6]);
+            inputs.extend([press(&stick, 5), press(&stick, 5)]);
+            let (mut active, mut kick) = (0, 0);
+            for n in 0..120 {
+                s.step(inputs.get(n).copied().unwrap_or(hold(&stick)));
+                let r = p1(&s);
+                if !r.attack_active {
+                    continue;
+                }
+                active += 1;
+                let code = u16::from_be_bytes(p1_bytes(&s, 0, 2).try_into().unwrap());
+                if code == kk.code {
+                    kick += 1;
+                    assert_eq!(p1_bytes(&s, 0x16, 16), kk_boxes, "{setting} {jump}: its boxes");
+                }
+            }
+            let what = format!("{setting} {jump} jump, stick {stick:?}");
+            println!("{what}: {active} active, {kick} of them the knee-up kick");
+            assert!(active > 0, "{what}: a jump kick");
+            if want {
+                assert_eq!((kick, active), (8, 8), "{what}: the knee-up kick, 8 frames out");
+            } else {
+                assert_eq!(kick, 0, "{what}: not the knee-up kick");
+            }
+        }
+    }
+    let list = move_list(TournamentFighter::Lee, CLASSIC);
+    let row = list.iter().find(|e| e.name == "KNEE-UP KICK").expect("listed");
+    assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
+}
+
 #[test]
 fn every_box_the_bank_writes_matches_the_drawn_pose() {
     let Some(l) = local_roms() else { return };
@@ -1730,7 +1794,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .iter()
             .map(|e| e.name)
             .collect();
-        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK"], "{preset:?}");
+        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE-UP KICK"], "{preset:?}");
     }
     assert!(move_list(TournamentFighter::Lee, RulesetPreset::Faithful1987).is_empty());
     // Without his table the fight has neither, and MOVES lists neither.

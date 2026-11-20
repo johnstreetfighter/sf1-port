@@ -9,7 +9,8 @@
 //! apart) and starts his two-stick thrust instead of his 1987 low thrust.
 //! In the air the jump attack keeps its move id (`0x20..=0x22` for a
 //! punch) and loads the command normal's stream for its jump instead of
-//! the apex record's: Eagle's down + HP is his dive thrust.
+//! the apex record's: Eagle's down + HP is his dive thrust, Lee's forward
+//! + HK in a straight-up or back jump his knee-up kick.
 //!
 //! They come out in SF1+ only for now. Faithful 1987 never has a bank, so
 //! never reaches them; Eagle's canon SFZ3 kit and the 1987 era style are
@@ -28,6 +29,8 @@ const HEAVY: u8 = 3;
 /// The pad's down bit (`pad_directions`; forward and back are bits 0
 /// and 1 once made relative to his facing).
 const DOWN: u8 = 4;
+/// Forward, once the pad is made relative to his facing.
+const FORWARD: u8 = 1;
 
 impl Bus<'_> {
     /// The fighter whose bank table the player structure `ps` runs, when it
@@ -67,8 +70,13 @@ impl Bus<'_> {
     pub(super) fn air_command_normal(&self, ps: u32, entity: u16, kick: bool, strength: u8, jump: u32) -> Option<u32> {
         let held = self.relative_directions(entity, self.pad_directions(ps));
         let down = held & DOWN != 0;
+        let forward = held & FORWARD != 0;
         let normal = match self.bank_fighter(ps)? {
             TournamentFighter::Eagle if !kick && strength == HEAVY && down => CommandNormal::EagleDiveThrust,
+            // Not in a forward jump (`jump` 1): its HK is his flying kick.
+            TournamentFighter::Lee if kick && strength == HEAVY && forward && !down && jump != 1 => {
+                CommandNormal::LeeKneeUpKick
+            }
             _ => return None,
         };
         if !self.command_normal_style(ps) {
