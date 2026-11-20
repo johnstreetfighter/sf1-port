@@ -209,7 +209,7 @@ fn opening_a_room_advertises_real_rule_and_asset_compatibility() {
         };
         assert_eq!(*port, 7000);
         assert_eq!(room.preset, RulesetPreset::DefinitiveOverhaul);
-        assert_eq!(room.protocol_hash, sf_engine::version::protocol_version_hash());
+        assert_eq!(room.protocol_hash, sf_engine::netplay::protocol_hash());
         assert!(room.public && !room.wired_only && !room.in_match);
         assert_eq!(room.max_rollback, 8);
         assert_eq!(room.spectators, 0);

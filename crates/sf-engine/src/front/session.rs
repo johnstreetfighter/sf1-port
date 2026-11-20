@@ -403,6 +403,9 @@ impl GameSession {
     /// player has chosen; the attract
     /// itself always runs the faithful machine with every toggle off.
     pub fn new(assets: Assets, config: MatchConfig) -> Self {
+        // The netplay identity's hash of the route books (SC14, #206), once,
+        // at start-up rather than when the online menu first needs it.
+        crate::route_book::books_hash();
         let attract = PowerOnMachine::new(assets.maincpu.clone());
         let free_play = FreePlay::from_rom(&assets.maincpu);
         let title_logo = TitleLogo::from_rom(&assets.maincpu);

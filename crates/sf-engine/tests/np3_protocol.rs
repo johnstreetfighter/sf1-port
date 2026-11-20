@@ -571,7 +571,7 @@ fn every_current_gameplay_setting_and_asset_identity_contributes_to_the_rules_ha
         |r| r.protocol_hash ^= 1,
     ];
     let base = rules();
-    assert_eq!(base.protocol_hash, sf_engine::version::protocol_version_hash());
+    assert_eq!(base.protocol_hash, sf_engine::netplay::protocol_hash());
     for (index, change) in changes.iter().enumerate() {
         let mut changed = base;
         change(&mut changed);
