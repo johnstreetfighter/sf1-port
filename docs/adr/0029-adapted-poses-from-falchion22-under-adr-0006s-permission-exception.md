@@ -1,0 +1,7 @@
+---
+status: accepted; uses the permission exception in ADR-0006
+---
+
+# Adapted poses from Falchion22's MUGEN characters, under ADR-0006's permission exception
+
+ADR-0006 keeps fan sprite sets out of the overhaul "unless an artist gives permission". The maintainer was given permission to use sprites from Falchion22's MUGEN Street Fighter (2026-11-20), so a few of his poses enter the art pack as **adapted poses**: mapped to the fighter's pens, placed against his own ROM poses, approved on the review page like any pack pose, and credited with one line in `THIRD_PARTY_NOTICES.md` and the art pack README ("Additional sprite frames for Mike, Eagle and Lee adapted from Falchion22's MUGEN characters, used with permission."). The permission's source is deliberately not recorded. The poses were chosen one by one against our own from side-by-side sheets (`docs/planning/mugen-collection-survey.md`), and our art stayed wherever it was as good or better. Covered: Mike's crouching block (`A-Mike` group 121), Eagle's two-stick thrusts (`A-Eagle` groups 410 and 600) and Lee's dive and knee-up kicks (`A-Lee` groups 600 and 650), the last three for the command normals in `docs/design/2026-11-20-eagle-lee-command-normals-design.md`. Any other pose from the collection, or from another fan set, needs its own decision. As ADR-0003 requires, no `.sff` or other MUGEN file enters the repository; only the converted PNGs do.

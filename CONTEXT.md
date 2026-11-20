@@ -356,6 +356,10 @@ _Avoid_: asset pack, mod
 A pose in the art pack made from another fighter's approved generated pose, recoloured and fixed by hand, with no new generation, as Ken's throw is made from Ryu's.
 _Avoid_: palette swap (his differences are redrawn), copy
 
+**Adapted pose**:
+A pose in the art pack taken from a third-party sprite set used with permission and credit, mapped to the fighter's pens and placed against his own ROM poses, as Mike's gloves-up crouching block is taken from Falchion22's Mike (ADR-0029).
+_Avoid_: rip, imported sprite, fan art
+
 **Pose catalogue**:
 The per-fighter list of moves and their poses that the SF1+ project builds its moves on.
 _Avoid_: sprite sheet, atlas
@@ -515,6 +519,10 @@ _Avoid_: guard stun
 **Cancel**:
 Cutting a normal short with a special: under the modern rules, a special's command made in a cancelable normal's cancel window starts the special at once. The classic rules have none.
 _Avoid_: interrupt, chain (a chain goes from one normal into another)
+
+**Command normal**:
+A normal attack that needs a stick direction held with its button, on the ground or in the air, as Eagle's down-forward + HP thrust or Lee's down + MK dive kick. It has no motion, which is what makes it not a special.
+_Avoid_: unique attack, special normal
 
 **Cancel window**:
 The frames after a cancelable normal connects, hit or guarded, in which a special can cancel it. A whiff opens none.

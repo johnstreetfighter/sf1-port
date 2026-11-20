@@ -109,3 +109,10 @@ Stun and combo values: each new move gets a `combo::move_stun` row equal to the 
 - How the what-if style tables point at the shared headers (`bind_era_header` / `alias_era_header`).
 - The `ButtonClass` additions needed to describe heavy-only inputs in the registry.
 - Tests: each move comes out from its input in SF1+ and in each listed style; not in Faithful 1987, not in Eagle's SFZ3; d/f + LP and d/f + MP still give the ROM low thrust; plain jump attacks unchanged; boxes checked against the pens; the dive kick's path and landing recovery; replays deterministic.
+
+## Grill decisions (the maintainer, 2026-11-20)
+
+- **Words:** "command normal" and "adapted pose" are now in `CONTEXT.md`. The eight frames here, and Mike's crouching block, are adapted poses.
+- **Permission:** recorded in ADR-0029, under ADR-0006's exception. The source is not named.
+- **Order:** art first. The eight frames are imported and approved on the review page before any work on the two engine hooks. A rejected frame stops its move before engine time is spent on it.
+- **State hashes:** new move IDs and headers change Eagle's and Lee's data bank, so state hashes and canonical tags differ from older builds; play does not change. Accepted. The changed tags go in the handoff.
