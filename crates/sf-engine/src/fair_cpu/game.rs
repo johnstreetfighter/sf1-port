@@ -388,8 +388,10 @@ pub(super) struct Moment<'a> {
     pub corner: bool,
     pub gap: i16,
     pub walk: u8,
-    /// In health bar points.
+    /// In health bar points, and his whole health in an era style's finer
+    /// units, which a route's damage is in (48 bar points of it).
     pub foe_health: u16,
+    pub foe_max_sub_hp: u16,
     /// A route that spends a super may be taken though it does not win the
     /// round (SC8, `#200`: the round state says spend, or the old play).
     pub spend_super: bool,
@@ -426,7 +428,9 @@ impl Moment<'_> {
 
     /// The route's damage takes the rest of the opponent's health.
     fn wins_round(&self, route: &Route) -> bool {
-        self.foe_health > 0 && route.damage / 20 >= self.foe_health
+        // His bar shows a point while any of it is left, so the points
+        // shown are the most he can have.
+        self.foe_health > 0 && u32::from(route.damage) * 48 >= u32::from(self.foe_health) * u32::from(self.foe_max_sub_hp)
     }
 
     /// How good the route is now: one that wins the round above all;
@@ -498,6 +502,14 @@ impl RouteRun {
     /// more.
     pub(super) fn combo_in_full(&self) -> bool {
         self.route().is_some_and(|route| route.steps.len() >= 2 && usize::from(self.stop) == route.len())
+    }
+
+    /// The step of its route the pad it gives now belongs to, once its
+    /// walk in is over.
+    pub(super) fn step_index(&self) -> Option<usize> {
+        let route = self.route()?;
+        let frame = usize::from(self.at.checked_sub(u16::from(self.walk))?);
+        (0..route.steps.len()).rev().find(|&index| route.step_start(index) <= frame)
     }
 
     /// It is still walking in, before the route's first pad.
@@ -796,6 +808,12 @@ mod tests {
         assert!(Moment { spend_super: true, ..moment(&[Reach::Punish]) }.allows(super_route), "spent when it says spend");
         let lethal = Moment { foe_health: super_route.damage / 20, ..keep };
         assert!(lethal.allows(super_route), "spent whatever to win the round");
+        // The same points of a sturdier fighter's bar (Sagat's 1008 in the
+        // modern styles) take more damage: not a round won; of a frailer
+        // one's (Gen's 864), a round won from more points left.
+        assert!(!Moment { foe_max_sub_hp: 1008, ..lethal }.allows(super_route), "not lethal against a 1008-point bar");
+        let points = u16::try_from(u32::from(super_route.damage) * 48 / 864).unwrap();
+        assert!(Moment { foe_health: points, foe_max_sub_hp: 864, ..keep }.allows(super_route), "lethal against an 864-point bar");
         // A route that spends Drive leaves the reserve in the gauge.
         let mut drive_route = super_route.clone();
         drive_route.super_spent = 0;
@@ -823,6 +841,7 @@ mod tests {
             gap: 20,
             walk: 0,
             foe_health: 48,
+            foe_max_sub_hp: crate::era_fight::FULL_SUB_HP,
             spend_super: true,
             drive_reserve: 0,
             avoid_burnout: false,

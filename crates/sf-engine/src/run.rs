@@ -971,6 +971,13 @@ pub fn cpu_opponent_setup(
 /// frame counter, round-time setting, the four score-tally counters).
 pub const TIMER_RAM: (u32, u32) = (0xff8e16, 0xff8e36);
 
+/// The era style slots of the fair CPU playing Player 2's pad and of its
+/// opponent, by game mode: in mode 4 the CPU's fighter holds slot 0.
+fn cpu_era_slots(mode: u8) -> [usize; 2] {
+    let cpu = usize::from(mode != 4);
+    [cpu, 1 - cpu]
+}
+
 /// One pass of the translated round-timer task (`tasks::round_timer`) over
 /// a copy of a reference work-RAM dump; returns the dump with the pass
 /// applied. With the dump of frame f-1 this predicts the task's memory at
@@ -1661,7 +1668,7 @@ impl PowerOnMachine {
         // His specials' slot records: a boss's from his bank table, Ryu's and
         // Ken's the 1987 ones; none for a boss the fight holds no table for.
         let mode = self.program.work[0x4002];
-        let slot = usize::from(mode != 4);
+        let [slot, opponent_slot] = cpu_era_slots(mode);
         let family = self.program.toggle_state.era.fighters[slot].style.family;
         let fighter = if matches!(mode, 2 | 4) {
             if self.program.work[0x0003] == 0 {
@@ -1685,7 +1692,8 @@ impl PowerOnMachine {
             _ => (P2_STRUCT, P1_STRUCT),
         };
         let mut ctx = self.fair_cpu_context(fighter, slot, me);
-        ctx.set_opponent_family(self.program.toggle_state.era.fighters[1 - slot].style.family);
+        let opponent = &self.program.toggle_state.era.fighters[opponent_slot];
+        ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let cpu = self.fair_cpu.get_or_insert_with(FairCpu::new);
@@ -1738,7 +1746,8 @@ impl PowerOnMachine {
         let fighter = self.program.match_config.roster.p1;
         let family = self.program.toggle_state.era.fighters[0].style.family;
         let mut ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT);
-        ctx.set_opponent_family(self.program.toggle_state.era.fighters[1].style.family);
+        let opponent = &self.program.toggle_state.era.fighters[1];
+        ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let cpu = self.p1_fair_cpu.as_mut().unwrap();
@@ -2063,6 +2072,11 @@ impl PowerOnMachine {
     /// fighter's route book.
     pub fn fair_cpu_route(&self) -> Option<usize> {
         self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_index)
+    }
+
+    /// The step of that route Player 2's Fair CPU's next pad belongs to.
+    pub fn fair_cpu_route_step(&self) -> Option<usize> {
+        self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_step)
     }
 
     /// Whether Player 2's Fair CPU is in the middle of a game plan.
@@ -2740,6 +2754,16 @@ pub fn observe_power_on_with_io(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fair_cpu_and_its_opponent_take_their_own_era_slots_in_every_mode() {
+        // Arcade (mode 2): the CPU struct against Player 1; mode 4: the CPU
+        // struct in era slot 0 against Player 2; a two-pad fight: Player 2
+        // against Player 1.
+        assert_eq!(cpu_era_slots(2), [1, 0]);
+        assert_eq!(cpu_era_slots(4), [0, 1]);
+        assert_eq!(cpu_era_slots(1), [1, 0]);
+    }
 
     #[test]
     fn modern_second_pad_uses_the_arcade_opponents_facing() {

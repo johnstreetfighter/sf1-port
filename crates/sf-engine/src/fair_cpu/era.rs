@@ -490,6 +490,7 @@ impl Tactics {
 mod tests {
     use super::*;
     use crate::config::RulesetPreset;
+    use crate::era_fight::sf5;
     use crate::era::StylePick;
     use crate::moves::{Availability, MoveInput};
     use crate::roster::TournamentFighter::Ryu;
@@ -578,6 +579,97 @@ mod tests {
                 .rush
                 .is_none()
         );
+    }
+
+    /// The CPU at x 200 and the opponent at `foe_x`, on the frame before
+    /// he is seen to begin move `move_id`, and on that frame.
+    fn seen_begin(foe_x: i16, move_id: u8) -> (Percept, Percept) {
+        let me = super::super::Body { present: true, x: 200, hurt: (190, 210), move_id: 1, health: 48, ..Default::default() };
+        let foe = super::super::Body { present: true, x: foe_x, hurt: (foe_x - 10, foe_x + 10), move_id: 1, health: 48, ..Default::default() };
+        let before = Percept { fighting: true, me, foe, ..Percept::default() };
+        let mut view = before;
+        view.foe.move_id = move_id;
+        view.foe.state = 0xc2;
+        (view, before)
+    }
+
+    /// Every answer the stronger play gives over a spread of random seeds.
+    fn stronger_answers(tactics: Tactics, view: Percept, before: Percept) -> Vec<Vec<u16>> {
+        (0..64u64)
+            .filter_map(|seed| tactics.react(&mut Rng(seed * 2 + 1), Level::VeryHard, view, before, true, true))
+            .map(|plan| plan.pads[..usize::from(plan.len)].to_vec())
+            .collect()
+    }
+
+    #[test]
+    fn with_the_stronger_play_the_other_era_styles_keep_their_guard_cancels() {
+        // SC8 (`#200`): the Drive rule is SF6's; an Alpha Counter or a
+        // V-Reversal pays from its own meter.
+        use crate::era::Revision;
+        let mut config = MatchConfig::definitive();
+        let guarding = |view: &mut Percept| view.me.move_id = 4;
+        let (mut view, mut before) = seen_begin(240, 0x10);
+        guarding(&mut view);
+        guarding(&mut before);
+        let blockstun = EraControl { blockstun: true, ..EraControl::default() };
+        // SFZ: an Alpha Counter.
+        let mut alpha = fighter(Revision::Sfz3, Loadout::AIsm, 0);
+        alpha.set_gauge_mode(GaugeMode::EraDefault);
+        alpha.super_meter = STOCK_AT;
+        let mut counter = entry("ALPHA COUNTER (P)", 0x2c, MoveKind::System, &[Dir::Back, Dir::DownBack, Dir::Down], ButtonClass::Punch);
+        counter.recognizer = Recognizer::AlphaCounter;
+        let sfz = Tactics::of(&alpha, &[counter], config, Level::VeryHard, blockstun);
+        assert!(sfz.keeps_drive(2 * STOCK_AT), "no Drive gauge to keep outside SF6");
+        assert!(!stronger_answers(sfz, view, before).is_empty(), "an Alpha Counter out of a guard");
+        // SF5: a V-Reversal, its V-Gauge here the unified meter.
+        config.gauge_mode = GaugeMode::Unified;
+        let v = fighter(Revision::Sf5Ce, Loadout::Skill1Trigger1, 2 * STOCK_AT);
+        let reversal = entry("V-REVERSAL", sf5::REVERSAL, MoveKind::System, &[Dir::Forward], ButtonClass::PairPunch);
+        let sf5 = Tactics::of(&v, &[reversal], config, Level::VeryHard, blockstun);
+        assert!(!stronger_answers(sf5, view, before).is_empty(), "a V-Reversal out of a guard");
+    }
+
+    #[test]
+    fn with_the_stronger_play_sf3_parries_and_sf4_and_sf5_use_their_own_answers_to_a_normal() {
+        // SC8 (`#200`): the Drive Parry and Drive Impact choice is SF6's
+        // alone; the other styles answer a normal seen to start in reach
+        // with their own tools.
+        use crate::era::{loadouts, Revision};
+        let free = EraControl { free: true, ..EraControl::default() };
+        let (view, before) = seen_begin(240, 0x10);
+        let config = MatchConfig::definitive();
+        // SF3: the parry's tap toward him.
+        let sf3 = Tactics::of(&fighter(Revision::Sf3ThreeS, Loadout::Art2, 128), &[], config, Level::VeryHard, free);
+        assert!(stronger_answers(sf3, view, before).contains(&vec![0, RIGHT, 0, 0]), "SF3 parries");
+        // SF4: the Focus Attack.
+        let focus = entry("FOCUS ATTACK", sf4::FOCUS, MoveKind::System, &[], ButtonClass::MediumPair);
+        let sf4 = Tactics::of(&fighter(Revision::Sf4, loadouts(Revision::Sf4)[0], 4 * STOCK_AT), &[focus], config, Level::VeryHard, free);
+        let medium_pair = button(1) | button(4);
+        assert!(stronger_answers(sf4, view, before).iter().any(|pads| pads.iter().any(|&p| p & medium_pair == medium_pair)), "SF4 focuses");
+        // SF5: the V-Shift.
+        let mut unified = config;
+        unified.gauge_mode = GaugeMode::Unified;
+        let shift = entry("V-SHIFT", sf5::SHIFT, MoveKind::System, &[], ButtonClass::HeavyPair);
+        let sf5 = Tactics::of(&fighter(Revision::Sf5Ce, Loadout::Skill1Trigger1, 2 * STOCK_AT), &[shift], unified, Level::VeryHard, free);
+        let heavy_pair = button(2) | button(5);
+        assert!(stronger_answers(sf5, view, before).iter().any(|pads| pads.iter().any(|&p| p & heavy_pair == heavy_pair)), "SF5 shifts");
+    }
+
+    #[test]
+    fn a_move_another_style_numbers_as_drive_rush_draws_no_drive_impact() {
+        // SC8 (`#200`): an Alpha-style fighter's move 0x2c (a Murderer Chain,
+        // a Jaguar Tooth) is no Drive Rush.
+        use crate::era::Revision;
+        let mut config = MatchConfig::definitive();
+        config.gauge_mode = GaugeMode::Unified;
+        let impact = entry("DRIVE IMPACT", sf6::IMPACT, MoveKind::System, &[], ButtonClass::HeavyPair);
+        let free = EraControl { free: true, ..EraControl::default() };
+        let kit = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, 5 * STOCK_AT), &[impact], config, Level::VeryHard, free);
+        let (view, before) = seen_begin(330, sf6::RUSH);
+        let heavy_pair = button(2) | button(5);
+        let impacts = |answers: Vec<Vec<u16>>| answers.iter().filter(|pads| pads.iter().any(|&p| p & heavy_pair == heavy_pair)).count();
+        assert!(impacts(stronger_answers(kit.against(Some(EraFamily::Sf6)), view, before)) > 0, "an SF6 Drive Rush is met");
+        assert_eq!(impacts(stronger_answers(kit.against(Some(EraFamily::SfZ)), view, before)), 0, "an Alpha move is not");
     }
 
     #[test]

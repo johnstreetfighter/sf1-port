@@ -538,16 +538,18 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
     // Sixty frames from `m`, Player 1 pressing a standing heavy punch at
     // once or doing nothing: the frame his attack first shows and the delay
     // that applies to it (the focused one if the CPU was watching for a
-    // button as the attack came into its focused delay, or if he is seen to
-    // move with it, else the slower one), the frame the game plan stops being followed, and the frames the
-    // CPU then guarded or parried.
+    // button as the attack came into its focused delay, else the slower
+    // one), the earliest it may answer at all (sooner where his own step
+    // into the attack shows at the focused delay), the frame the game plan
+    // stops being followed, and the frames the CPU then guarded or parried.
     let play = |m: &PowerOnMachine, attack: bool| {
         let mut m = m.clone();
         let from = m.state.frame;
         let (mut shown, mut ended, mut guard_frames) = (None, None, 0u32);
         let mut delay = slow;
         let mut from_down = false;
-        // Where he stands, and the frame he is first seen anywhere else.
+        // Where he stands, and the frame he is first seen to step anywhere
+        // else (not pushed: not in a hit reaction or a guard).
         let x0 = seen(&m).foe.x;
         let mut moved = None;
         for _ in 0..60 {
@@ -572,7 +574,8 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
             if ended.is_none() && !m.fair_cpu_following_game_plan() {
                 ended = Some(m.state.frame);
             }
-            if moved.is_none() && v.foe.x != x0 {
+            let pushed = v.foe.reacting() || v.foe.guarding() || m.toggle_state().combo.blockstun[0] != 0;
+            if moved.is_none() && shown.is_some() && v.foe.x != x0 && !pushed {
                 moved = Some(m.state.frame);
             }
             let (dirs, buttons) = cpu_pad(&m);
@@ -587,11 +590,11 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
         // so an attack that steps him forward can be answered that soon
         // after the step shows (SC8: his standing heavy punch steps on its
         // first frame).
-        let delay = match (shown, moved) {
-            (Some(shown), Some(moved)) => delay.min((moved + fast).saturating_sub(shown)),
+        let earliest = match (shown, moved) {
+            (Some(shown), Some(moved)) => delay.min((moved + fast).saturating_sub(shown).max(fast)),
             _ => delay,
         };
-        (shown.map(|shown| (shown, delay)), ended.unwrap_or(u32::MAX), guard_frames)
+        (shown.map(|shown| (shown, delay, earliest)), ended.unwrap_or(u32::MAX), guard_frames)
     };
     let mut interrupted = 0;
     let mut tries = 0;
@@ -623,10 +626,10 @@ fn a_threat_the_cpu_answers_interrupts_its_game_plan() {
             }
             last_try = m.state.frame;
             let (shown, ended, guard_frames) = play(&m, true);
-            let Some((shown, delay)) = shown else { continue };
+            let Some((shown, delay, earliest)) = shown else { continue };
             tries += 1;
-            // Never sooner than the delay that applies after the attack showed.
-            assert!(ended >= shown + delay || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}, delay {delay}");
+            // Never sooner than it could see the attack, or his step into it.
+            assert!(ended >= shown + earliest || ended == left_alone, "the plan ended at {ended}, the attack showed at {shown}, earliest {earliest}");
             // Cut short as the attack is first seen, where the same plan left
             // alone went on, and a guard or a parry after it (the parry's input
             // is four frames): the threat answered.
@@ -1110,8 +1113,10 @@ fn against_a_rising_opponent_it_times_an_attack_to_his_rise_and_sometimes_guards
         let mut reversal: Option<u32> = None;
         let mut timed = false;
         let mut counted_meet = false;
-        // His Shoryuken came out, met the CPU's guard, and did not hit it.
+        // His Shoryuken came out, met the CPU's guard, and did not hit it;
+        // and the CPU's health as it met the guard, while it is out.
         let mut reversal_guarded = false;
+        let mut reversal_health: Option<u16> = None;
         for i in 0..20_000u32 {
             let v = seen(&m);
             let f = toward(&v);
@@ -1135,6 +1140,7 @@ fn against_a_rising_opponent_it_times_an_attack_to_his_rise_and_sometimes_guards
                 timed = v.me.attacking() && m.fair_cpu_following_game_plan();
                 counted_meet = false;
                 reversal_guarded = false;
+                reversal_health = None;
                 if rises_here % 2 == 0 {
                     reversal = Some(i);
                 }
@@ -1151,11 +1157,21 @@ fn against_a_rising_opponent_it_times_an_attack_to_his_rise_and_sometimes_guards
                     counted_meet = true;
                 }
                 // Guarding (or holding the Drive Parry, SC8) as he rose and
-                // his reversal came.
+                // his reversal came; counted once its box is gone with the
+                // CPU unhurt.
                 let guarding = v.me.guarding() || v.me.move_id == DRIVE_PARRY;
-                if rises_here % 2 == 0 && v.foe.active && v.foe.move_id == SHORYUKEN && guarding && !reversal_guarded {
-                    reversal_guarded = true;
-                    baited += 1;
+                if rises_here % 2 == 0 && v.foe.active && v.foe.move_id == SHORYUKEN && guarding && !reversal_guarded && reversal_health.is_none() {
+                    reversal_health = Some(v.me.health);
+                }
+                if reversal_health.is_some() && v.me.reacting() {
+                    reversal_health = None;
+                }
+                if let Some(health) = reversal_health.filter(|_| !v.foe.active && v.foe.move_id == SHORYUKEN) {
+                    reversal_health = None;
+                    if v.me.health == health && !v.me.reacting() {
+                        reversal_guarded = true;
+                        baited += 1;
+                    }
                 }
                 if reversal_guarded && v.me.reacting() {
                     reversal_guarded = false;
@@ -1303,8 +1319,11 @@ fn inside_a_game_plan_it_does_not_start_an_attack_into_one_it_has_seen_start() {
             let route_began = m.fair_cpu_entering_route() && !was_route;
             was_route = m.fair_cpu_entering_route();
             // A press, or a route begun, inside a game plan. Not the Drive
-            // Parry's buttons held in a guard: that is no attack (SC8).
-            let parry = cpu_pad(&m).1 == MP | MK;
+            // Parry's buttons held in a guard, the stick back: that is no
+            // attack (SC8). (With the stick forward they are a Drive Rush.)
+            let now = seen(&m);
+            let (dirs, buttons) = cpu_pad(&m);
+            let parry = buttons == MP | MK && dirs & toward(&now) != 0 && dirs & away(&now) == 0;
             let pressed = (cpu_pressed(&m, &mut last) && !was_route && !parry) || route_began;
             // The view this press was decided on, and the one before it, as
             // the CPU saw them.
@@ -1463,10 +1482,17 @@ fn in_neutral_it_steps_in_and_out_at_the_edge_of_the_opponents_reach_and_punishe
         return;
     }
     eprintln!("stronger {new:?}\nold {old:?}");
-    assert!(new.edge_turns >= 60, "turns from in to out at the edge of his reach: {new:?}");
+    // Rates per 10,000 frames (five starts of 12,000 frames each): the
+    // floors are the old ones (set for 30,000 frames) doubled.
+    let per = |n: u32| f64::from(n) * 10_000.0 / 60_000.0;
+    eprintln!("per 10,000 frames: edge turns {:.1}, whiffs {:.1}, drawn {:.1}, punished {:.1}, landed {:.1}", per(new.edge_turns), per(new.whiffs), per(new.drawn), per(new.punished), per(new.landed));
+    assert!(new.edge_turns >= 120, "turns from in to out at the edge of his reach: {new:?}");
     assert!(2 * new.edge_turns >= 3 * old.edge_turns, "the old Fair CPU turns there by chance: {new:?} against {old:?}");
+    // Drawn whiffs keep the old floor: with SC8 (#200) their rate halved
+    // (of his swings right after an edge turn, most now hit the CPU), and
+    // that drop is with the maintainer.
     assert!(new.drawn >= 10 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
-    assert!(new.punished >= 3 && new.landed >= 3, "drawn whiffs punished with a route, and landed: {new:?}");
+    assert!(new.punished >= 6 && new.landed >= 6, "drawn whiffs punished with a route, and landed: {new:?}");
 }
 
 #[test]
@@ -1611,7 +1637,10 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
                 route_pressed = false;
             }
             route_pressed |= in_route && buttons != 0;
-            let walking_in = dirs == forward && buttons == 0 && !route_pressed;
+            // Held in blockstun the stick forward is no walk: it begins a
+            // Drive Reversal (SC8).
+            let held = m.toggle_state().combo.blockstun[1] != 0;
+            let walking_in = dirs == forward && buttons == 0 && !route_pressed && !held;
             if i < 300 || !walking_in || !shown.me.free() || down(&shown.foe) {
                 continue;
             }
@@ -1972,8 +2001,9 @@ fn ryu_sf6_spends_a_super_inside_a_route() {
         m.set_match_config(config);
         let mut before = seen(&m);
         let (mut was_route, mut since_route) = (false, u32::MAX);
-        // The book's route it entered last: does it spend a super?
-        let mut route_spends = false;
+        // The book's route and step it entered last: was that step a
+        // Super Art's motion (a double quarter circle)?
+        let mut at_super_step = false;
         for i in 0..12_000u32 {
             let (dirs, buttons) = poking(i, &before);
             step(&mut m, dirs, buttons);
@@ -1982,13 +2012,18 @@ fn ryu_sf6_spends_a_super_inside_a_route() {
             routes += u32::from(in_route && !was_route);
             since_route = if in_route { 0 } else { since_route.saturating_add(1) };
             was_route = in_route;
-            if let Some(index) = m.fair_cpu_route() {
-                route_spends = book.routes[index].super_spent > 0;
+            if let (Some(index), Some(at)) = (m.fair_cpu_route(), m.fair_cpu_route_step()) {
+                let route = &book.routes[index];
+                at_super_step = route.super_spent > 0 && ["236236", "214214"].iter().any(|motion| route.steps[at].name.starts_with(motion));
+            } else if in_route {
+                at_super_step = false;
             }
-            // A Super Art begun during a route the book has spend one, or
-            // just after its last input (its motion ends the route's pads).
+            // A Super Art begun while the route enters its super's step, or
+            // just after (its motion ends the route's pads): not the era
+            // kit's own super on a hit it sees, which FILL METERS lets it
+            // spend too.
             let super_began = SUPER_ARTS.contains(&v.me.move_id) && !SUPER_ARTS.contains(&before.me.move_id);
-            supers += u32::from(super_began && since_route <= 30 && route_spends);
+            supers += u32::from(super_began && since_route <= 20 && at_super_step);
             before = v;
         }
     }
@@ -2117,12 +2152,16 @@ fn it_techs_a_throw_only_from_what_it_has_seen() {
     // tech window, which the Utility AI read.
     let mut techs = 0u32;
     let mut unseen = Vec::new();
+    // Pulses with the CPU on Player 1's left and on his right, and any
+    // entered with the stick forward.
+    let mut sides = [0u32; 2];
+    let mut wrong_way = Vec::new();
     for mut m in starts(true) {
         let mut shown: HashMap<u32, Percept> = HashMap::new();
         let mut last_buttons = 0u8;
         // A press of back and heavy punch on the last step, and how far
         // apart the fighters were in the view it was decided from.
-        let mut pressed: Option<(u32, i16)> = None;
+        let mut pressed: Option<(u32, i16, bool, bool)> = None;
         for i in 0..9_000u32 {
             let v = seen(&m);
             let f = toward(&v);
@@ -2139,19 +2178,29 @@ fn it_techs_a_throw_only_from_what_it_has_seen() {
             let now = seen(&m);
             shown.insert(frame, now);
             let (dirs, buttons) = cpu_pad(&m);
-            if let Some((at, dist)) = pressed.take() {
+            if let Some((at, dist, back, right)) = pressed.take() {
                 // Held a second frame: its own throw, not a tech.
                 if buttons & HP == 0 {
-                    techs += 1;
-                    if dist > TECH_REACH {
-                        unseen.push((at, dist));
+                    if !back {
+                        wrong_way.push(at);
+                    } else {
+                        techs += 1;
+                        sides[usize::from(right)] += 1;
+                        if dist > TECH_REACH {
+                            unseen.push((at, dist));
+                        }
                     }
                 }
             }
-            // The CPU's back is the way Player 1 walks toward it.
-            if buttons == HP && dirs == toward(&now) && last_buttons & HP == 0 {
+            // Away from him as the CPU's view shows the two (it turns as
+            // that view does), or toward him: a one-frame pulse that way
+            // would be a tech entered the wrong way round.
+            if buttons == HP && (dirs == R || dirs == L) && last_buttons & HP == 0 {
                 let view = as_seen(&shown, frame, m.fair_cpu_attention().unwrap());
-                pressed = view.map(|view| (frame, (view.foe.x - view.me.x).abs()));
+                pressed = view.map(|view| {
+                    let back = if view.foe.x >= view.me.x { L } else { R };
+                    (frame, (view.foe.x - view.me.x).abs(), dirs == back, view.me.x > view.foe.x)
+                });
             }
             last_buttons = buttons;
         }
@@ -2159,7 +2208,9 @@ fn it_techs_a_throw_only_from_what_it_has_seen() {
     if !roms_present() {
         return;
     }
-    eprintln!("throw tech pulses {techs}");
+    eprintln!("throw tech pulses {techs} (CPU on the left, right: {sides:?})");
     assert!(techs >= 10, "throw tech pulses: {techs}");
+    assert!(sides.iter().all(|&n| n >= 3), "tech pulses on each side: {sides:?}");
+    assert!(wrong_way.is_empty(), "tech pulses with the stick forward: {wrong_way:?}");
     assert!(unseen.is_empty(), "tech pulses with him out of a throw's reach as it saw him: {unseen:?}");
 }

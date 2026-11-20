@@ -272,8 +272,8 @@ crate::canonical::canonical_struct!(Percept, "Percept.v1", {
     frame, fighting, me, foe, shot, shot_x, shot_half, my_shot, my_shot_dist,
 });
 
-crate::canonical::canonical_struct!(Plan, "Plan.v1", {
-    kind, pads, len, at,
+crate::canonical::canonical_struct!(Plan, "Plan.v2", {
+    kind, pads, len, at, answer,
 });
 
 crate::canonical::canonical_struct!(Normal, "Normal.v1", {
@@ -705,6 +705,9 @@ pub struct Context {
     /// Super meter carries from round to round in this engine, so a round
     /// that cannot end the match is no reason to spend it.
     pub(crate) round_decides_match: bool,
+    /// The opponent's whole health in an era style's finer units (a route
+    /// book's damage is in them): how much a health bar point of his is.
+    foe_max_sub_hp: u16,
 }
 
 impl Context {
@@ -723,6 +726,7 @@ impl Context {
             meters: [0; 2],
             meter_full: false,
             round_decides_match: false,
+            foe_max_sub_hp: crate::era_fight::FULL_SUB_HP,
         }
     }
 
@@ -748,9 +752,14 @@ impl Context {
     /// Short commands supplement the established spacing, guards, and
     /// longer charge and jump sequences. A command still has to pass the
     /// fighter's own motion recognizer and action gates.
-    /// Tell its era kit the opponent's era style.
-    pub(crate) fn set_opponent_family(&mut self, family: crate::era::EraFamily) {
+    /// Tell it the opponent's era style (its kit tells his moves apart by
+    /// it) and his whole health in finer units (0 for none: a health bar
+    /// point is then Ryu's).
+    pub(crate) fn set_opponent(&mut self, family: crate::era::EraFamily, max_sub_hp: u16) {
         self.era = self.era.map(|tactics| tactics.against(Some(family)));
+        if max_sub_hp != 0 {
+            self.foe_max_sub_hp = max_sub_hp;
+        }
     }
 
     pub(crate) fn utility_macro(
@@ -847,11 +856,14 @@ struct Plan {
     pads: [u16; PLAN_CAP],
     len: u8,
     at: u8,
+    /// The era kit's answer to something seen (SC8, `#200`): its stick
+    /// forward is a motion's (a Drive Reversal's), not a walk in.
+    answer: bool,
 }
 
 impl Default for Plan {
     fn default() -> Self {
-        Plan { kind: PlanKind::Idle, pads: [0; PLAN_CAP], len: 0, at: 0 }
+        Plan { kind: PlanKind::Idle, pads: [0; PLAN_CAP], len: 0, at: 0, answer: false }
     }
 }
 
@@ -1141,6 +1153,12 @@ impl FairCpu {
         self.route.map(|run| usize::from(run.index))
     }
 
+    /// The step of that route its next pad belongs to, once its walk in is
+    /// over.
+    pub fn route_step(&self) -> Option<usize> {
+        self.route.and_then(|run| run.step_index())
+    }
+
     /// Whether its pad is its own alone: with the stronger play (by the
     /// switch, or forced for the measuring run) it enters every command
     /// (SC8, `#200`), and the Utility AI adds none. The old play shares the
@@ -1389,6 +1407,7 @@ impl FairCpu {
             if let Some(mut plan) = era_response {
                 if stronger {
                     plan.end_at_last_press();
+                    plan.answer = true;
                 }
                 self.plan = plan;
                 self.game = None;
@@ -1505,6 +1524,7 @@ impl FairCpu {
             gap: view.gap(),
             walk,
             foe_health: view.foe.health,
+            foe_max_sub_hp: ctx.foe_max_sub_hp,
             spend_super: self.spends_super(ctx, view),
             drive_reserve: if self.stronger(ctx) { drive_reserve(ctx.level) } else { 0 },
             avoid_burnout: self.stronger(ctx),
@@ -1856,7 +1876,7 @@ impl FairCpu {
         let forward = if view.toward() > 0 { RIGHT } else { LEFT };
         let walk = match self.plan.kind {
             PlanKind::Walk => true,
-            PlanKind::Act => self.plan.press_to_come(),
+            PlanKind::Act => self.plan.press_to_come() && !self.plan.answer,
             _ => false,
         };
         walk && !self.plan.done() && self.plan.pads[usize::from(self.plan.at)] == forward
@@ -2859,6 +2879,11 @@ mod tests {
     /// (a full Drive gauge) and two bars of Super meter, free to act,
     /// playing the stronger game.
     fn sf6_ctx(level: Level) -> Context {
+        sf6_ctx_with(level, EraControl { free: true, ..EraControl::default() })
+    }
+
+    /// The same, its own fighter's control as given.
+    fn sf6_ctx_with(level: Level, control: EraControl) -> Context {
         use crate::era::{GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
         let config = crate::config::MatchConfig::definitive();
         let mut state = EraFighterState::default();
@@ -2868,9 +2893,8 @@ mod tests {
         state.set_gauge_mode(GaugeMode::EraDefault);
         state.set_sf6_practice_drive(None);
         state.super_meter = 2 * STOCK_AT;
-        let control = EraControl { free: true, ..EraControl::default() };
         let mut c = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
-        c.set_opponent_family(crate::era::EraFamily::Sf6);
+        c.set_opponent(crate::era::EraFamily::Sf6, crate::era_fight::FULL_SUB_HP);
         c.stronger = true;
         c
     }
@@ -2937,6 +2961,35 @@ mod tests {
                 assert!(era_answers.get(what).is_some_and(|&n| n >= 1), "{level:?}: the {what} answered with an era command: {era_answers:?}");
             }
         }
+    }
+
+    #[test]
+    fn a_drive_reversal_chosen_out_of_a_guard_is_not_dropped_as_a_walk_in() {
+        // SC8 (`#200`): the Drive Reversal's first pad is the bare stick
+        // forward. With his attack still coming, the stronger play drops a
+        // walk in, but not that: the reversal comes out.
+        let c = sf6_ctx_with(Level::VeryHard, EraControl { blockstun: true, ..EraControl::default() });
+        let mut me = body(300);
+        me.move_id = 4;
+        let mut attack = body(340);
+        attack.move_id = 0x10;
+        attack.state = 0xc2;
+        let seen = |f: u32| Percept { frame: f, fighting: true, me, foe: attack, ..Percept::default() };
+        let reversal = RIGHT | button(2) | button(5);
+        let reversed = (1..=24u64)
+            .filter(|&seed| {
+                let mut cpu = FairCpu::seeded(seed);
+                for f in 1..=40 {
+                    cpu.observe(seen(f));
+                }
+                (41..=100).any(|f| {
+                    let pad = cpu.press(f, true, &c);
+                    cpu.observe(seen(f));
+                    pad & reversal == reversal
+                })
+            })
+            .count();
+        assert!(reversed > 0, "a Drive Reversal out of a guard while his attack is still coming");
     }
 
     #[test]
