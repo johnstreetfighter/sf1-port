@@ -304,7 +304,7 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
                 "DOUBLE KICK ↓↙← [K]",
                 // Spec #259: his knee-up kick, a command normal.
                 "COMMAND NORMALS",
-                "KNEE-UP KICK JUMP→ [HK]",
+                "KNEE UP KICK JUMP→ [HK]",
                 "DIVE KICK JUMP↓ [MK]",
             ]
             .map(String::from),
@@ -324,7 +324,7 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
                 "ST. ANDREW'S GREEN ↓↙← [K]",
                 // Spec #259: his two-stick thrust, a command normal.
                 "COMMAND NORMALS",
-                "TWO-STICK THRUST ↘ [HP]",
+                "TWO STICK THRUST ↘ [HP]",
                 "DIVE THRUST JUMP↓ [HP]",
             ]
             .map(String::from),

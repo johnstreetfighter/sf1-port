@@ -1312,7 +1312,7 @@ fn the_knee_up_kick_comes_from_forward_and_heavy_kick_in_a_straight_or_back_jump
         }
     }
     let list = move_list(TournamentFighter::Lee, CLASSIC);
-    let row = list.iter().find(|e| e.name == "KNEE-UP KICK").expect("listed");
+    let row = list.iter().find(|e| e.name == "KNEE UP KICK").expect("listed");
     assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
 }
 
@@ -1874,7 +1874,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .iter()
             .map(|e| e.name)
             .collect();
-        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE-UP KICK", "DIVE KICK"], "{preset:?}");
+        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE UP KICK", "DIVE KICK"], "{preset:?}");
     }
     assert!(move_list(TournamentFighter::Lee, RulesetPreset::Faithful1987).is_empty());
     // Without his table the fight has neither, and MOVES lists neither.

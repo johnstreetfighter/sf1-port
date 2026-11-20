@@ -1295,63 +1295,6 @@ pub const REGISTRY: &[MoveEntry] = &[
         call_out: "ST. ANDREW'S GREEN!",
         available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
     },
-    // Eagle's two-stick thrust (spec #259, CN3): a command normal, down-forward
-    // and heavy punch, in place of his 1987 low thrust on move 0x1d.
-    MoveEntry {
-        name: "TWO-STICK THRUST",
-        kind: MoveKind::Normal,
-        input: MoveInput {
-            motion: &[Dir::DownForward],
-            button: ButtonClass::HeavyPunch,
-        },
-        recognizer: Recognizer::CommandNormal,
-        produces: 0x1d,
-        call_out: "TWO-STICK THRUST!",
-        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
-    },
-    // Eagle's dive thrust (spec #259, CN4): a command normal in any jump,
-    // down and heavy punch, in place of his jump attack's stream.
-    MoveEntry {
-        name: "DIVE THRUST",
-        kind: MoveKind::Normal,
-        input: MoveInput {
-            motion: &[Dir::Jump, Dir::Down],
-            button: ButtonClass::HeavyPunch,
-        },
-        recognizer: Recognizer::CommandNormal,
-        produces: 0x20,
-        call_out: "DIVE THRUST!",
-        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
-    },
-    // Lee's knee-up kick (spec #259, CN5): a command normal in a straight-up
-    // or back jump, forward and heavy kick, in place of his jump attack's
-    // stream.
-    MoveEntry {
-        name: "KNEE-UP KICK",
-        kind: MoveKind::Normal,
-        input: MoveInput {
-            motion: &[Dir::Jump, Dir::Forward],
-            button: ButtonClass::HeavyKick,
-        },
-        recognizer: Recognizer::CommandNormal,
-        produces: 0x26,
-        call_out: "KNEE-UP KICK!",
-        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
-    },
-    // Lee's dive kick (spec #259, CN6): a command normal in any jump, down
-    // and medium kick, in place of his jump attack's stream.
-    MoveEntry {
-        name: "DIVE KICK",
-        kind: MoveKind::Normal,
-        input: MoveInput {
-            motion: &[Dir::Jump, Dir::Down],
-            button: ButtonClass::MediumKick,
-        },
-        recognizer: Recognizer::CommandNormal,
-        produces: 0x23,
-        call_out: "DIVE KICK!",
-        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
-    },
     // Adon's Rising Jaguar and Jaguar Kick (ticket #258): his 1987 player table
     // puts the Rising Jaguar in the Shoryuken's move on its command, and the
     // Jaguar Kick in the Tatsumaki's on its command.
@@ -1425,8 +1368,73 @@ pub const REGISTRY: &[MoveEntry] = &[
 /// The moves `fighter` has in a fight under `preset`: the registry's
 /// entries available to both, in registry order.
 pub fn move_list(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<&'static MoveEntry> {
-    REGISTRY.iter().filter(|e| e.available.includes(fighter, preset)).collect()
+    REGISTRY.iter().chain(COMMAND_NORMALS).filter(|e| e.available.includes(fighter, preset)).collect()
 }
+
+/// The bosses' command normals (spec #259): a stick direction held with
+/// their button, read by the 1987 dispatch (no tracker). Kept apart from
+/// [`REGISTRY`], whose entries are the 1987 trackers' specials (the
+/// coach's "another move" check and the trackers' own tests read it), and
+/// listed by [`move_list`] after them.
+pub const COMMAND_NORMALS: &[MoveEntry] = &[
+    // Eagle's two-stick thrust (spec #259, CN3): a command normal, down-forward
+    // and heavy punch, in place of his 1987 low thrust on move 0x1d.
+    MoveEntry {
+        name: "TWO STICK THRUST",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::DownForward],
+            button: ButtonClass::HeavyPunch,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x1d,
+        call_out: "TWO STICK THRUST!",
+        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
+    // Eagle's dive thrust (spec #259, CN4): a command normal in any jump,
+    // down and heavy punch, in place of his jump attack's stream.
+    MoveEntry {
+        name: "DIVE THRUST",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Down],
+            button: ButtonClass::HeavyPunch,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x20,
+        call_out: "DIVE THRUST!",
+        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
+    // Lee's knee-up kick (spec #259, CN5): a command normal in a straight-up
+    // or back jump, forward and heavy kick, in place of his jump attack's
+    // stream.
+    MoveEntry {
+        name: "KNEE UP KICK",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Forward],
+            button: ButtonClass::HeavyKick,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x26,
+        call_out: "KNEE UP KICK!",
+        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
+    // Lee's dive kick (spec #259, CN6): a command normal in any jump, down
+    // and medium kick, in place of his jump attack's stream.
+    MoveEntry {
+        name: "DIVE KICK",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Down],
+            button: ButtonClass::MediumKick,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x23,
+        call_out: "DIVE KICK!",
+        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
+];
 
 const HALF_CIRCLE_FORWARD: &[Dir] = &[
     Dir::Back, Dir::DownBack, Dir::Down, Dir::DownForward, Dir::Forward,
@@ -1833,7 +1841,12 @@ mod tests {
             assert_eq!(names(TournamentFighter::Joe), joe);
             let mike: &[&str] = if preset == RulesetPreset::Faithful1987 { &[] } else { &["BISON RUSH", "IRON UPPER"] };
             assert_eq!(names(TournamentFighter::Mike), mike);
-            let lee: &[&str] = if preset == RulesetPreset::Faithful1987 { &[] } else { &["ZESSHOUOHKEN", "DOUBLE KICK"] };
+            // Spec #259: the bosses' command normals follow their specials.
+            let lee: &[&str] = if preset == RulesetPreset::Faithful1987 {
+                &[]
+            } else {
+                &["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE UP KICK", "DIVE KICK"]
+            };
             assert_eq!(names(TournamentFighter::Lee), lee);
             let gen: &[&str] = if preset == RulesetPreset::Faithful1987 { &[] } else { &["HYAKURENKO", "GEKIRO"] };
             assert_eq!(names(TournamentFighter::Gen), gen);
@@ -1842,7 +1855,7 @@ mod tests {
             let eagle: &[&str] = if preset == RulesetPreset::Faithful1987 {
                 &[]
             } else {
-                &["MANCHESTER BLACK", "ST. ANDREW'S GREEN"]
+                &["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO STICK THRUST", "DIVE THRUST"]
             };
             assert_eq!(names(TournamentFighter::Eagle), eagle);
             let adon: &[&str] = if preset == RulesetPreset::Faithful1987 { &[] } else { &["RISING JAGUAR", "JAGUAR KICK"] };
@@ -2037,7 +2050,7 @@ mod tests {
 
     #[test]
     fn every_entry_calls_out_its_name_in_the_rom_font() {
-        for entry in REGISTRY {
+        for entry in REGISTRY.iter().chain(COMMAND_NORMALS) {
             assert_eq!(entry.call_out, format!("{}!", entry.name));
             assert!(entry.call_out.chars().all(|c| sf_video::compositor::small_glyph(c).is_some()), "{}", entry.call_out);
         }

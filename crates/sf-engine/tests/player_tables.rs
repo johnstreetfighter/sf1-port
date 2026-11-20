@@ -13,7 +13,7 @@ use std::path::Path;
 use sf_engine::config::RulesetPreset;
 use sf_engine::data_bank::{in_bank, special_slot, DataBank, SF2_SPECIAL_SLOT, SF2_SUPER_SLOT, SPECIAL_SLOTS};
 use sf_engine::roster::TournamentFighter;
-use sf_engine::moves::{move_list, ButtonClass, Recognizer};
+use sf_engine::moves::{move_list, ButtonClass, MoveKind, Recognizer};
 use sf_video::art::{load_art_from, ArtSources};
 use sf_video::art_pack::ArtPack;
 use sf_video::romset::load_assets;
@@ -56,7 +56,12 @@ fn every_bank_fighters_special_slots_are_the_registrys_entries_on_the_same_comma
             .filter(|&slot| bank.move_header(fighter, slot).is_some_and(|header| rb(header + 8) != 0))
             .collect();
         for preset in [RulesetPreset::ClassicCompetitive, RulesetPreset::DefinitiveOverhaul, RulesetPreset::PureFootsies1987Plus] {
-            let entries: Vec<_> = move_list(fighter, preset).into_iter().filter(|e| e.available.player_table).collect();
+            // Command normals (spec #259) are no specials: they bring no
+            // special slot.
+            let entries: Vec<_> = move_list(fighter, preset)
+                .into_iter()
+                .filter(|e| e.available.player_table && e.kind == MoveKind::Special)
+                .collect();
             for &slot in &present {
                 let listed: Vec<_> = entries.iter().filter(|e| e.produces == slot).collect();
                 assert_eq!(listed.len(), 1, "{fighter:?} {preset:?}: special {slot:#04x} is listed once: {listed:?}");

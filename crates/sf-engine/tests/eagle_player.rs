@@ -1193,7 +1193,7 @@ fn the_two_stick_thrust_comes_from_down_forward_heavy_punch_and_is_guarded_low()
     assert_eq!(after, before, "a crouching guard stops it");
     // The move list.
     let list = move_list(TournamentFighter::Eagle, CLASSIC);
-    let row = list.iter().find(|e| e.name == "TWO-STICK THRUST").expect("listed");
+    let row = list.iter().find(|e| e.name == "TWO STICK THRUST").expect("listed");
     assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
     assert_eq!(row.produces, 0x1d);
 }
@@ -1876,7 +1876,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .collect();
         assert_eq!(
             names,
-            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO-STICK THRUST", "DIVE THRUST"],
+            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO STICK THRUST", "DIVE THRUST"],
             "{preset:?}"
         );
     }
@@ -1909,7 +1909,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
     // The two-stick thrust has a row of its own under COMMAND NORMALS
     // (spec #259).
     let heading = text.iter().position(|line| line.contains("COMMAND NORMALS")).expect("the heading");
-    let thrust = text.iter().position(|line| line.contains("TWO-STICK THRUST")).expect("the row");
+    let thrust = text.iter().position(|line| line.contains("TWO STICK THRUST")).expect("the row");
     assert!(heading < thrust, "{text:?}");
     for (row, entry) in move_list(TournamentFighter::Eagle, CLASSIC)
         .into_iter()
