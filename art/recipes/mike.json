@@ -14,6 +14,12 @@
       "note": "His crouch (move 5, stream 0x0d660), his fists up before his face."
     },
     {
+      "name": "crouching_block",
+      "pack": { "crc32": "25e0fff6" },
+      "anchor": [-32, -65],
+      "note": "Adapted from Falchion22's MUGEN Mike (A-Mike/sff.sff, group 121, image 0), used with permission (the maintainer, 2026-11-20, docs/planning/mugen-collection-survey.md): his ROM crouch (0x156a) with both gloves raised high before his face. Every pixel was mapped to his pens; the SFF's outline colour #1c1c1c is his black (pen 0), the others are within a few steps of a pen. Its legs match the ROM crouch's pixel for pixel one row lower in the drawing, so it is placed where the crouch is (anchor one row higher for the raised gloves) and keeps the crouch's ROM boxes."
+    },
+    {
       "name": "crouching_hit",
       "pack": { "crc32": "db0d9795" },
       "anchor": [-32, -70],
@@ -131,9 +137,9 @@
   "moves": [
     {
       "name": "crouching block",
-      "poses": ["crouch"],
+      "poses": ["crouching_block"],
       "timing": [60],
-      "note": "His ROM crouch, both fists up before his face, held as the block, as Sagat's and Joe's are. The maintainer's decision at the review limit (2026-11-06): after four rounds of generated crouching blocks (his standing guard joined to the crouch three ways, then the crouch with raised forearms) were rejected."
+      "note": "Falchion22's gloves-up crouching block, adapted (the maintainer, 2026-11-20). Before it, his ROM crouch was held as the block: four rounds of generated crouching blocks were rejected (2026-11-06)."
     },
     {
       "name": "crouching hit",

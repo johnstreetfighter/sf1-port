@@ -7,6 +7,13 @@
       "rejections": 0,
       "next": "none"
     },
+    "crouching_block": {
+      "origin": "generated",
+      "crc32": "25e0fff6",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
     "crouching_hit": {
       "origin": "generated",
       "crc32": "db0d9795",

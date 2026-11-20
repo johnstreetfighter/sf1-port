@@ -1223,6 +1223,34 @@ fn rom_boxes(rom: &[u8], frame: u32) -> [u8; 16] {
     std::array::from_fn(|i| r[0xa + i])
 }
 
+/// `boxes`, written about `from`'s grid centre, rewritten about `to`'s, so
+/// every box stays where it was about the fighter. For a new drawing laid on
+/// a ROM pose whose boxes it keeps: the grid centres differ when the grids
+/// differ in size or place. An empty box (all four bytes zero) stays empty.
+fn rebase_boxes(boxes: [u8; 16], from: &PoseGeom, to: &PoseGeom) -> [u8; 16] {
+    // Each grid centre about the fighter's centre on the ground line.
+    let centre = |p: &PoseGeom| (p.anchor[0] as i32 + p.half().0, p.anchor[1] as i32 + p.half().1);
+    let ((fx, fy), (tx, ty)) = (centre(from), centre(to));
+    // How far the centre moved, up and forward.
+    let (up, fwd) = (fy - ty, tx - fx);
+    let b = |i: usize| boxes[i] as i8 as i32;
+    let mut out = boxes;
+    // Push: above, below, in front, behind the centre.
+    out[0] = (b(0) - up) as u8;
+    out[1] = (b(1) + up) as u8;
+    out[2] = (b(2) - fwd) as u8;
+    out[3] = (b(3) + fwd) as u8;
+    // Head, body, attack: offset up, half height, offset forward, half width.
+    for at in [4usize, 8, 12] {
+        if boxes[at..at + 4] == [0; 4] {
+            continue;
+        }
+        out[at] = (b(at) - up) as u8;
+        out[at + 2] = (b(at + 2) - fwd) as u8;
+    }
+    out
+}
+
 /// A ROM move header's pose and boxes: the header places its grid
 /// absolutely (`+4` its top, `+0x26` its x-offset).
 fn header_pose(rom: &[u8], h: u32) -> (PoseGeom, [u8; 16]) {
@@ -3453,7 +3481,20 @@ mod mike {
             let h = header(&still(crouch, 1, crouch_boxes).bytes(), crouch.top_on_ground(), 0x14, id, [0, 0, 0], 0);
             put_header(&mut region, base, id, &h);
         }
-        let h = header(&still(crouch, 1, crouch_boxes).bytes(), crouch.top_on_ground(), 0x24, 0x08, [block_sound, 0, 0], 0);
+        // His crouching block is Falchion22's gloves-up pose (adapted with
+        // permission, `art/recipes/mike.json`): his ROM crouch with both
+        // gloves raised high. Its legs are the crouch's pixel for pixel, so
+        // it keeps the crouch's ROM boxes, rewritten about its own grid's
+        // centre, and plays as the crouch did.
+        let crouching_block = geom("crouching_block")?;
+        let h = header(
+            &still(crouching_block, 1, rebase_boxes(crouch_boxes, &crouch, &crouching_block)).bytes(),
+            crouching_block.top_on_ground(),
+            0x24,
+            0x08,
+            [block_sound, 0, 0],
+            0,
+        );
         put_header(&mut region, base, 0x08, &h);
 
         // His 1987 standing attacks: a boxer, every kick button throws a
