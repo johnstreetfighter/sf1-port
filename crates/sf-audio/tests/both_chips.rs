@@ -1378,10 +1378,13 @@ fn the_winning_fight_sf_win_01_on_the_native_latch() {
 ///    least-correlated second `0.8750` at `64.83 s`), with no pass threshold.
 /// 3. The live capture (pushed frame by frame at `IRQ_LATENCY_MID = 92`)
 ///    equals the batch mix at latency 92 sample for sample (`0` differing).
-/// 4. The renders in `tools/reference/local/renders/` stay local (gitignored).
+/// 4. The renders in `tools/reference/local/renders/both-chips/` stay local
+///    (gitignored). They get their own folder because sf-dev's listening-kit
+///    test writes and reads back the same file names in `renders/`, and the
+///    two tests may run at the same time.
 #[test]
 fn fixed_fight_listening_kit_renders_and_live_capture() {
-    const RENDERS_DIR: &str = "../../tools/reference/local/renders";
+    const RENDERS_DIR: &str = "../../tools/reference/local/renders/both-chips";
     if !present() || !Path::new(WAV_REF).is_file() {
         eprintln!("skipping: local reference captures/ROMs not present");
         return;
@@ -1475,7 +1478,7 @@ fn fixed_fight_listening_kit_renders_and_live_capture() {
         "live capture must equal batch mix at latency 92 sample for sample"
     );
 
-    // Write local renders into tools/reference/local/renders/.
+    // Write local renders into tools/reference/local/renders/both-chips/.
     let renders = Path::new(RENDERS_DIR);
     std::fs::create_dir_all(renders).expect("create local renders dir");
     for (name, pcm) in [

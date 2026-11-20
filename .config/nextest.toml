@@ -1,0 +1,38 @@
+# cargo-nextest configuration for running the suite in parallel.
+#
+# `cargo suite` (cargo test, one binary at a time) stays the gate until a
+# nextest run matches it test by test with the MAME captures present.
+#
+# Run it in two passes:
+#   cargo nextest run --cargo-profile suite --workspace --locked --no-fail-fast --build-jobs 4
+#   cargo nextest run --cargo-profile suite --workspace --locked --no-fail-fast --build-jobs 4 --profile serial
+#
+# The first pass runs everything except the tests that must not share the
+# machine; the second runs only those, one at a time. Don't run either pass
+# beside MAME recordings or another suite: this machine has run out of
+# memory doing that (15 GB RAM, 32 GB page file).
+
+[profile.default]
+# Capture tests read whole capture files into memory; start at 8 threads and
+# watch commit headroom before raising it.
+test-threads = 8
+fail-fast = false
+retries = 0
+slow-timeout = { period = "120s" }
+# Everything except the serial set below.
+default-filter = 'not (package(sf-relay) | (package(sf-host) & (binary(/^net_/) | kind(lib))))'
+
+# Longest tests first, so they don't end up as the run's tail.
+[[profile.default.overrides]]
+filter = 'binary(fair_cpu) | binary(dip_switches) | binary(fixed_fight_dips) | binary(held_jump) | binary(full_1p) | binary(arcade_mode) | binary(era_cross)'
+priority = 50
+
+[profile.serial]
+# Wall-clock limits (sf-host net_*, sf-relay service and rooms), real UDP
+# broadcasts and reused ports (net_driver), and the GPU and audio-device
+# tests in sf-host's library: one test at a time, on an otherwise idle
+# machine.
+test-threads = 1
+fail-fast = false
+retries = 0
+default-filter = 'package(sf-relay) | (package(sf-host) & (binary(/^net_/) | kind(lib)))'
