@@ -13,7 +13,8 @@
 //! fighter and era style, so choosing and following one costs a few
 //! comparisons a frame.
 
-use super::{Body, Choice, Percept};
+use super::habit::Lean;
+use super::{Body, Choice, Level, Percept};
 use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
@@ -577,6 +578,8 @@ pub(super) struct GamePlan {
     /// Taken up only while the gap to the opponent is in this range.
     pub gap: (i16, i16),
     pub steps: &'static [Step],
+    /// What it leans on, for the habit memory (SC9, `#201`).
+    pub lean: Lean,
 }
 
 /// Any gap.
@@ -676,6 +679,19 @@ const RYU_SF6_SHOT: [Step; 2] = [
     step(Act::Do(Choice::Approach), always(None)),
 ];
 
+/// Ryu in the SF6 era style, far off, against an opponent its habit memory
+/// says jumps its projectile (SC9, `#201`): a projectile, then standing its
+/// ground while it recovers, watching for the jump to anti-air it rather
+/// than walking in under him. Never taken without that habit.
+const RYU_SF6_SHOT_WATCH: [Step; 6] = [
+    step(Act::Shot, always(Some(1))),
+    step(Act::Do(Choice::Wait), always(Some(2))),
+    step(Act::Do(Choice::Wait), always(Some(3))),
+    step(Act::Do(Choice::Wait), always(Some(4))),
+    step(Act::Do(Choice::Wait), always(Some(5))),
+    step(Act::Do(Choice::Wait), always(None)),
+];
+
 /// Ryu in the SF6 era style, far off (SC8, `#200`): a projectile, then a
 /// Drive Rush in behind it while he deals with it, and a standing medium
 /// punch as it arrives (a rushed normal gains frames). With a projectile
@@ -695,27 +711,66 @@ const RYU_SF6_JUMP_IN: [Step; 1] = [step(Act::Do(Choice::JumpIn), always(None))]
 /// The gap a projectile is thrown from (a fireball from closer is jumped
 /// on its way out), and the gaps a forward jump-in lands on him from.
 const SHOT_GAP: i16 = 90;
+/// The nearest gap the projectile is thrown from to stand and watch for a
+/// jump over it (SC9, `#201`): measured against an opponent who jumps on its
+/// start-up, from 140 to 180 pixels his jump lands in front of it as it
+/// recovers and is anti-aired a third of the time; from nearer he lands on
+/// it while it still recovers, and walking in behind the projectile does
+/// better.
+const WATCHED_SHOT_GAP: i16 = 140;
 const JUMP_IN_GAP: (i16, i16) = (70, 150);
 
-const RYU_SF6: [GamePlan; 12] = [
-    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE },
-    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE },
-    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP },
-    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 52, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT },
+const RYU_SF6: [GamePlan; 13] = [
+    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None },
+    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE, lean: Lean::None },
+    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP, lean: Lean::FrameTrap },
+    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW, lean: Lean::WalkThrow },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY, lean: Lean::Meaty },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 52, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT, lean: Lean::Bait },
     // A cornered opponent out of reach (its own guarded attacks push it
     // back off him): walk him down rather than let him out.
-    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None },
     // Scores set by the measuring run (240 Ryu SF6 mirror matches a side
     // against the old Fair CPU): the projectile from afar won the most and
     // the jump-in least.
-    GamePlan { situation: Situation::NeutralClose, score: 61, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER },
-    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER },
-    GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT },
-    GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN },
-    GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH },
+    GamePlan { situation: Situation::NeutralClose, score: 61, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None },
+    GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT, lean: Lean::Shot },
+    GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN, lean: Lean::JumpIn },
+    GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH, lean: Lean::ShotRush },
+    // Its score comes from the habit memory alone (SC9, `#201`).
+    GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: (WATCHED_SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch },
 ];
+
+/// Game plans of one table whose working the CPU remembers.
+pub(super) const PLAN_SLOTS: usize = 16;
+/// The most times in a row a plan's working is counted.
+pub(super) const WORKED_KEPT: u8 = 3;
+/// What each time in a row a plan has worked adds to its score where the
+/// level leans on what works, and what having just been taken costs a plan
+/// where the level puts variety first.
+const WORKED: i32 = 8;
+const VARIETY: i32 = 12;
+
+/// Very Difficult and Difficult may repeat a winning option for as long as
+/// it keeps working; Normal and Easy put variety first (the maintainer,
+/// 2026-11-18).
+pub(super) fn leans_on_what_works(level: Level) -> bool {
+    matches!(level, Level::Hard | Level::VeryHard)
+}
+
+/// What a game plan's record in this match adds to its score: `worked` is
+/// how many times in a row it has worked lately, `last` whether it was the
+/// plan taken last.
+pub(super) fn repeat_score(level: Level, worked: u8, last: bool) -> i32 {
+    if leans_on_what_works(level) {
+        WORKED * i32::from(worked.min(WORKED_KEPT))
+    } else if last {
+        -VARIETY
+    } else {
+        0
+    }
+}
 
 /// The game plans a fighter has in an era style. A pair with none plays
 /// the CPU's single choices.
@@ -745,6 +800,8 @@ pub(super) struct Running {
     pub pressed: u32,
     /// The machine step the plan began on.
     pub began: u32,
+    /// One of its steps was seen to hit him: the plan worked.
+    pub hit: bool,
 }
 
 impl Running {
@@ -780,7 +837,7 @@ crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v2", { situation, cor
 crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v4", {
     foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
 });
-crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v3", { plan, step, acted, pressed, began });
+crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v4", { plan, step, acted, pressed, began, hit });
 crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v1", {
     fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded,
 });
@@ -803,7 +860,7 @@ mod tests {
         changed[0].judged.situation = Situation::ItHit;
         changed[1].judged.corner = true;
         changed[2].judge.blocked = 3;
-        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, began: 4 });
+        changed[3].game = Some(Running { plan: 0, step: 1, acted: true, pressed: 9, began: 4, hit: false });
         for cpu in &changed {
             assert_ne!(hash(cpu), hash(&plain), "{cpu:?}");
         }
@@ -946,6 +1003,20 @@ mod tests {
         }
         let close = RYU_SF6.iter().filter(|p| p.situation == Situation::NeutralClose);
         assert!(close.clone().any(|p| p.steps.iter().any(|s| matches!(s.act, Act::Step { forward: false }))), "stepping out at close range");
+    }
+
+    #[test]
+    fn the_hardest_levels_repeat_what_keeps_working_and_the_others_put_variety_first() {
+        for level in [Level::Hard, Level::VeryHard] {
+            assert!(repeat_score(level, 1, true) > repeat_score(level, 0, false), "{level:?} repeats a plan that worked");
+            assert!(repeat_score(level, 2, true) > repeat_score(level, 1, true), "{level:?} the more it keeps working");
+            assert_eq!(repeat_score(level, 0, true), 0, "{level:?} does not avoid the last plan");
+        }
+        for level in [Level::Easy, Level::Normal] {
+            assert!(repeat_score(level, 3, true) < repeat_score(level, 0, false), "{level:?} puts variety first");
+            assert_eq!(repeat_score(level, 3, false), 0, "{level:?} does not lean on what worked");
+        }
+        assert!(RYU_SF6.len() <= PLAN_SLOTS);
     }
 
     #[test]

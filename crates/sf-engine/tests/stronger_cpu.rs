@@ -773,6 +773,11 @@ fn routes_seen(m: &mut PowerOnMachine, frames: u32, mut pad: impl FnMut(u32, &Pe
         let (dirs, buttons) = pad(i, &v);
         let cpu_health = v.me.health;
         let was_me = v.me;
+        // The routes as played against an opponent the CPU knows nothing
+        // of: these partners stand or guard and never tech, and its habit
+        // memory (SC9, `#201`) would rightly turn it to throws, away from
+        // routes. What it learns is checked by the habit tests.
+        m.forget_fair_cpu_habits();
         step(m, dirs, buttons);
         let v = seen(m);
         // Player 1's attack box went away without touching the CPU: a whiff.
@@ -1465,6 +1470,13 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
             _ => (0, 0),
         };
         let cpu_health = v.me.health;
+        // The edge plans as they play against an opponent the CPU knows
+        // nothing of: this Player 1 never techs and guards each rise, and
+        // its habit memory (SC9, `#201`) would rightly turn it to throws and
+        // timed attacks, away from the edge (997 turns over the twenty
+        // starts without it leaning on the memory, 440 with). What it
+        // learns is checked by the habit tests below.
+        m.forget_fair_cpu_habits();
         step(&mut m, pad.0, pad.1);
         let after = seen(&m);
         // His Shoryuken can hit the CPU without its box ever being seen
@@ -2296,4 +2308,288 @@ fn it_techs_a_throw_only_from_what_it_has_seen() {
     assert!(sides.iter().all(|&n| n >= 3), "tech pulses on each side: {sides:?}");
     assert!(wrong_way.is_empty(), "tech pulses with the stick forward: {wrong_way:?}");
     assert!(unseen.is_empty(), "tech pulses with him out of a throw's reach as it saw him: {unseen:?}");
+}
+
+/// Ryu's SF6 Hadoken, as its move id shows it.
+const HADOKEN_MOVE: u8 = 0x1a;
+/// Frames into the CPU's Hadoken at which Player 1 jumps it: on its
+/// start-up, so his jump clears the projectile from anywhere it is thrown.
+const JUMP_AFTER: u32 = 6;
+
+/// One jump of Player 1's, as the frames showed it (SC9, `#201`).
+#[derive(Debug, Default, Clone)]
+struct JumpSeen {
+    /// Jumps over its projectile so far this fight, this one included;
+    /// 0 for any other jump.
+    over: u32,
+    /// The CPU's view showed the jump at its focused delay.
+    seen_soon: bool,
+    /// The CPU entered an anti-air while he was in the air: a punch with
+    /// the stick down (the Shoryuken's last step, or crouching heavy punch).
+    anti_air: bool,
+    /// He was struck in the air by the CPU's attack, or by its projectile.
+    struck: bool,
+    shot_hit: bool,
+}
+
+/// Player 1 who always jumps the CPU's projectile: he stands while one is
+/// out and jumps at it `JUMP_AFTER` frames into the throw; otherwise he
+/// backs off to keep his distance, and out of a corner jumps over it.
+/// `forget` wipes the CPU's habit memory every frame, so it meets every
+/// jump as at the start of the match.
+fn jumps_over_shots(m: &mut PowerOnMachine, frames: u32, forget: bool) -> Vec<JumpSeen> {
+    let mut out: Vec<JumpSeen> = Vec::new();
+    let mut jump_at: Option<u32> = None;
+    let mut airborne_since: Option<u32> = None;
+    let mut jump_frame = 0u32;
+    let mut over = 0;
+    let mut this_shot = false;
+    for i in 0..frames {
+        let mut escape = false;
+        let before = seen(m);
+        let his = perceive(m.state.frame, true, m.work_ram(), &m.state.objectram, Side::P1);
+        let shooting = before.me.move_id == HADOKEN_MOVE;
+        if shooting && !this_shot && jump_at.is_none() && airborne_since.is_none() && !before.foe.jumping() {
+            jump_at = Some(i + JUMP_AFTER);
+        }
+        if shooting {
+            this_shot = true;
+        } else if !his.shot {
+            this_shot = false;
+        }
+        let pad = if jump_at.is_some_and(|at| i >= at && i < at + 3) {
+            (U | toward(&before), 0)
+        } else if airborne_since.is_some() || before.foe.jumping() || his.shot || jump_at.is_some() || shooting {
+            (0, 0)
+        } else if gap(&before) < 110 {
+            let room = if away(&before) == L { before.foe.x > 150 } else { before.foe.x < 364 };
+            if room {
+                (away(&before), 0)
+            } else {
+                escape = true;
+                (U | toward(&before), 0)
+            }
+        } else {
+            (0, 0)
+        };
+        if jump_at.is_some_and(|at| i >= at + 3) {
+            jump_at = None;
+        }
+        if forget {
+            m.forget_fair_cpu_habits();
+        }
+        step(m, pad.0, pad.1);
+        let v = seen(m);
+        if matches!(v.foe.move_id, 9..=0xb) && !before.foe.jumping() && airborne_since.is_none() {
+            airborne_since = Some(i);
+            jump_frame = m.state.frame;
+            if !escape {
+                over += 1;
+            }
+            out.push(JumpSeen { over: if escape { 0 } else { over }, ..JumpSeen::default() });
+        }
+        if let Some(since) = airborne_since {
+            let last = out.last_mut().unwrap();
+            let attention = m.fair_cpu_attention().unwrap();
+            if attention.action_frame >= jump_frame && m.state.frame - jump_frame <= Level::VeryHard.reaction() {
+                last.seen_soon = true;
+            }
+            let (dirs, buttons) = cpu_pad(m);
+            if dirs & D != 0 && buttons & (LP | MP | HP) != 0 && buttons & (8 | MK | HK) == 0 {
+                last.anti_air = true;
+            }
+            if v.foe.reacting() && !before.foe.reacting() && !last.struck && !last.shot_hit {
+                let by_attack = v.me.attacking()
+                    && ![HADOKEN_MOVE, sf_engine::combo::throw::THROW_MOVE, DRIVE_RUSH].contains(&v.me.move_id);
+                last.struck |= by_attack;
+                last.shot_hit |= !by_attack;
+            }
+            if !v.foe.jumping() && !v.foe.reacting() && i > since + 4 {
+                airborne_since = None;
+            }
+        }
+    }
+    out
+}
+
+/// The share, in percent, of `jumps` that `pick` holds for.
+fn share(jumps: &[&JumpSeen], pick: impl Fn(&JumpSeen) -> bool) -> u32 {
+    (jumps.iter().filter(|j| pick(j)).count() * 100 / jumps.len().max(1)) as u32
+}
+
+#[test]
+fn an_opponent_who_always_jumps_its_projectile_is_watched_for_and_seen_sooner() {
+    // SC9 (`#201`): the same 60 fights against a Player 1 who jumps every
+    // projectile the CPU throws, once with its habit memory and once with
+    // the memory wiped every frame (the CPU as at the start of the match).
+    // His jumps over its projectile, from his third on (two sightings make
+    // a habit): the CPU with its memory watches for the jump, so sees it at
+    // its focused delay, not the slower one. Jumps the projectile hits are
+    // left out.
+    //
+    // Not shown: that he is anti-aired more often. Its anti-airs entered
+    // and landed are printed; with the memory they land on fewer of these
+    // jumps (about 17% against 21%, 2026-11-20). A jump begun on the
+    // Hadoken's start-up lands as Ryu's SF6 Hadoken's recovery (about 48
+    // frames) ends, so few can be met; the open question is the
+    // maintainer's.
+    let idle: Vec<u32> = (0..60).map(|k| k * 53).collect();
+    let mut runs = [Vec::new(), Vec::new()];
+    for (k, forget) in [false, true].into_iter().enumerate() {
+        for mut m in starts_from(true, 4, &idle) {
+            runs[k].extend(jumps_over_shots(&mut m, 12_000, forget));
+        }
+    }
+    if !roms_present() {
+        return;
+    }
+    let pick = |run: &[JumpSeen], from: u32, to: u32| -> Vec<JumpSeen> {
+        run.iter().filter(|j| !j.shot_hit && (from..=to).contains(&j.over)).cloned().collect()
+    };
+    let (kept, wiped, first) = (pick(&runs[0], 3, u32::MAX), pick(&runs[1], 3, u32::MAX), pick(&runs[0], 1, 1));
+    let (kept, wiped, first): (Vec<&JumpSeen>, Vec<&JumpSeen>, Vec<&JumpSeen>) = (kept.iter().collect(), wiped.iter().collect(), first.iter().collect());
+    for (name, jumps) in [("with its memory, jump 3 on", &kept), ("memory wiped, jump 3 on", &wiped), ("with its memory, first jump", &first)] {
+        eprintln!(
+            "{name}: {} jumps over its projectile, seen at the focused delay {}%, anti-air entered {}%, anti-aired {}%",
+            jumps.len(),
+            share(jumps, |j| j.seen_soon),
+            share(jumps, |j| j.anti_air),
+            share(jumps, |j| j.struck)
+        );
+    }
+    assert!(kept.len() >= 200 && wiped.len() >= 200 && first.len() >= 10, "jumps: {} {} {}", kept.len(), wiped.len(), first.len());
+    // Sooner: watched for, seen at the focused delay.
+    assert!(share(&kept, |j| j.seen_soon) >= 70, "seen soon with its memory");
+    assert!(share(&wiped, |j| j.seen_soon) <= 10, "seen soon with its memory wiped");
+    assert!(share(&first, |j| j.seen_soon) <= 40, "seen soon at the first jump of the match");
+}
+
+/// Player 1 guards low and walks in when far; `techs` presses away and
+/// heavy punch while he is grabbed. The throws that connected on him.
+fn thrown(m: &mut PowerOnMachine, frames: u32, techs: bool, forget: bool) -> u32 {
+    let mut grabs = 0;
+    let mut was_throwing = false;
+    for _ in 0..frames {
+        let v = seen(m);
+        let grabbed = v.foe.move_id == sf_engine::combo::throw::THROWN_MOVE;
+        let pad = if grabbed && techs { (away(&v), HP) } else if gap(&v) > 90 { (toward(&v), 0) } else { (D | away(&v), 0) };
+        if forget {
+            m.forget_fair_cpu_habits();
+        }
+        step(m, pad.0, pad.1);
+        let v = seen(m);
+        let throwing = v.me.move_id == sf_engine::combo::throw::THROW_MOVE && v.foe.move_id == sf_engine::combo::throw::THROWN_MOVE;
+        grabs += u32::from(throwing && !was_throwing);
+        was_throwing = throwing;
+    }
+    grabs
+}
+
+#[test]
+fn an_opponent_who_never_techs_is_thrown_more() {
+    // SC9 (`#201`): Player 1 guards low and never techs. The CPU with its
+    // habit memory throws him far more than the same CPU with the memory
+    // wiped every frame, which meets each grab as at the start of the match.
+    let count = |techs: bool, forget: bool| starts_from(true, 4, &HOVER_STARTS).iter().map(|m| thrown(&mut m.clone(), 12_000, techs, forget)).sum::<u32>();
+    if !roms_present() {
+        return;
+    }
+    let (kept, wiped) = (count(false, false), count(false, true));
+    eprintln!("throws on an opponent who never techs: {kept} with its memory, {wiped} with it wiped");
+    // What it noted of his grabs: against him, never a tech; against a
+    // Player 1 who techs each one, mostly techs.
+    use sf_engine::fair_cpu::{GrabAnswer, Spot};
+    for techs in [false, true] {
+        let mut m = machine(true).unwrap();
+        thrown(&mut m, 12_000, techs, false);
+        let habits = m.fair_cpu_habits().unwrap();
+        let (answer, floor) = if techs { (GrabAnswer::Teched, 60) } else { (GrabAnswer::NotTeched, 90) };
+        eprintln!("techs {techs}: grabs noted {:?}", habits.weight(Spot::Grabbed));
+        assert!(habits.weight(Spot::Grabbed) >= 100, "grabs noted: {habits:?}");
+        assert!(habits.share(Spot::Grabbed, answer as usize) >= floor, "techs {techs}: {habits:?}");
+    }
+    assert!(kept >= 200, "throws with its memory: {kept}");
+    assert!(2 * kept >= 3 * wiped, "with its memory {kept}, wiped {wiped}");
+}
+
+#[test]
+fn the_habit_memory_survives_a_snapshot_and_restore_within_a_match() {
+    let Some(mut m) = machine(true) else { return };
+    jumps_over_shots(&mut m, 3_000, false);
+    let noted = m.fair_cpu_habits().unwrap();
+    assert!(noted.sightings() >= 5, "habits noted before the snapshot: {noted:?}");
+    let snap = m.save_snapshot();
+    let run = |m: &mut PowerOnMachine| {
+        let mut record = Vec::new();
+        for f in 0..1_500u32 {
+            let v = seen(m);
+            let pad = if f % 120 < 3 { (U | toward(&v), 0) } else if gap(&v) < 80 { (D | away(&v), 0) } else { (toward(&v), 0) };
+            step(m, pad.0, pad.1);
+            record.push((cpu_pad(m), m.fair_cpu_habits().unwrap()));
+        }
+        record
+    };
+    let straight = run(&mut m);
+    let mut other = m.clone();
+    jumps_over_shots(&mut other, 600, false);
+    other.restore_snapshot(&snap);
+    assert_eq!(other.fair_cpu_habits(), Some(noted), "restored as saved");
+    let replayed = run(&mut other);
+    assert!(straight == replayed, "the same play and the same notes after the restore");
+    assert!(straight.last().unwrap().1.sightings() > noted.sightings(), "it went on noting");
+}
+
+#[test]
+fn a_versus_match_starts_with_nothing_noted_and_keeps_its_notes_into_the_next_round() {
+    // SC9 (`#201`): a Versus match of the Fair CPU against a Player 1 who
+    // guards low and walks in: the memory is empty as the first round
+    // begins, never loses a note while the match goes on, and holds what it
+    // noted as the second round begins.
+    use sf_engine::data_bank::DataBank;
+    use sf_engine::front::cabinet::Players;
+    use sf_engine::front::fight::{Fight, FightKind, FightSetup};
+    use sf_engine::roster::PlayMode;
+    if !roms_present() {
+        return;
+    }
+    let assets = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+    let mut config = MatchConfig::definitive();
+    config.roster.mode = PlayMode::Versus;
+    config.roster.p1 = TournamentFighter::Ryu;
+    config.roster.p2 = TournamentFighter::Ryu;
+    config.p2_fair_cpu = true;
+    config.stronger_cpu = true;
+    config.difficulty = 4;
+    let setup = FightSetup {
+        kind: FightKind::Local,
+        players: Players::Two,
+        config,
+        dsw1: FightDips::DSW1,
+        dsw2: FightDips { difficulty: 4, round_time: 100 }.dsw2(),
+    };
+    let fight = Fight::start_banked(&assets.maincpu, setup, Some(0), None, Some(std::sync::Arc::new(DataBank::build(&assets.maincpu, &[]))))
+        .expect("a Versus fight starts");
+    let mut m = fight.machine().clone();
+    let (mut round, mut was_fighting, mut most) = (0u32, false, 0u16);
+    let mut at_start = Vec::new();
+    for _ in 0..30_000 {
+        let v = seen(&m);
+        let pad = if gap(&v) > 90 { (toward(&v), 0) } else { (D | away(&v), 0) };
+        step(&mut m, pad.0, pad.1);
+        let fighting = seen(&m).fighting;
+        let noted = m.fair_cpu_habits().map_or(0, |h| h.sightings());
+        if fighting && !was_fighting {
+            round += 1;
+            at_start.push(noted);
+        }
+        was_fighting = fighting;
+        if round > 2 {
+            break;
+        }
+        assert!(noted >= most, "a note lost in round {round}: {noted} after {most}");
+        most = noted;
+    }
+    assert!(at_start.len() >= 2, "two rounds fought: {at_start:?}");
+    assert_eq!(at_start[0], 0, "nothing noted as the match begins");
+    assert!(at_start[1] > 0, "the first round's notes kept into the second: {at_start:?}");
 }

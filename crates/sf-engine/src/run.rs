@@ -1857,6 +1857,8 @@ impl PowerOnMachine {
         // The two fighting players' structs (as the three-rounds rule reads
         // them) and the rounds each has won, at `+8`.
         context.round_decides_match = self.round_decides_match();
+        // The round of the match: its first is a new match (SC9, `#201`).
+        context.round = self.program.work[(crate::tasks::ROUND_NO - crate::fighter::WORK_BASE) as usize];
         // Who it faces, so it takes no route recorded failing on him (SC13).
         if era_side < 2 {
             let foe = &self.dramatic_era_fighters()[1 - era_side];
@@ -2082,6 +2084,20 @@ impl PowerOnMachine {
     /// The step of that route Player 2's Fair CPU's next pad belongs to.
     pub fn fair_cpu_route_step(&self) -> Option<usize> {
         self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_step)
+    }
+
+    /// What Player 2's Fair CPU's habit memory holds (SC9, `#201`).
+    pub fn fair_cpu_habits(&self) -> Option<crate::fair_cpu::Habits> {
+        self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::habits)
+    }
+
+    /// Wipe Player 2's Fair CPU's habit memory, as a match's start leaves
+    /// it (SC9, `#201`): for tests that compare the CPU with what it has
+    /// noted against the same CPU knowing nothing of its opponent.
+    pub fn forget_fair_cpu_habits(&mut self) {
+        if let Some(cpu) = self.fair_cpu.as_mut() {
+            cpu.forget_habits();
+        }
     }
 
     /// Whether Player 2's Fair CPU is in the middle of a game plan.

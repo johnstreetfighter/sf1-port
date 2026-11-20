@@ -64,9 +64,11 @@
 mod era;
 mod focus;
 mod game;
+mod habit;
 pub(crate) use era::EraControl;
 pub use focus::Focus;
 pub use game::{Judged, Situation};
+pub use habit::{GrabAnswer, GuardAnswer, Habits, JumpFrom, RiseAnswer, ShotAnswer, Spot};
 use era::Tactics;
 
 use crate::config::{CoreToggles, RulesetPreset};
@@ -280,10 +282,10 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v6", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v7", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
     forced_stronger, judge, judged, game, route, recent_routes, route_outcome, route_drops, route_check,
-    focus, action_frame, last_view,
+    focus, action_frame, last_view, habits, plan_worked, last_plan, route_landed, out_of_fight, jump_began, jump_met,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -711,6 +713,9 @@ pub struct Context {
     /// The opponent's fighter and style, where an era style is in force: a
     /// route the book records failing on him is not taken (SC13, `#205`).
     pub(crate) foe: Option<(TournamentFighter, (crate::era::Revision, crate::era::Loadout))>,
+    /// The round of the match being fought, from 0 (`ROUND_NO`): the first
+    /// round's start is a new match, where the habit memory starts empty.
+    pub(crate) round: u8,
 }
 
 impl Context {
@@ -731,6 +736,7 @@ impl Context {
             round_decides_match: false,
             foe_max_sub_hp: crate::era_fight::FULL_SUB_HP,
             foe: None,
+            round: 0,
         }
     }
 
@@ -969,6 +975,22 @@ impl Rng {
 /// played with his own reach.
 const DEFAULT_REACH: [[i16; 6]; 2] = [[50, 62, 66, 52, 58, 66], [58, 58, 58, 52, 52, 56]];
 
+/// Steps with no round fought that part two fights: the shortest break
+/// between rounds (the knockout, the call, the walk-in) is longer, and a
+/// moment a fighter is not drawn, or a frame missing from its view, in a
+/// first round is far shorter, so it does not wipe the memory mid-match.
+const BETWEEN_FIGHTS: u16 = 90;
+
+/// Frames, and pixels over them, the opponent's drift is judged by: his
+/// drawing's centre shifts a few pixels as his pose changes.
+const DRIFT_FRAMES: u32 = 4;
+const DRIFT: i16 = 6;
+
+/// The most view frames into a jump it was too busy to answer as it began
+/// that an expected jump is still answered: later, an anti-air would come
+/// out after he lands.
+const MISSED_JUMP: u32 = 36;
+
 /// A projectile seen to go at least this far (pixels from the thrower) is
 /// thrown from across the screen; a shorter one is kept for close range.
 const LONG_SHOT: i16 = 160;
@@ -1038,6 +1060,25 @@ pub struct FairCpu {
     focus: Focus,
     action_frame: u32,
     last_view: Percept,
+    /// The habit memory (SC9, `#201`): what it has noted of the opponent
+    /// this match.
+    habits: Habits,
+    /// How many times in a row each game plan of its table has worked (seen
+    /// to hit) this match, the plan taken last (its index plus one; 0 for
+    /// none), and which of its book's routes landed whole the last time
+    /// they were taken (a bit each): Very Difficult and Difficult repeat
+    /// what keeps working, Normal and Easy put variety first.
+    plan_worked: [u8; game::PLAN_SLOTS],
+    last_plan: u8,
+    route_landed: u32,
+    /// Steps in a row it has been told no round is being fought (to
+    /// `u16::MAX`): a break as long as the one between two fights, before
+    /// a first round, begins a new match.
+    out_of_fight: u16,
+    /// The view frame the opponent's jump in the air was seen to begin on,
+    /// and whether it has been answered (or let go by the level's chance).
+    jump_began: u32,
+    jump_met: bool,
 }
 
 /// What the Fair CPU watches for, and the frame its last view of the
@@ -1093,6 +1134,13 @@ impl Default for FairCpu {
             focus: Focus::default(),
             action_frame: 0,
             last_view: Percept::default(),
+            habits: Habits::default(),
+            plan_worked: [0; game::PLAN_SLOTS],
+            last_plan: 0,
+            route_landed: 0,
+            out_of_fight: u16::MAX,
+            jump_began: 0,
+            jump_met: false,
         }
     }
 }
@@ -1134,6 +1182,35 @@ impl FairCpu {
     /// actions came from.
     pub fn attention(&self) -> Attention {
         Attention { focus: self.focus, action_frame: self.action_frame }
+    }
+
+    /// What its habit memory holds (SC9, `#201`).
+    pub fn habits(&self) -> Habits {
+        self.habits
+    }
+
+    /// Forget what the habit memory holds, as at a match's start.
+    pub fn forget_habits(&mut self) {
+        self.habits = Habits::default();
+    }
+
+    /// Forget this match: the habit memory, and what has worked.
+    fn new_match(&mut self) {
+        self.habits = Habits::default();
+        self.plan_worked = [0; game::PLAN_SLOTS];
+        self.last_plan = 0;
+        self.route_landed = 0;
+    }
+
+    /// End the game plan being followed, keeping what came of it: whether
+    /// it worked, and that it was the last taken.
+    fn end_game_plan(&mut self) {
+        if let Some(run) = self.game.take() {
+            if let Some(worked) = self.plan_worked.get_mut(usize::from(run.plan)) {
+                *worked = if run.hit { worked.saturating_add(1).min(game::WORKED_KEPT) } else { 0 };
+            }
+            self.last_plan = run.plan + 1;
+        }
     }
 
     /// Whether it is in the middle of a game plan.
@@ -1221,12 +1298,19 @@ impl FairCpu {
             self.focus = Focus::default();
             self.action_frame = 0;
             self.last_view = Percept::default();
+            self.new_match();
         }
         let stronger = self.stronger(ctx);
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.shown(f, step, ctx.level, stronger));
         let pad = match view {
             Some((view, action_frame)) if in_fight && view.fighting => {
+                // The first round's start is a new match, in every mode:
+                // nothing of the last is remembered (SC9, `#201`).
+                if self.out_of_fight >= BETWEEN_FIGHTS && ctx.round == 0 {
+                    self.new_match();
+                }
+                self.out_of_fight = 0;
                 let before = if stronger && self.last_view.frame == view.frame - 1 && self.last_view.frame != 0 {
                     Some(self.last_view)
                 } else {
@@ -1237,6 +1321,7 @@ impl FairCpu {
                 self.last_view = view;
                 let pad = self.decide(step, view, before, ctx);
                 if stronger {
+                    let watched = self.focus;
                     // Over a knocked-down opponent it watches his wake-up,
                     // whatever step it is on (walking in or timing an attack).
                     self.focus = if self.judged.situation == Situation::OpponentKnockedDown {
@@ -1251,12 +1336,24 @@ impl FairCpu {
                             })
                             .map_or_else(|| focus::situation_focus(self.judged.situation), focus::step_focus)
                     };
+                    // A jump its memory expects is what it watches for.
+                    if let Some(focus) = self.habits.focus(view.frame, self.judged.situation, view.gap(), ctx.level) {
+                        self.focus = focus;
+                    }
+                    // A jump it was watching for and has seen stays watched
+                    // until he lands: switching away would hide it again
+                    // until it is the slower delay old, and an anti-air
+                    // waiting for it would let it go (SC9, `#201`).
+                    if watched == Focus::Jump && view.foe.jumping() {
+                        self.focus = Focus::Jump;
+                    }
                 }
                 pad
             }
             _ => {
                 self.plan = Plan::default();
-                self.game = None;
+                // What came of the round's last plan is kept.
+                self.end_game_plan();
                 self.route = None;
                 self.route_outcome = None;
                 self.judge = game::Judge::default();
@@ -1264,6 +1361,7 @@ impl FairCpu {
                 self.focus = Focus::default();
                 self.action_frame = 0;
                 self.last_view = Percept::default();
+                self.out_of_fight = self.out_of_fight.saturating_add(1);
                 0
             }
         };
@@ -1367,10 +1465,28 @@ impl FairCpu {
         // Whether its pads come from a game plan, before being hit ends it.
         let in_plan = self.game.is_some();
         if stronger {
+            let was_blocked = self.judged.situation == Situation::ItWasBlocked;
             self.judged = self.judge.judge(view, before, self.longest_reach());
+            if let Some(before) = before {
+                let blocked = !was_blocked && self.judged.situation == Situation::ItWasBlocked;
+                let shots = [ctx.kit.projectile, ctx.kit.projectile_alt].map(|entry| entry.map(|entry| entry.produces));
+                self.habits.watch(&view, &before, &shots, blocked);
+                if !view.foe.jumping() {
+                    self.jump_met = false;
+                } else if !before.foe.jumping() {
+                    // The jump's first frame among those it has now been
+                    // shown: a jump outside its focus shows late, with its
+                    // first frames behind it.
+                    let mut began = view.frame;
+                    while view.frame - began < RING as u32 - 2 && self.seen(began - 1).is_some_and(|was| was.foe.jumping()) {
+                        began -= 1;
+                    }
+                    self.jump_began = began;
+                }
+            }
             if view.me.reacting() {
                 // Being hit ends whatever it was following.
-                self.game = None;
+                self.end_game_plan();
             }
         }
         if view.me.reacting() {
@@ -1384,6 +1500,10 @@ impl FairCpu {
                 // never hit dropped nothing.
                 if let Some(drops) = self.route_drops.get_mut(usize::from(index)).filter(|_| hit) {
                     *drops = if view.foe.reacting() { drops.saturating_sub(1) } else { drops.saturating_add(1).min(game::DROPS_KEPT) };
+                }
+                if hit && usize::from(index) < 32 {
+                    let bit = 1u32 << index;
+                    self.route_landed = if view.foe.reacting() { self.route_landed | bit } else { self.route_landed & !bit };
                 }
                 self.route_check = None;
             } else {
@@ -1414,14 +1534,14 @@ impl FairCpu {
                     plan.answer = true;
                 }
                 self.plan = plan;
-                self.game = None;
+                self.end_game_plan();
                 answered = true;
             } else if interruptible {
                 let answer = self.react(step, view, before, ctx).filter(|plan| !(baiting && matches!(plan.kind, PlanKind::Guard { .. })));
                 if let Some(plan) = answer {
                     // A threat it answers ends the game plan it was following.
                     self.plan = plan;
-                    self.game = None;
+                    self.end_game_plan();
                     answered = true;
                 }
             }
@@ -1431,7 +1551,7 @@ impl FairCpu {
             let foe_started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
             if stronger && !answered && (in_plan || self.game.is_some()) && self.plan.press_to_come() && foe_started {
                 self.plan = Plan::guard(view.foe.low_attack(), 0);
-                self.game = None;
+                self.end_game_plan();
             }
         }
         if self.route.is_some() {
@@ -1539,7 +1659,11 @@ impl FairCpu {
         for (index, route) in book.routes.iter().enumerate() {
             let drops = self.route_drops.get(index).copied().unwrap_or(0);
             if moment.allows(route) && drops < game::DROPS_KEPT {
-                let recent = self.recent_routes.contains(&(index as u8 + 1));
+                // A route taken lately is passed over for variety, unless
+                // it landed whole last time at a level that repeats what
+                // keeps working.
+                let landed = index < 32 && self.route_landed & (1 << index) != 0;
+                let recent = self.recent_routes.contains(&(index as u8 + 1)) && !(landed && game::leans_on_what_works(ctx.level));
                 // A route it has seen drop in this fight scores lower.
                 let dropped = i32::from(drops) * game::DROP_COST;
                 options.push((index, moment.score(route, recent) - dropped + self.rng.below(12) as i32));
@@ -1602,7 +1726,16 @@ impl FairCpu {
             {
                 // A cornered opponent is pressed harder.
                 let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
-                let score = plan.score + corner + self.rng.below(12) as i32;
+                // What its memory of him says, and what has worked.
+                let habit = self.habits.plan_bonus(plan.lean, ctx.level);
+                if plan.score + habit <= 0 {
+                    // A plan taken only for a habit he has not shown is not
+                    // weighed at all (nor draws on its random numbers).
+                    continue;
+                }
+                let worked = self.plan_worked.get(index).copied().unwrap_or(0);
+                let repeat = game::repeat_score(ctx.level, worked, usize::from(self.last_plan) == index + 1);
+                let score = plan.score + corner + habit + repeat + self.rng.below(12) as i32;
                 if best.is_none_or(|(_, top)| score > top) {
                     best = Some((index as u8, score));
                 }
@@ -1612,7 +1745,7 @@ impl FairCpu {
         if !self.rng.chance(ctx.level.quality()) {
             return false;
         }
-        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step });
+        self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step, hit: false });
         true
     }
 
@@ -1626,7 +1759,7 @@ impl FairCpu {
         let mut run = self.game?;
         if step.saturating_sub(run.began) > game::PLAN_FRAMES {
             // Something kept it from finishing: let go of the plan.
-            self.game = None;
+            self.end_game_plan();
             return None;
         }
         let table = game::plans(ctx.kit.fighter, ctx.family);
@@ -1858,6 +1991,7 @@ impl FairCpu {
                 }
                 (_, true) => Outcome::Nothing,
             };
+            run.hit |= outcome == Outcome::Hit;
             match at.next(outcome) {
                 Some(next) => {
                     run.step = next;
@@ -1866,7 +2000,8 @@ impl FairCpu {
                 None => break,
             }
         }
-        self.game = None;
+        self.game = Some(run);
+        self.end_game_plan();
         None
     }
 
@@ -1903,6 +2038,22 @@ impl FairCpu {
             && !view.foe.jumping()
             && !view.shot_coming()
             && self.felt(step, view).foe_gap() > self.judge.foe_edge()
+    }
+
+    /// How far the opponent has moved away from the CPU's fighter in the
+    /// air, over at most the last [`DRIFT_FRAMES`] frames up to `view`
+    /// (toward it, negative): his steps before leaving the ground are not
+    /// his jump's way.
+    fn foe_drift(&self, view: Percept) -> i16 {
+        let airborne = |p: &Percept| matches!(p.foe.move_id, 0xa | 0xb);
+        let mut from = view;
+        for back in 1..=DRIFT_FRAMES {
+            match self.seen(view.frame.saturating_sub(back)).filter(airborne) {
+                Some(was) => from = was,
+                None => break,
+            }
+        }
+        (view.foe.x - from.foe.x) * view.toward()
     }
 
     /// The opponent has stood in one place over the last few frames `view`
@@ -2019,8 +2170,10 @@ impl FairCpu {
         if let PlanKind::Await { choice, wait } = self.plan.kind {
             // The stronger play lets a jump it sees carry him away go by
             // (SC8, `#200`): there is nothing there to meet.
-            let away = self.stronger(ctx)
-                && self.seen(view.frame - 1).is_some_and(|was| (view.foe.x - was.foe.x) * view.toward() > 0);
+            // Judged once he is off the ground and over a few frames (SC9,
+            // `#201`): in the pre-jump crouch his walk's last steps can
+            // still show, and his drawing's centre shifts as his pose does.
+            let away = self.stronger(ctx) && matches!(view.foe.move_id, 0xa | 0xb) && self.foe_drift(view) > DRIFT;
             if !view.foe.jumping() || away {
                 self.plan = Plan::default();
                 return 0;
@@ -2029,7 +2182,11 @@ impl FairCpu {
                 self.plan.kind = PlanKind::Await { choice, wait: wait - 1 };
                 return 0;
             }
-            self.plan = self.plan_for(choice, step, view, ctx, true);
+            // The stronger play enters it facing the way it feels its own
+            // fighter face now: a jump that carries him over it has turned
+            // it since the frame it decides from (SC9, `#201`).
+            let facing = if self.stronger(ctx) { self.felt(step, view) } else { view };
+            self.plan = self.plan_for(choice, step, facing, ctx, true);
         }
         if let PlanKind::Guard { low, min, clear, held } = self.plan.kind {
             // The stronger play keeps guarding while an attack is still
@@ -2108,18 +2265,36 @@ impl FairCpu {
         let (foe, was) = (view.foe, before.foe);
         let level = ctx.level;
         let dist = view.dist();
+        // A jump its habit memory expects is met more surely, and one it
+        // was too busy to answer as it began (its plan could not be cut
+        // short) is answered as soon as it can be, while there is still
+        // time to meet it: entered while its fighter recovers, as a player
+        // enters an anti-air to come out on the first free frame (SC9,
+        // `#201`).
+        let stronger = self.stronger(ctx);
+        let expected = if stronger { self.habits.anti_air_bonus(view.frame, view.gap(), level) } else { 0 };
+        let began = matches!(foe.move_id, 9..=0xb) && !was.jumping();
+        let late = view.frame.saturating_sub(self.jump_began);
+        let coming = self.foe_drift(view) < -DRIFT;
+        let missed = expected > 0
+            && !began
+            && !self.jump_met
+            && foe.jumping()
+            && coming
+            && late <= MISSED_JUMP;
         // A jump toward the CPU, from its start (the pre-jump crouch shows).
-        if matches!(foe.move_id, 9..=0xb) && !was.jumping() && dist < 200 {
+        if (began || missed) && dist < 200 {
+            self.jump_met = true;
             if !self.rng.chance(level.guard()) {
                 return None;
             }
             let mut options = vec![(Choice::Guard, 55), (Choice::Retreat, 12)];
             if ctx.kit.anti_air.is_some() {
-                options.push((Choice::Special(Role::AntiAir), 62 * level.specials() / 100));
+                options.push((Choice::Special(Role::AntiAir), 62 * level.specials() / 100 + expected));
             }
             if dist < 130 {
                 // The crouching heavy punch rises sooner than the standing one.
-                options.push((Choice::Normal { crouch: true, button: 2 }, 38));
+                options.push((Choice::Normal { crouch: true, button: 2 }, 38 + expected / 2));
             }
             let choice = self.pick(&mut options, level);
             // An anti-air is timed to meet the jump low, about 32 frames in
@@ -2131,7 +2306,16 @@ impl FairCpu {
                 Choice::Normal { .. } => 7,
                 _ => return Some(self.plan_for(choice, step, view, ctx, true)),
             };
-            let wait = 32u32.saturating_sub(lead + level.reaction()) as u16;
+            // A jump answered late is met that much sooner after it is
+            // chosen.
+            let late = if missed { late } else { 0 };
+            if missed && lead + level.reaction() + late > 32 {
+                // Too late for that answer to meet him before he lands
+                // (a Shoryuken begun then comes out after he is down): it
+                // guards instead.
+                return Some(self.plan_for(Choice::Guard, step, view, ctx, true));
+            }
+            let wait = 32u32.saturating_sub(lead + level.reaction() + late) as u16;
             return Some(Plan { kind: PlanKind::Await { choice, wait }, ..Plan::default() });
         }
         // A projectile thrown.
@@ -2169,7 +2353,6 @@ impl FairCpu {
         // goes too, and under true combos (SP17) the guard is then locked in
         // blockstun, which the CPU cannot see the end of.
         let whiffed = foe.attacking() && !foe.active && was.active && !foe.jumping() && !view.me.guarding() && !before.me.guarding();
-        let stronger = self.stronger(ctx);
         // The stronger play knows a whiff by its attack box never reaching
         // the CPU, so a move it guarded in case can be a whiff too.
         let whiff_seen = stronger
@@ -2332,7 +2515,9 @@ impl FairCpu {
         if ctx.throws && open && view.dist() <= 72 {
             let close = if view.dist() <= 48 { 16 } else { 0 };
             let vs_guard = if view.foe.guarding() { 14 } else { 0 };
-            options.push((Choice::Throw, 44 + close + vs_guard));
+            // More against an opponent its memory says does not tech.
+            let habit = if stronger { self.habits.throw_bonus(level) } else { 0 };
+            options.push((Choice::Throw, 44 + close + vs_guard + habit));
         }
         if ctx.kit.projectile.is_some() && !view.my_shot && open {
             if ctx.kit.projectile_alt.is_some() {
@@ -2774,6 +2959,123 @@ mod tests {
         assert!(!cpu.shot_goes_far());
     }
 
+    /// A CPU playing the stronger game on `cpu`, pressed through frames
+    /// `from..to` of a fight in round `round`, Player 1 standing at 200.
+    fn fight_frames(cpu: &mut FairCpu, c: &mut Context, round: u8, from: u32, to: u32) {
+        c.round = round;
+        for f in from..to {
+            cpu.observe(percept(f, body(200)));
+            cpu.press(f + 1, true, c);
+        }
+    }
+
+    #[test]
+    fn the_habit_memory_starts_empty_every_match_and_lasts_all_its_rounds() {
+        // SC9 (`#201`): a new match is the first round's start, in every
+        // mode (the round number is the machine's, whatever the mode).
+        let mut c = sf6_ctx(Level::VeryHard);
+        let mut cpu = FairCpu::new();
+        let mut at = 1;
+        let fight = |cpu: &mut FairCpu, c: &mut Context, at: &mut u32, round: u8, frames: u32| {
+            fight_frames(cpu, c, round, *at, *at + frames);
+            *at += frames;
+        };
+        let pause = |cpu: &mut FairCpu, c: &Context, at: &mut u32, frames: u32| {
+            for f in *at..*at + frames {
+                cpu.press(f + 1, false, c);
+            }
+            *at += frames;
+        };
+        fight(&mut cpu, &mut c, &mut at, 0, 60);
+        cpu.habits.record(Spot::Grabbed, GrabAnswer::NotTeched as usize);
+        cpu.plan_worked[0] = 2;
+        // A moment with no round fought inside the first round (a fighter
+        // not drawn, a frame missing): nothing is forgotten.
+        pause(&mut cpu, &c, &mut at, 20);
+        fight(&mut cpu, &mut c, &mut at, 0, 60);
+        assert_eq!(cpu.habits().sightings(), 1, "kept through a short break in the first round");
+        // Between rounds, then the second round.
+        pause(&mut cpu, &c, &mut at, BETWEEN_FIGHTS as u32 + 30);
+        fight(&mut cpu, &mut c, &mut at, 1, 60);
+        assert_eq!(cpu.habits().sightings(), 1, "kept into the match's second round");
+        assert_eq!(cpu.plan_worked[0], 2, "what worked is kept into the second round");
+        // Between matches, then the next match's first round.
+        pause(&mut cpu, &c, &mut at, BETWEEN_FIGHTS as u32 + 30);
+        fight(&mut cpu, &mut c, &mut at, 0, 60);
+        assert!(cpu.habits().is_empty(), "the next match's first round starts with nothing noted");
+        assert_eq!(cpu.plan_worked, [0; game::PLAN_SLOTS]);
+        // A new fighter is a new opponent's CPU: nothing is kept.
+        cpu.habits.record(Spot::Grabbed, GrabAnswer::NotTeched as usize);
+        let mut other = sf6_ctx(Level::VeryHard);
+        other.kit.fighter = Some(TournamentFighter::Ken);
+        fight(&mut cpu, &mut other, &mut at, 1, 30);
+        assert!(cpu.habits().is_empty());
+    }
+
+    #[test]
+    fn at_easy_a_full_habit_memory_changes_nothing_it_does() {
+        // Easy notes but never leans on what it notes (SC9, `#201`): the
+        // same fight with a memory full of habits and with an empty one
+        // gives the same pads.
+        let mut c = sf6_ctx(Level::Easy);
+        let mut empty = FairCpu::seeded(7);
+        fight_frames(&mut empty, &mut c, 0, 1, 40);
+        let mut full = empty;
+        for (spot, answer) in [
+            (Spot::AfterShot, ShotAnswer::Jumped as usize),
+            (Spot::Rising, RiseAnswer::Reversal as usize),
+            (Spot::AfterGuard, GuardAnswer::KeptGuarding as usize),
+            (Spot::Grabbed, GrabAnswer::NotTeched as usize),
+            (Spot::JumpIn, JumpFrom::Mid as usize),
+        ] {
+            for _ in 0..6 {
+                full.habits.record(spot, answer);
+            }
+        }
+        let mut pads = [Vec::new(), Vec::new()];
+        for (k, cpu) in [&mut empty, &mut full].into_iter().enumerate() {
+            for f in 40..1_200u32 {
+                // Player 1 walks in, jumps in and swings now and then.
+                let mut foe = body(360 - (f % 300) as i16 / 2);
+                match f % 97 {
+                    0..=2 => foe.move_id = 9,
+                    3..=30 => {
+                        foe.move_id = 0xa;
+                        foe.state = 1;
+                    }
+                    50..=58 => {
+                        foe.move_id = 0x10;
+                        foe.state = 0xc2;
+                    }
+                    _ => {}
+                }
+                cpu.observe(percept(f, foe));
+                pads[k].push(cpu.press(f + 1, true, &c));
+            }
+        }
+        assert_eq!(pads[0], pads[1]);
+        assert!(pads[0].iter().any(|&p| p != 0), "it played");
+    }
+
+    #[test]
+    fn the_canonical_hash_covers_the_habit_memory_and_what_worked() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        let plain = FairCpu::new();
+        let mut changed = [plain; 4];
+        changed[0].habits.record(Spot::Rising, RiseAnswer::Button as usize);
+        changed[1].plan_worked[3] = 1;
+        changed[2].last_plan = 2;
+        changed[3].route_landed = 4;
+        for cpu in &changed {
+            assert_ne!(hash(cpu), hash(&plain));
+        }
+    }
+
     #[test]
     fn nothing_seen_more_recently_than_the_delay_changes_the_pad() {
         // Two CPUs with the same past; one is then shown an attack (or a
@@ -2896,6 +3198,7 @@ mod tests {
     }
 
     /// The same, its own fighter's control as given.
+
     fn sf6_ctx_with(level: Level, control: EraControl) -> Context {
         use crate::era::{GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
         let config = crate::config::MatchConfig::definitive();
