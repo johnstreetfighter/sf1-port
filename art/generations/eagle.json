@@ -765,5 +765,47 @@
       ],
       "note": "touch_ups.py and air.py in the pack's candidates/eagle/air; no generation."
     }
+  ],
+  "adapted": [
+    {
+      "pose": "thrust_chamber",
+      "crc32": "f4b945cf",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Eagle/sff.sff", "group": 410, "image": 0 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his outline #191919 to pen 0 and his hair shade #9c7300 to pen 9 (with that mapping his stance matches the ROM pixel for pixel); every other colour exactly one of his pens",
+        "no hand edits; placed by matching Falchion22's stance (group 0) to his ROM stance pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN1 #260); ADR-0029."
+    },
+    {
+      "pose": "two_stick_thrust",
+      "crc32": "5d244f33",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Eagle/sff.sff", "group": 410, "image": 1 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his outline #191919 to pen 0 and his hair shade #9c7300 to pen 9 (with that mapping his stance matches the ROM pixel for pixel); every other colour exactly one of his pens",
+        "no hand edits; placed by matching Falchion22's stance (group 0) to his ROM stance pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN1 #260); ADR-0029."
+    },
+    {
+      "pose": "dive_chamber",
+      "crc32": "7b9b0b6d",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Eagle/sff.sff", "group": 600, "image": 0 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his outline #191919 to pen 0 and his hair shade #9c7300 to pen 9 (with that mapping his stance matches the ROM pixel for pixel); every other colour exactly one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN1 #260); ADR-0029."
+    },
+    {
+      "pose": "dive_thrust",
+      "crc32": "84f2b68e",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Eagle/sff.sff", "group": 600, "image": 1 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his outline #191919 to pen 0 and his hair shade #9c7300 to pen 9 (with that mapping his stance matches the ROM pixel for pixel); every other colour exactly one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN1 #260); ADR-0029."
+    }
   ]
 }

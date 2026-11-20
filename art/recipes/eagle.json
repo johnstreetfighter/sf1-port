@@ -174,6 +174,30 @@
       "rom": { "code": "0x23a8", "large": true, "rows": 2, "cols": 2 },
       "anchor": [-48, -96],
       "note": "His spinning sticks (stream 0x124d8), turning back toward us."
+    },
+    {
+      "name": "thrust_chamber",
+      "pack": { "crc32": "f4b945cf" },
+      "anchor": [-27, -74],
+      "note": "Adapted from Falchion22's MUGEN Eagle (A-Eagle/sff.sff, group 410, image 0), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's stance (0,0) to his ROM stance pixel for pixel. His outline #191919 is pen 0 and his hair shade #9c7300 pen 9 (with it his stance matches the ROM pixel for pixel)."
+    },
+    {
+      "name": "two_stick_thrust",
+      "pack": { "crc32": "5d244f33" },
+      "anchor": [-25, -66],
+      "note": "Adapted from Falchion22's MUGEN Eagle (A-Eagle/sff.sff, group 410, image 1), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's stance (0,0) to his ROM stance pixel for pixel. His outline #191919 is pen 0 and his hair shade #9c7300 pen 9 (with it his stance matches the ROM pixel for pixel)."
+    },
+    {
+      "name": "dive_chamber",
+      "pack": { "crc32": "7b9b0b6d" },
+      "anchor": [-33, -148],
+      "note": "Adapted from Falchion22's MUGEN Eagle (A-Eagle/sff.sff, group 600, image 0), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His outline #191919 is pen 0 and his hair shade #9c7300 pen 9 (with it his stance matches the ROM pixel for pixel)."
+    },
+    {
+      "name": "dive_thrust",
+      "pack": { "crc32": "84f2b68e" },
+      "anchor": [-28, -140],
+      "note": "Adapted from Falchion22's MUGEN Eagle (A-Eagle/sff.sff, group 600, image 1), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His outline #191919 is pen 0 and his hair shade #9c7300 pen 9 (with it his stance matches the ROM pixel for pixel)."
     }
   ],
   "moves": [
@@ -278,6 +302,18 @@
       "poses": ["jump_squat", "jump_rise", "jump_top", "jump_smash", "jump_rise", "jump_squat", "stance"],
       "timing": [4, 6, 8, 14, 6, 4, 10],
       "note": "Quarter-circle back and kick (AP2's stand-in): his ROM leaping stick strike (stream 0x129bc) as the ROM plays it, a leap from his squat with both sticks driven down at the top; in the catalogue so SF1+ can re-time it and move him through the arc. Nothing new."
+    },
+    {
+      "name": "two-stick thrust",
+      "poses": ["crouch", "thrust_chamber", "two_stick_thrust", "thrust_chamber", "crouch"],
+      "timing": [10, 8, 4, 18, 10],
+      "note": "Command normal, down-forward + HP (CN3 #262): 8 startup, 4 active, 18 recovery. Adapted poses (ADR-0029)."
+    },
+    {
+      "name": "dive thrust",
+      "poses": ["jump_top", "dive_chamber", "dive_thrust", "jump_top"],
+      "timing": [6, 6, 20, 8],
+      "note": "Air command normal, down + HP (CN4 #263): 6 startup, then active until landing. Adapted poses (ADR-0029)."
     }
   ]
 }

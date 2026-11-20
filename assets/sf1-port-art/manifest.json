@@ -113,6 +113,14 @@
       "size": 2050,
       "crc32": "f5d0aba0"
     },
+    "eagle/dive_chamber.png": {
+      "size": 1049,
+      "crc32": "7b9b0b6d"
+    },
+    "eagle/dive_thrust.png": {
+      "size": 1130,
+      "crc32": "84f2b68e"
+    },
     "eagle/jump_high.png": {
       "size": 2245,
       "crc32": "4f108425"
@@ -140,6 +148,14 @@
     "eagle/smash.png": {
       "size": 2090,
       "crc32": "81babe5e"
+    },
+    "eagle/thrust_chamber.png": {
+      "size": 1016,
+      "crc32": "f4b945cf"
+    },
+    "eagle/two_stick_thrust.png": {
+      "size": 1077,
+      "crc32": "5d244f33"
     },
     "geki/crouching_kick.png": {
       "size": 1658,
