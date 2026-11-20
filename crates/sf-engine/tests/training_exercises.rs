@@ -164,9 +164,19 @@ fn real_ryu_trial_progresses_on_contact_and_resets_after_a_missed_cancel() {
     );
 }
 
+/// The Training modes a drill runs in: against the dummy, and against the
+/// CPU with the stronger Fair CPU's switch off and on (SC8, `#200`: the
+/// drills keep the Utility AI's script whatever the switch says).
+const DRILL_FIGHTS: [(sf_engine::front::fight::FightKind, bool); 3] = [
+    (sf_engine::front::fight::FightKind::TrainingDummy, false),
+    (sf_engine::front::fight::FightKind::TrainingCpu, false),
+    (sf_engine::front::fight::FightKind::TrainingCpu, true),
+];
+
 fn drill_fight(
     assets: &sf_video::romset::Assets,
     kind: sf_engine::front::fight::FightKind,
+    stronger: bool,
 ) -> Fight {
     use sf_engine::config::MatchConfig;
     use sf_engine::data_bank::DataBank;
@@ -180,6 +190,7 @@ fn drill_fight(
     config.roster.p1 = TournamentFighter::Ryu;
     config.roster.p2 = TournamentFighter::Ken;
     config.p2_fair_cpu = kind == FightKind::TrainingCpu;
+    config.stronger_cpu = stronger;
     let setup = FightSetup {
         kind,
         config,
@@ -211,12 +222,11 @@ fn drill_fight(
 
 #[test]
 fn real_throw_tech_drill_reaches_five_in_both_training_modes_and_coaches_a_miss() {
-    use sf_engine::front::fight::FightKind;
     use sf_video::callouts::{CalloutKind, Side};
     let Some(session) = training() else { return };
     let assets = session.assets();
-    for kind in [FightKind::TrainingDummy, FightKind::TrainingCpu] {
-        let mut fight = drill_fight(assets, kind);
+    for (kind, stronger) in DRILL_FIGHTS {
+        let mut fight = drill_fight(assets, kind, stronger);
         fight.set_drill(Some(Drill::ThrowTech));
         let mut missed = fight.clone();
         let mut feedback = false;
@@ -264,12 +274,11 @@ fn real_throw_tech_drill_reaches_five_in_both_training_modes_and_coaches_a_miss(
 #[test]
 fn native_guard_drill_pressure_reaches_the_player_in_both_training_modes() {
     use sf_engine::fighter::P1_STRUCT;
-    use sf_engine::front::fight::FightKind;
     use sf_video::callouts::{CalloutKind, Side};
     let Some(session) = training() else { return };
     let assets = session.assets();
-    for kind in [FightKind::TrainingDummy, FightKind::TrainingCpu] {
-        let mut fight = drill_fight(assets, kind);
+    for (kind, stronger) in DRILL_FIGHTS {
+        let mut fight = drill_fight(assets, kind, stronger);
         fight.set_drill(Some(Drill::Survival));
         let mut missed = fight.clone();
         let mut feedback = false;
@@ -330,12 +339,11 @@ fn native_guard_drill_pressure_reaches_the_player_in_both_training_modes() {
 #[test]
 fn native_anti_air_drill_checks_hits_in_the_air_in_both_training_modes() {
     use sf_engine::fighter::{P1_STRUCT, P2_STRUCT};
-    use sf_engine::front::fight::FightKind;
     use sf_video::callouts::{CalloutKind, Side};
     let Some(session) = training() else { return };
     let assets = session.assets();
-    for kind in [FightKind::TrainingDummy, FightKind::TrainingCpu] {
-        let mut fight = drill_fight(assets, kind);
+    for (kind, stronger) in DRILL_FIGHTS {
+        let mut fight = drill_fight(assets, kind, stronger);
         fight.set_drill(Some(Drill::AntiAir));
         let mut missed = fight.clone();
         let mut feedback = false;
@@ -401,11 +409,10 @@ fn native_anti_air_drill_checks_hits_in_the_air_in_both_training_modes() {
 #[test]
 fn native_whiff_punish_drill_checks_real_recovery_in_both_training_modes() {
     use sf_engine::fighter::P1_STRUCT;
-    use sf_engine::front::fight::FightKind;
     let Some(session) = training() else { return };
     let assets = session.assets();
-    for kind in [FightKind::TrainingDummy, FightKind::TrainingCpu] {
-        let mut fight = drill_fight(assets, kind);
+    for (kind, stronger) in DRILL_FIGHTS {
+        let mut fight = drill_fight(assets, kind, stronger);
         fight.set_drill(Some(Drill::WhiffPunish));
         let mut missed = fight.clone();
         let mut feedback = false;

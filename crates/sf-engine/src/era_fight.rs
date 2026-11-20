@@ -588,6 +588,11 @@ impl EraFighterState {
         self.dizzy_frames != 0
     }
 
+    /// The most Super meter its gauge holds.
+    pub(crate) fn super_capacity(&self) -> u8 {
+        self.super_capacity
+    }
+
     fn kessen_ration(&self) -> Option<crate::era::KessenRation> {
         self.kessen.and_then(|kessen| kessen.loadout.kessen_ration())
     }
@@ -910,7 +915,7 @@ impl EraFighterState {
             && self.style.loadout == Loadout::Standard
     }
 
-    fn set_gauge_mode(&mut self, mode: GaugeMode) {
+    pub(crate) fn set_gauge_mode(&mut self, mode: GaugeMode) {
         self.unified_gauge = mode == GaugeMode::Unified;
         self.sf3_set_gauge_mode(mode);
         self.sf5.configure(self.style, self.fighter, mode);
