@@ -311,6 +311,9 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
                 "SPECIALS",
                 "MANCHESTER BLACK ↓↘→ [P]",
                 "ST. ANDREW'S GREEN ↓↙← [K]",
+                // Spec #259: his two-stick thrust, a command normal.
+                "COMMAND NORMALS",
+                "TWO-STICK THRUST ↘ [HP]",
             ]
             .map(String::from),
         );

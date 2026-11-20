@@ -344,6 +344,36 @@ fn eagle_x_ism_keeps_manchester_gold_and_hides_a_ism_exclusives() {
     }
 }
 
+/// Eagle's canon SFZ3 kit keeps Capcom's moves: down-forward + HP is not
+/// SF1+'s two-stick thrust (spec #259), whose chamber tiles never show.
+#[test]
+fn eagle_sfz3_down_forward_heavy_punch_is_not_the_two_stick_thrust() {
+    use sf_engine::data_bank::command_normals::CommandNormal;
+    let Some((mut fight, assets)) = bout(Eagle, Revision::Sfz3, Loadout::AIsm) else {
+        return;
+    };
+    let bank = fight.machine().data_bank().expect("a bank");
+    let header = bank
+        .command_normal_header(CommandNormal::EagleTwoStickThrust)
+        .expect("the thrust is authored in his slot");
+    let chamber = u16::from_be_bytes([bank.rb(header), bank.rb(header + 1)]);
+    for _ in 0..4 {
+        step(&mut fight, &assets, pad(DOWN | RIGHT, None));
+    }
+    let mut attacked = false;
+    for frame in 0..40 {
+        let button = (frame < 2).then_some(HP);
+        step(&mut fight, &assets, pad(DOWN | RIGHT, button));
+        let read = fight.machine().diagnostic_telemetry().p1;
+        let ram = &fight.machine().state.objectram;
+        let e = usize::from(read.entity_offset);
+        let code = u16::from_be_bytes([ram[e], ram[e + 1]]);
+        assert_ne!(code, chamber, "frame {frame}: the thrust's chamber in his SFZ3 kit");
+        attacked |= fight.fight_read().fighters[0].attacking();
+    }
+    assert!(attacked, "down-forward + HP made an attack");
+}
+
 #[test]
 fn canterbury_blue_waits_for_punch_release() {
     let Some((mut fight, assets)) = bout(Eagle, Revision::Sfz3, Loadout::AIsm) else {

@@ -144,6 +144,8 @@ pub enum ButtonClass {
     LightPair,
     MediumPunch,
     MediumKick,
+    /// Heavy punch alone: a command normal that only HP starts.
+    HeavyPunch,
     DirectionOnly,
 }
 
@@ -175,6 +177,7 @@ impl ButtonClass {
             Self::LightPair => "LP+LK",
             Self::MediumPunch => "MP",
             Self::MediumKick => "MK",
+            Self::HeavyPunch => "HP",
             Self::DirectionOnly => "",
         }
     }
@@ -226,6 +229,7 @@ impl ButtonClass {
             Self::LightPair => 0b001001,
             Self::MediumPunch => 0b000010,
             Self::MediumKick => 0b010000,
+            Self::HeavyPunch => 0b000100,
             _ => 0,
         }
     }
@@ -761,6 +765,9 @@ pub enum Recognizer {
     AlphaMove,
     /// An era-family command tracked outside native work RAM.
     FamilyMove,
+    /// A command normal: the stick held with its button as it is pressed,
+    /// read by the 1987 dispatch, with no tracker (spec #259).
+    CommandNormal,
 }
 
 impl Recognizer {
@@ -776,7 +783,11 @@ impl Recognizer {
                     done: work[at + 2] != 0,
                 }
             }
-            Recognizer::EraMotion { .. } | Recognizer::AlphaCounter | Recognizer::AlphaMove | Recognizer::FamilyMove => RecognizerState::default(),
+            Recognizer::EraMotion { .. }
+            | Recognizer::AlphaCounter
+            | Recognizer::AlphaMove
+            | Recognizer::FamilyMove
+            | Recognizer::CommandNormal => RecognizerState::default(),
         }
     }
 
@@ -992,7 +1003,9 @@ impl MoveEntry {
             Recognizer::AlphaCounter => era.alpha_counter_progress(),
             Recognizer::AlphaMove => era.alpha_move_progress(self.produces),
             Recognizer::FamilyMove => era.family_move_progress(self.produces),
-            Recognizer::Tracker(_) => return self.recognizer.view(machine, player_struct, toggles),
+            Recognizer::Tracker(_) | Recognizer::CommandNormal => {
+                return self.recognizer.view(machine, player_struct, toggles)
+            }
         };
         let state = RecognizerState {
             stage,
@@ -1278,6 +1291,20 @@ pub const REGISTRY: &[MoveEntry] = &[
         call_out: "ST. ANDREW'S GREEN!",
         available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
     },
+    // Eagle's two-stick thrust (spec #259, CN3): a command normal, down-forward
+    // and heavy punch, in place of his 1987 low thrust on move 0x1d.
+    MoveEntry {
+        name: "TWO-STICK THRUST",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::DownForward],
+            button: ButtonClass::HeavyPunch,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x1d,
+        call_out: "TWO-STICK THRUST!",
+        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
     // Adon's Rising Jaguar and Jaguar Kick (ticket #258): his 1987 player table
     // puts the Rising Jaguar in the Shoryuken's move on its command, and the
     // Jaguar Kick in the Tatsumaki's on its command.
@@ -1383,6 +1410,11 @@ pub(crate) fn live_move_list(
 
     let mut entries: Vec<_> = move_list(fighter, preset).into_iter()
         .filter(|entry| player_table || !entry.available.player_table).copied().collect();
+    // The bosses' command normals are SF1+'s (spec #259): no other style
+    // lists them yet.
+    if era.fighter == Some(fighter) && era.style.family != crate::era::EraFamily::Sf1Plus {
+        entries.retain(|entry| entry.recognizer != Recognizer::CommandNormal);
+    }
     if era.fighter == Some(fighter) {
         entries.retain(|entry| !era.replaces_special(entry.produces));
         let family_moves = era.family_moves();

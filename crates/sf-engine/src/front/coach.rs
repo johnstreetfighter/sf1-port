@@ -534,8 +534,16 @@ impl Coach {
         // native move transition and the selected button, including moves
         // that start on release rather than while the chord is held.
         let button_only = self.entry.recognizer == Recognizer::FamilyMove && complete == 0;
+        // A command normal has no tracker: it was tried when its button
+        // and its direction were held as the move came out (spec #259). Its
+        // move id can be another button's too (Eagle's `0x1d` is also
+        // down-forward + MP), so the button decides.
+        let command_normal = self.entry.recognizer == Recognizer::CommandNormal;
         let recognized = if direction_only {
             stage >= attempt_stage
+        } else if command_normal {
+            let direction = self.entry.input.motion.first().copied();
+            self.history.iter().rev().take(4).any(|frame| frame.command_held && frame.dir == direction)
         } else if button_only {
             let release_command = self.entry.input.button == ButtonClass::ReleasePair
                 || (self.entry.produces == crate::era_fight::sf4::FOCUS
@@ -548,7 +556,7 @@ impl Coach {
                 || self.last_stage >= attempt_stage
         };
         if came_out && recognized && matches_variant {
-            if (button_only || direction_only) && !self.attempting() {
+            if (button_only || direction_only || command_normal) && !self.attempting() {
                 self.attempts += 1;
             }
             self.attempt = None;

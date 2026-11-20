@@ -149,6 +149,12 @@ impl MovesPanel {
                 lines.extend(section.map(|(i, _)| Line::Move(i)));
             }
         }
+        // Command normals get named rows once a fighter has them (spec #259).
+        let mut normals = entries.iter().enumerate().filter(|(_, e)| e.kind == MoveKind::Normal).peekable();
+        if normals.peek().is_some() {
+            lines.push(Line::Heading(MoveKind::Normal.heading()));
+            lines.extend(normals.map(|(i, _)| Line::Move(i)));
+        }
         lines.push(Line::Heading("NORMALS"));
         lines.push(Line::Normals);
         let cursor = lines.iter().position(|l| matches!(l, Line::Move(_)));
@@ -333,6 +339,13 @@ impl MovesPanel {
             } else {
                 panel.lines.insert(at, Line::CloseThrow("TOMOE NAGE", "MK/HK"));
             }
+            // His command normals go after the throws: take out the rows
+            // `from_entries` gave them before putting them back there.
+            panel.lines.retain(|line| match *line {
+                Line::Heading(h) => h != MoveKind::Normal.heading(),
+                Line::Move(i) => panel.entries[i].kind != MoveKind::Normal,
+                _ => true,
+            });
             let at = panel.lines.len() - 2;
             let command_normals = panel.entries.iter().enumerate()
                 .filter(|(_, entry)| entry.kind == MoveKind::Normal)

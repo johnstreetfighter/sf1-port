@@ -30,6 +30,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use sf_engine::config::{MatchConfig, RulesetPreset};
+use sf_engine::data_bank::command_normals::CommandNormal;
 use sf_engine::data_bank::{
     eagle_manchester_black, eagle_st_andrews_green, in_bank, DataBank, PoseGeom, APEX_POINTER,
     EAGLE_BOXES,
@@ -352,6 +353,11 @@ impl Data<'_> {
     fn move_frames(&self, table: u32, id: u8) -> Vec<bool> {
         let h = sf_engine::data_bank::move_header(|address| self.l(address), table, id).expect("move header");
         assert_eq!(self.b(h + 8), 1, "move {id:#04x} present");
+        self.header_frames(h)
+    }
+
+    /// The active flag on each frame of the move whose header is at `h`.
+    fn header_frames(&self, h: u32) -> Vec<bool> {
         let mut out = Vec::new();
         let ticks = (self.b(h + 0xb) as usize + 1) * (self.b(h + 0xe) as usize + 1);
         out.extend(std::iter::repeat_n(self.b(h + 0xf) & 0x80 != 0, ticks));
@@ -862,6 +868,12 @@ fn every_normal_comes_out_and_its_frames_match_its_data() {
                 };
                 data.jump_frames(EAGLE_TABLE, jump, id >= 0x23, level)
             }
+            // Down-forward + HP is his two-stick thrust (spec #259), a
+            // command normal whose header is out of the table.
+            0x1d if name == "down-forward HP" => data.header_frames(
+                bank.command_normal_header(CommandNormal::EagleTwoStickThrust)
+                    .expect("the two-stick thrust's header"),
+            ),
             _ => data.move_frames(EAGLE_TABLE, id),
         };
         let (su, ac, re) = phases(&measured);
@@ -1151,6 +1163,63 @@ fn geom(l: &Local, name: &str) -> PoseGeom {
     }
 }
 
+/// His two-stick thrust (spec #259, CN3): down-forward + HP only, `8`
+/// frames to start, `4` out, `18` to recover, guarded crouching, and the
+/// move list names it under COMMAND NORMALS.
+#[test]
+fn the_two_stick_thrust_comes_from_down_forward_heavy_punch_and_is_guarded_low() {
+    let Some(l) = local_roms() else { return };
+    let df = |b: usize| -> Vec<FrameInputs> {
+        let mut v = vec![hold(&[DOWN, RIGHT]); 4];
+        v.extend([press(&[DOWN, RIGHT], b), press(&[DOWN, RIGHT], b)]);
+        v
+    };
+    // Its frames, out of reach.
+    let mut s = apart(&l);
+    let t = measure_then(&mut s, &df(2), hold(&[DOWN, RIGHT]), 0x1d);
+    assert_eq!(phases(&t), (8, 4, 18), "startup, active and recovery");
+    // Light and medium stay his 1987 low thrust, which is not those frames.
+    for b in [0, 1] {
+        let id = [0x12, 0x1d][b];
+        let mut s = apart(&l);
+        let t = measure_then(&mut s, &df(b), hold(&[DOWN, RIGHT]), id);
+        assert_ne!(phases(&t), (8, 4, 18), "down-forward {} is not the thrust", ["LP", "MP"][b]);
+    }
+    // In reach, Ken guarding standing takes it; guarding crouching does not.
+    let (moves, before, after) = guard_against_eagle(&close(&l), &df(2), &[RIGHT]);
+    assert!(moves.contains(&0x1d), "the thrust came out: {moves:x?}");
+    assert!(after < before, "a standing guard does not stop it ({before} -> {after})");
+    let (_, before, after) = guard_against_eagle(&close(&l), &df(2), &[DOWN, RIGHT]);
+    assert_eq!(after, before, "a crouching guard stops it");
+    // The move list.
+    let list = move_list(TournamentFighter::Eagle, CLASSIC);
+    let row = list.iter().find(|e| e.name == "TWO-STICK THRUST").expect("listed");
+    assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
+    assert_eq!(row.produces, 0x1d);
+}
+
+/// Eagle (P1) does `inputs` against Ken (P2) holding `guard`: the moves
+/// Eagle showed and Ken's health before and after.
+fn guard_against_eagle(start: &GameSession, inputs: &[FrameInputs], guard: &[usize]) -> (Vec<u8>, u16, u16) {
+    let mut s = start.clone();
+    let before = p2(&s).health;
+    let mut moves = Vec::new();
+    for n in 0..80 {
+        let mine = inputs.get(n).copied().unwrap_or(hold(&[DOWN, RIGHT]));
+        s.step(with(|i| {
+            i.p1 = mine.p1;
+            for &d in guard {
+                i.p2.directions[d] = true;
+            }
+        }));
+        let id = p1(&s).move_id;
+        if !moves.contains(&id) {
+            moves.push(id);
+        }
+    }
+    (moves, before, p2(&s).health)
+}
+
 #[test]
 fn every_box_the_bank_writes_matches_the_drawn_pose() {
     let Some(l) = local_roms() else { return };
@@ -1238,6 +1307,9 @@ fn a_strike_loads_its_own_tiles_and_boxes_new_poses_theirs_and_rom_attacks_the_r
         [vec![hold(dirs); 2], vec![idle(); 6], vec![press(&[], b); 2]].concat()
     };
     let crouching = |b: usize| vec![hold(&[DOWN]), press(&[DOWN], b), press(&[DOWN], b)];
+    let down_forward = |b: usize| {
+        vec![hold(&[DOWN, RIGHT]), press(&[DOWN, RIGHT], b), press(&[DOWN, RIGHT], b)]
+    };
     let standing = |b: usize| vec![press(&[], b), press(&[], b)];
     // (what, inputs, held after, move, the tiles and boxes it strikes with)
     enum Want {
@@ -1321,6 +1393,20 @@ fn a_strike_loads_its_own_tiles_and_boxes_new_poses_theirs_and_rom_attacks_the_r
             crouching(0),
             hold(&[DOWN]),
             0x11,
+            Want::Rom(LOW_THRUST_FRAME),
+        ),
+        (
+            "two-stick thrust (down-forward HP)",
+            down_forward(2),
+            hold(&[DOWN, RIGHT]),
+            0x1d,
+            Want::Pose("two_stick_thrust"),
+        ),
+        (
+            "low thrust (down-forward MP)",
+            down_forward(1),
+            hold(&[DOWN, RIGHT]),
+            0x1d,
             Want::Rom(LOW_THRUST_FRAME),
         ),
         (
@@ -1729,7 +1815,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .collect();
         assert_eq!(
             names,
-            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN"],
+            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO-STICK THRUST"],
             "{preset:?}"
         );
     }
@@ -1759,6 +1845,11 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
         text.iter().any(|line| line.contains("ST. ANDREW'S GREEN")),
         "{text:?}"
     );
+    // The two-stick thrust has a row of its own under COMMAND NORMALS
+    // (spec #259).
+    let heading = text.iter().position(|line| line.contains("COMMAND NORMALS")).expect("the heading");
+    let thrust = text.iter().position(|line| line.contains("TWO-STICK THRUST")).expect("the row");
+    assert!(heading < thrust, "{text:?}");
     for (row, entry) in move_list(TournamentFighter::Eagle, CLASSIC)
         .into_iter()
         .enumerate()

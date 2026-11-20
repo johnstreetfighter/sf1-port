@@ -101,6 +101,7 @@ use crate::era::{EraFamily, Revision};
 use crate::roster::TournamentFighter;
 
 pub(crate) mod arcade_text;
+pub mod command_normals;
 mod st_ryu_air;
 pub(crate) mod st_ken_normals;
 pub(crate) mod st_ryu_normals;
@@ -550,6 +551,11 @@ impl DataBank {
             table_address(TournamentFighter::Ken),
             st_ken_air_normals::header_offset(old, directional, button),
         )
+    }
+
+    /// A boss's command normal's header (spec #259), when his slot holds it.
+    pub fn command_normal_header(&self, normal: command_normals::CommandNormal) -> Option<u32> {
+        self.authored_header(table_address(normal.fighter()), normal.offset())
     }
 
     fn authored_header(&self, table: u32, offset: u32) -> Option<u32> {
@@ -2302,6 +2308,8 @@ fn new_slot(fighter: TournamentFighter) -> Region {
         region.put(&[0; (RYU_JAB_TIMINGS.len() + st_ryu_air::HEADERS + st_ryu_air::JUMP_MP_STREAMS + 2) * 4]);
     } else if fighter == TournamentFighter::Ken {
         region.put(&[0; st_ken_throws::POINTER_BYTES + st_ken_air_normals::POINTER_BYTES + st_ken_shoryuken::POINTER_BYTES]);
+    } else if command_normals::has_area(fighter) {
+        region.put(&[0; command_normals::POINTER_BYTES]);
     }
     region
 }
@@ -4917,6 +4925,9 @@ mod eagle {
     const JAB: u32 = 0x1239e;
     const SPIN_STICKS: u32 = 0x12408;
     const LOW_THRUST: u32 = 0x12628;
+    /// The hit function of his 1987 low thrust (`0x12628`): guarded
+    /// crouching (`0x24`). His two-stick thrust strikes with it.
+    const LOW_THRUST_HIT: u32 = 0x47ba8;
     /// His 1987 spinning-sticks barrage (`0x124d8`) from its sound call on
     /// (`0x124f8..0x12628`), and the offset of its recovery record (`0x125fe`)
     /// inside that slice.
@@ -4970,6 +4981,24 @@ mod eagle {
                 head: [15, 2, 30, 14],
                 body: [1, 14, 54, 70],
                 attack: None,
+            },
+        ),
+        (
+            "thrust_chamber",
+            PixelBoxes {
+                push: [8, 16, 44, 74],
+                head: [15, 2, 28, 12],
+                body: [2, 12, 48, 74],
+                attack: None,
+            },
+        ),
+        (
+            "two_stick_thrust",
+            PixelBoxes {
+                push: [6, 16, 50, 66],
+                head: [22, 2, 36, 12],
+                body: [2, 10, 48, 66],
+                attack: Some([60, 13, 85, 16]),
             },
         ),
         (
@@ -5200,6 +5229,30 @@ mod eagle {
         first.flags = 0x20;
         let h = header(&first.bytes(), crouch.top_on_ground(), 0xc4, 0x18, [0, 0, 0], s18);
         put_header(&mut region, base, 0x18, &h);
+
+        // Down-forward + HP: the two-stick thrust (spec #259, CN3), a
+        // command normal from Falchion22's frames (ADR-0029). It replaces
+        // move `0x1d` only at heavy strength, so its header stays out of the
+        // table: `8` frames in the chamber, `4` with both sticks driven
+        // out (guarded crouching, his 1987 low thrust's hit), then `18` to
+        // recover (the chamber `10`, his crouch `8`).
+        let tc = geom("thrust_chamber")?;
+        let tc_boxes = boxes("thrust_chamber").bytes(&tc);
+        let ts = geom("two_stick_thrust")?;
+        let thrust = {
+            let mut s = Stream::new(&mut region, tc, tc.top_on_ground());
+            let at = s.call(routine::SOUND, 0xa2);
+            s.hold(ts, ts.top_on_ground(), 4, boxes("two_stick_thrust").bytes(&ts), 0xa0, LOW_THRUST_HIT);
+            s.hold(tc, tc.top_on_ground(), 10, tc_boxes, 0, 0);
+            s.hold(crouch, crouch.top_on_ground(), 8, crouch_boxes, 0, 0);
+            s.end();
+            at
+        };
+        let mut first = still(tc, 8, tc_boxes);
+        first.flags = 0x20;
+        let h = header(&first.bytes(), tc.top_on_ground(), 0xc4, 0x1d, [0, 0, 0], thrust);
+        let at = region.put(&h);
+        region.patch(base + command_normals::CommandNormal::EagleTwoStickThrust.offset(), &at.to_be_bytes());
 
         // Special `0x19` is unused (`new_slot` leaves its header zeroed);
         // Manchester Black is on `0x1a` (Hadoken's command, QCF+P) and St.

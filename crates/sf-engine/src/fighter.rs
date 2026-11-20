@@ -39,6 +39,7 @@ use crate::data_bank::{
 use crate::machine::MachineState;
 use crate::roster::PlayMode;
 
+mod command_normals;
 mod kessen_stun;
 mod move_effects;
 mod ryu_walk_pacing;
@@ -890,6 +891,7 @@ impl Bus<'_> {
         let table = self.rl(ps + 0x12);
         let move_origin = d3;
         let paced_jab = self.ryu_jab_header(ps, e, mv);
+        let command_normal = self.command_normal_header(ps, e, mv);
         let st_crouching = self.st_ryu_crouching_header(ps, e, mv);
         let ken_crouching = self.st_ken_crouching_kick(ps, e, mv).and_then(|(loadout, strength)| {
             let slot = crate::data_bank::st_ken_normals::crouching_kick_slot(loadout, strength);
@@ -914,7 +916,7 @@ impl Bus<'_> {
             });
         let src = if let Some(state) = family_move {
             self.family_move_header(state, e, mv)
-        } else if let Some(header) = paced_jab.or(st_crouching).or(ken_crouching).or(shinku).or(shoryureppa).or(sagat_special).or(sagat_normal).or(ken_kick).or(ken_jump).or(ken_tatsu).or(ken_dp)
+        } else if let Some(header) = command_normal.or(paced_jab).or(st_crouching).or(ken_crouching).or(shinku).or(shoryureppa).or(sagat_special).or(sagat_normal).or(ken_kick).or(ken_jump).or(ken_tatsu).or(ken_dp)
             .or_else(|| self.st_ryu_standing_header(ps, e, mv))
         {
             Some(header)
