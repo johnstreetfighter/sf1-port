@@ -64,12 +64,15 @@ const REVIEWS: [&str; 11] = [
     include_str!("../../../art/review/sagat.json"),
 ];
 
-/// The books' texts with one wait changed: the first digit of book
-/// `index` raised by one, as a book searched again would differ.
+/// The books' texts with one number in a route changed: the first digit
+/// of book `index`'s first route (past its `route-book 1`, `fighter` and
+/// `style` lines, whose digits are no route's) raised by one, as a book
+/// searched again would differ.
 fn with_one_book_changed(index: usize) -> Vec<String> {
     let mut texts: Vec<String> = book_texts().iter().map(|t| t.to_string()).collect();
     let text = &mut texts[index];
-    let at = text.find(|c: char| c.is_ascii_digit()).expect("a route book holds numbers");
+    let route = text.find("\nroute ").expect("a route book holds routes");
+    let at = route + text[route..].find(|c: char| c.is_ascii_digit()).expect("a route holds numbers");
     let digit = text.as_bytes()[at] - b'0';
     text.replace_range(at..at + 1, &((digit + 1) % 10).to_string());
     texts

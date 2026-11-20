@@ -187,16 +187,20 @@ impl Browser {
 /// revision already splits builds of different commits; the books' hash
 /// also splits builds of one commit with books changed locally.
 pub fn protocol_identity(route_books: &[&str]) -> u32 {
-    let books = crate::route_book::books_hash_of(route_books);
-    let folded = (books ^ (books >> 32)) as u32;
-    (crate::version::protocol_version_hash() ^ folded).wrapping_mul(0x0100_0193)
+    identity_with(crate::route_book::books_hash_of(route_books))
 }
 
 /// [`protocol_identity`] of this build: what [`SyncedMatchRules::new`]
-/// stamps as `protocol_hash`.
+/// stamps as `protocol_hash`. The books' hash is worked out once, when the
+/// game session starts ([`crate::front::GameSession::new`]), not when an
+/// online menu first builds its rules.
 pub fn protocol_hash() -> u32 {
-    static HASH: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
-    *HASH.get_or_init(|| protocol_identity(crate::route_book::book_texts()))
+    identity_with(crate::route_book::books_hash())
+}
+
+fn identity_with(books: u64) -> u32 {
+    let folded = (books ^ (books >> 32)) as u32;
+    (crate::version::protocol_version_hash() ^ folded).wrapping_mul(0x0100_0193)
 }
 
 /// Canonical current configuration, seed and engine identity, without assets.
