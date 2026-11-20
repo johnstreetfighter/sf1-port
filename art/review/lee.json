@@ -35,6 +35,20 @@
       "rejections": 0,
       "next": "none"
     },
+    "dive_kick": {
+      "origin": "generated",
+      "crc32": "eda0e36c",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "dive_kick_chamber": {
+      "origin": "generated",
+      "crc32": "746d738b",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
     "grab": {
       "origin": "free",
       "verdict": "approved",
@@ -100,6 +114,20 @@
     },
     "jump_top": {
       "origin": "free",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "knee_up": {
+      "origin": "generated",
+      "crc32": "19206401",
+      "verdict": "approved",
+      "rejections": 0,
+      "next": "none"
+    },
+    "knee_up_kick": {
+      "origin": "generated",
+      "crc32": "5ac3fd42",
       "verdict": "approved",
       "rejections": 0,
       "next": "none"

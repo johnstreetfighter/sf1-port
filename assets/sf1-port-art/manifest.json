@@ -289,6 +289,14 @@
       "size": 1503,
       "crc32": "bd34e3ed"
     },
+    "lee/dive_kick.png": {
+      "size": 1405,
+      "crc32": "eda0e36c"
+    },
+    "lee/dive_kick_chamber.png": {
+      "size": 1133,
+      "crc32": "746d738b"
+    },
     "lee/jump_kick.png": {
       "size": 1657,
       "crc32": "53c44f02"
@@ -300,6 +308,14 @@
     "lee/jump_punch_down.png": {
       "size": 1770,
       "crc32": "ea09c173"
+    },
+    "lee/knee_up.png": {
+      "size": 1226,
+      "crc32": "19206401"
+    },
+    "lee/knee_up_kick.png": {
+      "size": 1332,
+      "crc32": "5ac3fd42"
     },
     "lee/zessh_strike.png": {
       "size": 2277,

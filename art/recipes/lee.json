@@ -189,6 +189,30 @@
       "rom": { "code": "0x1c60", "large": true, "rows": 2, "cols": 2 },
       "anchor": [-64, -96],
       "note": "His ready pose as the high kick ends on it (stream 0x0f678, x-offset -16); then his stance."
+    },
+    {
+      "name": "dive_kick_chamber",
+      "pack": { "crc32": "746d738b" },
+      "anchor": [-21, -142],
+      "note": "Adapted from Falchion22's MUGEN Lee (A-Lee/sff.sff, group 600, image 0), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His dark-red pigtail #420000 is pen 0, black as in his ROM art (the maintainer, 2026-11-20)."
+    },
+    {
+      "name": "dive_kick",
+      "pack": { "crc32": "eda0e36c" },
+      "anchor": [-23, -141],
+      "note": "Adapted from Falchion22's MUGEN Lee (A-Lee/sff.sff, group 600, image 1), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His dark-red pigtail #420000 is pen 0, black as in his ROM art (the maintainer, 2026-11-20)."
+    },
+    {
+      "name": "knee_up",
+      "pack": { "crc32": "19206401" },
+      "anchor": [-11, -146],
+      "note": "Adapted from Falchion22's MUGEN Lee (A-Lee/sff.sff, group 650, image 0), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His dark-red pigtail #420000 is pen 0, black as in his ROM art (the maintainer, 2026-11-20)."
+    },
+    {
+      "name": "knee_up_kick",
+      "pack": { "crc32": "5ac3fd42" },
+      "anchor": [-40, -145],
+      "note": "Adapted from Falchion22's MUGEN Lee (A-Lee/sff.sff, group 650, image 1), used with permission (ADR-0029): every pixel mapped to his pens; placed by matching Falchion22's jump top (41,1) to his ROM jump top pixel for pixel. His dark-red pigtail #420000 is pen 0, black as in his ROM art (the maintainer, 2026-11-20)."
     }
   ],
   "moves": [
@@ -269,6 +293,18 @@
       "poses": ["step", "side_chamber", "side_kick", "side_chamber", "step", "high_chamber", "high_kick", "high_follow", "high_land", "high_settle", "stance"],
       "timing": [3, 3, 10, 3, 3, 3, 10, 3, 3, 3, 10],
       "note": "Quarter-circle back and kick (AP2's stand-in, nothing new): his ROM side kick (stream 0x0f5c8) straight into his ROM high kick (stream 0x0f678), stepping forward 16 pixels between them as the high kick's step-in does. Every pose is his ROM art, placed at its stream's x-offset; SF1+ moves him."
+    },
+    {
+      "name": "dive kick",
+      "poses": ["jump_top", "dive_kick_chamber", "dive_kick", "jump_top"],
+      "timing": [6, 5, 20, 8],
+      "note": "Air command normal, down + MK (CN6 #265): 5 startup, then a steep dive to the ground. Adapted poses (ADR-0029)."
+    },
+    {
+      "name": "knee-up kick",
+      "poses": ["jump_top", "knee_up", "knee_up_kick", "knee_up"],
+      "timing": [6, 4, 8, 14],
+      "note": "Air command normal, forward + HK in a straight-up or back jump (CN5 #264): 4 startup, 8 active. Adapted poses (ADR-0029)."
     }
   ]
 }

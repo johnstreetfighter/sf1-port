@@ -733,5 +733,47 @@
       "kept": [],
       "note": "Inpainting takes no palette: these are his 15 opaque pens, the ones its pixels were reduced to afterwards. Not kept: no arm was drawn, so the fist floated at his hip. The gather was rebuilt instead from his own ROM pixels (the recipe's zessh_gather: the step-in's rear arm mirrored to the front side), with no generation."
     }
+  ],
+  "adapted": [
+    {
+      "pose": "dive_kick_chamber",
+      "crc32": "746d738b",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Lee/sff.sff", "group": 600, "image": 0 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his dark-red pigtail #420000 to pen 0, black as in his ROM art (the maintainer, 2026-11-20); every other colour within a few steps of one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN2 #261); ADR-0029."
+    },
+    {
+      "pose": "dive_kick",
+      "crc32": "eda0e36c",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Lee/sff.sff", "group": 600, "image": 1 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his dark-red pigtail #420000 to pen 0, black as in his ROM art (the maintainer, 2026-11-20); every other colour within a few steps of one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN2 #261); ADR-0029."
+    },
+    {
+      "pose": "knee_up",
+      "crc32": "19206401",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Lee/sff.sff", "group": 650, "image": 0 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his dark-red pigtail #420000 to pen 0, black as in his ROM art (the maintainer, 2026-11-20); every other colour within a few steps of one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN2 #261); ADR-0029."
+    },
+    {
+      "pose": "knee_up_kick",
+      "crc32": "5ac3fd42",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Lee/sff.sff", "group": 650, "image": 1 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: his dark-red pigtail #420000 to pen 0, black as in his ROM art (the maintainer, 2026-11-20); every other colour within a few steps of one of his pens",
+        "no hand edits; placed by matching Falchion22's jump top (group 41, image 1) to his ROM jump top pixel for pixel, cropped to its opaque pixels"
+      ],
+      "note": "Approved by the maintainer on the review page (2026-11-20, CN2 #261); ADR-0029."
+    }
   ]
 }
