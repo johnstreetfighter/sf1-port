@@ -1878,13 +1878,17 @@ impl Fight {
         } else {
             render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0
         };
-        if self.move_effects_on() {
-            let sparks = self.move_effects.demon_sparks();
-            if !sparks.is_empty() {
-                return present_with_move_effects(PresentMode::Overhaul, &frame, &OverhaulScene::EMPTY, &sparks);
-            }
+        let sparks = self.demon_move_effect_sparks();
+        if !sparks.is_empty() {
+            return present_with_move_effects(PresentMode::Overhaul, &frame, &OverhaulScene::EMPTY, &sparks);
         }
         frame
+    }
+
+    /// The move effects' own Demon sparks the blackout draws over the ROM
+    /// ones this frame; empty when the move effects are off.
+    pub fn demon_move_effect_sparks(&self) -> Vec<sf_video::compositor::IndexedSprite> {
+        if self.move_effects_on() { self.move_effects.demon_sparks() } else { Vec::new() }
     }
 
     fn draw_ally_lifebar(&self, frame: &mut Frame, assets: &Assets) {

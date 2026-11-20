@@ -24,7 +24,8 @@ use sf_host::roms::{self, Candidate};
 use sf_video::announcer::AnnouncerLine;
 use sf_video::art::{load_art_from, Art, ArtSources};
 use sf_video::background_bank::{BackgroundBank, LayerView};
-use sf_video::compositor::PaletteTint;
+use sf_video::compositor::{present_with_move_effects, OverhaulScene, PaletteTint, PresentMode};
+use sf_video::era_hud::pens::CREAM;
 use sf_video::era_hud::{EraGauge, Fill, GaugeRow, GaugeState, BAR_WIDTH, CORNER_BOTTOM, CORNER_EDGE, CORNER_HEIGHT, MAIN_ROW, SECOND_ROW};
 use sf_video::render::{render_frame, render_frame_edited, render_frame_staged_with_tints, Frame, SpriteTint, TextEdits, TextSpan, HEIGHT, WIDTH};
 use sf_video::romset::Assets;
@@ -221,7 +222,12 @@ fn restart_round(session: &mut GameSession) {
     assert_eq!(session.step(pause).screen, "pause");
     let mut down = FrameInputs::default();
     down.p1.directions[2] = true;
-    for _ in 0..4 {
+    let restart_row = PauseBox::open(false)
+        .items()
+        .iter()
+        .position(|&item| item == MenuItem::RestartRound)
+        .expect("the pause menu has a Restart Round row");
+    for _ in 0..restart_row {
         session.step(FrameInputs::default());
         session.step(down);
     }
@@ -329,8 +335,20 @@ fn assert_demon_blackout(fight: &Fight, assets: &Assets, frame: &Frame) {
             });
         }
     }
-    let expected = render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0;
-    assert!(frame.argb == expected.argb, "the blackout renders only live ROM Demon sparks");
+    let mut expected = render_frame_staged_with_tints(assets, &scene, &TextEdits::default(), &tints).0;
+    // The new move effects add their own Demon sparks over the ROM ones.
+    let sparks = fight.demon_move_effect_sparks();
+    if !sparks.is_empty() {
+        expected = present_with_move_effects(PresentMode::Overhaul, &expected, &OverhaulScene::EMPTY, &sparks);
+    }
+    let differing: Vec<usize> = (0..frame.argb.len()).filter(|&i| frame.argb[i] != expected.argb[i]).collect();
+    if let (Some(&first), Some(&last)) = (differing.first(), differing.last()) {
+        let (xs, ys) = differing.iter().fold((usize::MAX..=0, usize::MAX..=0), |(xs, ys), &i| {
+            ((*xs.start()).min(i % WIDTH)..=(*xs.end()).max(i % WIDTH), (*ys.start()).min(i / WIDTH)..=(*ys.end()).max(i / WIDTH))
+        });
+        panic!("the blackout renders only live ROM Demon sparks: {} pixels differ in x {xs:?}, y {ys:?}; first at ({}, {}) {:#010x} vs {:#010x}, last {:#010x} vs {:#010x}",
+            differing.len(), first % WIDTH, first / WIDTH, frame.argb[first], expected.argb[first], frame.argb[last], expected.argb[last]);
+    }
 }
 
 fn try_raging_demon(fight: &mut Fight, assets: &Assets) -> Option<DemonOutcome> {
@@ -662,7 +680,9 @@ fn assert_super_gauge(fight: &Fight, frame: &Frame, meter: u8) {
         (EraFamily::Sf6, _, _) => (0xffe5_b2cc, 0xff4b_2037),
         style => panic!("unexpected Super gauge palette for {style:?}"),
     };
-    assert_eq!(frame.argb[top * WIDTH + CORNER_EDGE], rail, "the era's gauge border is visible");
+    // A level that just filled sweeps its rail cream for a few frames (#237).
+    let border = frame.argb[top * WIDTH + CORNER_EDGE];
+    assert!(border == rail || border == CREAM, "the era's gauge border is visible: {border:#010x}, rail {rail:#010x}");
 
     // Spent space may still show the amber tail. Classify it with the empty
     // track so a test counts usable fill, even on the frame a move spends it.
@@ -679,10 +699,17 @@ fn assert_super_gauge(fight: &Fight, frame: &Frame, meter: u8) {
         let pixels = &frame.argb[start..start + cell_width];
         let expected = if cell < usize::from(whole) { cell_width } else if cell == usize::from(whole) { fraction.px(cell_width) } else { 0 };
         for (offset, &pixel) in pixels.iter().enumerate() {
-            let filled = ![track, trail, amber].contains(&pixel);
-            assert_eq!(filled, offset < expected, "visible fill in Super stock {}, column {offset}", cell + 1);
+            // A stock that filled in the last few frames snaps cream across
+            // its span (#237), and keeps doing so when a Super spends it at
+            // once; over spent track that is the charge snap, not fill.
+            let snap = offset >= expected && pixel == CREAM;
+            let filled = !snap && ![track, trail, amber].contains(&pixel);
+            assert_eq!(filled, offset < expected,
+                "visible fill in Super stock {}, column {offset}: pixel {pixel:#010x}, expected fill {expected} of {cell_width}, meter {meter}",
+                cell + 1);
         }
-        assert_eq!(frame.argb[start + cell_width], rail, "the Super stock divider");
+        let divider = frame.argb[start + cell_width];
+        assert!(divider == rail || divider == CREAM, "the Super stock divider: {divider:#010x}, rail {rail:#010x}");
     }
 }
 
