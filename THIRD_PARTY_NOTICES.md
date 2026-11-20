@@ -128,3 +128,7 @@ Unlicense), whichever is preferred; the two alternatives are in
 here under the Unlicense (public domain), which needs no notice; the MIT
 alternative's notice, Copyright (c) 2017 Sean Barrett, is there should it be
 wanted.
+
+## Sprite frames
+
+Additional sprite frames for Mike, Eagle and Lee adapted from Falchion22's MUGEN characters, used with permission.
