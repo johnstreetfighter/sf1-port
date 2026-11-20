@@ -81,7 +81,10 @@ fn active_punch(snapshot: &mut FightSnapshot, attacker: usize) {
     objects[attacker + 0xf] = 0x80;
     objects[attacker + 0x22..attacker + 0x26].copy_from_slice(&[0, 0xff, 0, 0xff]);
     objects[attacker + 0x28..attacker + 0x2c].copy_from_slice(&0x45af0u32.to_be_bytes());
-    objects[attacker + 0x33] = 2;
+    // Hold this frame through the test. Only the attack box is staged, not
+    // the animation stream at +0x2c, so letting the pose end would run the
+    // fighter's old stream under the injected move into a null frame.
+    objects[attacker + 0x33] = 0x40;
     for entity in ENTITIES {
         objects[entity + 0xf] &= !0x08;
     }
