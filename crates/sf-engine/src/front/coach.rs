@@ -542,7 +542,9 @@ impl Coach {
         let recognized = if direction_only {
             stage >= attempt_stage
         } else if command_normal {
-            let direction = self.entry.input.motion.first().copied();
+            // The direction held with the button: the last of the input
+            // (an air one's first step is the jump).
+            let direction = self.entry.input.motion.last().copied();
             self.history.iter().rev().take(4).any(|frame| frame.command_held && frame.dir == direction)
         } else if button_only {
             let release_command = self.entry.input.button == ButtonClass::ReleasePair

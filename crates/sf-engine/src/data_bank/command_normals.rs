@@ -1,16 +1,19 @@
 //! Command normals for the bosses (spec #259; design
 //! `docs/design/2026-11-20-eagle-lee-command-normals-design.md`): normals
-//! that need a stick direction held with their button. Each one's header is
-//! authored once in its fighter's slot and kept out of the move table: a
-//! pointer to it sits in the slot's command-normal area, right after
-//! [`ERA_HEADER_END`], and the fighter code starts it by redirecting the
-//! table move its input would otherwise start.
+//! that need a stick direction held with their button. Each one is authored
+//! once in its fighter's slot and kept out of the move table: pointers to it
+//! sit in the slot's command-normal area, right after [`ERA_HEADER_END`],
+//! and the fighter code starts it by redirecting the table move (on the
+//! ground) or the apex record's stream (in the air) its input would
+//! otherwise start.
 
 use super::ERA_HEADER_END;
 use crate::roster::TournamentFighter;
 
-/// The command-normal pointers a fighter that has them keeps.
-const POINTERS: usize = 2;
+/// The command-normal pointers a fighter that has them keeps: a ground
+/// move's header takes one, an air move's streams one for each jump
+/// (straight up, forward, back).
+const POINTERS: usize = 6;
 /// The bytes `new_slot` keeps for them.
 pub(super) const POINTER_BYTES: usize = POINTERS * 4;
 
@@ -19,25 +22,42 @@ pub(super) const POINTER_BYTES: usize = POINTERS * 4;
 pub enum CommandNormal {
     /// Eagle's down-forward + HP on the ground: a two-stick low thrust.
     EagleTwoStickThrust,
+    /// Eagle's down + HP in a jump: a two-stick thrust driven down.
+    EagleDiveThrust,
 }
 
 impl CommandNormal {
     /// The fighter whose slot holds it.
     pub const fn fighter(self) -> TournamentFighter {
         match self {
-            CommandNormal::EagleTwoStickThrust => TournamentFighter::Eagle,
+            CommandNormal::EagleTwoStickThrust | CommandNormal::EagleDiveThrust => TournamentFighter::Eagle,
         }
     }
 
-    const fn index(self) -> u32 {
+    /// Whether it is started in a jump (its pointers name streams, one a
+    /// jump) rather than on the ground (one header).
+    pub const fn airborne(self) -> bool {
+        matches!(self, CommandNormal::EagleDiveThrust)
+    }
+
+    /// Its first pointer's index in the fighter's area.
+    const fn first(self) -> u32 {
         match self {
             CommandNormal::EagleTwoStickThrust => 0,
+            CommandNormal::EagleDiveThrust => 1,
         }
     }
 
-    /// Where its header's pointer sits, from the fighter's table.
+    /// Where its header's pointer sits, from the fighter's table (a ground
+    /// move's).
     pub(super) const fn offset(self) -> u32 {
-        ERA_HEADER_END + self.index() * 4
+        ERA_HEADER_END + self.first() * 4
+    }
+
+    /// Where the pointer to its stream for `jump` (0 straight up, 1
+    /// forward, 2 back) sits, from the fighter's table (an air move's).
+    pub(super) const fn jump_offset(self, jump: u32) -> u32 {
+        ERA_HEADER_END + (self.first() + jump) * 4
     }
 }
 

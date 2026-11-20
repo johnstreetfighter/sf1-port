@@ -1305,6 +1305,20 @@ pub const REGISTRY: &[MoveEntry] = &[
         call_out: "TWO-STICK THRUST!",
         available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
     },
+    // Eagle's dive thrust (spec #259, CN4): a command normal in any jump,
+    // down and heavy punch, in place of his jump attack's stream.
+    MoveEntry {
+        name: "DIVE THRUST",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Down],
+            button: ButtonClass::HeavyPunch,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x20,
+        call_out: "DIVE THRUST!",
+        available: Availability { fighters: EAGLE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
     // Adon's Rising Jaguar and Jaguar Kick (ticket #258): his 1987 player table
     // puts the Rising Jaguar in the Shoryuken's move on its command, and the
     // Jaguar Kick in the Tatsumaki's on its command.

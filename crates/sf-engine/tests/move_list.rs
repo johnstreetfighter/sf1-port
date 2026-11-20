@@ -314,6 +314,7 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
                 // Spec #259: his two-stick thrust, a command normal.
                 "COMMAND NORMALS",
                 "TWO-STICK THRUST ↘ [HP]",
+                "DIVE THRUST JUMP↓ [HP]",
             ]
             .map(String::from),
         );

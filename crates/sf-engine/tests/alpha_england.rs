@@ -347,12 +347,12 @@ fn eagle_x_ism_keeps_manchester_gold_and_hides_a_ism_exclusives() {
 /// Eagle's canon SFZ3 kit keeps Capcom's moves: down-forward + HP is not
 /// SF1+'s two-stick thrust (spec #259), whose chamber tiles never show.
 #[test]
-fn eagle_sfz3_down_forward_heavy_punch_is_not_the_two_stick_thrust() {
+fn eagle_sfz3_has_neither_sf1plus_command_normal() {
     use sf_engine::data_bank::command_normals::CommandNormal;
     let Some((mut fight, assets)) = bout(Eagle, Revision::Sfz3, Loadout::AIsm) else {
         return;
     };
-    let bank = fight.machine().data_bank().expect("a bank");
+    let bank = fight.machine().data_bank().expect("a bank").clone();
     let header = bank
         .command_normal_header(CommandNormal::EagleTwoStickThrust)
         .expect("the thrust is authored in his slot");
@@ -372,6 +372,31 @@ fn eagle_sfz3_down_forward_heavy_punch_is_not_the_two_stick_thrust() {
         attacked |= fight.fight_read().fighters[0].attacking();
     }
     assert!(attacked, "down-forward + HP made an attack");
+    // Nor is down + HP in a jump SF1+'s dive thrust.
+    assert!(bank.command_normal_stream(CommandNormal::EagleDiveThrust, 0).is_some(), "authored in his slot");
+    let rom_assets = sf_video::romset::load_assets("../../tools/reference/local/roms/sf", "../../tools/reference/rom-manifest.json")
+        .expect("local ROMs assemble");
+    let art = load_fighter_art(&rom_assets, Eagle);
+    let catalogue = art.catalogues.iter().find(|c| c.fighter == "eagle").expect("his catalogue");
+    let chamber = catalogue.pose("dive_chamber").expect("the dive chamber").grid.code;
+    let thrust = catalogue.pose("dive_thrust").expect("the dive thrust").grid.code;
+    for _ in 0..30 {
+        step(&mut fight, &assets, pad(0, None));
+    }
+    for frame in 0..90 {
+        let input = match frame {
+            0..=1 => pad(UP, None),
+            2..=7 => pad(DOWN, None),
+            8..=9 => pad(DOWN, Some(HP)),
+            _ => pad(DOWN, None),
+        };
+        step(&mut fight, &assets, input);
+        let read = fight.machine().diagnostic_telemetry().p1;
+        let ram = &fight.machine().state.objectram;
+        let e = usize::from(read.entity_offset);
+        let code = u16::from_be_bytes([ram[e], ram[e + 1]]);
+        assert!(code != chamber && code != thrust, "frame {frame}: the dive thrust in his SFZ3 kit");
+    }
 }
 
 #[test]

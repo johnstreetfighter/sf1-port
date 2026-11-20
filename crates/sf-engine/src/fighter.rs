@@ -2033,10 +2033,17 @@ impl Bus<'_> {
             b.rl(b.rl(entry + 4).wrapping_add(level.wrapping_mul(4)))
         };
         let p = self.eb(me, 0x34);
+        // The jump (0 straight up, 1 forward, 2 back) for an air command
+        // normal's stream (spec #259).
+        let jump = d5 / 8;
         if p != 0 {
             let entry = rec.wrapping_add(4).wrapping_add(d5);
             if let Some(mv) = self.pick_preloaded(p, self.rl(entry), me, ps) {
                 self.set_eb(me, 0xa, mv);
+                let strength = self.eb(me, 0x34);
+                if let Some(command) = self.air_command_normal(ps, me, false, strength, jump) {
+                    return Resume::LoadAt(command);
+                }
                 return Resume::LoadAt(stream(self, entry));
             }
         }

@@ -553,9 +553,22 @@ impl DataBank {
         )
     }
 
-    /// A boss's command normal's header (spec #259), when his slot holds it.
+    /// A boss's ground command normal's header (spec #259), when his slot
+    /// holds it.
     pub fn command_normal_header(&self, normal: command_normals::CommandNormal) -> Option<u32> {
+        if normal.airborne() {
+            return None;
+        }
         self.authored_header(table_address(normal.fighter()), normal.offset())
+    }
+
+    /// A boss's air command normal's stream for `jump` (0 straight up, 1
+    /// forward, 2 back), when his slot holds it (spec #259).
+    pub fn command_normal_stream(&self, normal: command_normals::CommandNormal, jump: u32) -> Option<u32> {
+        if !normal.airborne() || jump > 2 {
+            return None;
+        }
+        self.authored_header(table_address(normal.fighter()), normal.jump_offset(jump))
     }
 
     fn authored_header(&self, table: u32, offset: u32) -> Option<u32> {
@@ -1593,6 +1606,44 @@ impl Air<'_> {
         s.strike(rom_pose(self.rom, strike), frames, step, rom_boxes(self.rom, strike), r[0x1a], rom_l(self.rom, strike + 0x1c));
         self.land(&mut s, step.1, fall_dy)?;
         Ok(at.expect("a first entry"))
+    }
+
+    /// An air command normal that dives (spec #259): one frame of the top
+    /// of the jump at `apex`, `chamber` for `lead` frames moving `step` a
+    /// frame, then `strike` (with `sound`) active all the way down at
+    /// `fall` a frame until his kept centre is his falling pose's at the
+    /// ground, then [`Self::land`] from there. Each pose is placed by its
+    /// anchor, as [`Self::attack`] places its strike.
+    #[allow(clippy::too_many_arguments)]
+    fn dive(
+        &self,
+        region: &mut Region,
+        apex: i32,
+        (chamber, chamber_boxes): (PoseGeom, [u8; 16]),
+        lead: u8,
+        step: (i32, i32),
+        (strike, strike_boxes): (PoseGeom, [u8; 16]),
+        hit_fn: u32,
+        fall: (i32, i32),
+        sound: u8,
+    ) -> Result<u32, String> {
+        let into_chamber = (chamber.anchor[1] - self.jump_top.anchor[1]) as i32 - self.jump_top.half().1 + chamber.half().1;
+        let into_strike = (strike.anchor[1] - chamber.anchor[1]) as i32 - chamber.half().1 + strike.half().1;
+        let to_chamber = pose_origin_record(region, into_chamber, 0);
+        let to_strike = pose_origin_record(region, into_strike, sound);
+        let mut s = Stream::new(region, self.jump_top, apex);
+        let at = s.travel(self.jump_top, apex, 1, (0, step.1), self.top_boxes, 0x20, 0);
+        s.change_origin(to_chamber, into_chamber);
+        s.strike(chamber, lead, step, chamber_boxes, 0, 0);
+        s.change_origin(to_strike, into_strike);
+        // Active until his centre is where his falling pose's would be at
+        // the ground; the landing takes the rest.
+        let ground_centre = GROUND - self.fall.height() + self.fall.half().1;
+        let centre = s.top + s.pose.half().1;
+        let frames = ((ground_centre - centre) / fall.0).clamp(1, 255) as u8;
+        s.strike(strike, frames, fall, strike_boxes, 0x80, hit_fn);
+        self.land(&mut s, fall.1, fall.0)?;
+        Ok(at)
     }
 
     /// Fall at `fall_dy` a frame in his falling pose (placed on the kept
@@ -4944,6 +4995,8 @@ mod eagle {
     const FORWARD_LEAP_SMASH_FRAME: u32 = 0x127c4; // 0x2a44, forward leaping stick strike (hit 0x47a5e)
     const BACK_LEAP_SMASH_FRAME: u32 = 0x12926; // 0x2a44, back leaping stick strike (hit 0x47b3a)
     const NEUTRAL_LEAP_SMASH_FRAME: u32 = 0x12a88; // 0x2a44, neutral leaping stick strike (hit 0x47acc)
+    /// The neutral leaping stick strike's hit: his dive thrust strikes with it.
+    const NEUTRAL_LEAP_SMASH_HIT: u32 = 0x47acc;
 
     /// His jumps (ROM streams) and where each reaches its top: the apex call
     /// goes before that entry.
@@ -4981,6 +5034,24 @@ mod eagle {
                 head: [15, 2, 30, 14],
                 body: [1, 14, 54, 70],
                 attack: None,
+            },
+        ),
+        (
+            "dive_chamber",
+            PixelBoxes {
+                push: [8, 16, 44, 72],
+                head: [15, 2, 28, 12],
+                body: [2, 12, 48, 72],
+                attack: None,
+            },
+        ),
+        (
+            "dive_thrust",
+            PixelBoxes {
+                push: [6, 14, 50, 66],
+                head: [19, 2, 33, 12],
+                body: [1, 12, 56, 66],
+                attack: Some([68, 46, 78, 50]),
             },
         ),
         (
@@ -5409,6 +5480,24 @@ mod eagle {
             (3, -3),
             4,
         )?;
+
+        // Down + HP in a jump: the dive thrust (spec #259, CN4), a command
+        // normal from Falchion22's frames (ADR-0029), one stream a jump: the
+        // top of the jump and `5` frames of the chamber (startup `6`), then
+        // both sticks driven down, active until he lands (falling `4` a
+        // frame, with his neutral leaping stick strike's hit), then his
+        // landing.
+        let dc = geom("dive_chamber")?;
+        let dt = geom("dive_thrust")?;
+        let chamber = (dc, boxes("dive_chamber").bytes(&dc));
+        let thrust = (dt, boxes("dive_thrust").bytes(&dt));
+        for (jump, (apex, dx)) in [(neutral, 0), (forward, 4), (back, -3)].into_iter().enumerate() {
+            let stream = air.dive(&mut region, apex, chamber, 5, (1, dx), thrust, NEUTRAL_LEAP_SMASH_HIT, (4, dx), 0xa1)?;
+            region.patch(
+                base + command_normals::CommandNormal::EagleDiveThrust.jump_offset(jump as u32),
+                &stream.to_be_bytes(),
+            );
+        }
 
         let landing_centre = air.landing.top_on_ground() + air.landing.half().1;
         apex_and_jumps(

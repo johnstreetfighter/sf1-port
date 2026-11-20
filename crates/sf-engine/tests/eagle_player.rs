@@ -1198,6 +1198,67 @@ fn the_two_stick_thrust_comes_from_down_forward_heavy_punch_and_is_guarded_low()
     assert_eq!(row.produces, 0x1d);
 }
 
+/// His dive thrust (spec #259, CN4): down + HP in any jump, with ANYTIME
+/// JUMP ATTACKS off (Classic Competitive's own: at the apex) or switched
+/// on, his own tiles and boxes, active until he lands; HP without the stick
+/// down stays his plain jump punch.
+#[test]
+fn the_dive_thrust_comes_from_down_and_heavy_punch_in_any_jump() {
+    let Some(l) = local_roms() else { return };
+    let dt = geom(&l, "dive_thrust");
+    let dt_boxes = EAGLE_BOXES.iter().find(|(n, _)| *n == "dive_thrust").unwrap().1.bytes(&dt);
+    for anytime in [false, true] {
+        let preset = if anytime { "anytime on" } else { "anytime off" };
+        for (jump, dirs) in [("straight", vec![UP]), ("forward", vec![UP, RIGHT]), ("back", vec![UP, LEFT])] {
+            for down in [true, false] {
+                let mut config = MatchConfig::from_preset(CLASSIC);
+                config.toggles.anytime_jump_attacks = anytime;
+                let a = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+                let base = GameSession::new(a, config)
+                    .with_sprite_bank(&l.art.bank)
+                    .with_player_tables(&l.art.catalogues);
+                let mut s = local_with(base, TournamentFighter::Eagle);
+                for _ in 0..35 {
+                    s.step(with(|i| i.p2.directions[RIGHT] = true));
+                }
+                for _ in 0..30 {
+                    s.step(idle());
+                }
+                let held: &[usize] = if down { &[DOWN] } else { &[] };
+                let mut inputs = vec![hold(&dirs); 2];
+                inputs.extend(vec![hold(held); 6]);
+                inputs.extend([press(held, 2), press(held, 2)]);
+                let (mut active, mut thrust) = (0, 0);
+                for n in 0..120 {
+                    s.step(inputs.get(n).copied().unwrap_or(hold(held)));
+                    let r = p1(&s);
+                    if !r.attack_active {
+                        continue;
+                    }
+                    active += 1;
+                    let code = u16::from_be_bytes(p1_bytes(&s, 0, 2).try_into().unwrap());
+                    if code == dt.code {
+                        thrust += 1;
+                        assert_eq!(p1_bytes(&s, 0x16, 16), dt_boxes, "{preset} {jump}: its boxes");
+                        assert!(matches!(r.move_id, 0x20..=0x22), "{preset} {jump}: a jump punch's move");
+                    }
+                }
+                println!("{preset} {jump} jump, down {down}: {active} active, {thrust} of them the dive thrust");
+                if down {
+                    assert!(thrust >= 8, "{preset} {jump}: the dive thrust, out to the landing ({thrust})");
+                    assert_eq!(thrust, active, "{preset} {jump}: every active frame is the thrust");
+                } else {
+                    assert!(active > 0, "{preset} {jump}: a jump punch");
+                    assert_eq!(thrust, 0, "{preset} {jump}: no dive thrust without the stick down");
+                }
+            }
+        }
+    }
+    let list = move_list(TournamentFighter::Eagle, CLASSIC);
+    let row = list.iter().find(|e| e.name == "DIVE THRUST").expect("listed");
+    assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
+}
+
 /// Eagle (P1) does `inputs` against Ken (P2) holding `guard`: the moves
 /// Eagle showed and Ken's health before and after.
 fn guard_against_eagle(start: &GameSession, inputs: &[FrameInputs], guard: &[usize]) -> (Vec<u8>, u16, u16) {
@@ -1815,7 +1876,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .collect();
         assert_eq!(
             names,
-            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO-STICK THRUST"],
+            ["MANCHESTER BLACK", "ST. ANDREW'S GREEN", "TWO-STICK THRUST", "DIVE THRUST"],
             "{preset:?}"
         );
     }
