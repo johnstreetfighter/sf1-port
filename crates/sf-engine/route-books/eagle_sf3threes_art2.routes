@@ -1,0 +1,259 @@
+route-book 1
+fighter Eagle
+style Sf3ThreeS/Art2
+
+route ground
+name 421+LP, 236236+LP
+hits 6
+damage 416
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 46
+fails-on Retsu; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+MP, 236236+LP
+hits 6
+damage 416
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 46
+fails-on Gen; Birdie; Eagle; Adon; Sagat
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 236236+LP | wait 0 0..1 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name MP, 236236+LP
+hits 6
+damage 416
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 62
+fails-on Gen; Eagle; Adon; Sagat
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 236236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LP, 236236+LP
+hits 6
+damage 416
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 46
+fails-on Gen; Birdie; Eagle; Adon; Sagat
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236236+LP | wait 0 0..1 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.MP, 236236+LP
+hits 6
+damage 416
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 62
+fails-on Gen; Eagle; Adon; Sagat
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 236236+LP
+hits 5
+damage 384
+rules true_combos
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 78
+fails-on
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+LP, 214+LP
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name cr.LK, MP+MK, 214+PP
+hits 3
+damage 280
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 6
+gap 46
+fails-on
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step MP+MK | wait 4 4..10 | hold 0 | 0:12x3 0:00
+step 214+PP | wait 12 12..15 | hold 0 | 4:00x2 6:00x2 2:00x2 2:03x3 2:00
+end
+
+route punish
+name MP, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.LP, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 214+LK | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.MP, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.LK, 214+LK
+hits 2
+damage 260
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 214+LK | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name MP, 41236+LP
+hits 2
+damage 240
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Ken St/Standard standing; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 41236+LP | wait 0 0..1 | hold 0 | 2:00x2 6:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.MP, 41236+LP
+hits 2
+damage 240
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Ken St/Standard standing; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 41236+LP | wait 0 0..1 | hold 0 | 2:00x2 6:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 41236+LP
+hits 2
+damage 200
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 41236+LP | wait 0 0..0 | hold 0 | 2:00x2 6:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name MP, MP+MK
+hits 2
+damage 180
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Ken St/Standard standing; Geki Arcade1987/Standard standing; Gen; Birdie Arcade1987/Standard crouching; Birdie Sf1Plus/Standard; Birdie Sfz1/Standard; Birdie Sfz2/Standard; Birdie Sfz2A/Standard; Birdie Sfz3/AIsm; Birdie Sfz3/VIsm; Birdie Sfz3/XIsm; Birdie Sf5/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger2; Birdie Sf5Ce/Skill1Trigger1; Birdie Sf5Ce/Skill1Trigger2; Birdie Sf5Ce/Skill2Trigger1; Birdie Sf5Ce/Skill2Trigger2; Birdie Hf/Standard; Birdie St/Standard; Birdie St/Old; Birdie Sf3ThreeS/Art1; Birdie Sf3ThreeS/Art2; Birdie Sf3ThreeS/Art3; Birdie Usf4/Ultra1; Birdie Usf4/Ultra2; Birdie Usf4/UltraDouble; Birdie Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step MP+MK | wait 6 6..9 | hold 0 | 0:12x3 0:00
+end

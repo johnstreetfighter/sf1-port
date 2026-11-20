@@ -1857,6 +1857,11 @@ impl PowerOnMachine {
         // The two fighting players' structs (as the three-rounds rule reads
         // them) and the rounds each has won, at `+8`.
         context.round_decides_match = self.round_decides_match();
+        // Who it faces, so it takes no route recorded failing on him (SC13).
+        if era_side < 2 {
+            let foe = &self.dramatic_era_fighters()[1 - era_side];
+            context.foe = foe.fighter.map(|who| (who, (foe.style.revision, foe.style.loadout)));
+        }
         context
     }
 

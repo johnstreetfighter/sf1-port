@@ -1,0 +1,267 @@
+route-book 1
+fighter Ken
+style St/Old
+
+route ground
+name MP, 623+MP
+hits 3
+damage 417
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 7
+gap 42
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 623+MP | wait 1 1..18 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+end
+
+route ground
+name LP, [2]8+LP, 236236+LP
+hits 3
+damage 392
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 34
+fails-on
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step [2]8+LP | wait 1 1..1 | hold 6 | 8:01x3 8:00
+step 236236+LP | wait 1 1..1 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3
+end
+
+route ground
+name 421+MP, 623+MP
+hits 3
+damage 369
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 9
+gap 36
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Mike crouching
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 623+MP | wait 5 5..27 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+end
+
+route ground
+name 623+MP, 623+MP
+hits 3
+damage 369
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 30
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Joe standing; Mike
+step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+step 623+MP | wait 7 7..19 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+end
+
+route ground
+name LK, 623+MP
+hits 3
+damage 369
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 12
+gap 32
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu crouching; Mike crouching; Lee crouching; Gen crouching; Birdie crouching; Eagle crouching; Adon crouching
+step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
+step 623+MP | wait 1 1..19 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3
+end
+
+route ground
+name cr.MP, 623+MP
+hits 3
+damage 369
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 9
+gap 42
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Mike crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 623+MP | wait 6 6..28 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+end
+
+route ground
+name 421+LP, 623+MP
+hits 3
+damage 345
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 12
+gap 40
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Mike crouching
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 623+MP | wait 0 0..21 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+end
+
+route ground
+name MP, 236236+LP
+hits 2
+damage 344
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 1
+gap 42
+fails-on
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 236236+LP | wait 0 0..12 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3
+end
+
+route jump-in
+name j.HP, 623+LP, MP
+hits 3
+damage 446
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 3
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu crouching; Geki crouching; Joe crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x33 0:04x2 0:00
+step 623+LP | wait 0 0..5 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step MP | wait 0 0..5 | hold 0 | 0:02x2 0:00
+end
+
+route jump-in
+name j.HP, 623+LP, cr.MP
+hits 3
+damage 446
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 3
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu crouching; Geki crouching; Joe crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x33 0:04x2 0:00
+step 623+LP | wait 0 0..5 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step cr.MP | wait 0 0..5 | hold 0 | 4:02x2 4:00
+end
+
+route jump-in
+name j.HK, 623+LP, MP
+hits 3
+damage 433
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 6
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki; Joe; Mike
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x29 0:20x2 0:00
+step 623+LP | wait 0 0..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step MP | wait 0 0..2 | hold 0 | 0:02x2 0:00
+end
+
+route jump-in
+name j.HK, 623+LP, cr.MP
+hits 3
+damage 433
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 6
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki; Joe; Mike
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x29 0:20x2 0:00
+step 623+LP | wait 0 0..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
+end
+
+route jump-in
+name j.HP, 623+LP, HP
+hits 3
+damage 426
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 3
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x33 0:04x2 0:00
+step 623+LP | wait 0 0..5 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step HP | wait 0 0..5 | hold 0 | 0:04x2 0:00
+end
+
+route jump-in
+name j.HK, 623+LP, HP
+hits 3
+damage 413
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 6
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki; Joe; Mike
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x29 0:20x2 0:00
+step 623+LP | wait 0 0..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step HP | wait 0 0..2 | hold 0 | 0:04x2 0:00
+end
+
+route jump-in
+name j.MK, 623+LP, 421+MP
+hits 3
+damage 386
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Mike; Lee; Gen; Eagle; Sagat
+step j.MK | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:10x2 0:00
+step 623+LP | wait 0 0..1 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step 421+MP | wait 0 0..1 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+end
+
+route jump-in
+name j.HP, 623+LP
+hits 2
+damage 373
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 10
+gap 98
+fails-on Ryu St/Standard; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu crouching; Geki crouching; Joe crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x33 0:04x2 0:00
+step 623+LP | wait 0 0..12 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+end

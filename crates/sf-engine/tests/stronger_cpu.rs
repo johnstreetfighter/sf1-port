@@ -18,7 +18,7 @@ use sf_engine::front::fight::FightDips;
 use sf_engine::front::menu::MenuItem;
 use sf_engine::front::{FrameInputs, GameSession, PlayerInputs, Transition};
 use sf_engine::roster::TournamentFighter;
-use sf_engine::route_book::{book, Route, RouteBook};
+use sf_engine::route_book::{book, Route, RouteBook, Stance};
 use sf_engine::run::PowerOnMachine;
 use sf_video::callouts::Side;
 use sf_video::art::{load_art_from, ArtSources};
@@ -138,6 +138,11 @@ fn lock_sf6(s: &mut GameSession, fighter: TournamentFighter) {
 /// `difficulty`, with the stronger Fair CPU's switch as given, from the Main
 /// Menu to the first frame of the fight loop.
 fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
+    fight_as(TournamentFighter::Ryu, stronger, difficulty)
+}
+
+/// The same with Player 1 playing `p1_fighter` in SF6.
+fn fight_as(p1_fighter: TournamentFighter, stronger: bool, difficulty: u8) -> Option<GameSession> {
     if !Path::new(ROMS).is_dir() || !Path::new(PACK).is_dir() {
         eprintln!("skipping: local ROM set or art pack not present");
         return None;
@@ -162,9 +167,21 @@ fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
     choose(&mut s, MenuItem::SinglePlayer);
     choose(&mut s, MenuItem::Training);
     choose(&mut s, MenuItem::TrainingCpu);
-    lock_sf6(&mut s, TournamentFighter::Ryu);
-    // The opponent's cursor starts on Ken, one to the right of Ryu.
-    tap(&mut s, p1(L, 0));
+    // The cast in its listed order on a grid six wide; the cursor does not
+    // wrap at its edges.
+    let at = TournamentFighter::ALL.iter().position(|&f| f == p1_fighter).unwrap();
+    for _ in 0..at / 6 {
+        tap(&mut s, p1(D, 0));
+    }
+    for _ in 0..at % 6 {
+        tap(&mut s, p1(R, 0));
+    }
+    lock_sf6(&mut s, p1_fighter);
+    // The opponent's cursor starts beside Player 1's pick: up and left to
+    // the grid's corner, Ryu.
+    for input in [U, U, L, L, L, L, L, L] {
+        tap(&mut s, p1(input, 0));
+    }
     lock_sf6(&mut s, TournamentFighter::Ryu);
     let mut f = 0;
     while s.fight_machine().map(flow_position) != Some(FIGHT_LOOP) {
@@ -180,7 +197,7 @@ fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
         assert!(f < 3_000, "the fight loop (at {})", s.screen());
     }
     let fight = s.fight().unwrap();
-    assert_eq!([fight.player_fighter(0), fight.player_fighter(1)], [TournamentFighter::Ryu; 2]);
+    assert_eq!([fight.player_fighter(0), fight.player_fighter(1)], [p1_fighter, TournamentFighter::Ryu]);
     let machine = s.fight_machine().unwrap();
     assert_eq!(machine.era_fighters().map(|e| e.style.revision), [Revision::Sf6; 2]);
     assert_eq!(machine.match_config().stronger_cpu, stronger);
@@ -865,6 +882,29 @@ fn a_hit_from_a_route_is_followed_by_the_routes_further_hits_and_the_routes_vary
 }
 
 #[test]
+fn a_route_the_book_records_failing_on_the_opponent_is_never_taken_against_him() {
+    // Ryu's SF6 book records his medium punch into a Hadoken failing on Lee
+    // (SC13, `#205`: `route_check`). Against Lee standing in reach the CPU
+    // still takes routes, never those. Summed over a few fights.
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    let lee = "Lee Sf6/Standard";
+    let failing: Vec<String> = book.routes.iter().filter(|r| r.fails_against(lee, Stance::Standing)).map(Route::name).collect();
+    assert!(!failing.is_empty(), "the book records routes failing on Lee");
+    let Some(m) = fight_as(TournamentFighter::Lee, true, 4).map(|s| s.fight_machine().unwrap().clone()) else { return };
+    let mut entered: Vec<String> = Vec::new();
+    for idle in [0u32, 97, 211] {
+        let mut m = m.clone();
+        for _ in 0..idle {
+            step(&mut m, 0, 0);
+        }
+        let runs = routes_seen(&mut m, 6_000, standing_in_reach());
+        entered.extend(runs.iter().filter_map(|run| run.route(book)).map(|(route, _)| route.name()));
+    }
+    assert!(entered.len() >= 3, "routes taken against Lee: {entered:?}");
+    assert!(entered.iter().all(|name| !failing.contains(name)), "taken: {entered:?}; recorded failing on Lee: {failing:?}");
+}
+
+#[test]
 fn a_whiff_in_reach_is_punished_with_a_route_not_one_heavy_normal() {
     // Player 1 whiffs a Shoryuken, a move with a long recovery, whenever
     // the CPU is just out of its reach, and walks in when it is farther.
@@ -1364,6 +1404,11 @@ struct Hover {
     edge_turns: u32,
     /// Player 1's Shoryukens whose box never reached the CPU.
     whiffs: u32,
+    /// His swings begun within 20 frames of an edge turn, and those that
+    /// touched the CPU (hit or guarded): it had not stepped back out of
+    /// his reach.
+    swung_after_turn: u32,
+    touched_after_turn: u32,
     /// Of those, the ones he began within 20 frames of an edge turn: he
     /// swung at the CPU's step in, and it had stepped back out.
     drawn: u32,
@@ -1371,11 +1416,13 @@ struct Hover {
     /// those that hit him.
     punished: u32,
     landed: u32,
+    /// Frames played.
+    frames: u32,
 }
 
 fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     let mut m = start.clone();
-    let mut out = Hover::default();
+    let mut out = Hover { frames, ..Hover::default() };
     // Player 1's longest attack box seen, from his centre, and the
     // distance he swings from (a little inside it).
     let mut p1_reach: i16 = 50;
@@ -1391,6 +1438,7 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     let mut was_route = false;
     let mut gaps = [i16::MAX; 10];
     let mut rising = 0;
+    let mut touched: Option<u32> = None;
     for i in 0..frames {
         let v = seen(&m);
         // He swings at the CPU as he sees it come into his reach.
@@ -1408,6 +1456,7 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
             _ if near && v.foe.free() && v.me.free() => {
                 poked_at = Some(i);
                 poke_after_turn = turned_at.is_some_and(|t| i - t <= 20);
+                out.swung_after_turn += u32::from(poke_after_turn);
                 (toward(&v), 0)
             }
             // Out of a corner, and in from beyond a projectile's range: the
@@ -1418,6 +1467,14 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
         let cpu_health = v.me.health;
         step(&mut m, pad.0, pad.1);
         let after = seen(&m);
+        // His Shoryuken can hit the CPU without its box ever being seen
+        // live (the CPU is shown already in its hit reaction): a reaction
+        // begun, or health lost, while his swing runs touched it too.
+        let hit_now = (after.me.reacting() && !v.me.reacting()) || after.me.health < cpu_health;
+        if hit_now && poke_after_turn && touched != poked_at && poked_at.is_some_and(|at| i - at < 40) {
+            touched = poked_at;
+            out.touched_after_turn += 1;
+        }
         // The CPU's own walking (not pushback from a hit or a guard).
         let to_p1: i16 = if after.foe.x >= after.me.x { 1 } else { -1 };
         let dx = (after.me.x - v.me.x) * to_p1;
@@ -1435,6 +1492,10 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
             let toward_cpu = -to_p1;
             let edge = if toward_cpu > 0 { after.me.hurt.0 } else { after.me.hurt.1 };
             p1_contact |= after.me.reacting() || after.me.health < cpu_health || (after.foe.front - edge) * toward_cpu >= 0;
+            if p1_contact && poke_after_turn && touched != poked_at {
+                touched = poked_at;
+                out.touched_after_turn += 1;
+            }
         } else if p1_active {
             p1_contact |= after.me.reacting() || after.me.health < cpu_health;
             if !p1_contact {
@@ -1462,15 +1523,21 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     out
 }
 
+/// The starts the edge test sums: twenty, so that its rates hold still
+/// (over five, drawn whiffs ran from 7 to 10 as unrelated changes
+/// reshuffled the CPU's random choices).
+const HOVER_STARTS: [u32; 20] = [0, 97, 211, 331, 449, 563, 677, 791, 907, 1013, 1129, 1237, 1361, 1471, 1583, 1693, 1801, 1913, 2029, 2141];
+
 fn hover_sum(stronger: bool) -> Hover {
-    // Five starting points (SC8: against the CPU that owns every command a
-    // fight holds fewer of these moments than before).
-    starts_from(stronger, 4, &[0, 97, 211, 331, 449]).iter().map(|m| hover(m, 12_000)).fold(Hover::default(), |a, h| Hover {
+    starts_from(stronger, 4, &HOVER_STARTS).iter().map(|m| hover(m, 12_000)).fold(Hover::default(), |a, h| Hover {
         edge_turns: a.edge_turns + h.edge_turns,
         whiffs: a.whiffs + h.whiffs,
+        swung_after_turn: a.swung_after_turn + h.swung_after_turn,
+        touched_after_turn: a.touched_after_turn + h.touched_after_turn,
         drawn: a.drawn + h.drawn,
         punished: a.punished + h.punished,
         landed: a.landed + h.landed,
+        frames: a.frames + h.frames,
     })
 }
 
@@ -1482,17 +1549,28 @@ fn in_neutral_it_steps_in_and_out_at_the_edge_of_the_opponents_reach_and_punishe
         return;
     }
     eprintln!("stronger {new:?}\nold {old:?}");
-    // Rates per 10,000 frames (five starts of 12,000 frames each): the
-    // floors are the old ones (set for 30,000 frames) doubled.
-    let per = |n: u32| f64::from(n) * 10_000.0 / 60_000.0;
+    // Rates per 10,000 frames of what was played.
+    let per = |n: u32| f64::from(n) * 10_000.0 / f64::from(new.frames.max(1));
     eprintln!("per 10,000 frames: edge turns {:.1}, whiffs {:.1}, drawn {:.1}, punished {:.1}, landed {:.1}", per(new.edge_turns), per(new.whiffs), per(new.drawn), per(new.punished), per(new.landed));
-    assert!(new.edge_turns >= 120, "turns from in to out at the edge of his reach: {new:?}");
+    // Floors for twenty starts of 12,000 frames (240,000 frames).
+    assert!(new.edge_turns >= 480, "turns from in to out at the edge of his reach: {new:?}");
     assert!(2 * new.edge_turns >= 3 * old.edge_turns, "the old Fair CPU turns there by chance: {new:?} against {old:?}");
-    // Drawn whiffs keep the old floor: with SC8 (#200) their rate halved
-    // (of his swings right after an edge turn, most now hit the CPU), and
-    // that drop is with the maintainer.
-    assert!(new.drawn >= 10 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
-    assert!(new.punished >= 6 && new.landed >= 6, "drawn whiffs punished with a route, and landed: {new:?}");
+    // Its last walk in, to poke, stops at the poke's reach, so his swing at
+    // an edge turn meets the CPU less often: of those swings, 30 of 66
+    // touch it (SC13, `#205`; the same count gives 128 of 185 with the walk
+    // reckoned whole, and 160 of 254 before SC8). Touches include his
+    // Shoryukens that hit it without their box ever being seen live.
+    assert!(new.swung_after_turn >= 40, "swings at an edge turn: {new:?}");
+    assert!(2 * new.touched_after_turn < new.swung_after_turn, "swings at an edge turn that touched the CPU: {new:?}");
+    // Drawn whiffs: about 1.5 per 10,000 frames (35 here), against 3.0
+    // before SC8 (71 over the same twenty starts). The drop is put down to
+    // SC8's removal of the Utility AI's idle-frame commands, which moved the
+    // CPU in and out between plan steps (no fault was found in the plans;
+    // the commands cannot be switched back on to measure it directly). The
+    // maintainer accepted the lower rate on 2026-11-20; the floor is 1.2
+    // per 10,000.
+    assert!(per(new.drawn) >= 1.2 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
+    assert!(new.punished >= 24 && new.landed >= 24, "drawn whiffs punished with a route, and landed: {new:?}");
 }
 
 #[test]
@@ -1575,6 +1653,7 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
         let mut shown_at: HashMap<u32, Percept> = HashMap::new();
         let (mut box_seen, mut last_move) = (false, 0u8);
         let (mut walks, mut walks_into, mut route_pressed) = (0u32, Vec::new(), false);
+        let mut recent_down = 0u8;
         let mut shots = 0u32;
         let mut had_shot = false;
         for i in 0..14_000u32 {
@@ -1638,9 +1717,13 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
             }
             route_pressed |= in_route && buttons != 0;
             // Held in blockstun the stick forward is no walk: it begins a
-            // Drive Reversal (SC8).
+            // Drive Reversal (SC8). Nor is it just after the stick was down:
+            // it is a motion's last direction (a quarter circle's, a Super
+            // Art's), which the CPU's answer to what it saw can be (SC13).
             let held = m.toggle_state().combo.blockstun[1] != 0;
-            let walking_in = dirs == forward && buttons == 0 && !route_pressed && !held;
+            let motion = recent_down != 0;
+            recent_down = if dirs & D != 0 { 3 } else { recent_down.saturating_sub(1) };
+            let walking_in = dirs == forward && buttons == 0 && !route_pressed && !held && !motion;
             if i < 300 || !walking_in || !shown.me.free() || down(&shown.foe) {
                 continue;
             }

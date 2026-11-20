@@ -359,8 +359,13 @@ const WALK_SPEED: i16 = 2;
 /// The book proves each route from its widest start; much nearer, a normal
 /// can come out as its close version, with other timing, and the route
 /// drops (seen in play: Ryu's SF6 medium punch into a Hadoken from 30 to
-/// 38 pixels where the book has 52). Punishes are proven from close and
-/// keep no such bound.
+/// 38 pixels where the book has 52). A punish that spends a Super Art is
+/// held to it too: begun nearer than the book proves it, it drops and its
+/// Super whiffs, wasting the bar (seen in play, SC8 `#200`; SC13 `#205`).
+/// Other punishes keep no such bound. Not done: Ryu's SF6 punishes, proven
+/// from the reference punish position, land whole after standing there up
+/// to two frames but only their first hit after a walk of a frame or more,
+/// so a walked-in punish likely drops; the walk in is kept.
 const ROUTE_NEAR: i16 = 8;
 /// How far outside the opponent's reach an [`Act::Edge`] stands, and how
 /// near that counts as there.
@@ -375,6 +380,12 @@ pub(super) const EDGE_WALK: i16 = 8;
 /// the edge of his reach and back.
 pub(super) const STEP_FRAMES: u32 = 4;
 pub(super) const STEP_SPREAD: u32 = 3;
+
+/// A punish that spends a Super Art: not taken much nearer than the book
+/// proves it (see [`ROUTE_NEAR`]).
+fn super_punish(route: &Route) -> bool {
+    route.reach == Reach::Punish && route.super_spent > 0
+}
 
 /// What the moment allows when the CPU looks for a route.
 pub(super) struct Moment<'a> {
@@ -401,6 +412,9 @@ pub(super) struct Moment<'a> {
     /// The stronger play spends no Drive down to burnout, unless the route
     /// wins the round.
     pub avoid_burnout: bool,
+    /// The opponent as route books name him ([`crate::route_book::opponent_key`]),
+    /// when known: a route recorded failing on him is not taken.
+    pub foe: Option<&'a str>,
 }
 
 impl Moment<'_> {
@@ -419,6 +433,8 @@ impl Moment<'_> {
                     && (!self.avoid_burnout || route.drive_spent < self.meters[1] || self.wins_round(route))))
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
             && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
+            && (!super_punish(route) || self.gap >= route.gap - ROUTE_NEAR)
+            && !self.foe.is_some_and(|foe| route.fails_against(foe, stance))
     }
 
     /// Frames to walk before the route reaches from here.
@@ -803,9 +819,12 @@ mod tests {
         // SC8 (`#200`).
         let book = ryu_sf6();
         let super_route = book.routes.iter().find(|r| r.super_spent > 0 && r.reach == Reach::Punish).expect("a punish into a Super Art");
-        let keep = Moment { spend_super: false, ..moment(&[Reach::Punish]) };
+        // From where the book proves it: a Super punish is not taken much
+        // nearer (SC13).
+        let at = Moment { gap: super_route.gap, ..moment(&[Reach::Punish]) };
+        let keep = Moment { spend_super: false, ..at };
         assert!(!keep.allows(super_route), "kept while the round state says keep");
-        assert!(Moment { spend_super: true, ..moment(&[Reach::Punish]) }.allows(super_route), "spent when it says spend");
+        assert!(Moment { spend_super: true, ..at }.allows(super_route), "spent when it says spend");
         let lethal = Moment { foe_health: super_route.damage / 20, ..keep };
         assert!(lethal.allows(super_route), "spent whatever to win the round");
         // The same points of a sturdier fighter's bar (Sagat's 1008 in the
@@ -845,7 +864,31 @@ mod tests {
             spend_super: true,
             drive_reserve: 0,
             avoid_burnout: false,
+            foe: None,
         }
+    }
+
+    #[test]
+    fn a_punish_that_spends_a_super_is_not_taken_much_nearer_than_it_is_proven() {
+        let routes = &ryu_sf6().routes;
+        let with = routes.iter().find(|r| r.reach == Reach::Punish && r.super_spent > 0).unwrap();
+        let without = routes.iter().find(|r| r.reach == Reach::Punish && r.super_spent == 0).unwrap();
+        let at = |route: &Route, gap: i16, walk: u8| Moment { gap, walk, ..moment(&[Reach::Punish]) }.allows(route);
+        assert!(at(with, with.gap, 6) && at(with, with.gap - ROUTE_NEAR, 6), "from its gap or a little nearer");
+        assert!(!at(with, with.gap - ROUTE_NEAR - 1, 6), "much nearer");
+        assert!(at(without, without.gap - ROUTE_NEAR - 10, 0) && at(without, without.gap + 2, 6), "a punish spending none keeps its range");
+    }
+
+    #[test]
+    fn a_route_the_book_records_failing_on_the_opponent_is_not_taken_against_him() {
+        let mut route = ryu_sf6().routes.iter().find(|r| r.stances.contains(&Stance::Crouching)).unwrap().clone();
+        route.fails_on = vec!["Sagat Sf6/Standard crouching".into(), "Gen Sfz3/XIsm".into()];
+        let open = Moment { gap: route.gap, ..moment(&[Reach::Ground, Reach::Punish]) };
+        assert!(open.allows(&route), "nobody named");
+        let against = |foe: &'static str, crouching: bool| Moment { foe: Some(foe), crouching, ..open }.allows(&route);
+        assert!(!against("Gen Sfz3/XIsm", false) && !against("Gen Sfz3/XIsm", true), "every stance");
+        assert!(!against("Sagat Sf6/Standard", true) && against("Sagat Sf6/Standard", false), "one stance");
+        assert!(against("Ken Sf6/Standard", true), "another opponent");
     }
 
     #[test]

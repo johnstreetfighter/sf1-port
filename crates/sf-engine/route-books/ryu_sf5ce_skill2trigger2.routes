@@ -1,0 +1,271 @@
+route-book 1
+fighter Ryu
+style Sf5Ce/Skill2Trigger2
+
+route ground
+name MP, 236+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 52
+fails-on Sagat
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+MP, 236+LP
+hits 2
+damage 260
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 58
+fails-on Mike crouching
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 236+LP | wait 5 5..14 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 623+MP, 236+LP
+hits 2
+damage 260
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 30
+fails-on Retsu crouching; Geki crouching; Joe; Mike; Lee crouching; Gen standing; Birdie standing; Sagat crouching
+step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+step 236+LP | wait 9 9..16 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name LK, 236+LP
+hits 2
+damage 260
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 30
+fails-on Retsu crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
+step 236+LP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.MP, 236+LP
+hits 2
+damage 260
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 58
+fails-on Mike crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236+LP | wait 6 6..15 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+LP, 236+LP
+hits 2
+damage 240
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 58
+fails-on Mike crouching
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 236+LP | wait 0 0..8 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LK, 236+LP
+hits 2
+damage 240
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 52
+fails-on Mike crouching
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LP, 236+LP
+hits 2
+damage 240
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 58
+fails-on Mike crouching
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236+LP | wait 0 0..8 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP, 236236+LP, 236236+LP, 236+LP
+hits 9
+damage 860
+rules true_combos cancels
+meter super -144 +15 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Gen; Birdie Arcade1987/Standard crouching; Birdie Sf1Plus/Standard; Birdie Sfz1/Standard; Birdie Sfz2/Standard; Birdie Sfz2A/Standard; Birdie Sfz3/AIsm; Birdie Sfz3/VIsm; Birdie Sfz3/XIsm; Birdie Sf5/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger2; Birdie Sf5Ce/Skill1Trigger1; Birdie Sf5Ce/Skill1Trigger2; Birdie Sf5Ce/Skill2Trigger1; Birdie Sf5Ce/Skill2Trigger2; Birdie Hf/Standard; Birdie St/Standard; Birdie St/Old; Birdie Sf3ThreeS/Art1; Birdie Sf3ThreeS/Art2; Birdie Sf3ThreeS/Art3; Birdie Usf4/Ultra1; Birdie Usf4/Ultra2; Birdie Usf4/UltraDouble; Birdie Sf6/Standard; Eagle Arcade1987/Standard standing; Adon Arcade1987/Standard crouching; Adon Sf1Plus/Standard; Adon Sfz1/Standard; Adon Sfz2/Standard; Adon Sfz2A/Standard; Adon Sfz3/AIsm; Adon Sfz3/VIsm; Adon Sfz3/XIsm; Adon Ssf4/Ultra1; Adon Ssf4/Ultra2; Adon Ae2012/Ultra1; Adon Ae2012/Ultra2; Adon Usf4/Ultra1; Adon Usf4/Ultra2; Adon Usf4/UltraDouble; Adon Hf/Standard; Adon St/Standard; Adon St/Old; Adon Sf3ThreeS/Art1; Adon Sf3ThreeS/Art2; Adon Sf3ThreeS/Art3; Adon Sf5Ce/Skill1Trigger1; Adon Sf5Ce/Skill1Trigger2; Adon Sf5Ce/Skill2Trigger1; Adon Sf5Ce/Skill2Trigger2; Adon Sf6/Standard; Sagat
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236+LP | wait 6 6..17 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP, 236236+LP, 236+LP
+hits 8
+damage 740
+rules true_combos cancels
+meter super -144 +15 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Gen; Birdie Arcade1987/Standard crouching; Birdie Sf1Plus/Standard; Birdie Sfz1/Standard; Birdie Sfz2/Standard; Birdie Sfz2A/Standard; Birdie Sfz3/AIsm; Birdie Sfz3/VIsm; Birdie Sfz3/XIsm; Birdie Sf5/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger2; Birdie Sf5Ce/Skill1Trigger1; Birdie Sf5Ce/Skill1Trigger2; Birdie Sf5Ce/Skill2Trigger1; Birdie Sf5Ce/Skill2Trigger2; Birdie Hf/Standard; Birdie St/Standard; Birdie St/Old; Birdie Sf3ThreeS/Art1; Birdie Sf3ThreeS/Art2; Birdie Sf3ThreeS/Art3; Birdie Usf4/Ultra1; Birdie Usf4/Ultra2; Birdie Usf4/UltraDouble; Birdie Sf6/Standard; Eagle Arcade1987/Standard standing; Adon Arcade1987/Standard crouching; Adon Sf1Plus/Standard; Adon Sfz1/Standard; Adon Sfz2/Standard; Adon Sfz2A/Standard; Adon Sfz3/AIsm; Adon Sfz3/VIsm; Adon Sfz3/XIsm; Adon Ssf4/Ultra1; Adon Ssf4/Ultra2; Adon Ae2012/Ultra1; Adon Ae2012/Ultra2; Adon Usf4/Ultra1; Adon Usf4/Ultra2; Adon Usf4/UltraDouble; Adon Hf/Standard; Adon St/Standard; Adon St/Old; Adon Sf3ThreeS/Art1; Adon Sf3ThreeS/Art2; Adon Sf3ThreeS/Art3; Adon Sf5Ce/Skill1Trigger1; Adon Sf5Ce/Skill1Trigger2; Adon Sf5Ce/Skill2Trigger1; Adon Sf5Ce/Skill2Trigger2; Adon Sf6/Standard; Sagat
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236+LP | wait 4 4..17 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP, 236+LP
+hits 7
+damage 600
+rules true_combos cancels
+meter super -144 +15 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Gen; Birdie Arcade1987/Standard crouching; Birdie Sf1Plus/Standard; Birdie Sfz1/Standard; Birdie Sfz2/Standard; Birdie Sfz2A/Standard; Birdie Sfz3/AIsm; Birdie Sfz3/VIsm; Birdie Sfz3/XIsm; Birdie Sf5/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger2; Birdie Sf5Ce/Skill1Trigger1; Birdie Sf5Ce/Skill1Trigger2; Birdie Sf5Ce/Skill2Trigger1; Birdie Sf5Ce/Skill2Trigger2; Birdie Hf/Standard; Birdie St/Standard; Birdie St/Old; Birdie Sf3ThreeS/Art1; Birdie Sf3ThreeS/Art2; Birdie Sf3ThreeS/Art3; Birdie Usf4/Ultra1; Birdie Usf4/Ultra2; Birdie Usf4/UltraDouble; Birdie Sf6/Standard; Eagle Arcade1987/Standard standing; Adon Arcade1987/Standard crouching; Adon Sf1Plus/Standard; Adon Sfz1/Standard; Adon Sfz2/Standard; Adon Sfz2A/Standard; Adon Sfz3/AIsm; Adon Sfz3/VIsm; Adon Sfz3/XIsm; Adon Ssf4/Ultra1; Adon Ssf4/Ultra2; Adon Ae2012/Ultra1; Adon Ae2012/Ultra2; Adon Usf4/Ultra1; Adon Usf4/Ultra2; Adon Usf4/UltraDouble; Adon Hf/Standard; Adon St/Standard; Adon St/Old; Adon Sf3ThreeS/Art1; Adon Sf3ThreeS/Art2; Adon Sf3ThreeS/Art3; Adon Sf5Ce/Skill1Trigger1; Adon Sf5Ce/Skill1Trigger2; Adon Sf5Ce/Skill2Trigger1; Adon Sf5Ce/Skill2Trigger2; Adon Sf6/Standard; Sagat
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236+LP | wait 2 2..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP, 236236+LP, 236236+LP, MP+MK
+hits 5
+damage 560
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step MP+MK | wait 18 18..22 | hold 0 | 0:12x3 0:00
+end
+
+route punish
+name cr.LK, 236+LP, 236236+LP, 236236+LP
+hits 4
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236236+LP
+hits 6
+damage 420
+rules true_combos cancels
+meter super -144 +15 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Gen; Birdie Arcade1987/Standard crouching; Birdie Sf1Plus/Standard; Birdie Sfz1/Standard; Birdie Sfz2/Standard; Birdie Sfz2A/Standard; Birdie Sfz3/AIsm; Birdie Sfz3/VIsm; Birdie Sfz3/XIsm; Birdie Sf5/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger1; Birdie Sf5Ae/Skill1Trigger2; Birdie Sf5Ce/Skill1Trigger1; Birdie Sf5Ce/Skill1Trigger2; Birdie Sf5Ce/Skill2Trigger1; Birdie Sf5Ce/Skill2Trigger2; Birdie Hf/Standard; Birdie St/Standard; Birdie St/Old; Birdie Sf3ThreeS/Art1; Birdie Sf3ThreeS/Art2; Birdie Sf3ThreeS/Art3; Birdie Usf4/Ultra1; Birdie Usf4/Ultra2; Birdie Usf4/UltraDouble; Birdie Sf6/Standard; Eagle Arcade1987/Standard standing; Adon Arcade1987/Standard crouching; Adon Sf1Plus/Standard; Adon Sfz1/Standard; Adon Sfz2/Standard; Adon Sfz2A/Standard; Adon Sfz3/AIsm; Adon Sfz3/VIsm; Adon Sfz3/XIsm; Adon Ssf4/Ultra1; Adon Ssf4/Ultra2; Adon Ae2012/Ultra1; Adon Ae2012/Ultra2; Adon Usf4/Ultra1; Adon Usf4/Ultra2; Adon Usf4/UltraDouble; Adon Hf/Standard; Adon St/Standard; Adon St/Old; Adon Sf3ThreeS/Art1; Adon Sf3ThreeS/Art2; Adon Sf3ThreeS/Art3; Adon Sf5Ce/Skill1Trigger1; Adon Sf5Ce/Skill1Trigger2; Adon Sf5Ce/Skill2Trigger1; Adon Sf5Ce/Skill2Trigger2; Adon Sf6/Standard; Sagat
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP, 236236+LP
+hits 3
+damage 380
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step 236236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP
+hits 2
+damage 240
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end

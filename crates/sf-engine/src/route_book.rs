@@ -7,7 +7,19 @@
 //! attacker's pair, not by opponent: every route is searched and proven
 //! against one reference defender (Ryu in the attacker's style, or his own
 //! default), and carries a list of opponents it is known to fail on, which
-//! a later developer pass fills (SC13, `#205`).
+//! a developer command fills (SC13, `#205`;
+//! `crates/sf-host/examples/route_check.rs`): it plays each route from the
+//! same kind of position against each opponent fighter in each style, in
+//! each stance the route works on, and records those it lands fewer hits
+//! on. A punish is checked against each opponent's own sweep, as the
+//! search made it against the reference defender's. The Fair CPU takes no
+//! route against an opponent it is recorded failing on.
+//!
+//! **Which books there are:** one for every fighter and style the search
+//! found a route of two hits or more for, listed in
+//! `route-books/books.rs`; every other pair is in `route-books/unbooked.txt`
+//! with the reason (the 1987 rules allow no combo, or the search found
+//! none). Both are written by `route_search all`.
 //!
 //! **Where a route starts** ([`Reach`], [`position`]): on the ground, the
 //! attacker walked in until the two fighters touch; from a jump in, from a
@@ -33,7 +45,8 @@
 //! (`crates/sf-host/examples/combo_clips.rs`), widened from one long route
 //! to the useful ones: routes of two hits and up, several per pair. It is
 //! a developer tool (`crates/sf-host/examples/route_search.rs`); nothing in
-//! a fight runs it. A fight only reads the checked-in books ([`book`]).
+//! a fight runs it. A fight only reads the checked-in books ([`book`]). The
+//! bosses' positions need the extended data bank, built from the art pack.
 
 use std::sync::{Arc, OnceLock};
 
@@ -57,8 +70,9 @@ pub const UP: u8 = 8;
 /// One pad frame: stick bits and button bits (LP to HK from bit 0).
 pub type Pad = (u8, u8);
 
-/// The checked-in route books, one file per fighter and era style.
-const BOOKS: [&str; 1] = [include_str!("../route-books/ryu_sf6_standard.routes")];
+/// The checked-in route books, one file per fighter and era style, as
+/// `route_search all` lists them.
+const BOOKS: &[&str] = include!("../route-books/books.rs");
 
 /// The first line of a route book file.
 const HEADING: &str = "route-book 1";
@@ -110,7 +124,8 @@ pub enum Stance {
 impl Stance {
     const ALL: [(Stance, &'static str); 2] = [(Stance::Standing, "standing"), (Stance::Crouching, "crouching")];
 
-    fn name(self) -> &'static str {
+    /// How a route book writes it.
+    pub fn name(self) -> &'static str {
         Self::ALL.iter().find(|(s, _)| *s == self).unwrap().1
     }
 
@@ -163,7 +178,9 @@ pub struct Route {
     /// The widest the fighters can start apart: from the attacker's centre
     /// to the near edge of the defender's hurtbox.
     pub gap: i16,
-    /// Opponents (fighter and era style) it is known to fail on.
+    /// Opponents it is known to fail on: a fighter in every style he has
+    /// or in one (as [`opponent_key`] names it), in every stance the route
+    /// works on or in one. See [`Route::fails_against`].
     pub fails_on: Vec<String>,
 }
 
@@ -194,6 +211,13 @@ impl Route {
     /// The script frame step `index` begins on (its wait's first frame).
     pub fn step_start(&self, index: usize) -> usize {
         self.steps[..index.min(self.steps.len())].iter().map(|s| usize::from(s.wait) + s.pads.len()).sum()
+    }
+
+    /// Whether the book records the route failing on the opponent `key`
+    /// ([`opponent_key`]) when he is in `stance`: an entry names him alone
+    /// (every stance the route works on) or him and one stance.
+    pub fn fails_against(&self, key: &str, stance: Stance) -> bool {
+        self.fails_on.iter().any(|entry| entry_stance(entry, key).is_some_and(|only| only.is_none_or(|s| s == stance)))
     }
 
     /// The script's length in frames, with the recorded waits.
@@ -344,6 +368,14 @@ impl RouteBook {
         let fighter = TournamentFighter::ALL.into_iter().find(|f| format!("{f:?}") == fighter).ok_or_else(|| format!("no fighter {fighter}"))?;
         let (revision, loadout) = parse_style(fighter, &field(&mut lines, "style")?)?;
         let mut routes = Vec::new();
+        let keys: std::collections::HashSet<String> = opponents().into_iter().map(|(who, style)| opponent_key(who, style)).collect();
+        let fighters: Vec<String> = TournamentFighter::ALL.iter().map(|f| format!("{f:?}")).collect();
+        let known = |entry: &str| {
+            entry_parts(entry).is_some_and(|(fighter, style, _)| match style {
+                Some(style) => keys.contains(&format!("{fighter} {style}")),
+                None => fighters.iter().any(|f| f == fighter),
+            })
+        };
         // Routes to the end of the text: anything else there is a fault.
         while lines.peek().is_some() {
             let reach = field(&mut lines, "route")?;
@@ -368,6 +400,9 @@ impl RouteBook {
             let confirm = number(&field(&mut lines, "confirm")?)?;
             let gap = number(&field(&mut lines, "gap")?)?;
             let fails_on: Vec<String> = field(&mut lines, "fails-on")?.split("; ").filter(|s| !s.is_empty()).map(str::to_owned).collect();
+            if let Some(entry) = fails_on.iter().find(|entry| !known(entry)) {
+                return Err(format!("no opponent {entry}"));
+            }
             let mut steps = Vec::new();
             loop {
                 let line = lines.next().ok_or("a route does not end")?;
@@ -428,7 +463,14 @@ pub fn books() -> &'static [RouteBook] {
 
 /// The checked-in text of every route book, as the build holds it.
 pub fn book_texts() -> &'static [&'static str] {
-    &BOOKS
+    BOOKS
+}
+
+/// The file a fighter's route book in a style is checked in as, in
+/// `crates/sf-engine/route-books/`.
+pub fn file_name(fighter: TournamentFighter, revision: Revision, loadout: Loadout) -> String {
+    let plain = |text: &str| text.chars().filter(char::is_ascii_alphanumeric).collect::<String>().to_ascii_lowercase();
+    format!("{}_{}_{}.routes", plain(fighter.name()), plain(&format!("{revision:?}")), plain(&format!("{loadout:?}")))
 }
 
 /// The route book of a fighter in an era style, if one is checked in.
@@ -515,20 +557,93 @@ pub fn position(
     program_rom: &[u8],
     data: Option<Arc<DataBank>>,
     fighter: TournamentFighter,
-    (revision, loadout): (Revision, Loadout),
+    style: (Revision, Loadout),
     reach: Reach,
+    stance: Stance,
+) -> Result<PowerOnMachine, String> {
+    from_opening(&opening(program_rom, data, fighter, style, None, stance)?, reach, stance)
+}
+
+/// Every opponent a route can meet: each fighter in each style he can be
+/// picked in, what-if styles included.
+pub fn opponents() -> Vec<(TournamentFighter, (Revision, Loadout))> {
+    let mut out = Vec::new();
+    for fighter in TournamentFighter::ALL {
+        for family in listed_families(fighter, true) {
+            for revision in listed_revisions(fighter, family, true) {
+                out.extend(loadouts(revision).into_iter().map(|loadout| (fighter, (revision, loadout))));
+            }
+        }
+    }
+    out
+}
+
+/// A `fails-on` entry: a fighter, then his style unless it is every style
+/// he has, then the one stance unless it is every stance the route works
+/// on (`Lee`, `Mike crouching`, `Sagat Sf6/Standard`, `Gen Sfz3/XIsm
+/// standing`). `None` when it is not of that shape.
+fn entry_parts(entry: &str) -> Option<(&str, Option<&str>, Option<Stance>)> {
+    let mut words = entry.split(' ');
+    let fighter = words.next()?;
+    let mut style = None;
+    let mut stance = None;
+    for word in words {
+        if let Some(s) = Stance::ALL.iter().find(|(_, name)| *name == word) {
+            stance = Some(s.0);
+        } else if word.contains('/') && style.is_none() && stance.is_none() {
+            style = Some(word);
+        } else {
+            return None;
+        }
+    }
+    Some((fighter, style, stance))
+}
+
+/// Whether a `fails-on` entry names the opponent `key` ([`opponent_key`]):
+/// `Some(None)` in every stance, `Some(Some(stance))` in one.
+fn entry_stance(entry: &str, key: &str) -> Option<Option<Stance>> {
+    let (fighter, style, stance) = entry_parts(entry)?;
+    let (key_fighter, key_style) = key.split_once(' ')?;
+    (fighter == key_fighter && style.is_none_or(|s| s == key_style)).then_some(stance)
+}
+
+/// How a route book names an opponent in a route's `fails-on` line.
+pub fn opponent_key(fighter: TournamentFighter, (revision, loadout): (Revision, Loadout)) -> String {
+    format!("{fighter:?} {revision:?}/{loadout:?}")
+}
+
+/// The two fighters walked in until they touch, the defender holding
+/// `stance` throughout, both meters filled once: where every reach's
+/// position begins ([`from_opening`]). The defender is `defender` in his
+/// style, or the reference defender when `None`: Ryu in the attacker's
+/// style where he has it, otherwise in SF6.
+pub fn opening(
+    program_rom: &[u8],
+    data: Option<Arc<DataBank>>,
+    fighter: TournamentFighter,
+    (revision, loadout): (Revision, Loadout),
+    defender: Option<(TournamentFighter, (Revision, Loadout))>,
     stance: Stance,
 ) -> Result<PowerOnMachine, String> {
     let pick = StylePick::for_revision(revision, loadout);
     if !pick.available_for(fighter, true) {
         return Err(format!("{fighter:?} has no {revision:?}/{loadout:?} style"));
     }
-    // The defender takes the attacker's style where he has it.
-    let defender = if pick.available_for(DEFENDER, true) { pick } else { StylePick::for_revision(Revision::Sf6, Loadout::Standard) };
+    let (defender, defender_pick) = match defender {
+        Some((who, (revision, loadout))) => {
+            let theirs = StylePick::for_revision(revision, loadout);
+            if !theirs.available_for(who, true) {
+                return Err(format!("{who:?} has no {revision:?}/{loadout:?} style"));
+            }
+            (who, theirs)
+        }
+        // The reference defender takes the attacker's style where he has it.
+        None => (DEFENDER, if pick.available_for(DEFENDER, true) { pick } else { StylePick::for_revision(Revision::Sf6, Loadout::Standard) }),
+    };
     let mut config = MatchConfig::definitive();
     config.roster.mode = PlayMode::Training;
     config.roster.p1 = fighter;
-    config.roster.p2 = DEFENDER;
+    config.roster.p2 = defender;
     config.roster.what_if_styles = true;
     config.fill_meters = true;
     let setup = FightSetup {
@@ -540,7 +655,7 @@ pub fn position(
     };
     let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
     let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data)).map_err(|event| format!("the fight did not start: {event:?}"))?;
-    fight.set_selected_styles([Some(pick), Some(defender)]);
+    fight.set_selected_styles([Some(pick), Some(defender_pick)]);
     let mut m = fight.machine().clone();
     let foe = (stance.stick(), 0);
     let mut frames = 0;
@@ -572,6 +687,14 @@ pub fn position(
     // The meters are full now, once: from here nothing refills them.
     m.match_config_mut().fill_meters = false;
     tick(&mut m, (0, 0), foe);
+    Ok(m)
+}
+
+/// The position a route of `reach` starts from, from an [`opening`] made
+/// with the defender in `stance`.
+pub fn from_opening(opening: &PowerOnMachine, reach: Reach, stance: Stance) -> Result<PowerOnMachine, String> {
+    let mut m = opening.clone();
+    let foe = (stance.stick(), 0);
     match reach {
         Reach::Ground => {}
         Reach::AntiAir | Reach::DriveRush => return Err(format!("no reference position for a {} route yet", reach.name())),
@@ -908,15 +1031,32 @@ impl Pair<'_> {
     }
 }
 
+/// What a search found, and the ways to start a route it could not search
+/// from, with why.
+pub struct Searched {
+    pub book: RouteBook,
+    pub skipped: Vec<(Reach, String)>,
+}
+
 /// Search for the useful routes of a pair from `actions` (see
 /// [`ground_actions`]): for each of a ground hit, a jump-in and a punish,
 /// up to `budget.keep` routes of two hits or more, short ones included,
-/// each measured against the reference defender.
-pub fn search(pair: &Pair, actions: &[Action], budget: Budget) -> Result<RouteBook, String> {
+/// each measured against the reference defender. A jump-in or punish whose
+/// reference position cannot be made is skipped and noted; a ground hit's
+/// is the pair's fault.
+pub fn search(pair: &Pair, actions: &[Action], budget: Budget) -> Result<Searched, String> {
     let mut routes = Vec::new();
+    let mut skipped = Vec::new();
     for reach in [Reach::Ground, Reach::JumpIn, Reach::Punish] {
         let stance = Stance::Standing;
-        let base = pair.position(reach, stance)?;
+        let base = match pair.position(reach, stance) {
+            Ok(base) => base,
+            Err(why) if reach != Reach::Ground => {
+                skipped.push((reach, why));
+                continue;
+            }
+            Err(why) => return Err(why),
+        };
         let foe = (stance.stick(), 0);
         let root = Node { after_pads: base.clone(), since: 0, steps: Vec::new(), hits: 0, ride: 0, health: health(&base), damage: 0, airborne: false };
         // A press that does nothing is no part of a route, and of the
@@ -1004,7 +1144,7 @@ pub fn search(pair: &Pair, actions: &[Action], budget: Budget) -> Result<RouteBo
         }
         routes.extend(choose(measured, budget.keep));
     }
-    Ok(RouteBook { fighter: pair.fighter, revision: pair.style.0, loadout: pair.style.1, routes })
+    Ok(Searched { book: RouteBook { fighter: pair.fighter, revision: pair.style.0, loadout: pair.style.1, routes }, skipped })
 }
 
 /// Keep `keep` routes, for variety before damage: the best of each length
@@ -1040,6 +1180,52 @@ fn choose(mut routes: Vec<Route>, keep: usize) -> Vec<Route> {
     chosen
 }
 
+/// Measure each step's window and the time to confirm from `base`, the
+/// route's reference position against a standing defender: the waits
+/// around a step's own (the others kept) that change nothing the book
+/// records of it: its hits, its damage, the meter it spends, and for a
+/// punish that its first hit meets him recovering. Two motions close
+/// together can read as a Super Art's and spend meter: a wait that does
+/// that is outside the window. `first_hit` is the script frame the route's
+/// first hit landed on at its recorded waits.
+pub fn set_windows(base: &PowerOnMachine, route: &mut Route, first_hit: Option<usize>) {
+    let reach = route.reach;
+    let recorded = (route.hits, route.damage, route.super_spent, route.drive_spent);
+    let same = |played: Played| {
+        (played.hits, played.damage, played.super_spent, played.drive_spent) == recorded && (reach != Reach::Punish || played.punished)
+    };
+    let waits: Vec<u8> = route.steps.iter().map(|s| s.wait).collect();
+    let mut windows = Vec::new();
+    for (i, &wait) in waits.iter().enumerate() {
+        let holds = |at: u8| {
+            let mut tried = waits.clone();
+            tried[i] = at;
+            same(replay(base, &route.script(Some(&tried)), Stance::Standing))
+        };
+        let (mut low, mut high) = (wait, wait);
+        // The opener's wait is where the route starts, except in a punish.
+        if i > 0 || reach == Reach::Punish {
+            while low > 0 && wait - low < 30 && holds(low - 1) {
+                low -= 1;
+            }
+            while high - wait < 30 && high < u8::MAX && holds(high + 1) {
+                high += 1;
+            }
+        }
+        windows.push((low, high));
+    }
+    for (step, window) in route.steps.iter_mut().zip(windows) {
+        step.window = window;
+    }
+    // The time to see the first hit before the second step must begin.
+    route.confirm = 0;
+    if let (Some(first_hit), Some(second)) = (first_hit, route.steps.get(1)) {
+        let first = &route.steps[0];
+        let latest = usize::from(first.wait) + first.pads.len() + usize::from(second.window.1);
+        route.confirm = latest.saturating_sub(first_hit + 1).min(255) as u8;
+    }
+}
+
 /// Play the steps a search state holds and record the route they make, or
 /// nothing if they do not replay as a combo of two hits or more.
 fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -> Option<Route> {
@@ -1072,38 +1258,9 @@ fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -
     route.drive_spent = played.drive_spent;
     route.drive_gained = played.drive_gained;
     route.knockdown = played.knockdown;
+    set_windows(base, &mut route, played.first_hit);
     // A punish stays one only while its first hit meets a recovering defender.
     let same = |played: Played| played.hits == route.hits && played.damage == route.damage && (reach != Reach::Punish || played.punished);
-    // Each step's window: the waits around its own that change nothing.
-    let waits: Vec<u8> = route.steps.iter().map(|s| s.wait).collect();
-    let mut windows = Vec::new();
-    for (i, &wait) in waits.iter().enumerate() {
-        let holds = |at: u8| {
-            let mut tried = waits.clone();
-            tried[i] = at;
-            same(replay(base, &route.script(Some(&tried)), Stance::Standing))
-        };
-        let (mut low, mut high) = (wait, wait);
-        // The opener's wait is where the route starts, except in a punish.
-        if i > 0 || reach == Reach::Punish {
-            while low > 0 && wait - low < 30 && holds(low - 1) {
-                low -= 1;
-            }
-            while high - wait < 30 && high < u8::MAX && holds(high + 1) {
-                high += 1;
-            }
-        }
-        windows.push((low, high));
-    }
-    for (step, window) in route.steps.iter_mut().zip(windows) {
-        step.window = window;
-    }
-    // The time to see the first hit before the second step must begin.
-    if let (Some(first_hit), Some(second)) = (played.first_hit, route.steps.get(1)) {
-        let first = &route.steps[0];
-        let latest = usize::from(first.wait) + first.pads.len() + usize::from(second.window.1);
-        route.confirm = latest.saturating_sub(first_hit + 1).min(255) as u8;
-    }
     let script = route.script(None);
     // The rules it needs, the stances it works on, and how far apart it
     // can start: each is the same script played somewhere else.
@@ -1168,5 +1325,25 @@ mod tests {
         let failing = RouteBook::parse(&book.replace("fails-on \n", "fails-on Sagat Sf6/Standard; Gen Sfz3/XIsm\n")).unwrap();
         assert_eq!(failing.routes[0].fails_on, ["Sagat Sf6/Standard", "Gen Sfz3/XIsm"]);
         assert_eq!(RouteBook::parse(&failing.to_text()).unwrap(), failing);
+        assert!(RouteBook::parse(&book.replace("fails-on 
+", "fails-on Sagat Sf9/Standard
+")).is_err(), "an opponent that is not one");
+        let one = RouteBook::parse(&book.replace("fails-on 
+", "fails-on Sagat Sf6/Standard crouching; Gen Sfz3/XIsm
+")).unwrap();
+        let route = &one.routes[0];
+        assert!(route.fails_against("Sagat Sf6/Standard", Stance::Crouching) && !route.fails_against("Sagat Sf6/Standard", Stance::Standing));
+        assert!(route.fails_against("Gen Sfz3/XIsm", Stance::Standing) && route.fails_against("Gen Sfz3/XIsm", Stance::Crouching));
+        assert!(!route.fails_against("Ryu Sf6/Standard", Stance::Standing));
+        assert_eq!(opponent_key(TournamentFighter::Gen, (Revision::Sfz3, Loadout::XIsm)), "Gen Sfz3/XIsm");
+        // A fighter alone is every style he has.
+        let every = RouteBook::parse(&book.replace("fails-on \n", "fails-on Lee; Mike crouching\n")).unwrap();
+        let route = &every.routes[0];
+        assert!(route.fails_against("Lee Sf6/Standard", Stance::Standing) && route.fails_against("Lee Sfz3/XIsm", Stance::Crouching));
+        assert!(route.fails_against("Mike St/Old", Stance::Crouching) && !route.fails_against("Mike St/Old", Stance::Standing));
+        assert!(!route.fails_against("Ryu Sf6/Standard", Stance::Standing) && !route.fails_against("Leeds Sf6/Standard", Stance::Standing));
+        assert_eq!(RouteBook::parse(&every.to_text()).unwrap(), every);
+        assert!(RouteBook::parse(&book.replace("fails-on \n", "fails-on Leo\n")).is_err(), "no such fighter");
+        assert!(RouteBook::parse(&book.replace("fails-on \n", "fails-on Lee kneeling\n")).is_err(), "no such stance");
     }
 }

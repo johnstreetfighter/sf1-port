@@ -1,0 +1,133 @@
+route-book 1
+fighter Birdie
+style St/Old
+
+route ground
+name LP, LK, 236+LP
+hits 3
+damage 420
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 8
+gap 46
+fails-on Retsu; Geki; Mike; Lee; Gen; Birdie; Eagle; Sagat
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LK | wait 6 6..10 | hold 0 | 0:08x2 0:00
+step 236+LP | wait 2 2..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name LP, [2]8+LK, 236+LP
+hits 3
+damage 420
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 7
+gap 46
+fails-on Retsu; Geki; Mike; Lee; Gen; Birdie; Eagle; Sagat
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step [2]8+LK | wait 6 6..9 | hold 6 | 8:08x3 8:00
+step 236+LP | wait 1 1..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name LK, 236+LP
+hits 2
+damage 360
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 2
+gap 46
+fails-on Retsu; Geki; Gen; Adon
+step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
+step 236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+MP, 214+LK
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Retsu standing; Mike crouching; Gen crouching
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 214+LK | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name cr.MP, 214+LK
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Mike crouching; Gen crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name 421+LP, 236+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 46
+fails-on
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LK, 236+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 1
+gap 46
+fails-on
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LP, 236+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 1
+gap 46
+fails-on
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end

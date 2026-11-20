@@ -708,6 +708,9 @@ pub struct Context {
     /// The opponent's whole health in an era style's finer units (a route
     /// book's damage is in them): how much a health bar point of his is.
     foe_max_sub_hp: u16,
+    /// The opponent's fighter and style, where an era style is in force: a
+    /// route the book records failing on him is not taken (SC13, `#205`).
+    pub(crate) foe: Option<(TournamentFighter, (crate::era::Revision, crate::era::Loadout))>,
 }
 
 impl Context {
@@ -727,6 +730,7 @@ impl Context {
             meter_full: false,
             round_decides_match: false,
             foe_max_sub_hp: crate::era_fight::FULL_SUB_HP,
+            foe: None,
         }
     }
 
@@ -1513,6 +1517,7 @@ impl FairCpu {
     fn take_route(&mut self, ctx: &Context, view: Percept, reaches: &[crate::route_book::Reach], walk: u8) -> bool {
         let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
         let Some(book) = crate::route_book::book(fighter, revision, loadout) else { return false };
+        let foe = ctx.foe.map(|(who, style)| crate::route_book::opponent_key(who, style));
         let moment = game::Moment {
             reaches,
             era: ctx.era.is_some(),
@@ -1528,6 +1533,7 @@ impl FairCpu {
             spend_super: self.spends_super(ctx, view),
             drive_reserve: if self.stronger(ctx) { drive_reserve(ctx.level) } else { 0 },
             avoid_burnout: self.stronger(ctx),
+            foe: foe.as_deref(),
         };
         let mut options: Vec<(usize, i32)> = Vec::new();
         for (index, route) in book.routes.iter().enumerate() {
@@ -1630,7 +1636,8 @@ impl FairCpu {
             let Some(at) = table.get(usize::from(run.plan)).and_then(|plan| plan.steps.get(usize::from(run.step))) else { break };
             // It does not walk or attack into an attack or a projectile it
             // has seen start: the plan ends, and its answer takes over.
-            let commits = !run.acted && at.act.commits();
+            // (A reach is walked a few frames at a time: each walk is one.)
+            let commits = (!run.acted || matches!(at.act, Act::Reach { .. })) && at.act.commits();
             if commits && (view.foe.attacking() || view.shot_coming()) {
                 break;
             }
@@ -1714,15 +1721,21 @@ impl FairCpu {
                     self.settle = step + plan.len as u32;
                     return Some(plan);
                 }
-                (Act::Reach { crouch, button }, false) => {
+                (Act::Reach { crouch, button }, acted) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
                     let gap = self.felt(step, view).gap();
-                    if gap > reach {
-                        // A walk covers about two pixels a frame.
-                        let frames = ((gap - reach + 1) / 2).clamp(1, 40) as usize;
+                    if gap > reach && !(acted && step > run.pressed + game::EDGE_FRAMES) {
+                        // A few frames at a time, looking again after each:
+                        // the walk is reckoned at two pixels a frame, and a
+                        // fighter's can cover more (Ryu's SF6 one about 2.7),
+                        // so one walk the whole way in overshot the normal's
+                        // reach into the opponent's (SC13, `#205`).
+                        let frames = ((gap - reach + 1) / 2).clamp(1, game::EDGE_WALK) as usize;
                         let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                        if !acted {
+                            run.pressed = step;
+                        }
                         run.acted = true;
-                        run.pressed = step;
                         self.game = Some(run);
                         return Some(Plan::of(PlanKind::Walk, &[forward; PLAN_CAP][..frames]));
                     }
