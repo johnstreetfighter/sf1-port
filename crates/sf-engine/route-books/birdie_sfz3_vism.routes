@@ -1,0 +1,51 @@
+route-book 1
+fighter Birdie
+style Sfz3/VIsm
+
+route ground
+name LP, LK
+hits 2
+damage 220
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 8
+gap 46
+fails-on Mike; Lee; Birdie; Eagle; Sagat
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LK | wait 6 6..10 | hold 0 | 0:08x2 0:00
+end
+
+route ground
+name LP, MK
+hits 2
+damage 220
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 8
+gap 46
+fails-on Mike; Lee; Birdie; Eagle; Sagat
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step MK | wait 6 6..10 | hold 0 | 0:10x2 0:00
+end
+
+route ground
+name LP, [2]8+LK
+hits 2
+damage 220
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 7
+gap 46
+fails-on Mike; Lee; Birdie; Eagle; Sagat
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step [2]8+LK | wait 6 6..9 | hold 6 | 8:08x3 8:00
+end

@@ -1,0 +1,131 @@
+route-book 1
+fighter Mike
+style Hf/Standard
+
+route punish
+name cr.LK, 421+LP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 421+LP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+end
+
+route punish
+name cr.LK, 421+MP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 421+MP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+end
+
+route punish
+name cr.LK, cr.HK
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 9
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step cr.HK | wait 7 7..11 | hold 0 | 4:20x2 4:00
+end
+
+route punish
+name cr.LK, cr.LK
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 9
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step cr.LK | wait 7 7..11 | hold 0 | 4:08x2 4:00
+end
+
+route punish
+name cr.LK, cr.LP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 9
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step cr.LP | wait 7 7..11 | hold 0 | 4:01x2 4:00
+end
+
+route punish
+name cr.LK, cr.MP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 9
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step cr.MP | wait 7 7..11 | hold 0 | 4:02x2 4:00
+end
+
+route punish
+name cr.LP, 421+LP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..2 | hold 0 | 4:01x2 4:00
+step 421+LP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+end
+
+route punish
+name cr.LP, 421+MP
+hits 2
+damage 400
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 32
+fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..2 | hold 0 | 4:01x2 4:00
+step 421+MP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+end

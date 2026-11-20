@@ -1,0 +1,131 @@
+route-book 1
+fighter Adon
+style St/Old
+
+route ground
+name 421+MP, 214+LK
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 5
+gap 46
+fails-on Joe standing; Mike crouching
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 214+LK | wait 0 0..8 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name 421+MP, 623+LP
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 5
+gap 30
+fails-on Retsu standing; Joe standing; Mike crouching; Gen standing; Adon
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 623+LP | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+end
+
+route ground
+name cr.MP, 214+LK
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 5
+gap 46
+fails-on Joe standing; Mike crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LK | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name cr.MP, 623+LP
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 5
+gap 40
+fails-on Joe; Mike; Gen crouching; Eagle crouching; Adon; Sagat standing
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 623+LP | wait 0 0..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+end
+
+route ground
+name 421+LP, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 2
+gap 46
+fails-on Mike crouching
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 214+LK | wait 0 0..5 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name 421+LP, 623+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 30
+fails-on Adon
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+end
+
+route ground
+name cr.LK, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 2
+gap 42
+fails-on Mike crouching
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 214+LK | wait 0 0..6 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name cr.LP, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 2
+gap 46
+fails-on Mike crouching
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 214+LK | wait 0 0..6 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end

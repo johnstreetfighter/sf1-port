@@ -1,0 +1,316 @@
+route-book 1
+fighter Joe
+style Sf1Plus/Standard
+
+route ground
+name LK, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 48
+fails-on Adon; Sagat
+step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
+step 214+LK | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name cr.LK, 214+LK
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 48
+fails-on Gen
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 214+LK | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route ground
+name LP, LP, LK
+hits 3
+damage 180
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 7
+gap 22
+fails-on Mike; Lee; Birdie; Eagle
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LP | wait 2 2..7 | hold 0 | 0:01x2 0:00
+step LK | wait 6 6..10 | hold 0 | 0:08x2 0:00
+end
+
+route ground
+name LP, LP, MK
+hits 3
+damage 180
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 7
+gap 22
+fails-on Mike; Lee; Birdie; Eagle
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LP | wait 2 2..7 | hold 0 | 0:01x2 0:00
+step MK | wait 6 6..10 | hold 0 | 0:10x2 0:00
+end
+
+route ground
+name LP, [2]8+LP, LK
+hits 3
+damage 180
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 5
+gap 22
+fails-on Mike; Lee; Birdie; Eagle
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step [2]8+LP | wait 2 2..5 | hold 6 | 8:01x3 8:00
+step LK | wait 5 5..9 | hold 0 | 0:08x2 0:00
+end
+
+route ground
+name LP, [2]8+LP, MK
+hits 3
+damage 180
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 5
+gap 22
+fails-on Mike; Lee; Birdie; Eagle
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step [2]8+LP | wait 2 2..5 | hold 6 | 8:01x3 8:00
+step MK | wait 5 5..9 | hold 0 | 0:10x2 0:00
+end
+
+route ground
+name LP, LK
+hits 2
+damage 140
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 6
+gap 42
+fails-on Lee
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LK | wait 2 2..6 | hold 0 | 0:08x2 0:00
+end
+
+route ground
+name LP, LP
+hits 2
+damage 140
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 7
+gap 22
+fails-on Mike; Lee; Birdie; Eagle
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step LP | wait 2 2..7 | hold 0 | 0:01x2 0:00
+end
+
+route jump-in
+name j.HK, LK, 214+LK
+hits 3
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 20
+gap 100
+fails-on Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step LK | wait 16 16..24 | hold 0 | 0:08x2 0:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route jump-in
+name j.HK, [2]8+LK, 214+LK
+hits 3
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 15
+gap 100
+fails-on Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step [2]8+LK | wait 16 16..19 | hold 6 | 8:08x3 8:00
+step 214+LK | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route jump-in
+name j.HK, cr.LK, 214+LK
+hits 3
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 18
+gap 100
+fails-on Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step cr.LK | wait 16 16..22 | hold 0 | 4:08x2 4:00
+step 214+LK | wait 0 0..6 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route jump-in
+name j.MK, LK, 214+LK
+hits 3
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 14
+gap 100
+fails-on Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step j.MK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:10x2 0:00
+step LK | wait 16 16..18 | hold 0 | 0:08x2 0:00
+step 214+LK | wait 2 2..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route jump-in
+name j.MK, [2]8+LK, 214+LK
+hits 3
+damage 500
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 14
+gap 100
+fails-on Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step j.MK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:10x2 0:00
+step [2]8+LK | wait 16 16..18 | hold 6 | 8:08x3 8:00
+step 214+LK | wait 1 1..3 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route jump-in
+name j.HK, HK
+hits 2
+damage 420
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 17
+gap 100
+fails-on Lee
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step HK | wait 16 16..21 | hold 0 | 0:20x2 0:00
+end
+
+route jump-in
+name j.HK, [2]8+HK
+hits 2
+damage 420
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 15
+gap 100
+fails-on Lee
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step [2]8+HK | wait 16 16..19 | hold 6 | 8:20x3 8:00
+end
+
+route jump-in
+name j.HK, 421+LP
+hits 2
+damage 360
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 12
+gap 100
+fails-on Mike crouching; Lee standing; Eagle standing
+step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
+step 421+LP | wait 10 10..16 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+end
+
+route punish
+name LK, LK
+hits 2
+damage 120
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 12
+gap 34
+fails-on Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Lee Sf1Plus/Standard; Lee Hf/Standard; Lee St/Standard; Lee St/Old; Lee Sfz3/AIsm; Lee Sfz3/VIsm; Lee Sfz3/XIsm; Lee Sf3ThreeS/Art1; Lee Sf3ThreeS/Art2; Lee Sf3ThreeS/Art3; Lee Usf4/Ultra1; Lee Usf4/Ultra2; Lee Usf4/UltraDouble; Lee Sf5Ce/Skill1Trigger1; Lee Sf5Ce/Skill1Trigger2; Lee Sf5Ce/Skill2Trigger1; Lee Sf5Ce/Skill2Trigger2; Lee Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step LK | wait 0 0..4 | hold 0 | 0:08x2 0:00
+step LK | wait 10 10..14 | hold 0 | 0:08x2 0:00
+end
+
+route punish
+name LK, MK
+hits 2
+damage 120
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 12
+gap 34
+fails-on Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Lee Sf1Plus/Standard; Lee Hf/Standard; Lee St/Standard; Lee St/Old; Lee Sfz3/AIsm; Lee Sfz3/VIsm; Lee Sfz3/XIsm; Lee Sf3ThreeS/Art1; Lee Sf3ThreeS/Art2; Lee Sf3ThreeS/Art3; Lee Usf4/Ultra1; Lee Usf4/Ultra2; Lee Usf4/UltraDouble; Lee Sf5Ce/Skill1Trigger1; Lee Sf5Ce/Skill1Trigger2; Lee Sf5Ce/Skill2Trigger1; Lee Sf5Ce/Skill2Trigger2; Lee Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step LK | wait 0 0..4 | hold 0 | 0:08x2 0:00
+step MK | wait 10 10..14 | hold 0 | 0:10x2 0:00
+end
+
+route punish
+name LK, [2]8+LK
+hits 2
+damage 120
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 11
+gap 34
+fails-on Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Lee Sf1Plus/Standard; Lee Hf/Standard; Lee St/Standard; Lee St/Old; Lee Sfz3/AIsm; Lee Sfz3/VIsm; Lee Sfz3/XIsm; Lee Sf3ThreeS/Art1; Lee Sf3ThreeS/Art2; Lee Sf3ThreeS/Art3; Lee Usf4/Ultra1; Lee Usf4/Ultra2; Lee Usf4/UltraDouble; Lee Sf5Ce/Skill1Trigger1; Lee Sf5Ce/Skill1Trigger2; Lee Sf5Ce/Skill2Trigger1; Lee Sf5Ce/Skill2Trigger2; Lee Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step LK | wait 0 0..4 | hold 0 | 0:08x2 0:00
+step [2]8+LK | wait 10 10..13 | hold 6 | 8:08x3 8:00
+end

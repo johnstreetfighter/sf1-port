@@ -18,7 +18,7 @@ use sf_engine::front::fight::FightDips;
 use sf_engine::front::menu::MenuItem;
 use sf_engine::front::{FrameInputs, GameSession, PlayerInputs, Transition};
 use sf_engine::roster::TournamentFighter;
-use sf_engine::route_book::{book, Route, RouteBook};
+use sf_engine::route_book::{book, Route, RouteBook, Stance};
 use sf_engine::run::PowerOnMachine;
 use sf_video::callouts::Side;
 use sf_video::art::{load_art_from, ArtSources};
@@ -122,6 +122,11 @@ fn lock_sf6(s: &mut GameSession, fighter: TournamentFighter) {
 /// `difficulty`, with the stronger Fair CPU's switch as given, from the Main
 /// Menu to the first frame of the fight loop.
 fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
+    fight_as(TournamentFighter::Ryu, stronger, difficulty)
+}
+
+/// The same with Player 1 playing `p1_fighter` in SF6.
+fn fight_as(p1_fighter: TournamentFighter, stronger: bool, difficulty: u8) -> Option<GameSession> {
     if !Path::new(ROMS).is_dir() || !Path::new(PACK).is_dir() {
         eprintln!("skipping: local ROM set or art pack not present");
         return None;
@@ -146,9 +151,21 @@ fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
     choose(&mut s, MenuItem::SinglePlayer);
     choose(&mut s, MenuItem::Training);
     choose(&mut s, MenuItem::TrainingCpu);
-    lock_sf6(&mut s, TournamentFighter::Ryu);
-    // The opponent's cursor starts on Ken, one to the right of Ryu.
-    tap(&mut s, p1(L, 0));
+    // The cast in its listed order on a grid six wide; the cursor does not
+    // wrap at its edges.
+    let at = TournamentFighter::ALL.iter().position(|&f| f == p1_fighter).unwrap();
+    for _ in 0..at / 6 {
+        tap(&mut s, p1(D, 0));
+    }
+    for _ in 0..at % 6 {
+        tap(&mut s, p1(R, 0));
+    }
+    lock_sf6(&mut s, p1_fighter);
+    // The opponent's cursor starts beside Player 1's pick: up and left to
+    // the grid's corner, Ryu.
+    for input in [U, U, L, L, L, L, L, L] {
+        tap(&mut s, p1(input, 0));
+    }
     lock_sf6(&mut s, TournamentFighter::Ryu);
     let mut f = 0;
     while s.fight_machine().map(flow_position) != Some(FIGHT_LOOP) {
@@ -164,7 +181,7 @@ fn fight(stronger: bool, difficulty: u8) -> Option<GameSession> {
         assert!(f < 3_000, "the fight loop (at {})", s.screen());
     }
     let fight = s.fight().unwrap();
-    assert_eq!([fight.player_fighter(0), fight.player_fighter(1)], [TournamentFighter::Ryu; 2]);
+    assert_eq!([fight.player_fighter(0), fight.player_fighter(1)], [p1_fighter, TournamentFighter::Ryu]);
     let machine = s.fight_machine().unwrap();
     assert_eq!(machine.era_fighters().map(|e| e.style.revision), [Revision::Sf6; 2]);
     assert_eq!(machine.match_config().stronger_cpu, stronger);
@@ -806,6 +823,29 @@ fn a_hit_from_a_route_is_followed_by_the_routes_further_hits_and_the_routes_vary
         .filter_map(|r| r.route(book).filter(|(route, steps)| *steps == route.steps.len()).map(|(route, _)| route.name()))
         .collect();
     assert!(distinct.len() >= 2, "more than one route over repeated openings: {distinct:?}");
+}
+
+#[test]
+fn a_route_the_book_records_failing_on_the_opponent_is_never_taken_against_him() {
+    // Ryu's SF6 book records his medium punch into a Hadoken failing on Lee
+    // (SC13, `#205`: `route_check`). Against Lee standing in reach the CPU
+    // still takes routes, never those. Summed over a few fights.
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    let lee = "Lee Sf6/Standard";
+    let failing: Vec<String> = book.routes.iter().filter(|r| r.fails_against(lee, Stance::Standing)).map(Route::name).collect();
+    assert!(!failing.is_empty(), "the book records routes failing on Lee");
+    let Some(m) = fight_as(TournamentFighter::Lee, true, 4).map(|s| s.fight_machine().unwrap().clone()) else { return };
+    let mut entered: Vec<String> = Vec::new();
+    for idle in [0u32, 97, 211] {
+        let mut m = m.clone();
+        for _ in 0..idle {
+            step(&mut m, 0, 0);
+        }
+        let runs = routes_seen(&mut m, 6_000, standing_in_reach);
+        entered.extend(runs.iter().filter_map(|run| run.route(book)).map(|(route, _)| route.name()));
+    }
+    assert!(entered.len() >= 3, "routes taken against Lee: {entered:?}");
+    assert!(entered.iter().all(|name| !failing.contains(name)), "taken: {entered:?}; recorded failing on Lee: {failing:?}");
 }
 
 #[test]

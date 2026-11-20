@@ -1,0 +1,15 @@
+# Pairs with no route book, and why. Written by `route_search all`.
+Ryu Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Ken Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Retsu Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Geki Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Geki Sf1Plus/Standard | the search found no route of two hits or more
+Joe Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Mike Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Mike St/Old | the search found no route of two hits or more
+Lee Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Gen Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Birdie Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Eagle Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Adon Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again
+Sagat Arcade1987/Standard | the 1987 rules allow no combo: a hit fighter cannot be hit again

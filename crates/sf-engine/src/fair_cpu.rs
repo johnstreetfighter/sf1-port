@@ -692,6 +692,9 @@ pub struct Context {
     style: Option<(crate::era::Revision, crate::era::Loadout)>,
     /// Its own Super meter and Drive gauge, as its gauges show them.
     meters: [u16; 2],
+    /// The opponent's fighter and style, where an era style is in force: a
+    /// route the book records failing on him is not taken (SC13, `#205`).
+    pub(crate) foe: Option<(TournamentFighter, (crate::era::Revision, crate::era::Loadout))>,
 }
 
 impl Context {
@@ -708,6 +711,7 @@ impl Context {
             family: None,
             style: None,
             meters: [0; 2],
+            foe: None,
         }
     }
 
@@ -1457,6 +1461,7 @@ impl FairCpu {
     fn take_route(&mut self, ctx: &Context, view: Percept, reaches: &[crate::route_book::Reach], walk: u8) -> bool {
         let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
         let Some(book) = crate::route_book::book(fighter, revision, loadout) else { return false };
+        let foe = ctx.foe.map(|(who, style)| crate::route_book::opponent_key(who, style));
         let moment = game::Moment {
             reaches,
             era: ctx.era.is_some(),
@@ -1468,6 +1473,7 @@ impl FairCpu {
             gap: view.gap(),
             walk,
             foe_health: view.foe.health,
+            foe: foe.as_deref(),
         };
         let mut options: Vec<(usize, i32)> = Vec::new();
         for (index, route) in book.routes.iter().enumerate() {

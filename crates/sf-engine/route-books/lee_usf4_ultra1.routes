@@ -1,0 +1,257 @@
+route-book 1
+fighter Lee
+style Usf4/Ultra1
+
+route ground
+name cr.MP, 236236+PPP
+hits 6
+damage 545
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 30
+fails-on Retsu; Geki; Joe
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236236+PPP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route ground
+name 236236+PPP
+hits 5
+damage 527
+rules true_combos
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 86
+fails-on Retsu; Geki; Joe
+step 236236+PPP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route ground
+name cr.LK, 236236+PPP
+hits 6
+damage 525
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 30
+fails-on Retsu; Geki; Joe
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236236+PPP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route ground
+name cr.LP, 236236+PPP
+hits 6
+damage 525
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 30
+fails-on Retsu standing; Geki standing; Joe; Mike crouching; Lee crouching
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236236+PPP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route ground
+name 236236+LP
+hits 5
+damage 408
+rules true_combos
+meter super -192 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 70
+fails-on Retsu standing; Geki standing; Joe standing; Mike crouching
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.MP, 214+KK
+hits 3
+damage 340
+rules true_combos cancels
+meter super -48 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 30
+fails-on Retsu; Geki; Joe; Birdie; Eagle
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+KK | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
+end
+
+route ground
+name cr.MP, 236+LP
+hits 2
+damage 320
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 5
+gap 30
+fails-on Mike crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 236+KK
+hits 2
+damage 240
+rules true_combos
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 54
+fails-on Mike crouching
+step 236+KK | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 1:18x3 1:00
+end
+
+route punish
+name cr.LP, 236236+PPP
+hits 6
+damage 545
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..2 | hold 0 | 4:01x2 4:00
+step 236236+PPP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route punish
+name cr.LK, 236236+PPP
+hits 6
+damage 525
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki; Joe Arcade1987/Standard crouching; Joe Sf1Plus/Standard; Joe Hf/Standard; Joe St/Standard; Joe St/Old; Joe Sfz3/AIsm; Joe Sfz3/VIsm; Joe Sfz3/XIsm; Joe Sf3ThreeS/Art1; Joe Sf3ThreeS/Art2; Joe Sf3ThreeS/Art3; Joe Usf4/Ultra1; Joe Usf4/Ultra2; Joe Usf4/UltraDouble; Joe Sf5Ce/Skill1Trigger1; Joe Sf5Ce/Skill1Trigger2; Joe Sf5Ce/Skill2Trigger1; Joe Sf5Ce/Skill2Trigger2; Joe Sf6/Standard; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236236+PPP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route punish
+name cr.MP, 236236+LP
+hits 6
+damage 480
+rules true_combos cancels
+meter super -192 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
+step 236236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LP, 236236+LP
+hits 6
+damage 440
+rules true_combos cancels
+meter super -192 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..2 | hold 0 | 4:01x2 4:00
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.MP, 236236+PPP
+hits 4
+damage 430
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Sf1Plus/Standard standing; Retsu Sf6/Standard standing; Retsu Hf/Standard standing; Retsu St/Standard standing; Retsu St/Old standing; Retsu Sfz3/AIsm standing; Retsu Sfz3/VIsm standing; Retsu Sfz3/XIsm standing; Retsu Sf3ThreeS/Art1 standing; Retsu Sf3ThreeS/Art2 standing; Retsu Sf3ThreeS/Art3 standing; Retsu Usf4/Ultra1 standing; Retsu Usf4/Ultra2 standing; Retsu Usf4/UltraDouble standing; Retsu Sf5Ce/Skill1Trigger1 standing; Retsu Sf5Ce/Skill1Trigger2 standing; Retsu Sf5Ce/Skill2Trigger1 standing; Retsu Sf5Ce/Skill2Trigger2 standing; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
+step 236236+PPP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:07x3 1:00
+end
+
+route punish
+name cr.LK, 236236+LP
+hits 6
+damage 420
+rules true_combos cancels
+meter super -192 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.MP, 236+LP, MP+MK
+hits 3
+damage 420
+rules true_combos cancels
+meter super -96 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Lee Arcade1987/Standard crouching; Lee Sf1Plus/Standard; Lee Hf/Standard; Lee St/Standard; Lee St/Old; Lee Sfz3/AIsm; Lee Sfz3/VIsm; Lee Sfz3/XIsm; Lee Sf3ThreeS/Art1; Lee Sf3ThreeS/Art2; Lee Sf3ThreeS/Art3; Lee Usf4/Ultra1; Lee Usf4/Ultra2; Lee Usf4/UltraDouble; Lee Sf5Ce/Skill1Trigger1; Lee Sf5Ce/Skill1Trigger2; Lee Sf5Ce/Skill2Trigger1; Lee Sf5Ce/Skill2Trigger2; Lee Sf6/Standard; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
+step 236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+step MP+MK | wait 9 9..28 | hold 0 | 0:12x3 0:00
+end
+
+route punish
+name cr.MP, 236+LP
+hits 2
+damage 360
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 2
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
+step 236+LP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end

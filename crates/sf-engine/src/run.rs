@@ -1844,6 +1844,11 @@ impl PowerOnMachine {
         };
         // Dramatic Battle's CPUs keep the old play until SC23 (`#215`).
         context.stronger = cfg.stronger_cpu && cfg.dramatic.is_none();
+        // Who it faces, so it takes no route recorded failing on him (SC13).
+        if era_side < 2 {
+            let foe = &self.dramatic_era_fighters()[1 - era_side];
+            context.foe = foe.fighter.map(|who| (who, (foe.style.revision, foe.style.loadout)));
+        }
         context
     }
 

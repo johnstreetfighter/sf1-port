@@ -1,0 +1,194 @@
+route-book 1
+fighter Eagle
+style Sfz3/XIsm
+
+route ground
+name 214214+LP
+hits 4
+damage 434
+rules true_combos
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 30
+fails-on
+step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name 421+LP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name 421+MP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name 623+LP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name 623+MP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name MP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 78
+fails-on Gen; Adon
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 214+LP | wait 0 0..11 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name cr.LP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 4
+gap 78
+fails-on Gen; Adon
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 214+LP | wait 0 0..10 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route ground
+name cr.MP, 214+LP
+hits 2
+damage 412
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 78
+fails-on Gen; Adon
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LP | wait 0 0..11 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
+end
+
+route punish
+name MP, 214+LK
+hits 2
+damage 387
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.LP, 214+LK
+hits 2
+damage 387
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 214+LK | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.MP, 214+LK
+hits 2
+damage 387
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end
+
+route punish
+name cr.LK, 214+LK
+hits 2
+damage 335
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 0
+gap 32
+fails-on Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
+step 214+LK | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+end

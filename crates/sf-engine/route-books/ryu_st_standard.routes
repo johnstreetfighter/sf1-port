@@ -1,0 +1,132 @@
+route-book 1
+fighter Ryu
+style St/Standard
+
+route ground
+name 623+MP, 214+LK, 236+LP
+hits 3
+damage 315
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 19
+gap 30
+fails-on Retsu; Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
+step 214+LK | wait 16 16..20 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+step 236+LP | wait 1 1..14 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name MP, 236+LP
+hits 2
+damage 315
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 13
+gap 76
+fails-on Mike crouching; Gen crouching; Adon crouching
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 236+LP | wait 0 0..15 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.MP, 214+LK, 236+LP
+hits 3
+damage 315
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 19
+gap 30
+fails-on Retsu standing; Geki standing; Joe crouching; Lee standing; Gen crouching; Birdie crouching; Eagle; Adon; Sagat standing
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 214+LK | wait 20 20..21 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
+step 236+LP | wait 0 0..11 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 236236+LP
+hits 3
+damage 279
+rules true_combos
+meter super -48 +0 drive -0 +0
+knockdown no
+corner no
+stances standing
+confirm 0
+gap 80
+fails-on Retsu; Geki; Joe; Mike; Gen
+step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+MP, 236236+LP
+hits 2
+damage 273
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 3
+gap 58
+fails-on
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 236236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name LP, 236+LP
+hits 2
+damage 273
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 8
+gap 48
+fails-on
+step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
+step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+LP, 236236+LP
+hits 2
+damage 252
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 2
+gap 58
+fails-on
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 623+LP, 236+LP
+hits 2
+damage 252
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 8
+gap 30
+fails-on Retsu crouching; Geki crouching; Joe; Mike; Lee crouching; Gen standing; Birdie standing; Sagat crouching
+step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+step 236+LP | wait 3 3..8 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end

@@ -1,0 +1,195 @@
+route-book 1
+fighter Sagat
+style Sfz3/XIsm
+
+route ground
+name 421+MP, 236+LK
+hits 2
+damage 413
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 236+LK | wait 0 0..1 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route ground
+name 421+MP, 236+LP
+hits 2
+damage 413
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 46
+fails-on
+step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
+step 236+LP | wait 0 0..8 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.MP, 236+LK
+hits 2
+damage 413
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236+LK | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route ground
+name cr.MP, 236+LP
+hits 2
+damage 413
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 46
+fails-on
+step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
+step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name 421+LP, 236+LP
+hits 2
+damage 361
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 2
+gap 46
+fails-on
+step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
+step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LP, 236+LK
+hits 2
+damage 361
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Mike crouching; Lee; Gen crouching; Eagle; Adon crouching; Sagat standing
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236+LK | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route ground
+name cr.LP, 236+LP
+hits 2
+damage 361
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 2
+gap 46
+fails-on
+step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
+step 236+LP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route ground
+name cr.LK, 236+LK
+hits 2
+damage 335
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 46
+fails-on Mike crouching
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236+LK | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route punish
+name cr.MP, 236+LK
+hits 2
+damage 413
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown no
+corner no
+stances standing crouching
+confirm 3
+gap 36
+fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Eagle Sf1Plus/Standard crouching; Eagle Sfz3/AIsm crouching; Eagle Sfz3/VIsm crouching; Eagle Sfz3/XIsm crouching; Eagle Hf/Standard crouching; Eagle St/Standard crouching; Eagle St/Old crouching; Eagle Sf3ThreeS/Art1 crouching; Eagle Sf3ThreeS/Art2 crouching; Eagle Sf3ThreeS/Art3 crouching; Eagle Usf4/Ultra1 crouching; Eagle Usf4/Ultra2 crouching; Eagle Usf4/UltraDouble crouching; Eagle Sf5Ce/Skill1Trigger1 crouching; Eagle Sf5Ce/Skill1Trigger2 crouching; Eagle Sf5Ce/Skill2Trigger1 crouching; Eagle Sf5Ce/Skill2Trigger2 crouching; Eagle Sf6/Standard crouching; Adon Sf1Plus/Standard crouching; Adon Sfz1/Standard crouching; Adon Sfz2/Standard crouching; Adon Sfz2A/Standard crouching; Adon Sfz3/AIsm crouching; Adon Sfz3/VIsm crouching; Adon Sfz3/XIsm crouching; Adon Ssf4/Ultra1 crouching; Adon Ssf4/Ultra2 crouching; Adon Ae2012/Ultra1 crouching; Adon Ae2012/Ultra2 crouching; Adon Usf4/Ultra1 crouching; Adon Usf4/Ultra2 crouching; Adon Usf4/UltraDouble crouching; Adon Hf/Standard crouching; Adon St/Standard crouching; Adon St/Old crouching; Adon Sf3ThreeS/Art1 crouching; Adon Sf3ThreeS/Art2 crouching; Adon Sf3ThreeS/Art3 crouching; Adon Sf5Ce/Skill1Trigger1 crouching; Adon Sf5Ce/Skill1Trigger2 crouching; Adon Sf5Ce/Skill2Trigger1 crouching; Adon Sf5Ce/Skill2Trigger2 crouching; Adon Sf6/Standard crouching; Sagat St/Standard; Sagat St/Old
+step cr.MP | wait 0 0..3 | hold 0 | 4:02x2 4:00
+step 236+LK | wait 0 0..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route punish
+name cr.LK, 236+LK
+hits 2
+damage 335
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing crouching
+confirm 0
+gap 36
+fails-on Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Hf/Standard; Ken St/Standard; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Eagle Sf1Plus/Standard; Eagle Sfz3/AIsm; Eagle Sfz3/VIsm; Eagle Sfz3/XIsm; Eagle Hf/Standard; Eagle St/Standard; Eagle St/Old; Eagle Sf3ThreeS/Art1; Eagle Sf3ThreeS/Art2; Eagle Sf3ThreeS/Art3; Eagle Usf4/Ultra1; Eagle Usf4/Ultra2; Eagle Usf4/UltraDouble; Eagle Sf5Ce/Skill1Trigger1; Eagle Sf5Ce/Skill1Trigger2; Eagle Sf5Ce/Skill2Trigger1; Eagle Sf5Ce/Skill2Trigger2; Eagle Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236+LK | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+end
+
+route punish
+name cr.LK, 236+LP
+hits 2
+damage 335
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 2
+gap 36
+fails-on Ryu Ww/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Ww/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Geki Sf1Plus/Standard; Geki Hf/Standard; Geki St/Standard; Geki St/Old; Geki Sfz3/AIsm; Geki Sfz3/VIsm; Geki Sfz3/XIsm; Geki Sf3ThreeS/Art1; Geki Sf3ThreeS/Art2; Geki Sf3ThreeS/Art3; Geki Usf4/Ultra1; Geki Usf4/Ultra2; Geki Usf4/UltraDouble; Geki Sf5Ce/Skill1Trigger1; Geki Sf5Ce/Skill1Trigger2; Geki Sf5Ce/Skill2Trigger1; Geki Sf5Ce/Skill2Trigger2; Geki Sf6/Standard; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Eagle Sf1Plus/Standard; Eagle Sfz3/AIsm; Eagle Sfz3/VIsm; Eagle Sfz3/XIsm; Eagle Hf/Standard; Eagle St/Standard; Eagle St/Old; Eagle Sf3ThreeS/Art1; Eagle Sf3ThreeS/Art2; Eagle Sf3ThreeS/Art3; Eagle Usf4/Ultra1; Eagle Usf4/Ultra2; Eagle Usf4/UltraDouble; Eagle Sf5Ce/Skill1Trigger1; Eagle Sf5Ce/Skill1Trigger2; Eagle Sf5Ce/Skill2Trigger1; Eagle Sf5Ce/Skill2Trigger2; Eagle Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+
+route punish
+name cr.LK, 623+LP
+hits 2
+damage 283
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 5
+gap 36
+fails-on Ryu Ww/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Ww/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Geki Sf1Plus/Standard; Geki Hf/Standard; Geki St/Standard; Geki St/Old; Geki Sfz3/AIsm; Geki Sfz3/VIsm; Geki Sfz3/XIsm; Geki Sf3ThreeS/Art1; Geki Sf3ThreeS/Art2; Geki Sf3ThreeS/Art3; Geki Usf4/Ultra1; Geki Usf4/Ultra2; Geki Usf4/UltraDouble; Geki Sf5Ce/Skill1Trigger1; Geki Sf5Ce/Skill1Trigger2; Geki Sf5Ce/Skill2Trigger1; Geki Sf5Ce/Skill2Trigger2; Geki Sf6/Standard; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Eagle Sf1Plus/Standard; Eagle Sfz3/AIsm; Eagle Sfz3/VIsm; Eagle Sfz3/XIsm; Eagle Hf/Standard; Eagle St/Standard; Eagle St/Old; Eagle Sf3ThreeS/Art1; Eagle Sf3ThreeS/Art2; Eagle Sf3ThreeS/Art3; Eagle Usf4/Ultra1; Eagle Usf4/Ultra2; Eagle Usf4/UltraDouble; Eagle Sf5Ce/Skill1Trigger1; Eagle Sf5Ce/Skill1Trigger2; Eagle Sf5Ce/Skill2Trigger1; Eagle Sf5Ce/Skill2Trigger2; Eagle Sf6/Standard; Sagat St/Standard; Sagat St/Old
+step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
+step 623+LP | wait 1 1..12 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
+end

@@ -386,6 +386,9 @@ pub(super) struct Moment<'a> {
     pub walk: u8,
     /// In health bar points.
     pub foe_health: u16,
+    /// The opponent as route books name him ([`crate::route_book::opponent_key`]),
+    /// when known: a route recorded failing on him is not taken.
+    pub foe: Option<&'a str>,
 }
 
 impl Moment<'_> {
@@ -401,6 +404,7 @@ impl Moment<'_> {
             && route.drive_spent <= self.meters[1]
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
             && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
+            && !self.foe.is_some_and(|foe| route.fails_against(foe, stance))
     }
 
     /// Frames to walk before the route reaches from here.
@@ -764,7 +768,20 @@ mod tests {
             gap: 20,
             walk: 0,
             foe_health: 48,
+            foe: None,
         }
+    }
+
+    #[test]
+    fn a_route_the_book_records_failing_on_the_opponent_is_not_taken_against_him() {
+        let mut route = ryu_sf6().routes.iter().find(|r| r.stances.contains(&Stance::Crouching)).unwrap().clone();
+        route.fails_on = vec!["Sagat Sf6/Standard crouching".into(), "Gen Sfz3/XIsm".into()];
+        let open = Moment { gap: route.gap, ..moment(&[Reach::Ground, Reach::Punish]) };
+        assert!(open.allows(&route), "nobody named");
+        let against = |foe: &'static str, crouching: bool| Moment { foe: Some(foe), crouching, ..open }.allows(&route);
+        assert!(!against("Gen Sfz3/XIsm", false) && !against("Gen Sfz3/XIsm", true), "every stance");
+        assert!(!against("Sagat Sf6/Standard", true) && against("Sagat Sf6/Standard", false), "one stance");
+        assert!(against("Ken Sf6/Standard", true), "another opponent");
     }
 
     #[test]
