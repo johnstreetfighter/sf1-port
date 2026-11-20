@@ -1338,6 +1338,20 @@ pub const REGISTRY: &[MoveEntry] = &[
         call_out: "KNEE-UP KICK!",
         available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
     },
+    // Lee's dive kick (spec #259, CN6): a command normal in any jump, down
+    // and medium kick, in place of his jump attack's stream.
+    MoveEntry {
+        name: "DIVE KICK",
+        kind: MoveKind::Normal,
+        input: MoveInput {
+            motion: &[Dir::Jump, Dir::Down],
+            button: ButtonClass::MediumKick,
+        },
+        recognizer: Recognizer::CommandNormal,
+        produces: 0x23,
+        call_out: "DIVE KICK!",
+        available: Availability { fighters: LEE, presets: OVERHAUL_PRESETS, player_table: true },
+    },
     // Adon's Rising Jaguar and Jaguar Kick (ticket #258): his 1987 player table
     // puts the Rising Jaguar in the Shoryuken's move on its command, and the
     // Jaguar Kick in the Tatsumaki's on its command.

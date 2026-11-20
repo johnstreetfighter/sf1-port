@@ -305,6 +305,7 @@ fn expected_text_in(fighter: TournamentFighter, preset: RulesetPreset) -> Vec<St
                 // Spec #259: his knee-up kick, a command normal.
                 "COMMAND NORMALS",
                 "KNEE-UP KICK JUMP→ [HK]",
+                "DIVE KICK JUMP↓ [MK]",
             ]
             .map(String::from),
         );

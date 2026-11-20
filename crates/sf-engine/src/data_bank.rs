@@ -1629,6 +1629,7 @@ impl Air<'_> {
         fall: (i32, i32),
         sound: u8,
         active: Option<u8>,
+        landing: u8,
     ) -> Result<u32, String> {
         let into_chamber = (chamber.anchor[1] - self.jump_top.anchor[1]) as i32 - self.jump_top.half().1 + chamber.half().1;
         let into_strike = (strike.anchor[1] - chamber.anchor[1]) as i32 - chamber.half().1 + strike.half().1;
@@ -1657,7 +1658,7 @@ impl Air<'_> {
                 s.strike(chamber, rest, fall, chamber_boxes, 0, 0);
             }
         }
-        self.land(&mut s, fall.1, fall.0)?;
+        self.land_for(&mut s, fall.1, fall.0, landing)?;
         Ok(at)
     }
 
@@ -1666,6 +1667,12 @@ impl Air<'_> {
     /// then the 1987 landing: the half-crouch, the landing call and sound,
     /// the stance, the end.
     fn land(&self, s: &mut Stream, step_dx: i32, fall_dy: i32) -> Result<(), String> {
+        self.land_for(s, step_dx, fall_dy, 3)
+    }
+
+    /// [`Self::land`] with the landing's half-crouch held `landing` frames
+    /// after its first (the 1987 landing holds it 3).
+    fn land_for(&self, s: &mut Stream, step_dx: i32, fall_dy: i32, landing: u8) -> Result<(), String> {
         let fall_boxes = self.fall_boxes;
         let ground_top = GROUND - self.fall.height();
         let top = s.top + s.pose.half().1 - self.fall.half().1;
@@ -1685,7 +1692,7 @@ impl Air<'_> {
         let landing_boxes = self.landing_boxes;
         s.hold(self.landing, self.landing.top_on_ground(), 1, landing_boxes, 0, 0);
         s.call(routine::LANDING, 0);
-        s.hold(self.landing, self.landing.top_on_ground(), 3, landing_boxes, 0, 0);
+        s.hold(self.landing, self.landing.top_on_ground(), landing, landing_boxes, 0, 0);
         s.hold(self.stance, self.stance.top_on_ground(), 1, self.stance_boxes, 0, 0);
         s.end();
         Ok(())
@@ -3824,8 +3831,13 @@ mod lee {
 
     /// Boxes for his new poses, as rectangles in each drawing (see
     /// `tests/lee_player.rs`, which checks them against the pens).
-    pub const BOXES: [(&str, PixelBoxes); 11] = [
+    pub const BOXES: [(&str, PixelBoxes); 13] = [
         ("crouch", PixelBoxes { push: [6, 14, 44, 64], head: [11, 2, 25, 14], body: [2, 6, 46, 64], attack: None }),
+        ("dive_kick_chamber", PixelBoxes { push: [6, 12, 44, 66], head: [24, 2, 36, 10], body: [4, 6, 46, 67], attack: None }),
+        (
+            "dive_kick",
+            PixelBoxes { push: [8, 10, 64, 56], head: [22, 2, 36, 10], body: [4, 6, 72, 60], attack: Some([74, 54, 88, 62]) },
+        ),
         ("knee_up", PixelBoxes { push: [4, 16, 44, 84], head: [7, 2, 19, 12], body: [0, 12, 46, 84], attack: None }),
         (
             "knee_up_kick",
@@ -4115,8 +4127,26 @@ mod lee {
         let knees = (ku, boxes("knee_up").bytes(&ku));
         let kick = (kk, boxes("knee_up_kick").bytes(&kk));
         let neutral_hk_hit = rom_l(rom, NEUTRAL_KICK_FRAME + 0x1c);
+        // Down + MK in any jump: the dive kick (spec #259, CN6), from
+        // Falchion22's frames (ADR-0029): the top of the jump and `4`
+        // frames chambered (startup `5`, the jump still carrying him), then
+        // the jump's arc replaced by 5 pixels down and 4 toward the way he
+        // faces a frame, the kick active to the ground with his flying
+        // kick's hit, then `10` frames of landing (the half-crouch 9, his
+        // stance 1). From the apex the angle is exact; begun lower under
+        // ANYTIME JUMP ATTACKS the landing correction stretches it to land
+        // on the floor (the maintainer, 2026-11-20).
+        let dk_chamber = geom("dive_kick_chamber")?;
+        let dk = geom("dive_kick")?;
+        let dk_chamber = (dk_chamber, boxes("dive_kick_chamber").bytes(&dk_chamber));
+        let dk = (dk, boxes("dive_kick").bytes(&dk));
+        let flying_kick_hit = rom_l(rom, FORWARD_FLYING_KICK_FRAME + 0x1c);
+        for (jump, apex, dx) in [(0u32, neutral, 0), (1, forward, 5), (2, back, -5)] {
+            let stream = air.dive(&mut region, apex, dk_chamber, 4, (0, dx), dk, flying_kick_hit, (5, 4), 0xa2, None, 8)?;
+            region.patch(base + command_normals::CommandNormal::LeeDiveKick.jump_offset(jump), &stream.to_be_bytes());
+        }
         for (jump, apex, dx) in [(0u32, neutral, 0), (2, back, -5)] {
-            let stream = air.dive(&mut region, apex, knees, 3, (0, dx), kick, neutral_hk_hit, (3, dx), 0xa2, Some(8))?;
+            let stream = air.dive(&mut region, apex, knees, 3, (0, dx), kick, neutral_hk_hit, (3, dx), 0xa2, Some(8), 3)?;
             region.patch(
                 base + command_normals::CommandNormal::LeeKneeUpKick.jump_offset(jump),
                 &stream.to_be_bytes(),
@@ -5530,7 +5560,7 @@ mod eagle {
         let chamber = (dc, boxes("dive_chamber").bytes(&dc));
         let thrust = (dt, boxes("dive_thrust").bytes(&dt));
         for (jump, (apex, dx)) in [(neutral, 0), (forward, 4), (back, -3)].into_iter().enumerate() {
-            let stream = air.dive(&mut region, apex, chamber, 5, (1, dx), thrust, NEUTRAL_LEAP_SMASH_HIT, (4, dx), 0xa1, None)?;
+            let stream = air.dive(&mut region, apex, chamber, 5, (1, dx), thrust, NEUTRAL_LEAP_SMASH_HIT, (4, dx), 0xa1, None, 3)?;
             region.patch(
                 base + command_normals::CommandNormal::EagleDiveThrust.jump_offset(jump as u32),
                 &stream.to_be_bytes(),

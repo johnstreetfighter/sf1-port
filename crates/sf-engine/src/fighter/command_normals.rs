@@ -10,7 +10,8 @@
 //! In the air the jump attack keeps its move id (`0x20..=0x22` for a
 //! punch) and loads the command normal's stream for its jump instead of
 //! the apex record's: Eagle's down + HP is his dive thrust, Lee's forward
-//! + HK in a straight-up or back jump his knee-up kick.
+//! + HK in a straight-up or back jump his knee-up kick, his down + MK in
+//! any jump his dive kick.
 //!
 //! They come out in SF1+ only for now. Faithful 1987 never has a bank, so
 //! never reaches them; Eagle's canon SFZ3 kit and the 1987 era style are
@@ -24,7 +25,8 @@ use crate::roster::TournamentFighter;
 
 /// The 1987 dispatch's down-forward punch at medium and heavy strength.
 const DOWN_FORWARD_PUNCH: u8 = 0x1d;
-/// The strength byte's heavy value.
+/// The strength byte's medium and heavy values.
+const MEDIUM: u8 = 2;
 const HEAVY: u8 = 3;
 /// The pad's down bit (`pad_directions`; forward and back are bits 0
 /// and 1 once made relative to his facing).
@@ -77,6 +79,7 @@ impl Bus<'_> {
             TournamentFighter::Lee if kick && strength == HEAVY && forward && !down && jump != 1 => {
                 CommandNormal::LeeKneeUpKick
             }
+            TournamentFighter::Lee if kick && strength == MEDIUM && down => CommandNormal::LeeDiveKick,
             _ => return None,
         };
         if !self.command_normal_style(ps) {

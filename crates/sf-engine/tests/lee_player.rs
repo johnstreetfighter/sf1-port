@@ -1172,6 +1172,86 @@ fn geom(l: &Local, name: &str) -> PoseGeom {
     }
 }
 
+/// His dive kick (spec #259, CN6): down + MK in any jump, with ANYTIME
+/// JUMP ATTACKS off (Classic Competitive's own: from the apex, the exact
+/// angle) or switched on: his own tiles and boxes, active to the ground,
+/// moving forward the way he faces even from a back jump, then 10 frames
+/// before he can act. MK without the stick down stays his plain jump kick.
+#[test]
+fn the_dive_kick_comes_from_down_and_medium_kick_in_any_jump() {
+    let Some(l) = local_roms() else { return };
+    let dk = geom(&l, "dive_kick");
+    let dk_boxes = LEE_BOXES.iter().find(|(n, _)| *n == "dive_kick").unwrap().1.bytes(&dk);
+    for anytime in [false, true] {
+        let setting = if anytime { "anytime on" } else { "anytime off" };
+        for (jump, dirs) in [("straight", vec![UP]), ("forward", vec![UP, RIGHT]), ("back", vec![UP, LEFT])] {
+            for down in [true, false] {
+                let mut config = MatchConfig::from_preset(CLASSIC);
+                config.toggles.anytime_jump_attacks = anytime;
+                let a = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+                let base = GameSession::new(a, config)
+                    .with_sprite_bank(&l.art.bank)
+                    .with_player_tables(&l.art.catalogues);
+                let mut s = local_with(base, TournamentFighter::Lee);
+                for _ in 0..35 {
+                    s.step(with(|i| i.p2.directions[RIGHT] = true));
+                }
+                for _ in 0..30 {
+                    s.step(idle());
+                }
+                let held: &[usize] = if down { &[DOWN] } else { &[] };
+                let mut inputs = vec![hold(&dirs); 2];
+                inputs.extend(vec![hold(held); 6]);
+                inputs.extend([press(held, 4), press(held, 4)]);
+                let (mut active, mut kick) = (0, 0);
+                let (mut first_x, mut last_x) = (None, 0);
+                let (mut last_active, mut landed) = (None, 0);
+                for n in 0..120 {
+                    s.step(inputs.get(n).copied().unwrap_or(hold(held)));
+                    let r = p1(&s);
+                    // Frames of the move on the ground after its attack.
+                    if last_active.is_some() && (0x20..=0x26).contains(&r.move_id) && r.state & 3 != 1 {
+                        landed += 1;
+                    }
+                    if !r.attack_active {
+                        continue;
+                    }
+                    last_active = Some(n);
+                    active += 1;
+                    let code = u16::from_be_bytes(p1_bytes(&s, 0, 2).try_into().unwrap());
+                    if code == dk.code {
+                        kick += 1;
+                        assert_eq!(p1_bytes(&s, 0x16, 16), dk_boxes, "{setting} {jump}: its boxes");
+                        let x = grid_centre_x(&s, P1_STRUCT);
+                        first_x.get_or_insert(x);
+                        last_x = x;
+                    }
+                }
+                let what = format!("{setting} {jump} jump, down {down}");
+                println!("{what}: {active} active, {kick} of them the dive kick");
+                assert!(active > 0, "{what}: a jump kick");
+                if down {
+                    assert!(kick >= 4, "{what}: the dive kick, out to the ground ({kick})");
+                    assert_eq!(kick, active, "{what}: every active frame is the dive kick");
+                    assert!(last_x > first_x.unwrap(), "{what}: it travels toward the opponent");
+                    // The landing's half-crouch 9 and his stance 1, after
+                    // the frame he touches down on: 5 more than the 1987
+                    // landing's 4 + 1 (checked below on the plain kick).
+                    println!("{what}: {landed} frames of the move on the ground");
+                    assert_eq!(landed, 11, "{what}: 10 frames of landing after touchdown");
+                } else {
+                    assert_eq!(kick, 0, "{what}: no dive kick without the stick down");
+                    println!("{what}: {landed} frames of the move on the ground");
+                    assert_eq!(landed, 6, "{what}: the 1987 landing, 4 + 1 after touchdown");
+                }
+            }
+        }
+    }
+    let list = move_list(TournamentFighter::Lee, CLASSIC);
+    let row = list.iter().find(|e| e.name == "DIVE KICK").expect("listed");
+    assert_eq!(row.kind, sf_engine::moves::MoveKind::Normal);
+}
+
 /// His knee-up kick (spec #259, CN5): forward + HK in a straight-up or
 /// back jump, with ANYTIME JUMP ATTACKS off (Classic Competitive's own) or
 /// switched on, his own tiles and boxes for 8 active frames. In a forward
@@ -1794,7 +1874,7 @@ fn moves_lists_his_specials_and_show_and_try_work_for_each() {
             .iter()
             .map(|e| e.name)
             .collect();
-        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE-UP KICK"], "{preset:?}");
+        assert_eq!(names, ["ZESSHOUOHKEN", "DOUBLE KICK", "KNEE-UP KICK", "DIVE KICK"], "{preset:?}");
     }
     assert!(move_list(TournamentFighter::Lee, RulesetPreset::Faithful1987).is_empty());
     // Without his table the fight has neither, and MOVES lists neither.

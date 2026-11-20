@@ -27,6 +27,9 @@ pub enum CommandNormal {
     /// Lee's forward + HK in a straight-up or back jump: a knee-up kick
     /// (no stream for the forward jump, whose HK stays his flying kick).
     LeeKneeUpKick,
+    /// Lee's down + MK in a jump: a dive kick that drops steeply toward the
+    /// opponent.
+    LeeDiveKick,
 }
 
 impl CommandNormal {
@@ -34,14 +37,14 @@ impl CommandNormal {
     pub const fn fighter(self) -> TournamentFighter {
         match self {
             CommandNormal::EagleTwoStickThrust | CommandNormal::EagleDiveThrust => TournamentFighter::Eagle,
-            CommandNormal::LeeKneeUpKick => TournamentFighter::Lee,
+            CommandNormal::LeeKneeUpKick | CommandNormal::LeeDiveKick => TournamentFighter::Lee,
         }
     }
 
     /// Whether it is started in a jump (its pointers name streams, one a
     /// jump) rather than on the ground (one header).
     pub const fn airborne(self) -> bool {
-        matches!(self, CommandNormal::EagleDiveThrust | CommandNormal::LeeKneeUpKick)
+        matches!(self, CommandNormal::EagleDiveThrust | CommandNormal::LeeKneeUpKick | CommandNormal::LeeDiveKick)
     }
 
     /// Its first pointer's index in the fighter's area.
@@ -50,6 +53,7 @@ impl CommandNormal {
             CommandNormal::EagleTwoStickThrust => 0,
             CommandNormal::EagleDiveThrust => 1,
             CommandNormal::LeeKneeUpKick => 0,
+            CommandNormal::LeeDiveKick => 3,
         }
     }
 
