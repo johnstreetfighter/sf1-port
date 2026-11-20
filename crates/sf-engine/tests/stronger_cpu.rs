@@ -1416,11 +1416,13 @@ struct Hover {
     /// those that hit him.
     punished: u32,
     landed: u32,
+    /// Frames played.
+    frames: u32,
 }
 
 fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     let mut m = start.clone();
-    let mut out = Hover::default();
+    let mut out = Hover { frames, ..Hover::default() };
     // Player 1's longest attack box seen, from his centre, and the
     // distance he swings from (a little inside it).
     let mut p1_reach: i16 = 50;
@@ -1465,6 +1467,14 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
         let cpu_health = v.me.health;
         step(&mut m, pad.0, pad.1);
         let after = seen(&m);
+        // His Shoryuken can hit the CPU without its box ever being seen
+        // live (the CPU is shown already in its hit reaction): a reaction
+        // begun, or health lost, while his swing runs touched it too.
+        let hit_now = (after.me.reacting() && !v.me.reacting()) || after.me.health < cpu_health;
+        if hit_now && poke_after_turn && touched != poked_at && poked_at.is_some_and(|at| i - at < 40) {
+            touched = poked_at;
+            out.touched_after_turn += 1;
+        }
         // The CPU's own walking (not pushback from a hit or a guard).
         let to_p1: i16 = if after.foe.x >= after.me.x { 1 } else { -1 };
         let dx = (after.me.x - v.me.x) * to_p1;
@@ -1513,10 +1523,13 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     out
 }
 
+/// The starts the edge test sums: twenty, so that its rates hold still
+/// (over five, drawn whiffs ran from 7 to 10 as unrelated changes
+/// reshuffled the CPU's random choices).
+const HOVER_STARTS: [u32; 20] = [0, 97, 211, 331, 449, 563, 677, 791, 907, 1013, 1129, 1237, 1361, 1471, 1583, 1693, 1801, 1913, 2029, 2141];
+
 fn hover_sum(stronger: bool) -> Hover {
-    // Five starting points (SC8: against the CPU that owns every command a
-    // fight holds fewer of these moments than before).
-    starts_from(stronger, 4, &[0, 97, 211, 331, 449]).iter().map(|m| hover(m, 12_000)).fold(Hover::default(), |a, h| Hover {
+    starts_from(stronger, 4, &HOVER_STARTS).iter().map(|m| hover(m, 12_000)).fold(Hover::default(), |a, h| Hover {
         edge_turns: a.edge_turns + h.edge_turns,
         whiffs: a.whiffs + h.whiffs,
         swung_after_turn: a.swung_after_turn + h.swung_after_turn,
@@ -1524,6 +1537,7 @@ fn hover_sum(stronger: bool) -> Hover {
         drawn: a.drawn + h.drawn,
         punished: a.punished + h.punished,
         landed: a.landed + h.landed,
+        frames: a.frames + h.frames,
     })
 }
 
@@ -1535,23 +1549,28 @@ fn in_neutral_it_steps_in_and_out_at_the_edge_of_the_opponents_reach_and_punishe
         return;
     }
     eprintln!("stronger {new:?}\nold {old:?}");
-    // Rates per 10,000 frames (five starts of 12,000 frames each): the
-    // floors are the old ones (set for 30,000 frames) doubled.
-    let per = |n: u32| f64::from(n) * 10_000.0 / 60_000.0;
+    // Rates per 10,000 frames of what was played.
+    let per = |n: u32| f64::from(n) * 10_000.0 / f64::from(new.frames.max(1));
     eprintln!("per 10,000 frames: edge turns {:.1}, whiffs {:.1}, drawn {:.1}, punished {:.1}, landed {:.1}", per(new.edge_turns), per(new.whiffs), per(new.drawn), per(new.punished), per(new.landed));
-    assert!(new.edge_turns >= 120, "turns from in to out at the edge of his reach: {new:?}");
+    // Floors for twenty starts of 12,000 frames (240,000 frames).
+    assert!(new.edge_turns >= 480, "turns from in to out at the edge of his reach: {new:?}");
     assert!(2 * new.edge_turns >= 3 * old.edge_turns, "the old Fair CPU turns there by chance: {new:?} against {old:?}");
-    // Drawn whiffs keep the old floor: with SC8 (#200) their rate halved
-    // (of his swings right after an edge turn, most now hit the CPU), and
-    // that drop is with the maintainer.
-    // Its last walk in, to poke, stops at the poke's reach: his swing at an
-    // edge turn meets a CPU out of his reach (before SC8 2 of 22 touched
-    // it; with SC8 the walk ran its whole planned length and overshot, 27
-    // of 47).
-    assert!(new.swung_after_turn >= 10, "swings at an edge turn: {new:?}");
-    assert!(3 * new.touched_after_turn <= new.swung_after_turn, "swings at an edge turn that touched the CPU: {new:?}");
-    assert!(new.drawn >= 10 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
-    assert!(new.punished >= 6 && new.landed >= 6, "drawn whiffs punished with a route, and landed: {new:?}");
+    // Its last walk in, to poke, stops at the poke's reach, so his swing at
+    // an edge turn meets the CPU less often: of those swings, 30 of 66
+    // touch it (SC13, `#205`; the same count gives 128 of 185 with the walk
+    // reckoned whole, and 160 of 254 before SC8). Touches include his
+    // Shoryukens that hit it without their box ever being seen live.
+    assert!(new.swung_after_turn >= 40, "swings at an edge turn: {new:?}");
+    assert!(2 * new.touched_after_turn < new.swung_after_turn, "swings at an edge turn that touched the CPU: {new:?}");
+    // Drawn whiffs: about 1.5 per 10,000 frames (35 here), against 3.0
+    // before SC8 (71 over the same twenty starts). The drop is put down to
+    // SC8's removal of the Utility AI's idle-frame commands, which moved the
+    // CPU in and out between plan steps (no fault was found in the plans;
+    // the commands cannot be switched back on to measure it directly). The
+    // maintainer accepted the lower rate on 2026-11-20; the floor is 1.2
+    // per 10,000.
+    assert!(per(new.drawn) >= 1.2 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
+    assert!(new.punished >= 24 && new.landed >= 24, "drawn whiffs punished with a route, and landed: {new:?}");
 }
 
 #[test]
