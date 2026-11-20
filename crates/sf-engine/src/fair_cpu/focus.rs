@@ -99,7 +99,7 @@ pub(super) fn step_focus(step: &Step) -> Focus {
         Act::Meaty { .. } | Act::GuardRise => Focus::Reversal,
         Act::Do(Choice::Special(super::Role::Projectile)) | Act::Shot => Focus::Jump,
         Act::Do(Choice::Guard) => Focus::WalkIn,
-        Act::Do(_) | Act::Route(_) => Focus::Attack,
+        Act::Do(_) | Act::Route(_) | Act::Rush => Focus::Attack,
     }
 }
 

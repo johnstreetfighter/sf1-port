@@ -280,9 +280,9 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v5", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v6", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
-    forced_stronger, judge, judged, game, route, recent_routes, route_outcome, walk_in_held, route_drops, route_check,
+    forced_stronger, judge, judged, game, route, recent_routes, route_outcome, route_drops, route_check,
     focus, action_frame, last_view,
 });
 
@@ -335,6 +335,12 @@ impl Body {
         self.present
             && (0x0d..=0x2f).contains(&self.move_id)
             && self.move_id != crate::combo::throw::GET_UP_MOVE
+    }
+
+    /// In a normal attack (moves `0x0d..=0x18`), not a special, a super or
+    /// a system move.
+    pub fn normal(&self) -> bool {
+        self.attacking() && self.move_id <= 0x18
     }
 
     /// In a jump (moves 9, 0xa and 0xb, the pre-jump crouch included) or a
@@ -690,8 +696,15 @@ pub struct Context {
     /// plans and route books are looked up by fighter and era style.
     family: Option<crate::era::EraFamily>,
     style: Option<(crate::era::Revision, crate::era::Loadout)>,
-    /// Its own Super meter and Drive gauge, as its gauges show them.
+    /// Its own Super meter and Drive gauge, as its gauges show them, and
+    /// whether its Super meter is full.
     meters: [u16; 2],
+    meter_full: bool,
+    /// The round could end the match: either fighter has a round won, or
+    /// it is the third round (the win marks and the round call show it).
+    /// Super meter carries from round to round in this engine, so a round
+    /// that cannot end the match is no reason to spend it.
+    pub(crate) round_decides_match: bool,
 }
 
 impl Context {
@@ -708,6 +721,8 @@ impl Context {
             family: None,
             style: None,
             meters: [0; 2],
+            meter_full: false,
+            round_decides_match: false,
         }
     }
 
@@ -726,12 +741,18 @@ impl Context {
         context.family = Some(state.style.family);
         context.style = Some((state.style.revision, state.style.loadout));
         context.meters = [u16::from(state.super_meter), state.sf6_drive_points().unwrap_or(0)];
+        context.meter_full = state.super_capacity() != 0 && state.super_meter >= state.super_capacity();
         context
     }
 
     /// Short commands supplement the established spacing, guards, and
     /// longer charge and jump sequences. A command still has to pass the
     /// fighter's own motion recognizer and action gates.
+    /// Tell its era kit the opponent's era style.
+    pub(crate) fn set_opponent_family(&mut self, family: crate::era::EraFamily) {
+        self.era = self.era.map(|tactics| tactics.against(Some(family)));
+    }
+
     pub(crate) fn utility_macro(
         &self,
         family: crate::era::EraFamily,
@@ -857,6 +878,16 @@ impl Plan {
 
     /// A plan something seen may cut short: standing still, walking, and
     /// guarding (a new threat starts a new guard).
+    /// End the plan with its last press: what follows it (empty frames, a
+    /// stick still held) is dropped, so the stronger play chooses again as
+    /// soon as its last input is in rather than standing or walking on
+    /// through them (SC8, `#200`).
+    pub(super) fn end_at_last_press(&mut self) {
+        if let Some(last) = self.pads[..usize::from(self.len)].iter().rposition(|&pad| pad & BUTTONS != 0) {
+            self.len = last as u8 + 1;
+        }
+    }
+
     fn interruptible(&self) -> bool {
         self.done() || matches!(self.kind, PlanKind::Idle | PlanKind::Walk | PlanKind::Guard { .. })
     }
@@ -976,11 +1007,6 @@ pub struct FairCpu {
     route: Option<game::RouteRun>,
     recent_routes: [u8; 4],
     route_outcome: Option<game::Outcome>,
-    /// The stick direction toward the opponent while, this frame, the
-    /// stronger play sees an attack or a projectile coming (0 otherwise):
-    /// a walk in that the Utility AI would add is held back
-    /// ([`FairCpu::hold_walk_in`]).
-    walk_in_held: u16,
     /// What it has seen of its routes in this fight: for each of the
     /// book's routes (by index), how far drops it saw outnumber routes it
     /// saw land. A route that keeps dropping in play is taken less, then
@@ -1046,7 +1072,6 @@ impl Default for FairCpu {
             route: None,
             recent_routes: [0; 4],
             route_outcome: None,
-            walk_in_held: 0,
             route_drops: [0; ROUTE_SLOTS],
             route_check: None,
             focus: Focus::default(),
@@ -1111,20 +1136,17 @@ impl FairCpu {
         self.route.is_some()
     }
 
-    /// Whether its pad is its own alone this frame: a game plan or a route.
-    pub(crate) fn owns_pad(&self) -> bool {
-        self.game.is_some() || self.route.is_some()
+    /// The route it is entering: its place in its fighter's book.
+    pub fn route_index(&self) -> Option<usize> {
+        self.route.map(|run| usize::from(run.index))
     }
 
-    /// `pad`, from the Utility AI, unless it is a walk toward the opponent
-    /// while the stronger play sees an attack or a projectile coming: then
-    /// nothing. With the switch off it is always `pad`.
-    pub(crate) fn hold_walk_in(&self, pad: u16) -> u16 {
-        if self.walk_in_held != 0 && pad == self.walk_in_held {
-            0
-        } else {
-            pad
-        }
+    /// Whether its pad is its own alone: with the stronger play (by the
+    /// switch, or forced for the measuring run) it enters every command
+    /// (SC8, `#200`), and the Utility AI adds none. The old play shares the
+    /// pad with the Utility AI. Training's drills never reach the Fair CPU.
+    pub(crate) fn owns_pad(&self, ctx: &Context) -> bool {
+        self.stronger(ctx)
     }
 
     /// Record what frame `p.frame` showed.
@@ -1143,7 +1165,7 @@ impl FairCpu {
     /// A neutral pause can accept a new tactic. A zero pad inside a motion,
     /// timed anti-air or stance plan must stay with that plan.
     pub(crate) fn utility_idle(&self) -> bool {
-        self.pad == 0 && !self.owns_pad() && (self.plan.done() || self.plan.kind == PlanKind::Idle)
+        self.pad == 0 && self.game.is_none() && self.route.is_none() && (self.plan.done() || self.plan.kind == PlanKind::Idle)
     }
 
     /// What frame `frame` showed, if the CPU still holds it.
@@ -1181,7 +1203,6 @@ impl FairCpu {
         let stronger = self.stronger(ctx);
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.shown(f, step, ctx.level, stronger));
-        self.walk_in_held = 0;
         let pad = match view {
             Some((view, action_frame)) if in_fight && view.fighting => {
                 let before = if stronger && self.last_view.frame == view.frame - 1 && self.last_view.frame != 0 {
@@ -1321,11 +1342,10 @@ impl FairCpu {
         }
         self.learn(view, before);
         let stronger = self.stronger(ctx);
+        // Whether its pads come from a game plan, before being hit ends it.
+        let in_plan = self.game.is_some();
         if stronger {
             self.judged = self.judge.judge(view, before, self.longest_reach());
-            if self.judge.coming(view) {
-                self.walk_in_held = if view.toward() > 0 { RIGHT } else { LEFT };
-            }
             if view.me.reacting() {
                 // Being hit ends whatever it was following.
                 self.game = None;
@@ -1362,23 +1382,31 @@ impl FairCpu {
             // not guarded or parried: the CPU stays free to move and to
             // punish it.
             let baiting = stronger && self.out_of_reach(step, view);
+            let spend_super = self.spends_super(ctx, view);
             let era_response = ctx.era.filter(|tactics| !foe_down && !baiting && (interruptible || tactics.can_interrupt()))
-                .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before));
-            if let Some(plan) = era_response {
+                .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before, stronger, spend_super));
+            let mut answered = false;
+            if let Some(mut plan) = era_response {
+                if stronger {
+                    plan.end_at_last_press();
+                }
                 self.plan = plan;
                 self.game = None;
+                answered = true;
             } else if interruptible {
                 let answer = self.react(step, view, before, ctx).filter(|plan| !(baiting && matches!(plan.kind, PlanKind::Guard { .. })));
                 if let Some(plan) = answer {
                     // A threat it answers ends the game plan it was following.
                     self.plan = plan;
                     self.game = None;
+                    answered = true;
                 }
             }
             // A game plan's attack not yet begun is not pressed into an
-            // attack it has just seen start: it guards instead.
+            // attack it has just seen start: it guards instead. (Not an
+            // answer it has just chosen to that attack.)
             let foe_started = view.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id);
-            if stronger && self.game.is_some() && self.plan.press_to_come() && foe_started {
+            if stronger && !answered && (in_plan || self.game.is_some()) && self.plan.press_to_come() && foe_started {
                 self.plan = Plan::guard(view.foe.low_attack(), 0);
                 self.game = None;
             }
@@ -1399,14 +1427,23 @@ impl FairCpu {
             if !self.ready(step, view, stronger) {
                 return 0;
             }
-            let era = ctx.era.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view));
-            self.plan = match era {
-                Some(plan) => plan,
-                None if stronger && self.start_game_plan(step, view, ctx) => {
-                    self.follow_game_plan(step, view, ctx).unwrap_or_else(|| self.choose(step, view, ctx))
-                }
-                None => self.choose(step, view, ctx),
-            };
+            // The stronger play takes up a game plan first; the era kit's
+            // own neutral choices come where none is taken (SC8, `#200`).
+            if stronger && self.start_game_plan(step, view, ctx) {
+                self.plan = self.follow_game_plan(step, view, ctx).unwrap_or_else(|| self.choose(step, view, ctx));
+            } else {
+                let tactics = ctx.era.map(|tactics| if stronger { tactics.spending_safely() } else { tactics });
+                let era = tactics.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view)).map(|mut plan| {
+                    if stronger {
+                        plan.end_at_last_press();
+                    }
+                    plan
+                });
+                self.plan = match era {
+                    Some(plan) => plan,
+                    None => self.choose(step, view, ctx),
+                };
+            }
         }
         if self.route.is_some() {
             // A game plan's step that is a route.
@@ -1468,6 +1505,9 @@ impl FairCpu {
             gap: view.gap(),
             walk,
             foe_health: view.foe.health,
+            spend_super: self.spends_super(ctx, view),
+            drive_reserve: if self.stronger(ctx) { drive_reserve(ctx.level) } else { 0 },
+            avoid_burnout: self.stronger(ctx),
         };
         let mut options: Vec<(usize, i32)> = Vec::new();
         for (index, route) in book.routes.iter().enumerate() {
@@ -1508,6 +1548,16 @@ impl FairCpu {
     }
 
     /// Its longest normal, as far as it knows.
+    /// Whether a super may be spent now other than to win the round
+    /// (which always may): the old play spends whenever it can; the
+    /// stronger play (SC8, `#200`) while it is behind on health as its view
+    /// shows the bars, with its Super meter full, where keeping it gains
+    /// nothing, or in a round that could end the match, after which meter
+    /// kept is wasted.
+    fn spends_super(&self, ctx: &Context, view: Percept) -> bool {
+        !self.stronger(ctx) || view.me.health < view.foe.health || ctx.meter_full || ctx.round_decides_match
+    }
+
     fn longest_reach(&self) -> i16 {
         self.reach[0].iter().chain(self.reach[1].iter()).copied().max().unwrap_or(60)
     }
@@ -1630,6 +1680,19 @@ impl FairCpu {
                         self.game = Some(run);
                         return Some(self.plan_for(Choice::Special(Role::Projectile), step, view, ctx, false));
                     }
+                }
+                (Act::Rush, false) => {
+                    self.game = Some(run);
+                    if !self.ready(step, view, stronger) {
+                        return Some(wait);
+                    }
+                    // Without the gauge for it (or its rules off) the plan ends.
+                    let Some(plan) = ctx.era.and_then(|tactics| tactics.rush_in(view)) else { break };
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    self.settle = step + plan.len as u32;
+                    return Some(plan);
                 }
                 (Act::Reach { crouch, button }, false) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
@@ -1921,7 +1984,11 @@ impl FairCpu {
         }
         let back = if view.toward() > 0 { LEFT } else { RIGHT };
         if let PlanKind::Await { choice, wait } = self.plan.kind {
-            if !view.foe.jumping() {
+            // The stronger play lets a jump it sees carry him away go by
+            // (SC8, `#200`): there is nothing there to meet.
+            let away = self.stronger(ctx)
+                && self.seen(view.frame - 1).is_some_and(|was| (view.foe.x - was.foe.x) * view.toward() > 0);
+            if !view.foe.jumping() || away {
                 self.plan = Plan::default();
                 return 0;
             }
@@ -1980,7 +2047,19 @@ impl FairCpu {
                 None => low,
             };
             self.plan.kind = PlanKind::Guard { low, min, clear, held };
-            return if low_now { back | DOWN } else { back };
+            let guard = if low_now { back | DOWN } else { back };
+            // The stronger play holds SF6's Drive Parry through a guard
+            // while an attack or a projectile it sees is still coming (an
+            // attack's box not yet come and gone) and the gauge allows; the
+            // stick stays back, so a parry that cannot start is still a
+            // guard. Not against an opponent up close with nothing coming
+            // (a parry loses to his throw), nor through his recovery, which
+            // it may punish from its guard.
+            let parry = self.stronger(ctx)
+                && threat.is_some()
+                && self.judge.coming(view)
+                && ctx.era.is_some_and(|tactics| tactics.can_hold_parry());
+            return if parry { guard | button(1) | button(4) } else { guard };
         }
         if self.plan.done() {
             return 0;
@@ -2774,6 +2853,111 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Ryu in the SF6 era style with its own gauges as a fight starts them
+    /// (a full Drive gauge) and two bars of Super meter, free to act,
+    /// playing the stronger game.
+    fn sf6_ctx(level: Level) -> Context {
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ryu);
+        state.style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        state.max_sub_hp = crate::era_fight::FULL_SUB_HP;
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.set_sf6_practice_drive(None);
+        state.super_meter = 2 * STOCK_AT;
+        let control = EraControl { free: true, ..EraControl::default() };
+        let mut c = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
+        c.set_opponent_family(crate::era::EraFamily::Sf6);
+        c.stronger = true;
+        c
+    }
+
+    #[test]
+    fn with_the_stronger_play_no_era_command_answers_anything_sooner_than_the_applicable_delay() {
+        // SC8 (`#200`): Ryu in the SF6 era style with meter to spend. Two
+        // stronger CPUs with the same past; one is then shown an attack in
+        // its reach (a Drive Parry or a Drive Impact can answer it) or a
+        // Drive Rush from afar (a Drive Impact can). Their pads stay the
+        // same until the frame is the applicable delay old: the focused
+        // one if it watches for an attack as it decides, else the slower
+        // one. Over the tries the answers include the era commands.
+        let mut attack = body(340);
+        attack.move_id = 0x10;
+        attack.state = 0xc2;
+        let mut rush = body(420);
+        rush.move_id = crate::era_fight::sf6::RUSH;
+        rush.state = 0xc2;
+        let parry = button(1) | button(4);
+        let impact = button(2) | button(5);
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            let c = sf6_ctx(level);
+            let mut era_answers = std::collections::HashMap::new();
+            for seed in 1..=24u64 {
+                for (rest, shown_body, what) in [(body(340), attack, "attack"), (body(420), rush, "Drive Rush")] {
+                    let mut a = FairCpu::seeded(seed);
+                    for f in 1..=40 {
+                        a.observe(percept(f, rest));
+                    }
+                    for f in 41..=80 {
+                        a.press(f, true, &c);
+                        a.observe(percept(f, rest));
+                    }
+                    let mut b = a;
+                    let shown = 81;
+                    // The earliest it may answer: once the slower delay has
+                    // passed, or once the focused one has while it watches
+                    // for an attack as it decides (SC7's rule; its focus can
+                    // come to the attack after it began).
+                    let mut earliest = shown + level.unfocused_reaction();
+                    let (mut first_diff, mut era) = (None, false);
+                    for f in shown..shown + 120 {
+                        if f >= shown + level.reaction() && f < earliest && b.attention().focus == Focus::Attack {
+                            earliest = f;
+                        }
+                        let (pa, pb) = (a.press(f, true, &c), b.press(f, true, &c));
+                        if pa != pb {
+                            first_diff.get_or_insert(f);
+                            era |= pb & parry == parry || pb & impact == impact;
+                        }
+                        a.observe(percept(f, rest));
+                        b.observe(percept(f, shown_body));
+                    }
+                    // The level's guard chance may leave one unanswered.
+                    let Some(f) = first_diff else { continue };
+                    assert!(f >= earliest, "{level:?} seed {seed}: the {what} answered on {f}, shown on {shown}, earliest {earliest}");
+                    if era {
+                        *era_answers.entry(what).or_insert(0) += 1;
+                    }
+                }
+            }
+            for what in ["attack", "Drive Rush"] {
+                assert!(era_answers.get(what).is_some_and(|&n| n >= 1), "{level:?}: the {what} answered with an era command: {era_answers:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_stronger_play_spends_a_super_when_behind_with_its_meter_full_or_in_a_deciding_round() {
+        // SC8 (`#200`): otherwise it keeps it (a route that wins the round is
+        // taken whatever, `game::Moment`). The old play spends whenever it can.
+        let cpu = FairCpu::new();
+        let mut c = sf6_ctx(Level::VeryHard);
+        let mut view = percept(100, body(340));
+        assert!(!cpu.spends_super(&c, view), "even, the meter not full: kept");
+        view.me.health = 30;
+        assert!(cpu.spends_super(&c, view), "behind: spent");
+        view.me.health = 48;
+        c.meter_full = true;
+        assert!(cpu.spends_super(&c, view), "a full meter: spent");
+        c.meter_full = false;
+        c.round_decides_match = true;
+        assert!(cpu.spends_super(&c, view), "a round that could end the match: spent");
+        c.round_decides_match = false;
+        c.stronger = false;
+        assert!(cpu.spends_super(&c, view), "the old play spends whenever it can");
     }
 
     #[test]

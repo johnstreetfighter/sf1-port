@@ -5,6 +5,15 @@ use crate::era::{EraFamily, GaugeMode, Loadout, STOCK_AT};
 use crate::era_fight::{sf3, sf4, sf5, sf6, EraFighterState};
 use crate::moves::{ButtonClass, Dir, MoveEntry, MoveKind, Recognizer};
 
+/// What a raw Drive Rush costs, as the kit's gate has it (a stock and a
+/// little more).
+const RUSH_COST: u8 = STOCK_AT + 2;
+/// How near a projectile the stronger play parries is, as it starts, and
+/// how far off a Drive Rush it meets with an armoured move begins: about
+/// as far as one carries him in (SC8, `#200`).
+const SHOT_ANSWERED: i16 = 120;
+const RUSH_ANSWERED: i16 = 160;
+
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct EraControl {
     pub free: bool,
@@ -32,6 +41,17 @@ pub(super) struct Tactics {
     skill: Option<MoveEntry>,
     mix_up: Option<MoveEntry>,
     stance: Option<MoveEntry>,
+    /// SF6's Drive Parry can be held through a guard: the gauge holds two
+    /// bars over the level's reserve (it drains a point a frame held, and
+    /// each hit it catches gives a bar back).
+    parry_hold: bool,
+    /// Its Drive gauge (its Super meter under a unified gauge) and the
+    /// level's reserve, for the stronger play's spending (SC8, `#200`).
+    drive: u16,
+    reserve: u16,
+    unified: bool,
+    /// The opponent's era style, where known.
+    foe_family: Option<EraFamily>,
 }
 
 impl Tactics {
@@ -219,7 +239,7 @@ impl Tactics {
             guard_cancel,
             evade,
             armor,
-            rush: (family == Sf6 && !cfg.disable_raw_drive_rush && can_drive(STOCK_AT + 2))
+            rush: (family == Sf6 && !cfg.disable_raw_drive_rush && can_drive(RUSH_COST))
                 .then(|| entry(sf6::RUSH))
                 .flatten(),
             install,
@@ -233,7 +253,60 @@ impl Tactics {
                 named("MURDERER CHAIN")
             },
             stance: named("SWITCH TO CRANE").or_else(|| named("SWITCH TO MANTIS")),
+            parry_hold: enabled && family == Sf6 && can_drive(2 * STOCK_AT) && entry(sf6::PARRY).is_some(),
+            drive,
+            reserve,
+            unified,
+            foe_family: None,
         }
+    }
+
+    /// The stronger play spends SF6's Drive only down to the level's
+    /// reserve and never to burnout (SC8, `#200`): what is left after
+    /// paying `native_cost` (a stock under a unified gauge) is at least the
+    /// reserve and more than nothing. The other era styles pay from their
+    /// own meters, which the kit's own gates already check.
+    fn keeps_drive(self, native_cost: u8) -> bool {
+        if self.family != EraFamily::Sf6 {
+            return true;
+        }
+        let cost = u16::from(if self.unified { STOCK_AT } else { native_cost });
+        self.drive >= self.reserve + cost && self.drive > cost
+    }
+
+    /// The opponent's era style, which tells his moves apart (another
+    /// style can use SF6's Drive Rush move id for something else).
+    pub(super) fn against(mut self, family: Option<EraFamily>) -> Self {
+        self.foe_family = family;
+        self
+    }
+
+    /// The kit as the stronger play may spend it (SC8, `#200`): SF6's Drive
+    /// Rush, Drive Impact and OD moves only where they leave Drive above the
+    /// level's reserve, never down to burnout.
+    pub(super) fn spending_safely(mut self) -> Self {
+        if self.family == EraFamily::Sf6 {
+            self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
+            self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
+            self.enhanced = self.enhanced.filter(|_| self.keeps_drive(2 * STOCK_AT));
+        }
+        self
+    }
+
+    /// The pads of a dash that spends meter to close in, when the gauge,
+    /// the level's reserve and the rules allow one now (SC8, `#200`).
+    pub(super) fn rush_in(self, view: Percept) -> Option<Plan> {
+        let entry = self.rush.filter(|_| self.control.free && self.keeps_drive(RUSH_COST))?;
+        let mut plan = self.pad(&entry, view, 1);
+        plan.end_at_last_press();
+        Some(plan)
+    }
+
+    /// The stronger play may hold a parry in place of a guard (SC8, `#200`).
+    /// Not while its own move can still be cancelled: the parry's buttons
+    /// would cancel it into a Drive Rush.
+    pub(super) fn can_hold_parry(self) -> bool {
+        self.parry_hold && !self.control.cancel
     }
 
     pub(super) fn can_interrupt(self) -> bool {
@@ -284,22 +357,42 @@ impl Tactics {
 
     /// Reactions use the delayed opponent view. The current local state is
     /// used only for whether our own controls can execute the chosen input.
+    /// The stronger play (SC8, `#200`) parries or meets with an armoured
+    /// move only an attack or a projectile it has just seen start, once,
+    /// not every frame one is in view.
     pub(super) fn react(
         self,
         rng: &mut Rng,
         level: Level,
         view: Percept,
         before: Percept,
+        stronger: bool,
+        spend_super: bool,
     ) -> Option<Plan> {
         let toward = if view.toward() > 0 { RIGHT } else { LEFT };
         let away = if toward == RIGHT { LEFT } else { RIGHT };
         let threatened = view.foe.attacking() && view.gap() < 80
             || (view.shot && (view.shot_x - view.me.x).abs() < 80);
+        // A normal seen start in reach. A special is guarded instead: it
+        // may be one to punish as it whiffs.
+        let started = view.foe.normal()
+            && !view.foe.jumping()
+            && (!before.foe.attacking() || before.foe.move_id != view.foe.move_id)
+            && view.gap() < 80;
+        let shot_started = view.shot && !before.shot && (view.shot_x - view.me.x).abs() < SHOT_ANSWERED;
+        // A Drive Rush seen start, from as far as one carries him in: met
+        // by an armoured move, which takes the normal he rushes into.
+        let rushed = self.family == EraFamily::Sf6
+            && self.foe_family == Some(EraFamily::Sf6)
+            && view.foe.move_id == sf6::RUSH
+            && before.foe.move_id != sf6::RUSH
+            && view.gap() < RUSH_ANSWERED;
         if self.can_air_block && self.control.airborne && threatened && rng.chance(level.guard()) {
             return Some(Plan::of(PlanKind::Act, &[away; 12]));
         }
         if self.control.blockstun && (view.me.guarding() || threatened) {
-            if let Some(entry) = self.guard_cancel.filter(|_| rng.chance(level.guard() / 2)) {
+            let affordable = !stronger || self.keeps_drive(2 * STOCK_AT);
+            if let Some(entry) = self.guard_cancel.filter(|_| affordable && rng.chance(level.guard() / 2)) {
                 return Some(self.pad(&entry, view, 2));
             }
             return None;
@@ -308,6 +401,7 @@ impl Tactics {
         let wakeup = (self.control.waking || (before.me.reacting() && !view.me.reacting()))
             && view.gap() < 68;
         if (hit_confirm || wakeup)
+            && spend_super
             && (self.control.free || self.control.cancel)
             && rng.chance(level.quality())
         {
@@ -326,11 +420,29 @@ impl Tactics {
                 &[focus, focus | toward, focus, focus | toward, toward, 0],
             ));
         }
+        if stronger && rushed && self.control.free && self.keeps_drive(STOCK_AT) && rng.chance(level.guard() / 2) {
+            if let Some(armor) = self.armor {
+                return Some(self.pad(&armor, view, 1));
+            }
+        }
+        let answered = if stronger { started || shot_started } else { threatened };
         if !(self.control.free || (self.can_parry && self.control.airborne))
-            || !threatened
+            || !answered
             || !rng.chance(level.guard() / 2)
         {
             return None;
+        }
+        if stronger && started && self.family == EraFamily::Sf6 {
+            // A normal seen start: Drive Parried, or met with a Drive
+            // Impact, which takes its hit on its armour. (The other era
+            // styles answer as below.)
+            let evade = self.evade.filter(|_| self.keeps_drive(sf6::DRIVE_PARRY_START_COST));
+            let armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
+            let choice = match (evade, armor) {
+                (Some(evade), Some(armor)) => if rng.chance(50) { armor } else { evade },
+                (evade, armor) => evade.or(armor)?,
+            };
+            return Some(self.pad(&choice, view, 1));
         }
         if self.can_parry {
             let direction = if view.foe.low_attack() && !self.control.airborne {
@@ -469,6 +581,41 @@ mod tests {
     }
 
     #[test]
+    fn the_stronger_play_spends_no_drive_in_neutral_down_to_burnout() {
+        use crate::era::Revision;
+        let mut config = MatchConfig::definitive();
+        config.gauge_mode = GaugeMode::Unified;
+        let moves = [
+            entry("DRIVE RUSH", sf6::RUSH, MoveKind::System, &[Dir::Forward, Dir::Neutral, Dir::Forward], ButtonClass::MediumPair),
+            entry("DRIVE IMPACT", sf6::IMPACT, MoveKind::System, &[], ButtonClass::HeavyPair),
+        ];
+        let control = EraControl { free: true, ..EraControl::default() };
+        let at_cost = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT), &moves, config, Level::VeryHard, control);
+        assert!(at_cost.rush.is_some() && at_cost.armor.is_some(), "the old play would spend the last stock");
+        let safe = at_cost.spending_safely();
+        assert!(safe.rush.is_none() && safe.armor.is_none(), "the stronger play keeps it");
+        let above = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT + 3), &moves, config, Level::VeryHard, control).spending_safely();
+        assert!(above.rush.is_some() && above.armor.is_some());
+    }
+
+    #[test]
+    fn the_stronger_play_never_rushes_into_burnout() {
+        // SC8 (`#200`): at Very Difficult there is no reserve, but a Drive
+        // Rush that would empty the gauge is not entered.
+        use crate::era::Revision;
+        let mut config = MatchConfig::definitive();
+        config.gauge_mode = GaugeMode::Unified;
+        let moves = [entry("DRIVE RUSH", sf6::RUSH, MoveKind::System, &[Dir::Forward, Dir::Neutral, Dir::Forward], ButtonClass::MediumPair)];
+        let control = EraControl { free: true, ..EraControl::default() };
+        let view = Percept::default();
+        let at_cost = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT), &moves, config, Level::VeryHard, control);
+        assert!(at_cost.rush.is_some(), "the kit would rush");
+        assert!(at_cost.rush_in(view).is_none(), "not down to an empty gauge");
+        let above = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT + 1), &moves, config, Level::VeryHard, control);
+        assert!(above.rush_in(view).is_some());
+    }
+
+    #[test]
     fn unified_cpu_requires_three_stocks_for_st_supers_and_x_ism() {
         use crate::era::Revision;
 
@@ -548,16 +695,16 @@ mod tests {
         let config = MatchConfig::definitive();
         let hard = Tactics::of(&state, &moves, config, Level::Hard, control);
         assert!(hard
-            .react(&mut Rng(0), Level::Hard, before, before)
+            .react(&mut Rng(0), Level::Hard, before, before, false, true)
             .is_none());
         let plan = hard
-            .react(&mut Rng(0), Level::Hard, confirmed, before)
+            .react(&mut Rng(0), Level::Hard, confirmed, before, false, true)
             .expect("hit confirm plans CA");
         assert_eq!(plan.pads[..3], [DOWN; 3]);
         assert!(plan.pads[..usize::from(plan.len)].contains(&(RIGHT | button(2))));
         let easy = Tactics::of(&state, &moves, config, Level::Easy, control);
         assert!(easy
-            .react(&mut Rng(0), Level::Easy, confirmed, before)
+            .react(&mut Rng(0), Level::Easy, confirmed, before, false, true)
             .is_none());
     }
 }

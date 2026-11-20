@@ -1684,28 +1684,28 @@ impl PowerOnMachine {
             4 => (CPU_STRUCT, P2_STRUCT),
             _ => (P2_STRUCT, P1_STRUCT),
         };
-        let ctx = self.fair_cpu_context(fighter, slot, me);
+        let mut ctx = self.fair_cpu_context(fighter, slot, me);
+        ctx.set_opponent_family(self.program.toggle_state.era.fighters[1 - slot].style.family);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let cpu = self.fair_cpu.get_or_insert_with(FairCpu::new);
         let pad = cpu.press(step, in_fight, &ctx);
         let idle = cpu.utility_idle();
-        // While it follows a game plan (spec `#192`) the pad is the Fair
-        // CPU's alone: the Utility AI adds no command of its own.
-        let following = cpu.owns_pad();
-        let alone = family == crate::era::EraFamily::Sf1987 || following;
+        // With the stronger play (spec `#192`, SC8 `#200`) the pad is the
+        // Fair CPU's alone: it enters every command, era mechanics
+        // included, and the Utility AI adds none.
+        let owned = cpu.owns_pad(&ctx);
+        let alone = family == crate::era::EraFamily::Sf1987 || owned;
         let input = if alone {
-            if following {
+            if owned {
                 self.program.toggle_state.utility[slot].drop_macro();
             }
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
         } else {
             self.step_utility_cpu(slot, me, foe, fighter, family, &ctx, Some((pad, idle)));
-            // The stronger play holds back a walk in it sees an attack or
-            // a projectile coming into.
             let cpu = self.fair_cpu.as_mut().unwrap();
-            let pad = cpu.hold_walk_in(self.program.toggle_state.utility[slot].pad());
+            let pad = self.program.toggle_state.utility[slot].pad();
             cpu.set_utility_pad(pad);
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
@@ -1737,15 +1737,16 @@ impl PowerOnMachine {
         }
         let fighter = self.program.match_config.roster.p1;
         let family = self.program.toggle_state.era.fighters[0].style.family;
-        let ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT);
+        let mut ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT);
+        ctx.set_opponent_family(self.program.toggle_state.era.fighters[1].style.family);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let cpu = self.p1_fair_cpu.as_mut().unwrap();
         let pad = cpu.press(step, in_fight, &ctx);
         let idle = cpu.utility_idle();
-        let following = cpu.owns_pad();
-        let input = if family == crate::era::EraFamily::Sf1987 || following {
-            if following {
+        let owned = cpu.owns_pad(&ctx);
+        let input = if family == crate::era::EraFamily::Sf1987 || owned {
+            if owned {
                 self.program.toggle_state.utility[0].drop_macro();
             }
             let (directions, buttons) = pad_parts(pad);
@@ -1753,7 +1754,7 @@ impl PowerOnMachine {
         } else {
             self.step_utility_cpu(0, P1_STRUCT, P2_STRUCT, fighter, family, &ctx, Some((pad, idle)));
             let cpu = self.p1_fair_cpu.as_mut().unwrap();
-            let pad = cpu.hold_walk_in(self.program.toggle_state.utility[0].pad());
+            let pad = self.program.toggle_state.utility[0].pad();
             cpu.set_utility_pad(pad);
             let (directions, buttons) = pad_parts(pad);
             crate::front::PlayerInputs { directions, buttons }
@@ -1844,7 +1845,26 @@ impl PowerOnMachine {
         };
         // Dramatic Battle's CPUs keep the old play until SC23 (`#215`).
         context.stronger = cfg.stronger_cpu && cfg.dramatic.is_none();
+        // The two fighting players' structs (as the three-rounds rule reads
+        // them) and the rounds each has won, at `+8`.
+        context.round_decides_match = self.round_decides_match();
         context
+    }
+
+    /// The round being fought could end the match: either fighting player
+    /// has a round won (the three-rounds rule's counts, at `+8` of the
+    /// structs whose addresses object RAM holds at 0xffe438 and 0xffe43c),
+    /// or it is the third round (`ROUND_NO`).
+    pub fn round_decides_match(&self) -> bool {
+        // Work RAM runs from 0xff8000, object RAM from 0xffe000.
+        let byte = |addr: u32| match addr {
+            0xffe000.. => self.state.objectram.get((addr - 0xffe000) as usize).copied(),
+            _ => addr.checked_sub(crate::fighter::WORK_BASE).and_then(|i| self.program.work.get(i as usize).copied()),
+        }
+        .unwrap_or(0);
+        let fighting = |slot: u32| u32::from_be_bytes([0, 1, 2, 3].map(|i| byte(slot + i)));
+        let won = |slot: u32| byte(fighting(slot).wrapping_add(8));
+        won(0xffe438) >= 1 || won(0xffe43c) >= 1 || byte(crate::tasks::ROUND_NO) >= 2
     }
 
     pub(crate) fn seed_dramatic_cpu(&mut self, seed: u64) {
@@ -2037,6 +2057,12 @@ impl PowerOnMachine {
     /// Whether Player 2's Fair CPU is entering a route from its route book.
     pub fn fair_cpu_entering_route(&self) -> bool {
         self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::entering_route)
+    }
+
+    /// The route Player 2's Fair CPU is entering, by its place in its
+    /// fighter's route book.
+    pub fn fair_cpu_route(&self) -> Option<usize> {
+        self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_index)
     }
 
     /// Whether Player 2's Fair CPU is in the middle of a game plan.

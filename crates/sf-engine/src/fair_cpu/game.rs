@@ -305,6 +305,9 @@ pub(super) enum Act {
     /// Walk, in or out, to this gap from the opponent: the spacing the
     /// next step works from. Never back out from a cornered opponent.
     Space(i16),
+    /// The era style's dash that spends meter to close in (SF6's Drive
+    /// Rush, SC8 `#200`). Without the gauge for it the plan ends.
+    Rush,
 }
 
 impl Act {
@@ -319,6 +322,7 @@ impl Act {
                 | Act::Space(_)
                 | Act::Step { forward: true }
                 | Act::Shot
+                | Act::Rush
                 | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach | Choice::JumpIn)
         )
     }
@@ -386,6 +390,15 @@ pub(super) struct Moment<'a> {
     pub walk: u8,
     /// In health bar points.
     pub foe_health: u16,
+    /// A route that spends a super may be taken though it does not win the
+    /// round (SC8, `#200`: the round state says spend, or the old play).
+    pub spend_super: bool,
+    /// Drive the route must leave in the gauge: the level's reserve for
+    /// the stronger play.
+    pub drive_reserve: u16,
+    /// The stronger play spends no Drive down to burnout, unless the route
+    /// wins the round.
+    pub avoid_burnout: bool,
 }
 
 impl Moment<'_> {
@@ -398,7 +411,10 @@ impl Moment<'_> {
             && route.stances.contains(&stance)
             && (!route.corner || self.corner)
             && route.super_spent <= self.meters[0]
-            && route.drive_spent <= self.meters[1]
+            && (route.super_spent == 0 || self.spend_super || self.wins_round(route))
+            && (route.drive_spent == 0
+                || (route.drive_spent + self.drive_reserve <= self.meters[1]
+                    && (!self.avoid_burnout || route.drive_spent < self.meters[1] || self.wins_round(route))))
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
             && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
     }
@@ -408,12 +424,17 @@ impl Moment<'_> {
         ((self.gap - route.gap).max(0) + WALK_SPEED - 1).div_euclid(WALK_SPEED).min(i16::from(self.walk)) as u8
     }
 
+    /// The route's damage takes the rest of the opponent's health.
+    fn wins_round(&self, route: &Route) -> bool {
+        self.foe_health > 0 && route.damage / 20 >= self.foe_health
+    }
+
     /// How good the route is now: one that wins the round above all;
     /// otherwise its damage, a knockdown at its end, and meter kept; a
     /// route taken lately scores lower.
     pub(super) fn score(&self, route: &Route, recent: bool) -> i32 {
         let points = i32::from(route.damage / 20);
-        if points >= i32::from(self.foe_health) && self.foe_health > 0 {
+        if self.wins_round(route) {
             return 10_000 + points;
         }
         let meter = i32::from(route.super_spent) / 4 + i32::from(route.drive_spent) / 8;
@@ -627,6 +648,18 @@ const RYU_SF6_SHOT: [Step; 2] = [
     step(Act::Do(Choice::Approach), always(None)),
 ];
 
+/// Ryu in the SF6 era style, far off (SC8, `#200`): a projectile, then a
+/// Drive Rush in behind it while he deals with it, and a standing medium
+/// punch as it arrives (a rushed normal gains frames). With a projectile
+/// of its own already out it rushes in behind that. Whatever the punch
+/// meets, the situation's own plans go on from there.
+const RYU_SF6_SHOT_RUSH: [Step; 4] = [
+    step(Act::Shot, always(Some(1))),
+    step(Act::Rush, always(Some(2))),
+    step(Act::Reach { crouch: false, button: 1 }, always(Some(3))),
+    step(Act::Do(Choice::Normal { crouch: false, button: 1 }), always(None)),
+];
+
 /// Ryu in the SF6 era style, from the range a forward jump carries him to
 /// the opponent: a jump-in with an attack on the way down.
 const RYU_SF6_JUMP_IN: [Step; 1] = [step(Act::Do(Choice::JumpIn), always(None))];
@@ -636,7 +669,7 @@ const RYU_SF6_JUMP_IN: [Step; 1] = [step(Act::Do(Choice::JumpIn), always(None))]
 const SHOT_GAP: i16 = 90;
 const JUMP_IN_GAP: (i16, i16) = (70, 150);
 
-const RYU_SF6: [GamePlan; 11] = [
+const RYU_SF6: [GamePlan; 12] = [
     GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE },
     GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE },
     GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP },
@@ -653,6 +686,7 @@ const RYU_SF6: [GamePlan; 11] = [
     GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER },
     GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT },
     GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN },
+    GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH },
 ];
 
 /// The game plans a fighter has in an era style. A pair with none plays
@@ -752,6 +786,31 @@ mod tests {
         crate::route_book::book(TournamentFighter::Ryu, crate::era::Revision::Sf6, crate::era::Loadout::Standard).unwrap()
     }
 
+    #[test]
+    fn a_super_is_spent_in_a_route_only_when_the_round_state_allows_and_drive_above_the_reserve() {
+        // SC8 (`#200`).
+        let book = ryu_sf6();
+        let super_route = book.routes.iter().find(|r| r.super_spent > 0 && r.reach == Reach::Punish).expect("a punish into a Super Art");
+        let keep = Moment { spend_super: false, ..moment(&[Reach::Punish]) };
+        assert!(!keep.allows(super_route), "kept while the round state says keep");
+        assert!(Moment { spend_super: true, ..moment(&[Reach::Punish]) }.allows(super_route), "spent when it says spend");
+        let lethal = Moment { foe_health: super_route.damage / 20, ..keep };
+        assert!(lethal.allows(super_route), "spent whatever to win the round");
+        // A route that spends Drive leaves the reserve in the gauge.
+        let mut drive_route = super_route.clone();
+        drive_route.super_spent = 0;
+        drive_route.drive_spent = 100;
+        let low = Moment { meters: [0, 150], ..moment(&[Reach::Punish]) };
+        assert!(low.allows(&drive_route));
+        assert!(!Moment { drive_reserve: 72, ..low }.allows(&drive_route));
+        assert!(Moment { drive_reserve: 50, ..low }.allows(&drive_route), "down to the reserve exactly");
+        // Not down to burnout, unless it wins the round.
+        let last = Moment { meters: [0, 100], avoid_burnout: true, ..moment(&[Reach::Punish]) };
+        assert!(!last.allows(&drive_route));
+        assert!(Moment { foe_health: drive_route.damage / 20, ..last }.allows(&drive_route));
+        assert!(Moment { avoid_burnout: false, ..last }.allows(&drive_route), "the old play spends it");
+    }
+
     fn moment(reaches: &[Reach]) -> Moment<'_> {
         Moment {
             reaches,
@@ -764,6 +823,9 @@ mod tests {
             gap: 20,
             walk: 0,
             foe_health: 48,
+            spend_super: true,
+            drive_reserve: 0,
+            avoid_burnout: false,
         }
     }
 
