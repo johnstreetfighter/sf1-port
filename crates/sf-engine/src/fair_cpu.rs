@@ -1636,7 +1636,8 @@ impl FairCpu {
             let Some(at) = table.get(usize::from(run.plan)).and_then(|plan| plan.steps.get(usize::from(run.step))) else { break };
             // It does not walk or attack into an attack or a projectile it
             // has seen start: the plan ends, and its answer takes over.
-            let commits = !run.acted && at.act.commits();
+            // (A reach is walked a few frames at a time: each walk is one.)
+            let commits = (!run.acted || matches!(at.act, Act::Reach { .. })) && at.act.commits();
             if commits && (view.foe.attacking() || view.shot_coming()) {
                 break;
             }
@@ -1720,15 +1721,21 @@ impl FairCpu {
                     self.settle = step + plan.len as u32;
                     return Some(plan);
                 }
-                (Act::Reach { crouch, button }, false) => {
+                (Act::Reach { crouch, button }, acted) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
                     let gap = self.felt(step, view).gap();
-                    if gap > reach {
-                        // A walk covers about two pixels a frame.
-                        let frames = ((gap - reach + 1) / 2).clamp(1, 40) as usize;
+                    if gap > reach && !(acted && step > run.pressed + game::EDGE_FRAMES) {
+                        // A few frames at a time, looking again after each:
+                        // the walk is reckoned at two pixels a frame, and a
+                        // fighter's can cover more (Ryu's SF6 one about 2.7),
+                        // so one walk the whole way in overshot the normal's
+                        // reach into the opponent's (SC13, `#205`).
+                        let frames = ((gap - reach + 1) / 2).clamp(1, game::EDGE_WALK) as usize;
                         let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                        if !acted {
+                            run.pressed = step;
+                        }
                         run.acted = true;
-                        run.pressed = step;
                         self.game = Some(run);
                         return Some(Plan::of(PlanKind::Walk, &[forward; PLAN_CAP][..frames]));
                     }

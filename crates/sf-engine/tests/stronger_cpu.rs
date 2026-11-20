@@ -1404,6 +1404,11 @@ struct Hover {
     edge_turns: u32,
     /// Player 1's Shoryukens whose box never reached the CPU.
     whiffs: u32,
+    /// His swings begun within 20 frames of an edge turn, and those that
+    /// touched the CPU (hit or guarded): it had not stepped back out of
+    /// his reach.
+    swung_after_turn: u32,
+    touched_after_turn: u32,
     /// Of those, the ones he began within 20 frames of an edge turn: he
     /// swung at the CPU's step in, and it had stepped back out.
     drawn: u32,
@@ -1431,6 +1436,7 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
     let mut was_route = false;
     let mut gaps = [i16::MAX; 10];
     let mut rising = 0;
+    let mut touched: Option<u32> = None;
     for i in 0..frames {
         let v = seen(&m);
         // He swings at the CPU as he sees it come into his reach.
@@ -1448,6 +1454,7 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
             _ if near && v.foe.free() && v.me.free() => {
                 poked_at = Some(i);
                 poke_after_turn = turned_at.is_some_and(|t| i - t <= 20);
+                out.swung_after_turn += u32::from(poke_after_turn);
                 (toward(&v), 0)
             }
             // Out of a corner, and in from beyond a projectile's range: the
@@ -1475,6 +1482,10 @@ fn hover(start: &PowerOnMachine, frames: u32) -> Hover {
             let toward_cpu = -to_p1;
             let edge = if toward_cpu > 0 { after.me.hurt.0 } else { after.me.hurt.1 };
             p1_contact |= after.me.reacting() || after.me.health < cpu_health || (after.foe.front - edge) * toward_cpu >= 0;
+            if p1_contact && poke_after_turn && touched != poked_at {
+                touched = poked_at;
+                out.touched_after_turn += 1;
+            }
         } else if p1_active {
             p1_contact |= after.me.reacting() || after.me.health < cpu_health;
             if !p1_contact {
@@ -1508,6 +1519,8 @@ fn hover_sum(stronger: bool) -> Hover {
     starts_from(stronger, 4, &[0, 97, 211, 331, 449]).iter().map(|m| hover(m, 12_000)).fold(Hover::default(), |a, h| Hover {
         edge_turns: a.edge_turns + h.edge_turns,
         whiffs: a.whiffs + h.whiffs,
+        swung_after_turn: a.swung_after_turn + h.swung_after_turn,
+        touched_after_turn: a.touched_after_turn + h.touched_after_turn,
         drawn: a.drawn + h.drawn,
         punished: a.punished + h.punished,
         landed: a.landed + h.landed,
@@ -1531,6 +1544,12 @@ fn in_neutral_it_steps_in_and_out_at_the_edge_of_the_opponents_reach_and_punishe
     // Drawn whiffs keep the old floor: with SC8 (#200) their rate halved
     // (of his swings right after an edge turn, most now hit the CPU), and
     // that drop is with the maintainer.
+    // Its last walk in, to poke, stops at the poke's reach: his swing at an
+    // edge turn meets a CPU out of his reach (before SC8 2 of 22 touched
+    // it; with SC8 the walk ran its whole planned length and overshot, 27
+    // of 47).
+    assert!(new.swung_after_turn >= 10, "swings at an edge turn: {new:?}");
+    assert!(3 * new.touched_after_turn <= new.swung_after_turn, "swings at an edge turn that touched the CPU: {new:?}");
     assert!(new.drawn >= 10 && new.drawn > old.drawn, "whiffs drawn by stepping out: {new:?} against {old:?}");
     assert!(new.punished >= 6 && new.landed >= 6, "drawn whiffs punished with a route, and landed: {new:?}");
 }
@@ -1615,6 +1634,7 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
         let mut shown_at: HashMap<u32, Percept> = HashMap::new();
         let (mut box_seen, mut last_move) = (false, 0u8);
         let (mut walks, mut walks_into, mut route_pressed) = (0u32, Vec::new(), false);
+        let mut recent_down = 0u8;
         let mut shots = 0u32;
         let mut had_shot = false;
         for i in 0..14_000u32 {
@@ -1678,9 +1698,13 @@ fn it_does_not_walk_into_a_projectile_or_an_attack_it_has_seen() {
             }
             route_pressed |= in_route && buttons != 0;
             // Held in blockstun the stick forward is no walk: it begins a
-            // Drive Reversal (SC8).
+            // Drive Reversal (SC8). Nor is it just after the stick was down:
+            // it is a motion's last direction (a quarter circle's, a Super
+            // Art's), which the CPU's answer to what it saw can be (SC13).
             let held = m.toggle_state().combo.blockstun[1] != 0;
-            let walking_in = dirs == forward && buttons == 0 && !route_pressed && !held;
+            let motion = recent_down != 0;
+            recent_down = if dirs & D != 0 { 3 } else { recent_down.saturating_sub(1) };
+            let walking_in = dirs == forward && buttons == 0 && !route_pressed && !held && !motion;
             if i < 300 || !walking_in || !shown.me.free() || down(&shown.foe) {
                 continue;
             }
