@@ -466,6 +466,30 @@ pub fn book_texts() -> &'static [&'static str] {
     BOOKS
 }
 
+/// The identity of a set of route book texts, in the order given: each
+/// text whole, with its length, so a byte changed, moved between books, or
+/// a book added, dropped or reordered gives another value. What a netplay
+/// session agrees on for the books (SC14, `#206`; see
+/// [`crate::netplay::protocol_identity`]). Line endings are read as `\n`:
+/// a Windows checkout holds the books with `\r\n` (`core.autocrlf`), a
+/// Linux one with `\n`, and the two builds play from the same routes.
+pub fn books_hash_of(texts: &[&str]) -> u64 {
+    use crate::canonical::{Canonical, CanonicalHasher};
+    let mut out = CanonicalHasher::new();
+    out.tag("sf1-port/route-books/v1");
+    texts.len().encode(&mut out);
+    for text in texts {
+        text.replace("\r\n", "\n").encode(&mut out);
+    }
+    out.finish()
+}
+
+/// [`books_hash_of`] the books this build holds, worked out once.
+pub fn books_hash() -> u64 {
+    static HASH: OnceLock<u64> = OnceLock::new();
+    *HASH.get_or_init(|| books_hash_of(BOOKS))
+}
+
 /// The file a fighter's route book in a style is checked in as, in
 /// `crates/sf-engine/route-books/`.
 pub fn file_name(fighter: TournamentFighter, revision: Revision, loadout: Loadout) -> String {

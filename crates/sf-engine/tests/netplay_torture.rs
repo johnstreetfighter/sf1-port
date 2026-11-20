@@ -266,7 +266,7 @@ fn announcement() -> RoomAnnouncement {
         config_hash: 0,
         bank_hash: 1,
         art_pack_hash: 2,
-        protocol_hash: sf_engine::version::protocol_version_hash(),
+        protocol_hash: sf_engine::netplay::protocol_hash(),
     }
 }
 

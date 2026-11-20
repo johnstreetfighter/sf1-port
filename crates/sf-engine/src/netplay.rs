@@ -177,6 +177,28 @@ impl Browser {
     }
 }
 
+/// The engine identity two peers must share: the release and source
+/// revision ([`crate::version::protocol_version_hash`]) and the route books
+/// the Fair CPU plays from (SC14, `#206`), given here as their texts. Peers
+/// whose identities differ are refused as a version mismatch. Today the
+/// books are read only with the stronger Fair CPU's switch on, which a
+/// netplay session keeps off and does not send; this keeps two machines
+/// from playing different books once a session can have it on. The source
+/// revision already splits builds of different commits; the books' hash
+/// also splits builds of one commit with books changed locally.
+pub fn protocol_identity(route_books: &[&str]) -> u32 {
+    let books = crate::route_book::books_hash_of(route_books);
+    let folded = (books ^ (books >> 32)) as u32;
+    (crate::version::protocol_version_hash() ^ folded).wrapping_mul(0x0100_0193)
+}
+
+/// [`protocol_identity`] of this build: what [`SyncedMatchRules::new`]
+/// stamps as `protocol_hash`.
+pub fn protocol_hash() -> u32 {
+    static HASH: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *HASH.get_or_init(|| protocol_identity(crate::route_book::book_texts()))
+}
+
 /// Canonical current configuration, seed and engine identity, without assets.
 ///
 /// The shared configuration encoding excludes currently inert local scheme
@@ -186,7 +208,7 @@ pub fn config_hash(config: &MatchConfig, seed: u64) -> u64 {
     use crate::canonical::{Canonical, CanonicalHasher};
     let mut out = CanonicalHasher::new();
     out.tag("sf1-port/config/v1");
-    crate::version::protocol_version_hash().encode(&mut out);
+    protocol_hash().encode(&mut out);
     config.encode(&mut out);
     seed.encode(&mut out);
     out.finish()

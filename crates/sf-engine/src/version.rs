@@ -51,6 +51,8 @@ pub fn full_banner() -> String {
 
 /// Netplay compatibility includes the release, source revision, and the
 /// synchronized rules layout. Keep the packet envelope readable by older peers.
+/// A session's full identity also covers the route books:
+/// `netplay::protocol_hash` (SC14, `#206`).
 pub const fn protocol_version_hash() -> u32 {
     const STYLE_RULES: u32 = 10;
     (identity_hash(VERSION, GIT_SHA) ^ STYLE_RULES).wrapping_mul(0x0100_0193)

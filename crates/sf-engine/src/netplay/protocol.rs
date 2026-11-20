@@ -71,7 +71,7 @@ impl SyncedMatchRules {
         config.difficulty = dips.difficulty;
         config.round_time = dips.round_time;
         Self { config, fighters, styles: [None; 2], dips, stage, seed, bank_hash, art_pack_hash,
-            protocol_hash: crate::version::protocol_version_hash() }
+            protocol_hash: super::protocol_hash() }
     }
 
     pub fn config_hash(&self) -> u64 {
