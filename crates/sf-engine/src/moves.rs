@@ -1457,9 +1457,9 @@ pub(crate) fn live_move_list(
 
     let mut entries: Vec<_> = move_list(fighter, preset).into_iter()
         .filter(|entry| player_table || !entry.available.player_table).copied().collect();
-    // The bosses' command normals are SF1+'s (spec #259): no other style
-    // lists them yet.
-    if era.fighter == Some(fighter) && era.style.family != crate::era::EraFamily::Sf1Plus {
+    // The bosses' command normals are SF1+'s and the what-if styles' (spec
+    // #259): a canon style (Eagle's SFZ3) does not list them.
+    if era.fighter == Some(fighter) && era.style.family != crate::era::EraFamily::Sf1Plus && !era.what_if_active() {
         entries.retain(|entry| entry.recognizer != Recognizer::CommandNormal);
     }
     if era.fighter == Some(fighter) {

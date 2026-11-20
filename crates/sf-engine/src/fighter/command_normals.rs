@@ -13,9 +13,9 @@
 //! + HK in a straight-up or back jump his knee-up kick, his down + MK in
 //! any jump his dive kick.
 //!
-//! They come out in SF1+ only for now. Faithful 1987 never has a bank, so
-//! never reaches them; Eagle's canon SFZ3 kit and the 1987 era style are
-//! left out by the style check.
+//! They come out in SF1+ and every what-if style. Faithful 1987 never has
+//! a bank, so never reaches them; Eagle's canon SFZ3 kit and the 1987 era
+//! style are left out by the style check.
 
 use super::Bus;
 use crate::data_bank::command_normals::CommandNormal;
@@ -43,9 +43,12 @@ impl Bus<'_> {
     }
 
     /// Whether `ps` plays a style with the bosses' command normals: SF1+
-    /// (an overhaul fight without a chosen style plays as SF1+).
+    /// (an overhaul fight without a chosen style plays as SF1+) and every
+    /// what-if style (CN7). Eagle's canon SFZ3 kit is not a what-if style,
+    /// so it keeps Capcom's moves.
     fn command_normal_style(&self, ps: u32) -> bool {
         matches!(self.chosen_era(ps), None | Some(EraFamily::Sf1Plus))
+            || self.era_state(ps).is_some_and(|era| era.what_if_active())
     }
 
     /// The header move `mv` should start from instead of its table's, when

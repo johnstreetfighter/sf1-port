@@ -8,7 +8,7 @@ use sf_engine::era::{GaugeMode, Loadout, Revision};
 use sf_engine::front::fight::Fight;
 use sf_engine::front::session::GameSession;
 use sf_engine::front::PlayerInputs;
-use sf_engine::roster::TournamentFighter::{self, Adon, Birdie, Eagle, Gen, Sagat};
+use sf_engine::roster::TournamentFighter::{self, Adon, Birdie, Eagle, Gen, Lee, Sagat};
 use sf_video::callouts::{CalloutKind, Side};
 use sf_video::era_hud::{GaugeRow, GaugeState};
 use sf_video::romset::Assets;
@@ -17,6 +17,7 @@ use support::{
     training_fight_with_fighter, DOWN, LEFT, LP, RIGHT, UP,
 };
 
+const HP: usize = 2;
 const LK: usize = 3;
 const MK: usize = 4;
 const HK: usize = 5;
@@ -443,5 +444,75 @@ fn training_lists_shows_and_coaches_a_native_what_if_move_for_each_fighter() {
             "Fill Meters for {fighter:?}"
         );
         assert_training_move_demo(&mut session, name, shown_slot, name.ends_with("ST ANDREWS GREEN"));
+    }
+}
+
+/// The bosses' command normals (spec #259, CN7) in every what-if style
+/// Eagle and Lee have, the same as in SF1+: Eagle's two-stick thrust and
+/// dive thrust, Lee's knee-up kick and dive kick, each its own tiles.
+#[test]
+fn eagle_and_lee_command_normals_come_out_in_every_what_if_style() {
+    let rom_assets = match sf_video::romset::load_assets(
+        "../../tools/reference/local/roms/sf",
+        "../../tools/reference/rom-manifest.json",
+    ) {
+        Ok(a) => a,
+        Err(_) => return,
+    };
+    let styles: &[(Revision, Loadout)] = &[
+        (Revision::St, Loadout::Standard),
+        (Revision::Sfz3, Loadout::AIsm),
+        (Revision::Sf3ThreeS, Loadout::Art3),
+        (Revision::Usf4, Loadout::Ultra1),
+        (Revision::Sf5Ce, Loadout::Skill1Trigger1),
+        (Revision::Sf6, Loadout::Standard),
+    ];
+    for fighter in [Eagle, Lee] {
+        let art = support::load_fighter_art(&rom_assets, fighter);
+        let slug = if fighter == Eagle { "eagle" } else { "lee" };
+        let catalogue = art.catalogues.iter().find(|c| c.fighter == slug).expect("his catalogue");
+        let code = |pose: &str| catalogue.pose(pose).unwrap_or_else(|| panic!("{pose}")).grid.code;
+        // (what, the jump's direction or none, the stick held with the
+        // button, the button, the pose that must show)
+        let moves: Vec<(&str, Option<u8>, u8, usize, u16)> = if fighter == Eagle {
+            vec![
+                ("two-stick thrust", None, DOWN | RIGHT, HP, code("two_stick_thrust")),
+                ("dive thrust", Some(UP), DOWN, HP, code("dive_thrust")),
+            ]
+        } else {
+            vec![
+                ("knee-up kick", Some(UP), RIGHT, HK, code("knee_up_kick")),
+                ("dive kick", Some(UP), DOWN, MK, code("dive_kick")),
+            ]
+        };
+        for &(revision, loadout) in styles {
+            // Eagle's SFZ is his canon kit, not a what-if style.
+            if fighter == Eagle && revision == Revision::Sfz3 {
+                continue;
+            }
+            let Some(session) = bout(fighter, revision, loadout) else {
+                return;
+            };
+            let assets = session.assets();
+            let base = session.fight().unwrap().clone();
+            for &(what, jump, stick, button, pose) in &moves {
+                let mut fight = base.clone();
+                let mut seen = false;
+                let lead = if jump.is_some() { 8 } else { 4 };
+                for n in 0..90 {
+                    let input = match (n, jump) {
+                        (0..=1, Some(up)) => pad(up, None),
+                        (n, _) if n == lead || n == lead + 1 => pad(stick, Some(button)),
+                        _ => pad(stick, None),
+                    };
+                    step(&mut fight, assets, input);
+                    let read = fight.machine().diagnostic_telemetry().p1;
+                    let ram = &fight.machine().state.objectram;
+                    let e = usize::from(read.entity_offset);
+                    seen |= u16::from_be_bytes([ram[e], ram[e + 1]]) == pose;
+                }
+                assert!(seen, "{fighter:?} {revision:?}: the {what}");
+            }
+        }
     }
 }
