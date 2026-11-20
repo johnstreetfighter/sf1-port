@@ -116,19 +116,17 @@ fn the_committed_ledgers_are_complete_and_within_the_cap() {
     for (month, spent) in ledger::by_cycle(&ledgers).unwrap() {
         println!("the month from {month}: {spent} of {CAP}");
     }
-    // Every generated pose in a recipe is a kept candidate with its
-    // checksum, or derived from one.
+    // Every pack pose in a recipe is a kept candidate with its checksum,
+    // derived from one, or adapted (ADR-0029).
     for (path, text) in read("recipes") {
         let recipe: serde_json::Value = serde_json::from_str(&text).unwrap();
         let fighter = recipe["fighter"].as_str().unwrap();
         for pose in recipe["poses"].as_array().unwrap() {
             let Some(crc) = pose["pack"]["crc32"].as_str() else { continue };
             let name = pose["name"].as_str().unwrap();
-            let derived =
-                ledgers.iter().filter(|l| l.fighter == fighter).flat_map(|l| &l.derived).any(|d| d.pose == name && d.crc32 == crc);
             assert!(
-                ledger::kept(&ledgers, fighter, name, crc) || derived,
-                "{path}: {fighter} {name} {crc} is generated but no ledger keeps or derives that file"
+                ledger::recorded(&ledgers, fighter, name, crc),
+                "{path}: {fighter} {name} {crc} is a pack pose but no ledger keeps, derives or adapts that file"
             );
         }
     }
@@ -157,6 +155,22 @@ fn a_ledger_past_the_cap_or_missing_a_record_is_refused() {
     assert!(ledger::check(&[neither]).unwrap_err().contains("must be a ROM pose or a candidate"));
     let free = ledger(&[call("2026-11-03T00:00:00Z", 0, rom_ref)]);
     assert!(ledger::check(&[free]).unwrap_err().contains("must all be recorded"));
+}
+
+#[test]
+fn an_adapted_pose_must_name_its_source_and_what_was_changed() {
+    let ledger = |set: &str, touch_ups: &str| -> Ledger {
+        serde_json::from_str(&format!(
+            r#"{{ "fighter": "mike", "calls": [], "adapted": [{{ "pose": "crouching_block", "crc32": "25e0fff6",
+                 "from": {{ "set": "{set}", "file": "A-Mike/sff.sff", "group": 121, "image": 0 }}, "touch_ups": [{touch_ups}] }}] }}"#
+        ))
+        .unwrap()
+    };
+    let good = ledger("Falchion22's MUGEN Street Fighter", r#""mapped to his pens""#);
+    ledger::check(std::slice::from_ref(&good)).unwrap();
+    assert!(ledger::recorded(&[good], "mike", "crouching_block", "25e0fff6"));
+    assert!(ledger::check(&[ledger("", r#""mapped to his pens""#)]).unwrap_err().contains("the set and file"));
+    assert!(ledger::check(&[ledger("Falchion22's MUGEN Street Fighter", "")]).unwrap_err().contains("what was changed"));
 }
 
 #[test]

@@ -5,7 +5,10 @@
 //! any touch-ups by hand. A retry keeps the earlier kept candidates in
 //! the record, with a note on their fate. A pose made from another
 //! fighter's kept one (Ken's from Ryu's) costs nothing and is recorded as
-//! derived, with its source and touch-ups. The pixels stay in the art pack.
+//! derived, with its source and touch-ups. An adapted pose (ADR-0029), taken
+//! from a third-party sprite set used with permission, also costs nothing
+//! and is recorded with its source frame and what was changed. The pixels
+//! stay in the art pack.
 //!
 //! The plan is 2,000 generations a month, resetting on the 27th. The
 //! project first kept to 90% of each month's (design, the builder's call
@@ -34,6 +37,10 @@ pub struct Ledger {
     /// Poses made from kept ones, without a call.
     #[serde(default)]
     pub derived: Vec<Derived>,
+    /// Adapted poses (ADR-0029): taken from a permitted third-party sprite
+    /// set, without a call.
+    #[serde(default)]
+    pub adapted: Vec<Adapted>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -108,6 +115,34 @@ pub struct Derived {
     pub note: String,
 }
 
+/// An adapted pose: a frame of a permitted third-party sprite set mapped to
+/// the fighter's pens (ADR-0029).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Adapted {
+    pub pose: String,
+    /// The packed file's CRC-32, which the recipe names.
+    pub crc32: String,
+    /// The frame it was taken from.
+    pub from: AdaptedFrame,
+    /// What was changed: the colour mapping and any hand edits.
+    pub touch_ups: Vec<String>,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// A frame in a third-party sprite set, as its own files name it.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AdaptedFrame {
+    /// The set and its author (`Falchion22's MUGEN Street Fighter`).
+    pub set: String,
+    /// The file within it (`A-Mike/sff.sff`).
+    pub file: String,
+    pub group: u32,
+    pub image: u32,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KeptPose {
@@ -171,8 +206,18 @@ pub fn kept(ledgers: &[Ledger], fighter: &str, pose: &str, crc32: &str) -> bool 
         .any(|k| k.pose == pose && k.crc32 == crc32)
 }
 
+/// Whether `fighter`'s `pose` as the file `crc32` is recorded at all: kept
+/// by a call, derived from a kept pose, or adapted.
+pub fn recorded(ledgers: &[Ledger], fighter: &str, pose: &str, crc32: &str) -> bool {
+    let mine = || ledgers.iter().filter(|l| l.fighter == fighter);
+    kept(ledgers, fighter, pose, crc32)
+        || mine().flat_map(|l| &l.derived).any(|d| d.pose == pose && d.crc32 == crc32)
+        || mine().flat_map(|l| &l.adapted).any(|a| a.pose == pose && a.crc32 == crc32)
+}
+
 /// Every call is fully recorded, every derived pose comes from a kept one,
-/// and no month passes the cap.
+/// every adapted pose names its source frame and what was changed, and no
+/// month passes the cap.
 pub fn check(ledgers: &[Ledger]) -> Result<(), String> {
     for l in ledgers {
         for c in &l.calls {
@@ -194,6 +239,14 @@ pub fn check(ledgers: &[Ledger]) -> Result<(), String> {
             }
             if d.touch_ups.is_empty() {
                 return Err(format!("{} {}: what was changed from {} {} must be recorded", l.fighter, d.pose, s.fighter, s.pose));
+            }
+        }
+        for a in &l.adapted {
+            if a.from.set.is_empty() || a.from.file.is_empty() {
+                return Err(format!("{} {}: the set and file it was adapted from must be recorded", l.fighter, a.pose));
+            }
+            if a.touch_ups.is_empty() {
+                return Err(format!("{} {}: what was changed from {} must be recorded", l.fighter, a.pose, a.from.file));
             }
         }
     }

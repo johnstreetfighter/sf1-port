@@ -3743,5 +3743,17 @@
       "note": "Round three (the maintainer, 2026-11-07: still looked pieced; the join misaligned). The torso moved 7 pixels left and 3 up, so its sides run into the trousers' top. Kept: the belt across his back, its ends at the jeans' outer edges."
     }
   ],
-  "derived": []
+  "derived": [],
+  "adapted": [
+    {
+      "pose": "crouching_block",
+      "crc32": "25e0fff6",
+      "from": { "set": "Falchion22's MUGEN Street Fighter", "file": "A-Mike/sff.sff", "group": 121, "image": 0 },
+      "touch_ups": [
+        "every pixel mapped to his pens by nearest colour: 14 colours within a few steps of a pen; the outline #1c1c1c to pen 0 (191 of its 215 pixels lie on his ROM crouch's black outline)",
+        "no hand edits; placed one row above his ROM crouch (0x156a), whose legs it matches pixel for pixel"
+      ],
+      "note": "Approved by the maintainer from the side-by-side sheets (2026-11-20, docs/planning/mugen-collection-survey.md); ADR-0029. Replaces his ROM crouch held as the block."
+    }
+  ]
 }
