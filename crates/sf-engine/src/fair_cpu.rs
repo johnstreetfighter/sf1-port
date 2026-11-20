@@ -285,7 +285,7 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
 crate::canonical::canonical_struct!(FairCpu, "FairCpu.v7", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
     forced_stronger, judge, judged, game, route, recent_routes, route_outcome, route_drops, route_check,
-    focus, action_frame, last_view, habits, plan_worked, last_plan, route_landed, out_of_fight, jump_began, jump_met,
+    focus, action_frame, last_view, habits, plan_worked, last_plan, route_landed, out_of_fight, jump_began, jump_met, answered_plan,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -975,6 +975,11 @@ impl Rng {
 /// played with his own reach.
 const DEFAULT_REACH: [[i16; 6]; 2] = [[50, 62, 66, 52, 58, 66], [58, 58, 58, 52, 52, 56]];
 
+/// Steps an answer that cut a game plan short has to land for the plan to
+/// count as having worked: an anti-air timed to his jump meets him within
+/// about this.
+const ANSWER_WATCH: u32 = 60;
+
 /// Steps with no round fought that part two fights: the shortest break
 /// between rounds (the knockout, the call, the walk-in) is longer, and a
 /// moment a fighter is not drawn, or a frame missing from its view, in a
@@ -1075,6 +1080,10 @@ pub struct FairCpu {
     /// `u16::MAX`): a break as long as the one between two fights, before
     /// a first round, begins a new match.
     out_of_fight: u16,
+    /// A game plan an anti-air answer cut short, and the step by which the
+    /// anti-air has had time to land: a plan that wins through it (the
+    /// stand-and-watch plan's) has worked.
+    answered_plan: Option<(u8, u32)>,
     /// The view frame the opponent's jump in the air was seen to begin on,
     /// and whether it has been answered (or let go by the level's chance).
     jump_began: u32,
@@ -1141,6 +1150,7 @@ impl Default for FairCpu {
             out_of_fight: u16::MAX,
             jump_began: 0,
             jump_met: false,
+            answered_plan: None,
         }
     }
 }
@@ -1197,6 +1207,7 @@ impl FairCpu {
     /// Forget this match: the habit memory, and what has worked.
     fn new_match(&mut self) {
         self.habits = Habits::default();
+        self.answered_plan = None;
         self.plan_worked = [0; game::PLAN_SLOTS];
         self.last_plan = 0;
         self.route_landed = 0;
@@ -1210,6 +1221,33 @@ impl FairCpu {
                 *worked = if run.hit { worked.saturating_add(1).min(game::WORKED_KEPT) } else { 0 };
             }
             self.last_plan = run.plan + 1;
+        }
+    }
+
+    /// End the game plan being followed because an anti-air waiting on his
+    /// jump takes over: whether the plan worked is judged by what the
+    /// anti-air meets.
+    fn answer_ends_game_plan(&mut self, step: u32) {
+        match self.game {
+            Some(run) if !run.hit => {
+                self.game = None;
+                self.last_plan = run.plan + 1;
+                self.answered_plan = Some((run.plan, step + ANSWER_WATCH));
+            }
+            _ => self.end_game_plan(),
+        }
+    }
+
+    /// An answer that cut a game plan short is seen to hit him: the plan
+    /// worked. Hit itself, or with nothing landed in time, it did not.
+    fn credit_answer(&mut self, step: u32, view: Percept) {
+        let Some((plan, until)) = self.answered_plan else { return };
+        let landed = view.foe.reacting() && view.me.attacking();
+        if landed || step > until || view.me.reacting() {
+            if let Some(worked) = self.plan_worked.get_mut(usize::from(plan)) {
+                *worked = if landed { worked.saturating_add(1).min(game::WORKED_KEPT) } else { 0 };
+            }
+            self.answered_plan = None;
         }
     }
 
@@ -1488,6 +1526,7 @@ impl FairCpu {
                 // Being hit ends whatever it was following.
                 self.end_game_plan();
             }
+            self.credit_answer(step, view);
         }
         if view.me.reacting() {
             self.route = None;
@@ -1539,9 +1578,15 @@ impl FairCpu {
             } else if interruptible {
                 let answer = self.react(step, view, before, ctx).filter(|plan| !(baiting && matches!(plan.kind, PlanKind::Guard { .. })));
                 if let Some(plan) = answer {
-                    // A threat it answers ends the game plan it was following.
+                    // A threat it answers ends the game plan it was following;
+                    // an anti-air that lands is the plan's win.
+                    let anti_air = matches!(plan.kind, PlanKind::Await { .. });
                     self.plan = plan;
-                    self.end_game_plan();
+                    if anti_air {
+                        self.answer_ends_game_plan(step);
+                    } else {
+                        self.end_game_plan();
+                    }
                     answered = true;
                 }
             }
@@ -2533,7 +2578,12 @@ impl FairCpu {
                         }
                     }
                     // Across the screen (or not yet seen): from far off.
-                    _ if gap > 90 => options.push((Choice::Special(Role::Projectile), (40 + if gap > 150 { 18 } else { 0 }) * specials / 100)),
+                    _ if gap > 90 => {
+                        // Not from where a jump over it lands short, against
+                        // one who jumps it (SC9, `#201`).
+                        let habit = if stronger { self.habits.shot_bonus(gap, game::WATCHED_SHOT_GAPS, level) } else { 0 };
+                        options.push((Choice::Special(Role::Projectile), (40 + if gap > 150 { 18 } else { 0 }) * specials / 100 + habit));
+                    }
                     _ => {}
                 }
             }
@@ -3013,6 +3063,31 @@ mod tests {
     }
 
     #[test]
+    fn a_game_plan_won_through_an_answer_counts_as_having_worked() {
+        // SC9 (`#201`): the stand-and-watch plan's win is the anti-air its
+        // answer to his jump throws, not one of its own steps.
+        let running = game::Running { plan: 12, step: 1, acted: true, pressed: 90, began: 80, hit: false };
+        let (mut hit_him, mut missed) = (FairCpu::new(), FairCpu::new());
+        for cpu in [&mut hit_him, &mut missed] {
+            cpu.game = Some(running);
+            cpu.answer_ends_game_plan(100);
+            assert!(cpu.game.is_none() && cpu.last_plan == 13);
+        }
+        let mut struck = percept(120, body(280));
+        struck.foe.move_id = 0x31;
+        struck.me.move_id = 0x19;
+        struck.me.state = 0xc1;
+        hit_him.credit_answer(120, struck);
+        assert_eq!(hit_him.plan_worked[12], 1, "its answer landed");
+        missed.plan_worked[12] = 2;
+        missed.credit_answer(120, percept(120, body(280)));
+        assert_eq!(missed.plan_worked[12], 2, "still waiting to see");
+        missed.credit_answer(100 + ANSWER_WATCH + 1, percept(200, body(280)));
+        assert_eq!(missed.plan_worked[12], 0, "nothing landed in time");
+        assert_eq!(missed.answered_plan, None);
+    }
+
+    #[test]
     fn at_easy_a_full_habit_memory_changes_nothing_it_does() {
         // Easy notes but never leans on what it notes (SC9, `#201`): the
         // same fight with a memory full of habits and with an empty one
@@ -3071,7 +3146,9 @@ mod tests {
         changed[1].plan_worked[3] = 1;
         changed[2].last_plan = 2;
         changed[3].route_landed = 4;
-        for cpu in &changed {
+        let mut answered = plain;
+        answered.answered_plan = Some((2, 90));
+        for cpu in changed.iter().chain([&answered]) {
             assert_ne!(hash(cpu), hash(&plain));
         }
     }

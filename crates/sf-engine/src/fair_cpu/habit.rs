@@ -55,6 +55,11 @@ pub const RISE_WATCH: u32 = 24;
 pub const GUARD_WATCH: u32 = 40;
 /// View frames after he is seen grabbed by which a tech has shown.
 pub const GRAB_WATCH: u32 = 20;
+/// Pixels a jump must carry him from where it began for its way to count,
+/// and view frames past the watch it may take: his drawing's centre
+/// shifts a few pixels as his pose changes.
+const JUMP_WAY_PIXELS: i16 = 8;
+const JUMP_WAY: u32 = 20;
 /// View frames between fadings of the jump-in counts.
 pub const JUMP_FADE: u32 = 300;
 /// Jump-in weight, scaled by how much the level uses the memory, from
@@ -174,8 +179,10 @@ pub struct Habits {
     rise_at: u32,
     guard_at: u32,
     grab_at: u32,
-    /// The view frame its last projectile started on.
+    /// The view frame its last projectile started on, and where he stood
+    /// as a jump in its watch began, until its way shows.
     last_shot: u32,
+    shot_jump_from: Option<i16>,
     /// The jump being drawn has been noted, and the view frame the jump-in
     /// counts last faded on.
     jump_noted: bool,
@@ -184,7 +191,7 @@ pub struct Habits {
 
 crate::canonical::canonical_struct!(Habits, "FairCpuHabits.v1", {
     after_shot, rising, after_guard, grabbed, jump_in, sightings, shot_at, rise_at, guard_at, grab_at, last_shot,
-    jump_noted, jump_faded,
+    shot_jump_from, jump_noted, jump_faded,
 });
 
 /// One sighting of `answer` in a spot: every count keeps three quarters of
@@ -287,11 +294,25 @@ impl Habits {
         let toward_me = if view.me.x >= foe.x { 1 } else { -1 };
         let moved_away = (foe.x - was.x) * toward_me < 0;
 
-        // After its projectile: the first of a jump, a projectile of his,
-        // a guard; hit by it, or nothing of these in time, is none.
+        // After its projectile: the first of a jump at it, a projectile of
+        // his, a guard; hit by it, or nothing of these in time, is none. A
+        // jump's way shows once he has moved in the air: a jump back or
+        // straight up is no jump at it.
         if self.shot_at != 0 {
-            let answer = if jumped {
-                Some(ShotAnswer::Jumped)
+            let answer = if let Some(from) = self.shot_jump_from {
+                let moved = (foe.x - from) * toward_me;
+                if !foe.jumping() || frame > self.shot_at + SHOT_WATCH + JUMP_WAY {
+                    // Over before its way showed in full (its projectile hit
+                    // him in the air): judged by what it did show.
+                    Some(if moved > 0 { ShotAnswer::Jumped } else { ShotAnswer::Other })
+                } else if moved.abs() >= JUMP_WAY_PIXELS {
+                    Some(if moved > 0 { ShotAnswer::Jumped } else { ShotAnswer::Other })
+                } else {
+                    None
+                }
+            } else if jumped {
+                self.shot_jump_from = Some(foe.x);
+                None
             } else if view.shot && !before.shot {
                 Some(ShotAnswer::Shot)
             } else if foe.guarding() {
@@ -304,10 +325,12 @@ impl Habits {
             if let Some(answer) = answer {
                 self.record(Spot::AfterShot, answer as usize);
                 self.shot_at = 0;
+                self.shot_jump_from = None;
             }
         }
         if shots.contains(&Some(view.me.move_id)) && before.me.move_id != view.me.move_id {
             self.shot_at = frame;
+            self.shot_jump_from = None;
             self.last_shot = frame;
         }
 
@@ -425,15 +448,18 @@ impl Habits {
         let jumps_shot = is(&self.after_shot, ShotAnswer::Jumped as usize);
         let bonus = match lean {
             Lean::None => 0,
-            // He jumps it: throw it and stand, watching for the jump to
-            // anti-air it (the plan that walks in behind it walks under him).
+            // He jumps it: throw fewer, and only from where his jump over
+            // it can be met, then stand and watch for the jump to anti-air
+            // it (the maintainer, 2026-11-20). From farther he lands short;
+            // walking in behind it walks under him.
             Lean::ShotWatch if jumps_shot => 85,
             Lean::ShotWatch => 0,
+            Lean::Shot if jumps_shot => -60,
 
             Lean::Shot if is(&self.after_shot, ShotAnswer::Shot as usize) => -10,
             Lean::Shot => 0,
             // A dash in under his jump is hit; against a guard it presses.
-            Lean::ShotRush if jumps_shot => -20,
+            Lean::ShotRush if jumps_shot => -60,
             Lean::ShotRush if is(&self.after_shot, ShotAnswer::Guarded as usize) => 10,
             Lean::ShotRush => 0,
             // Over his projectile, answering it.
@@ -480,6 +506,16 @@ impl Habits {
 
     /// What the memory adds to a throw's score: more against an opponent who
     /// does not tech, less against one who does.
+    /// What the memory adds to a projectile chosen on its own (outside a
+    /// game plan) from `gap`: against an opponent who jumps it, one thrown
+    /// from outside `watched` (the gaps his jump over it can be met from)
+    /// is worth much less.
+    pub(super) fn shot_bonus(&self, gap: i16, watched: (i16, i16), level: Level) -> i32 {
+        let jumps = expected(&self.after_shot, ShotAnswer::Jumped as usize, level);
+        let bonus = if jumps && !(watched.0..=watched.1).contains(&gap) { -40 } else { 0 };
+        bonus * i32::from(uses(level)) / 100
+    }
+
     pub(super) fn throw_bonus(&self, level: Level) -> i32 {
         self.grab_lean(level) * i32::from(uses(level)) / 100
     }
@@ -605,7 +641,7 @@ mod tests {
     fn each_habit_shifts_the_plans_that_answer_it() {
         let v = Level::VeryHard;
         let jumps = noted(Spot::AfterShot, &[ShotAnswer::Jumped as usize; 4]);
-        assert!(jumps.plan_bonus(Lean::ShotWatch, v) > 0 && jumps.plan_bonus(Lean::ShotRush, v) < 0);
+        assert!(jumps.plan_bonus(Lean::ShotWatch, v) > 0 && jumps.plan_bonus(Lean::Shot, v) < 0 && jumps.plan_bonus(Lean::ShotRush, v) < 0);
         let reversals = noted(Spot::Rising, &[RiseAnswer::Reversal as usize; 4]);
         assert!(reversals.plan_bonus(Lean::Bait, v) > 0 && reversals.plan_bonus(Lean::Meaty, v) < 0);
         let buttons = noted(Spot::Rising, &[RiseAnswer::Button as usize; 4]);
@@ -617,8 +653,42 @@ mod tests {
         let teches = noted(Spot::Grabbed, &[GrabAnswer::Teched as usize; 4]);
         let never = noted(Spot::Grabbed, &[GrabAnswer::NotTeched as usize; 4]);
         assert!(teches.throw_bonus(v) < 0 && never.throw_bonus(v) > 0);
+        assert!(jumps.shot_bonus(200, (140, 160), v) < 0 && jumps.shot_bonus(150, (140, 160), v) == 0);
+        assert_eq!(jumps.shot_bonus(200, (140, 160), Level::Easy), 0);
+        assert_eq!(Habits::default().shot_bonus(200, (140, 160), v), 0);
         assert!(teches.plan_bonus(Lean::WalkThrow, v) < 0 && never.plan_bonus(Lean::WalkThrow, v) > 0);
         assert!(Habits::default().plan_bonus(Lean::Shot, v) == 0 && Habits::default().throw_bonus(v) == 0);
+    }
+
+    /// Frames of a fight in which its projectile starts, then he jumps,
+    /// moving `dx` pixels a frame toward its fighter (it stands on his right).
+    fn after_its_projectile(dx: i16) -> Habits {
+        let mut habits = Habits::default();
+        let mut view = Percept { frame: 100, fighting: true, ..Percept::default() };
+        view.me = Body { present: true, x: 300, hurt: (290, 310), move_id: 1, ..Body::default() };
+        view.foe = Body { present: true, x: 150, hurt: (140, 160), move_id: 1, ..Body::default() };
+        let mut frames = vec![(0x1a, 1, 0); 4];
+        frames.extend([(0x1a, 9, 0); 3]);
+        frames.extend([(0x1a, 0xa, dx); 30]);
+        frames.extend([(0x1a, 1, 0); 3]);
+        for (mine, his, step) in frames {
+            let before = view;
+            view.frame += 1;
+            view.me.move_id = mine;
+            view.foe.move_id = his;
+            view.foe.x += step;
+            habits.watch(&view, &before, &[Some(0x1a)], false);
+        }
+        habits
+    }
+
+    #[test]
+    fn only_a_jump_at_it_counts_as_jumping_its_projectile() {
+        let jumped = ShotAnswer::Jumped as usize;
+        assert_eq!(after_its_projectile(3).share(Spot::AfterShot, jumped), 100, "a jump toward it");
+        assert_eq!(after_its_projectile(-3).share(Spot::AfterShot, jumped), 0, "a jump back");
+        assert_eq!(after_its_projectile(0).share(Spot::AfterShot, jumped), 0, "a jump straight up");
+        assert_eq!(after_its_projectile(0).weight(Spot::AfterShot), SIGHTING, "noted as something else");
     }
 
     #[test]

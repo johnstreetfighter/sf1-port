@@ -711,13 +711,13 @@ const RYU_SF6_JUMP_IN: [Step; 1] = [step(Act::Do(Choice::JumpIn), always(None))]
 /// The gap a projectile is thrown from (a fireball from closer is jumped
 /// on its way out), and the gaps a forward jump-in lands on him from.
 const SHOT_GAP: i16 = 90;
-/// The nearest gap the projectile is thrown from to stand and watch for a
-/// jump over it (SC9, `#201`): measured against an opponent who jumps on its
+/// The gaps the projectile is thrown from to stand and watch for a jump
+/// over it (SC9, `#201`): measured against an opponent who jumps on its
 /// start-up, from 140 to 180 pixels his jump lands in front of it as it
-/// recovers and is anti-aired a third of the time; from nearer he lands on
-/// it while it still recovers, and walking in behind the projectile does
-/// better.
-const WATCHED_SHOT_GAP: i16 = 140;
+/// recovers and can be anti-aired; from nearer he lands on it while it
+/// still recovers, and from farther he lands short (4 of 234 such jumps
+/// anti-aired).
+pub(super) const WATCHED_SHOT_GAPS: (i16, i16) = (140, 160);
 const JUMP_IN_GAP: (i16, i16) = (70, 150);
 
 const RYU_SF6: [GamePlan; 13] = [
@@ -739,7 +739,7 @@ const RYU_SF6: [GamePlan; 13] = [
     GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN, lean: Lean::JumpIn },
     GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH, lean: Lean::ShotRush },
     // Its score comes from the habit memory alone (SC9, `#201`).
-    GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: (WATCHED_SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch },
+    GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: WATCHED_SHOT_GAPS, steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch },
 ];
 
 /// Game plans of one table whose working the CPU remembers.
