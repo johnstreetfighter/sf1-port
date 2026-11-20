@@ -124,6 +124,13 @@ fn prove(rom: &[u8], bank: &Arc<DataBank>, book: &RouteBook) -> Vec<String> {
                     if played.hits != route.hits {
                         fault(format!("step {} after {edge} frames: {} hits", step.name, played.hits));
                     }
+                    // Nor does any wait in a window spend meter the book
+                    // does not say: two quarter circles close together
+                    // must not read as a Super Art's motion (the meters
+                    // are full here).
+                    if played.super_spent != route.super_spent {
+                        fault(format!("step {} after {edge} frames: super -{}", step.name, played.super_spent));
+                    }
                 }
             }
         }

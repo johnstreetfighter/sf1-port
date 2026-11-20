@@ -91,11 +91,11 @@ meter super -0 +0 drive -0 +0
 knockdown yes
 corner no
 stances standing
-confirm 4
+confirm 0
 gap 46
 fails-on
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
-step 623+KK | wait 0 0..11 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
+step 623+KK | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
 
 route ground

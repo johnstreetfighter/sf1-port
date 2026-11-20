@@ -11,6 +11,11 @@
 //! from for each way a route can start (default 40) and `keep` how many
 //! routes it keeps for each (default 8).
 //!
+//! `cargo run -p sf-host --release --example route_search -- windows [only]`
+//!
+//! measures every checked-in route's step windows again and rewrites the
+//! books whose windows change (see `route_book::set_windows`).
+//!
 //! `cargo run -p sf-host --release --example route_search -- all [threads] [nodes] [keep] [only] [--keep-books]`
 //!
 //! searches every fighter in every style (only those whose route book file
@@ -34,7 +39,7 @@ use std::sync::{Arc, Mutex};
 use sf_engine::data_bank::DataBank;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, Loadout, Revision};
 use sf_engine::roster::TournamentFighter;
-use sf_engine::route_book::{file_name, ground_actions, opponent_key, opponents, search, Budget, Pair, RouteBook, Searched};
+use sf_engine::route_book::{books, file_name, ground_actions, opponent_key, opponents, position, replay, search, set_windows, Budget, Pair, RouteBook, Searched, Stance};
 use sf_host::log::Log;
 use sf_video::romset::load_assets;
 
@@ -204,11 +209,41 @@ fn search_every_pair(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// Measure every checked-in route's step windows again from its reference
+/// position (`route_book::set_windows`), keeping all else in its book, and
+/// write the books whose windows changed: a window must not take in a wait
+/// that spends meter the book does not record. Only books whose file name
+/// contains `only`, when given.
+fn measure_windows_again(args: &[String]) -> Result<(), String> {
+    let only = args.get(2).map(|s| s.to_ascii_lowercase()).unwrap_or_default();
+    let (rom, data) = load()?;
+    let data = data.unwrap_or_else(|| Arc::new(DataBank::build(&rom, &[])));
+    for book in books().iter().filter(|b| file_name(b.fighter, b.revision, b.loadout).contains(&only)) {
+        let mut new = book.clone();
+        let mut bases = std::collections::HashMap::new();
+        for route in &mut new.routes {
+            let base = bases.entry(route.reach).or_insert_with(|| {
+                position(&rom, Some(data.clone()), book.fighter, (book.revision, book.loadout), route.reach, Stance::Standing).ok()
+            });
+            let Some(base) = base else { return Err(format!("{}: no reference position for {:?}", opponent_key(book.fighter, (book.revision, book.loadout)), route.reach)) };
+            let first_hit = replay(base, &route.script(None), Stance::Standing).first_hit;
+            set_windows(base, route, first_hit);
+        }
+        if new != *book {
+            let changed: Vec<String> = new.routes.iter().zip(&book.routes).filter(|(a, b)| a != b).map(|(a, _)| a.name()).collect();
+            println!("{}: {}", opponent_key(book.fighter, (book.revision, book.loadout)), changed.join("; "));
+            write_book(&new)?;
+        }
+    }
+    Ok(())
+}
+
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         None => Err(USAGE.into()),
         Some("all") => search_every_pair(&args),
+        Some("windows") => measure_windows_again(&args),
         Some(_) => search_pair(&args),
     }
 }

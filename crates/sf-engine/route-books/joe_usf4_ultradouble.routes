@@ -176,12 +176,12 @@ meter super -0 +0 drive -0 +0
 knockdown no
 corner no
 stances standing
-confirm 9
+confirm 6
 gap 100
 fails-on Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
 step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
-step 236+LK | wait 10 10..13 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
-step 214+KK | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
+step 236+LK | wait 10 10..10 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
+step 214+KK | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
 end
 
 route jump-in
@@ -210,12 +210,12 @@ meter super -0 +0 drive -0 +0
 knockdown no
 corner no
 stances standing
-confirm 20
+confirm 13
 gap 100
 fails-on Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
 step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x15 0:20x2 0:00
-step LK | wait 16 16..24 | hold 0 | 0:08x2 0:00
-step 214+KK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
+step LK | wait 16 16..17 | hold 0 | 0:08x2 0:00
+step 214+KK | wait 0 0..1 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
 end
 
 route jump-in

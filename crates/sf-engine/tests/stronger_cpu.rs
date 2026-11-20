@@ -897,7 +897,7 @@ fn a_route_the_book_records_failing_on_the_opponent_is_never_taken_against_him()
         for _ in 0..idle {
             step(&mut m, 0, 0);
         }
-        let runs = routes_seen(&mut m, 6_000, standing_in_reach);
+        let runs = routes_seen(&mut m, 6_000, standing_in_reach());
         entered.extend(runs.iter().filter_map(|run| run.route(book)).map(|(route, _)| route.name()));
     }
     assert!(entered.len() >= 3, "routes taken against Lee: {entered:?}");

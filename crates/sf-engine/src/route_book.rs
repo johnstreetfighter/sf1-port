@@ -1180,6 +1180,52 @@ fn choose(mut routes: Vec<Route>, keep: usize) -> Vec<Route> {
     chosen
 }
 
+/// Measure each step's window and the time to confirm from `base`, the
+/// route's reference position against a standing defender: the waits
+/// around a step's own (the others kept) that change nothing the book
+/// records of it: its hits, its damage, the meter it spends, and for a
+/// punish that its first hit meets him recovering. Two motions close
+/// together can read as a Super Art's and spend meter: a wait that does
+/// that is outside the window. `first_hit` is the script frame the route's
+/// first hit landed on at its recorded waits.
+pub fn set_windows(base: &PowerOnMachine, route: &mut Route, first_hit: Option<usize>) {
+    let reach = route.reach;
+    let recorded = (route.hits, route.damage, route.super_spent, route.drive_spent);
+    let same = |played: Played| {
+        (played.hits, played.damage, played.super_spent, played.drive_spent) == recorded && (reach != Reach::Punish || played.punished)
+    };
+    let waits: Vec<u8> = route.steps.iter().map(|s| s.wait).collect();
+    let mut windows = Vec::new();
+    for (i, &wait) in waits.iter().enumerate() {
+        let holds = |at: u8| {
+            let mut tried = waits.clone();
+            tried[i] = at;
+            same(replay(base, &route.script(Some(&tried)), Stance::Standing))
+        };
+        let (mut low, mut high) = (wait, wait);
+        // The opener's wait is where the route starts, except in a punish.
+        if i > 0 || reach == Reach::Punish {
+            while low > 0 && wait - low < 30 && holds(low - 1) {
+                low -= 1;
+            }
+            while high - wait < 30 && high < u8::MAX && holds(high + 1) {
+                high += 1;
+            }
+        }
+        windows.push((low, high));
+    }
+    for (step, window) in route.steps.iter_mut().zip(windows) {
+        step.window = window;
+    }
+    // The time to see the first hit before the second step must begin.
+    route.confirm = 0;
+    if let (Some(first_hit), Some(second)) = (first_hit, route.steps.get(1)) {
+        let first = &route.steps[0];
+        let latest = usize::from(first.wait) + first.pads.len() + usize::from(second.window.1);
+        route.confirm = latest.saturating_sub(first_hit + 1).min(255) as u8;
+    }
+}
+
 /// Play the steps a search state holds and record the route they make, or
 /// nothing if they do not replay as a combo of two hits or more.
 fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -> Option<Route> {
@@ -1212,38 +1258,9 @@ fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -
     route.drive_spent = played.drive_spent;
     route.drive_gained = played.drive_gained;
     route.knockdown = played.knockdown;
+    set_windows(base, &mut route, played.first_hit);
     // A punish stays one only while its first hit meets a recovering defender.
     let same = |played: Played| played.hits == route.hits && played.damage == route.damage && (reach != Reach::Punish || played.punished);
-    // Each step's window: the waits around its own that change nothing.
-    let waits: Vec<u8> = route.steps.iter().map(|s| s.wait).collect();
-    let mut windows = Vec::new();
-    for (i, &wait) in waits.iter().enumerate() {
-        let holds = |at: u8| {
-            let mut tried = waits.clone();
-            tried[i] = at;
-            same(replay(base, &route.script(Some(&tried)), Stance::Standing))
-        };
-        let (mut low, mut high) = (wait, wait);
-        // The opener's wait is where the route starts, except in a punish.
-        if i > 0 || reach == Reach::Punish {
-            while low > 0 && wait - low < 30 && holds(low - 1) {
-                low -= 1;
-            }
-            while high - wait < 30 && high < u8::MAX && holds(high + 1) {
-                high += 1;
-            }
-        }
-        windows.push((low, high));
-    }
-    for (step, window) in route.steps.iter_mut().zip(windows) {
-        step.window = window;
-    }
-    // The time to see the first hit before the second step must begin.
-    if let (Some(first_hit), Some(second)) = (played.first_hit, route.steps.get(1)) {
-        let first = &route.steps[0];
-        let latest = usize::from(first.wait) + first.pads.len() + usize::from(second.window.1);
-        route.confirm = latest.saturating_sub(first_hit + 1).min(255) as u8;
-    }
     let script = route.script(None);
     // The rules it needs, the stances it works on, and how far apart it
     // can start: each is the same script played somewhere else.
