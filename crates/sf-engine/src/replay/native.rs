@@ -453,8 +453,13 @@ impl ReplayPlayback {
         self.utility = UtilityState::seeded(self.replay.seed ^ u64::from(self.frame));
         // A fresh Fair CPU for each takeover, at the match's level: its
         // delayed view starts empty here. Dramatic Battle keeps the
-        // Utility AI until SC23 (`#215`).
-        self.fair_cpu = (self.stronger_cpu && self.replay.config.dramatic.is_none()).then(|| {
+        // Utility AI until SC23 (`#215`). Faithful 1987 has no Fair CPU and
+        // keeps its takeover as it was (the maintainer, 2026-11-21): the
+        // fight's preset now decides, as a Training recording may have
+        // changed it.
+        let config = self.fight.machine().match_config();
+        let fair = config.dramatic.is_none() && config.preset != RulesetPreset::Faithful1987;
+        self.fair_cpu = (self.stronger_cpu && fair).then(|| {
             Box::new(FairCpu::seeded(self.replay.seed ^ u64::from(self.frame) ^ 0x3c6e_f372_fe94_f82b).force_stronger(true))
         });
         self.mode = ReplayMode::Takeover {
@@ -569,9 +574,10 @@ impl ReplayPlayback {
                 }
                 pads[controlled] = live;
                 if self.fallback && self.fight.machine().utility_takeover_side_available(other) {
-                    pads[other] = match self.fair_cpu.as_deref_mut() {
-                        Some(cpu) => self.fight.machine().takeover_fair_cpu_pad(other, cpu),
-                        None => self.fight.machine().utility_takeover_pad(other, &mut self.utility),
+                    let machine = self.fight.machine();
+                    pads[other] = match self.fair_cpu.as_deref_mut().and_then(|cpu| machine.takeover_fair_cpu_pad(other, cpu)) {
+                        Some(pad) => pad,
+                        None => machine.utility_takeover_pad(other, &mut self.utility),
                     };
                     bypass[other] = true;
                     override_p2 |= other == 1;

@@ -128,6 +128,20 @@ fn recording(kind: FightKind, difficulty: u8, frames: Vec<(u16, u16)>, commands:
         replay.config.roster.mode = PlayMode::Training;
         replay.config.p2_fair_cpu = kind == FightKind::TrainingCpu;
     }
+    if let FightKind::Dramatic { co_op } = kind {
+        // Ryu and his ally Ryu against the boss Ken.
+        replay.config.roster.mode = PlayMode::Versus;
+        replay.config.roster.p2 = TournamentFighter::Ken;
+        replay.config.dramatic = Some(sf_engine::dramatic::DramaticRules {
+            co_op,
+            ally2: TournamentFighter::Ryu,
+            stage: TournamentFighter::Ken,
+            lifebar: sf_engine::dramatic::LifebarMode::Independent,
+            friendly_fire: false,
+            styles: [Revision::Sf6; 3],
+            rivalry: None,
+        });
+    }
     replay.p1_fighter = sf_engine::roster::TournamentFighter::Ryu.into();
     replay.p2_fighter = sf_engine::roster::TournamentFighter::Ryu.into();
     replay.p1_style = sf6();
@@ -252,7 +266,6 @@ fn taking_over_either_side_gives_a_fair_cpu_opponent_on_the_other() {
         // second the Fair CPU plays the other side.
         assert_eq!(fair.opponents[0], Some(TakeoverOpponent::Recorded), "{side:?}");
         assert!(fair.opponents[1..].iter().all(|&o| o == Some(TakeoverOpponent::FairCpu)), "{side:?}: {:?}", fair.opponents);
-        assert!(fair.pads.iter().all(Option::is_some), "{side:?}: the Fair CPU is there from the takeover");
         // It plays the stronger game: it judges situations, presses, and
         // its fighter moves and attacks.
         assert!(fair.judged.iter().flatten().any(|&j| j != Judged::default()), "{side:?}: it judges a situation");
@@ -400,6 +413,7 @@ fn the_same_takeover_point_and_inputs_give_the_same_fight() {
         pad.buttons[1] = i % 45 == 20;
         pad
     };
+    let base = playback.clone();
     let mut twin = playback.clone();
     let first = branch(&mut playback, assets, TakeoverPlayer::P1, live);
     let second = branch(&mut twin, assets, TakeoverPlayer::P1, live);
@@ -410,6 +424,25 @@ fn the_same_takeover_point_and_inputs_give_the_same_fight() {
     assert!(playback.rewind());
     let again = branch(&mut playback, assets, TakeoverPlayer::P1, live);
     assert_eq!(first.checksums, again.checksums, "after a rewind");
+
+    // Player 2 taken over from the same point: the same again, with the
+    // Fair CPU playing Player 1.
+    let live_p2 = |i: u32| {
+        let mut pad = PlayerInputs::default();
+        pad.directions[1] = i % 90 < 40;
+        pad.buttons[4] = i % 45 == 20;
+        pad
+    };
+    let mut p2 = base.clone();
+    let mut p2_twin = base.clone();
+    let p2_first = branch(&mut p2, assets, TakeoverPlayer::P2, live_p2);
+    let p2_second = branch(&mut p2_twin, assets, TakeoverPlayer::P2, live_p2);
+    assert_eq!(p2_first.checksums, p2_second.checksums, "two Player 2 takeovers from one point");
+    assert!(p2_first.pads.iter().flatten().any(|&(pad, _)| pad != 0), "the Fair CPU played Player 1");
+    assert_ne!(p2_first.checksums, first.checksums, "Player 2's takeover is its own fight");
+    assert!(p2.rewind());
+    let p2_again = branch(&mut p2, assets, TakeoverPlayer::P2, live_p2);
+    assert_eq!(p2_first.checksums, p2_again.checksums, "Player 2's takeover after a rewind");
 
     // A session that opens the replay afresh plays the same from there.
     let (fresh_session, mut fresh) = open(replay, true);
@@ -458,5 +491,92 @@ fn scripted_drills_and_combo_trials_still_play_the_opponent_after_a_takeover() {
             runs.push(b.checksums);
         }
         assert_eq!(runs[0], runs[1], "{kind:?} {command:?}: the switch changes nothing");
+    }
+}
+
+/// The replay's playback built as `watch_replay` builds it, without a
+/// session: under an overhaul preset with the ROM's data bank, under
+/// Faithful 1987 with none.
+fn direct_playback(assets: &Assets, replay: MatchReplay, stronger: bool) -> ReplayPlayback {
+    use sf_engine::config::RulesetPreset;
+    use sf_engine::data_bank::DataBank;
+    use sf_engine::front::fight::Fight;
+    let data = (replay.config.preset != RulesetPreset::Faithful1987)
+        .then(|| std::sync::Arc::new(DataBank::build(&assets.maincpu, &[])));
+    let mut fight = Fight::start_banked(&assets.maincpu, replay.setup(), replay.flag, None, data).expect("the replay's fight starts");
+    while fight.driving() {
+        fight.step(assets, PlayerInputs::default(), PlayerInputs::default(), false);
+    }
+    ReplayPlayback::new(replay, fight).with_stronger_cpu(stronger)
+}
+
+#[test]
+fn a_faithful_1987_replay_keeps_its_takeover_opponent_with_the_switch_on() {
+    // Faithful 1987 has no Fair CPU: its takeover's opponent stays the
+    // Utility AI it was (the maintainer's call). The same replay under
+    // the Definitive Overhaul, built the same way, gets the Fair CPU.
+    let Some(assets) = assets() else { return };
+    let Some(template) = template() else { return };
+    for (config, expected) in [
+        (MatchConfig::faithful(), TakeoverOpponent::UtilityAi),
+        (MatchConfig::definitive(), TakeoverOpponent::FairCpu),
+    ] {
+        let mut replay = template.clone();
+        replay.kind = FightKind::Local;
+        replay.config = config;
+        replay.config.difficulty = 4;
+        replay.theme = None;
+        replay.commands = Vec::new();
+        replay.frames = pads(3_000);
+        let mut probe = direct_playback(&assets, replay.clone(), true);
+        while !in_fight(&probe) {
+            assert!(probe.step(&assets, PlayerInputs::default()).is_some(), "{:?}: the round starts", config.preset);
+        }
+        let at = probe.frame_index() + 60;
+        replay.frames = pads(at as usize + 1);
+        for side in [TakeoverPlayer::P1, TakeoverPlayer::P2] {
+            let mut playback = direct_playback(&assets, replay.clone(), true);
+            step_to(&mut playback, &assets, at);
+            assert_eq!(playback.fight().machine().match_config().preset, config.preset);
+            let b = branch(&mut playback, &assets, side, |_| PlayerInputs::default());
+            assert_eq!(b.opponents[0], Some(TakeoverOpponent::Recorded), "{:?} {side:?}", config.preset);
+            assert!(b.opponents[1..].iter().all(|&o| o == Some(expected)), "{:?} {side:?}: {:?}", config.preset, b.opponents);
+            assert_eq!(b.pads.iter().all(Option::is_some), expected == TakeoverOpponent::FairCpu, "{:?} {side:?}", config.preset);
+            assert_eq!(b.pads.iter().any(Option::is_some), expected == TakeoverOpponent::FairCpu, "{:?} {side:?}", config.preset);
+        }
+    }
+}
+
+#[test]
+fn a_dramatic_battle_replay_keeps_the_utility_ai_as_its_takeover_opponent() {
+    // Dramatic Battle's CPUs keep the old play until SC23 (`#215`): with
+    // the switch on, the ally or Player 1 left to the machine is the
+    // Utility AI's, and it plays.
+    let kind = FightKind::Dramatic { co_op: true };
+    let Some(at) = takeover_frame(kind) else { return };
+    assert!(at > 120, "both sides' recorded pads are empty from the takeover on");
+    let replay = recording(kind, 4, pads(at as usize + 1), Vec::new()).unwrap();
+    // The control: the same takeover in the full recording, where the
+    // player plays the recorded (empty) pad, nothing diverges, and the
+    // other side replays its recorded empty pad.
+    let full = recording(kind, 4, pads(3_000), Vec::new()).unwrap();
+    for side in [TakeoverPlayer::P1, TakeoverPlayer::P2] {
+        let (session, mut playback) = open(replay.clone(), true);
+        let assets = session.assets();
+        step_to(&mut playback, assets, at);
+        assert!(playback.fight().machine().match_config().dramatic.is_some());
+        let b = branch(&mut playback, assets, side, |_| PlayerInputs::default());
+        assert_eq!(b.opponents[0], Some(TakeoverOpponent::Recorded), "{side:?}");
+        assert!(b.opponents[1..].iter().all(|&o| o == Some(TakeoverOpponent::UtilityAi)), "{side:?}: {:?}", b.opponents);
+        assert!(b.pads.iter().all(Option::is_none), "{side:?}: no Fair CPU in Dramatic Battle");
+        let (control_session, mut control) = open(full.clone(), true);
+        drop(control_session);
+        step_to(&mut control, assets, at);
+        let idle = branch(&mut control, assets, side, |_| PlayerInputs::default());
+        assert!(idle.opponents.iter().all(|&o| o == Some(TakeoverOpponent::Recorded)), "{side:?}: the control stays on the recording");
+        // The two differ only in the other side's pad: the Utility AI's
+        // against an empty one. It plays, so the fights part.
+        assert_eq!(b.checksums[0], idle.checksums[0], "{side:?}: the takeover's first frame is the recording's in both");
+        assert_ne!(b.checksums, idle.checksums, "{side:?}: the Utility AI plays the other side");
     }
 }

@@ -1979,17 +1979,18 @@ impl PowerOnMachine {
     /// are; the playback forces none). The playback
     /// owns the CPU; it plays the stronger game alone on the pad, with no
     /// Utility AI beside it. Dramatic Battle keeps the Utility AI (SC23,
-    /// `#215`), and gets an empty pad here.
-    pub(crate) fn takeover_fair_cpu_pad(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) -> crate::front::PlayerInputs {
-        let Some((slot, me, _, fighter)) = self.takeover_seat(side).filter(|_| self.program.match_config.dramatic.is_none()) else {
-            return crate::front::PlayerInputs::default();
-        };
+    /// `#215`): `None` there, and the caller asks the Utility AI.
+    pub(crate) fn takeover_fair_cpu_pad(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) -> Option<crate::front::PlayerInputs> {
+        if self.program.match_config.dramatic.is_some() {
+            return None;
+        }
+        let (slot, me, _, fighter) = self.takeover_seat(side)?;
         let mut ctx = self.fair_cpu_context(fighter, slot, me, cpu.forced_level());
         let opponent = &self.dramatic_era_fighters()[1 - slot];
         ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
         let pad = cpu.press(self.state.frame + 1, self.in_fight(), &ctx);
         let (directions, buttons) = crate::fair_cpu::pad_parts(pad);
-        crate::front::PlayerInputs { directions, buttons }
+        Some(crate::front::PlayerInputs { directions, buttons })
     }
 
     /// The replay takeover's Fair CPU on `side` looks at the frame just
