@@ -9,7 +9,11 @@
 //! `sf6`, `st`, `sf3threes/art2`, `sf5/skill1trigger2`. A side's CPU is `old`
 //! (the Fair CPU players meet today) or `new` (the stronger play of spec
 //! #192, as far as it is built). The level is 1 (Easy) to 4 (Very
-//! Difficult), for both sides. Seeds run from `<first seed>` for
+//! Difficult), for both sides, or Player 1's and Player 2's with a slash
+//! between (`3/4`: one level against the next). A side at a level other
+//! than Player 2's plays its Fair CPU at it; an `old` side's Utility AI
+//! commands still follow the match's level (Player 2's), so compare
+//! levels with `new` sides. Seeds run from `<first seed>` for
 //! `<count>` matches; the same seed gives the same row.
 //!
 //! Rows are appended to `<out.tsv>` in seed order once every match has
@@ -78,7 +82,13 @@ fn run() -> Result<(), String> {
     let fighters = [fighter(names(2)?)?, fighter(names(5)?)?];
     let styles = [style(fighters[0], names(3)?)?, style(fighters[1], names(6)?)?];
     let cpus = [stronger(names(4)?)?, stronger(names(7)?)?];
-    let difficulty: u8 = number(&args, 8, "level")?;
+    let difficulty: [u8; 2] = {
+        let text = names(8)?;
+        let (p1, p2) = text.split_once('/').unwrap_or((text, text));
+        let level = |t: &str| t.parse::<u8>().map_err(|_| format!("level {t} is not a number
+{USAGE}"));
+        [level(p1)?, level(p2)?]
+    };
     let first: u64 = number(&args, 9, "first seed")?;
     let count: u64 = number(&args, 10, "count")?;
     let threads: usize = if args.len() > 11 { number(&args, 11, "threads")? } else { 4 };

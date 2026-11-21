@@ -1725,13 +1725,15 @@ impl PowerOnMachine {
     /// Put a Fair CPU on each pad of a two-pad fight, each with its own
     /// random numbers from `seed` (SC1, `#193`: the measuring run). Player
     /// 2's is the one the match configuration asks for; Player 1's plays
-    /// only beside it.
-    pub(crate) fn seed_measuring_cpus(&mut self, seed: u64, stronger: [bool; 2]) {
+    /// only beside it. Each plays at its own `levels` entry (SC11, `#203`).
+    pub(crate) fn seed_measuring_cpus(&mut self, seed: u64, stronger: [bool; 2], levels: [crate::fair_cpu::Level; 2]) {
         use crate::fair_cpu::FairCpu;
         self.seed_utility_cpu(seed);
-        self.fair_cpu = Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)).force_stronger(stronger[1]));
-        self.p1_fair_cpu =
-            Some(Box::new(FairCpu::seeded(0xbb67_ae85_84ca_a73b ^ seed.rotate_left(33)).force_stronger(stronger[0])));
+        self.fair_cpu =
+            Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)).force_stronger(stronger[1]).force_level(Some(levels[1])));
+        self.p1_fair_cpu = Some(Box::new(
+            FairCpu::seeded(0xbb67_ae85_84ca_a73b ^ seed.rotate_left(33)).force_stronger(stronger[0]).force_level(Some(levels[0])),
+        ));
     }
 
     /// The measuring run's Fair CPU on Player 1's pad: what
@@ -1822,7 +1824,13 @@ impl PowerOnMachine {
         if era.unified_gauge {
             cfg.gauge_mode = crate::era::GaugeMode::Unified;
         }
-        let level = Level::from_difficulty(cfg.difficulty);
+        // The measuring run's CPUs may each play at a level of their own.
+        let forced = match era_side {
+            0 => self.p1_fair_cpu.as_deref().and_then(crate::fair_cpu::FairCpu::forced_level),
+            1 => self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::forced_level),
+            _ => None,
+        };
+        let level = forced.unwrap_or(Level::from_difficulty(cfg.difficulty));
         let mut context = if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
             && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
         {

@@ -21,6 +21,11 @@ fn ryu_mirror(seed: u64) -> Option<MatchReport> {
 /// A Ryu mirror in the SF6 era style at Very Difficult; `stronger` says
 /// which sides play the stronger Fair CPU's game.
 fn ryu_mirror_with(seed: u64, stronger: [bool; 2]) -> Option<MatchReport> {
+    ryu_mirror_at(seed, stronger, [4, 4])
+}
+
+/// The same, each side at its own level.
+fn ryu_mirror_at(seed: u64, stronger: [bool; 2], difficulty: [u8; 2]) -> Option<MatchReport> {
     if !Path::new(ROMS).is_dir() {
         eprintln!("skipping: local ROM set not present");
         return None;
@@ -29,7 +34,7 @@ fn ryu_mirror_with(seed: u64, stronger: [bool; 2]) -> Option<MatchReport> {
     let spec = MeasureSpec {
         fighters: [TournamentFighter::Ryu; 2],
         styles: [(Revision::Sf6, Loadout::Standard); 2],
-        difficulty: 4,
+        difficulty,
         seed,
         stronger,
     };
@@ -77,4 +82,19 @@ fn the_new_fair_cpu_can_be_put_against_the_old_on_either_side() {
     assert_ne!(new_p1.sides, old.sides, "the new play on Player 1's pad is another fight");
     assert_ne!(new_p2.sides, old.sides, "the new play on Player 2's pad is another fight");
     assert!(new_p1.row().contains("\tnew\t") && new_p1.row().contains("\told\t"), "{}", new_p1.row());
+}
+
+#[test]
+fn each_side_can_play_at_a_level_of_its_own() {
+    // SC11 (`#203`): one level against the next. Player 1 at Easy against
+    // Player 2 at Very Difficult plays another fight than both at Very
+    // Difficult, and the row names both levels.
+    let Some(mixed) = ryu_mirror_at(3, [true; 2], [1, 4]) else { return };
+    let same = ryu_mirror_at(3, [true; 2], [4, 4]).unwrap();
+    assert_ne!(mixed.sides, same.sides, "Player 1's level reaches its CPU");
+    let swapped = ryu_mirror_at(3, [true; 2], [4, 1]).unwrap();
+    assert_ne!(swapped.sides, same.sides, "Player 2's level reaches its CPU");
+    let level = MatchReport::header().split('\t').position(|h| h == "level").unwrap();
+    assert_eq!(mixed.row().split('\t').nth(level), Some("1/4"));
+    assert_eq!(same.row().split('\t').nth(level), Some("4"));
 }

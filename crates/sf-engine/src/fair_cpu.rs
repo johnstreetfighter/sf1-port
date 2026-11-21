@@ -89,6 +89,9 @@ pub const FIGHT_LOOP: u32 = 0x3eafa;
 const RING: usize = 40;
 /// The longest plan, in pad frames.
 const PLAN_CAP: usize = 48;
+/// A route of this many hits or more is a long one (the combo search's
+/// first bar): Easy takes none ([`Level::route_hits`]).
+pub const LONG_ROUTE: u8 = 5;
 /// Combo resets (SC10, `#202`): the weights of what a cut goes into before
 /// the habit memory shifts them; the gap a throw reset walks in to (from
 /// its fighter's centre to his hurtbox, inside a throw's reach); and the
@@ -241,6 +244,71 @@ impl Level {
         }
     }
 
+    /// Percent chance a motion, a link or a route's next step goes in
+    /// cleanly: [`Level::execution`], and under pressure (lower on health,
+    /// or the opponent close) half as far again from sure.
+    pub const fn clean(self, pressure: bool) -> u32 {
+        let execution = self.execution();
+        if pressure { execution.saturating_sub((100 - execution) / 2) } else { execution }
+    }
+
+    /// The stronger play spends meter on its own routes and plans (SC11,
+    /// `#203`): every level but Easy.
+    pub const fn spends_meter(self) -> bool {
+        !matches!(self, Level::Easy)
+    }
+
+    /// Easy 0 to Very Difficult 3: the order of the levels.
+    pub const fn rank(self) -> u8 {
+        match self {
+            Level::Easy => 0,
+            Level::Normal => 1,
+            Level::Hard => 2,
+            Level::VeryHard => 3,
+        }
+    }
+
+    /// The most hits a route the stronger play takes may have (SC11,
+    /// `#203`). Easy takes only short ones, never a long route
+    /// ([`LONG_ROUTE`] hits or more); Very Difficult any.
+    pub const fn route_hits(self) -> u8 {
+        match self {
+            Level::Easy => 3,
+            Level::Normal => 4,
+            Level::Hard => 7,
+            Level::VeryHard => u8::MAX,
+        }
+    }
+
+    /// How many pressure plans in a row (after a guarded attack, on a
+    /// knocked-down or cornered opponent) the stronger play takes before it
+    /// backs off and gives him room (SC11, `#203`). Very Difficult's
+    /// `u8::MAX` is no limit: it stays on him for as long as the situation
+    /// lasts.
+    pub const fn pressure_plans(self) -> u8 {
+        match self {
+            Level::Easy => 1,
+            Level::Normal => 2,
+            Level::Hard => 3,
+            Level::VeryHard => u8::MAX,
+        }
+    }
+
+    /// The SF6 Drive gauge the stronger play keeps when it spends from it
+    /// on its own initiative (a Drive Rush, a Drive Impact or an OD move in
+    /// neutral or a game plan, a route): Easy spends none of it so, and
+    /// spends no meter on a route at all (SC11, `#203`). Its answers to
+    /// what it sees (a parry, a Drive Reversal, an Impact in answer) keep
+    /// [`drive_reserve`], as the old play's do.
+    pub const fn drive_kept(self) -> u16 {
+        match self {
+            Level::Easy => u16::MAX,
+            Level::Normal => crate::era::STOCK_AT as u16 * 3 / 2,
+            Level::Hard => crate::era::STOCK_AT as u16 / 2,
+            Level::VeryHard => 0,
+        }
+    }
+
     /// Score for guarding in range before anything is seen (anticipation).
     const fn anticipate(self) -> i32 {
         match self {
@@ -308,11 +376,11 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v8", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v9", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
     forced_stronger, judge, judged, game, route, recent_routes, route_outcome, route_drops, route_check,
     focus, action_frame, last_view, habits, plan_worked, last_plan, route_landed, out_of_fight, jump_began, jump_met, answered_plan,
-    bait_until, reset_wait,
+    bait_until, reset_wait, pressure_run, forced_level,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -1107,6 +1175,14 @@ pub struct FairCpu {
     /// `u16::MAX`): a break as long as the one between two fights, before
     /// a first round, begins a new match.
     out_of_fight: u16,
+    /// Pressure plans taken in a row since it last took a plan from
+    /// neutral, backed off, or a round ended (SC11, `#203`; to
+    /// `u8::MAX`); its single choices in neutral do not count.
+    pressure_run: u8,
+    /// The measuring run plays this side at a level of its own (SC11,
+    /// `#203`: one level against the next): [`Level::rank`] plus one, or 0
+    /// for the match's own level.
+    forced_level: u8,
     /// A game plan an anti-air answer cut short, and the step by which the
     /// anti-air has had time to land: a plan that wins through it (the
     /// stand-and-watch plan's) has worked.
@@ -1180,6 +1256,8 @@ impl Default for FairCpu {
             last_plan: 0,
             route_landed: 0,
             out_of_fight: u16::MAX,
+            pressure_run: 0,
+            forced_level: 0,
             jump_began: 0,
             jump_met: false,
             answered_plan: None,
@@ -1215,6 +1293,18 @@ impl FairCpu {
         self
     }
 
+    /// Play at `level` whatever the match's difficulty says (the measuring
+    /// run's one level against another), or at the match's with `None`.
+    pub(crate) fn force_level(mut self, level: Option<Level>) -> Self {
+        self.forced_level = level.map_or(0, |level| level.rank() + 1);
+        self
+    }
+
+    /// The level the measuring run set this CPU to play at, if any.
+    pub(crate) fn forced_level(&self) -> Option<Level> {
+        [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard].get(usize::from(self.forced_level).checked_sub(1)?).copied()
+    }
+
     /// The situation the stronger play last judged the fight to be in, from
     /// the frame its reaction delay showed it. A CPU playing the old game
     /// judges none and this stays at its default.
@@ -1241,6 +1331,7 @@ impl FairCpu {
     /// Forget this match: the habit memory, and what has worked.
     fn new_match(&mut self) {
         self.habits = Habits::default();
+        self.pressure_run = 0;
         self.answered_plan = None;
         self.plan_worked = [0; game::PLAN_SLOTS];
         self.last_plan = 0;
@@ -1440,6 +1531,8 @@ impl FairCpu {
                 self.focus = Focus::default();
                 self.action_frame = 0;
                 self.last_view = Percept::default();
+                // A new round starts with its pressure count spent.
+                self.pressure_run = 0;
                 self.out_of_fight = self.out_of_fight.saturating_add(1);
                 0
             }
@@ -1698,8 +1791,10 @@ impl FairCpu {
             // own neutral choices come where none is taken (SC8, `#200`).
             if stronger && self.start_game_plan(step, view, ctx) {
                 self.plan = self.follow_game_plan(step, view, ctx).unwrap_or_else(|| self.choose(step, view, ctx));
+            } else if stronger && self.backs_off(ctx) {
+                self.plan = self.plan_for(Choice::Retreat, step, view, ctx, false);
             } else {
-                let tactics = ctx.era.map(|tactics| if stronger { tactics.spending_safely() } else { tactics });
+                let tactics = ctx.era.map(|tactics| if stronger { tactics.spending_safely(ctx.level) } else { tactics });
                 let era = tactics.and_then(|tactics| tactics.neutral(&mut self.rng, ctx.level, view)).map(|mut plan| {
                     if stronger {
                         plan.end_at_last_press();
@@ -1787,14 +1882,20 @@ impl FairCpu {
             foe_health: view.foe.health,
             foe_max_sub_hp: ctx.foe_max_sub_hp,
             spend_super: self.spends_super(ctx, view),
-            drive_reserve: if self.stronger(ctx) { drive_reserve(ctx.level) } else { 0 },
+            drive_reserve: if self.stronger(ctx) { ctx.level.drive_kept() } else { 0 },
             avoid_burnout: self.stronger(ctx),
             foe: foe.as_deref(),
         };
         let mut options: Vec<(usize, i32)> = Vec::new();
+        // The level's longest route, and at Easy none that spends meter
+        // (SC11, `#203`).
+        let stronger = self.stronger(ctx);
+        let within_level = |route: &crate::route_book::Route| {
+            !stronger || (route.hits <= ctx.level.route_hits() && (ctx.level.spends_meter() || route.super_spent + route.drive_spent == 0))
+        };
         for (index, route) in book.routes.iter().enumerate() {
             let drops = self.route_drops.get(index).copied().unwrap_or(0);
-            if moment.allows(route) && drops < game::DROPS_KEPT {
+            if moment.allows(route) && within_level(route) && drops < game::DROPS_KEPT {
                 // A route taken lately is passed over for variety, unless
                 // it landed whole last time at a level that repeats what
                 // keeps working.
@@ -1817,7 +1918,7 @@ impl FairCpu {
         let route = &book.routes[pick];
         // Execution: a slip drops the route after one of its steps.
         let pressure = view.me.health < view.foe.health || view.dist() < 60;
-        let clean = ctx.level.execution().saturating_sub(if pressure { (100 - ctx.level.execution()) / 2 } else { 0 });
+        let clean = ctx.level.clean(pressure);
         let mut stop = if route.steps.len() >= 2 && !self.rng.chance(clean) {
             route.step_start(1 + self.rng.below(route.steps.len() as u32 - 1) as usize)
         } else {
@@ -1936,16 +2037,22 @@ impl FairCpu {
     }
 
     /// Take up a game plan for the situation, if its fighter and era style
-    /// have one and the level's decision quality chooses it over the single
-    /// choices. Among several the best score wins, after a little noise.
+    /// have one the level takes and the level's decision quality chooses it
+    /// over the single choices. Among several the best score wins, after a
+    /// little noise. A pressure plan past the level's run of them is not
+    /// taken ([`Level::pressure_plans`]): it backs off instead
+    /// ([`Self::backs_off`]).
     fn start_game_plan(&mut self, step: u32, view: Percept, ctx: &Context) -> bool {
         let table = game::plans(ctx.kit.fighter, ctx.family);
         let mut best: Option<(u8, i32)> = None;
         let gap = view.gap();
+        let pressed_enough = self.pressed_enough(ctx.level);
         for (index, plan) in table.iter().enumerate() {
             if plan.situation == self.judged.situation
                 && (!plan.cornered_only || self.judged.foe_cornered)
                 && (plan.gap.0..=plan.gap.1).contains(&gap)
+                && plan.for_level(ctx.level)
+                && !(plan.pressure() && pressed_enough)
             {
                 // A cornered opponent is pressed harder.
                 let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
@@ -1968,8 +2075,34 @@ impl FairCpu {
         if !self.rng.chance(ctx.level.quality()) {
             return false;
         }
+        self.pressure_run = if table[usize::from(plan)].pressure() { self.pressure_run.saturating_add(1) } else { 0 };
         self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step, hit: false });
         true
+    }
+
+    /// The stronger play has stayed on the opponent for as many pressure
+    /// plans as its level takes, and the situation still asks for another
+    /// (after a guarded attack, on a knocked-down or cornered opponent): it
+    /// backs off and gives him room (SC11, `#203`), and the count starts
+    /// again. Only for a pair with game plans.
+    fn backs_off(&mut self, ctx: &Context) -> bool {
+        let pressing = match self.judged.situation {
+            Situation::ItWasBlocked | Situation::OpponentKnockedDown => true,
+            Situation::NeutralFar => self.judged.foe_cornered,
+            _ => false,
+        };
+        if !pressing || !self.pressed_enough(ctx.level) || game::plans(ctx.kit.fighter, ctx.family).is_empty() {
+            return false;
+        }
+        self.pressure_run = 0;
+        true
+    }
+
+    /// It has taken its level's run of pressure plans; never at a level
+    /// with no limit.
+    fn pressed_enough(&self, level: Level) -> bool {
+        let cap = level.pressure_plans();
+        cap != u8::MAX && self.pressure_run >= cap
     }
 
     /// The next pads of the game plan being followed, when its last ones
@@ -2070,7 +2203,7 @@ impl FairCpu {
                         return Some(wait);
                     }
                     // Without the gauge for it (or its rules off) the plan ends.
-                    let Some(plan) = ctx.era.and_then(|tactics| tactics.rush_in(view)) else { break };
+                    let Some(plan) = ctx.era.and_then(|tactics| tactics.spending_safely(ctx.level).rush_in(view)) else { break };
                     run.acted = true;
                     run.pressed = step;
                     self.game = Some(run);
@@ -2849,9 +2982,7 @@ impl FairCpu {
                 pads.push(norm_stick | button(norm_btn));
                 let facing_right = !view.me.facing_left;
                 let pressure = view.me.health < view.foe.health || view.dist() < 60;
-                let clean = level
-                    .execution()
-                    .saturating_sub(if pressure { (100 - level.execution()) / 2 } else { 0 });
+                let clean = level.clean(pressure);
                 let ok = self.rng.chance(clean);
                 let motion = entry.input.motion;
                 let strength = self.rng.below(3) as usize;
@@ -2947,7 +3078,7 @@ impl FairCpu {
     /// makes.
     fn motion(&mut self, entry: &MoveEntry, facing_right: bool, view: Percept, ctx: &Context) -> Vec<u16> {
         let pressure = view.me.health < view.foe.health || view.dist() < 60;
-        let clean = ctx.level.execution().saturating_sub(if pressure { (100 - ctx.level.execution()) / 2 } else { 0 });
+        let clean = ctx.level.clean(pressure);
         if matches!(entry.recognizer, Recognizer::AlphaMove | Recognizer::FamilyMove) {
             let ok = self.rng.chance(clean);
             let strength = self.rng.below(3) as usize;
@@ -3992,5 +4123,254 @@ mod tests {
         assert!(cut(468, 25, full) >= 50, "468 damage on 25 points shown (481 to 500)");
         assert_eq!(cut(580, 24, 1_200), 0, "580 damage on 24 points of 1,200 (576 to 600)");
         assert!(cut(575, 24, 1_200) >= 50, "575 damage on 24 points of 1,200");
+    }
+
+    const LEVELS: [Level; 4] = [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard];
+
+    #[test]
+    fn each_level_is_a_set_of_values_scaled_down_from_the_top() {
+        // SC11 (`#203`): every level sets each value, and each one below
+        // Very Difficult gives up some of every one.
+        let table = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::Sf6));
+        let plans = |level: Level| table.iter().filter(|p| p.for_level(level)).count();
+        for pair in LEVELS.windows(2) {
+            let (low, high) = (pair[0], pair[1]);
+            assert!(low.rank() < high.rank());
+            assert!(low.reaction() > high.reaction() && low.unfocused_reaction() > high.unfocused_reaction(), "{low:?} reacts slower");
+            assert!(low.quality() < high.quality(), "{low:?} chooses worse");
+            assert!(low.execution() < high.execution() && low.clean(true) < high.clean(true), "{low:?} slips more");
+            assert!(low.guard() < high.guard(), "{low:?} guards less");
+            assert!(low.route_hits() < high.route_hits(), "{low:?} takes shorter routes");
+            assert!(low.pressure_plans() < high.pressure_plans(), "{low:?} backs off sooner");
+            assert!(low.drive_kept() > high.drive_kept(), "{low:?} spends less meter");
+            assert!(habit::uses(low) < habit::uses(high), "{low:?} uses less habit memory");
+            assert!(low.reset_chance() < high.reset_chance(), "{low:?} resets less");
+            assert!(plans(low) < plans(high), "{low:?} has fewer game plans");
+        }
+        // The maintainer's top: 97% clean motions, less under pressure, and
+        // 90% best choice; it takes every plan and route, keeps no meter
+        // back and stays on the opponent.
+        let top = Level::VeryHard;
+        assert_eq!((top.execution(), top.clean(false), top.quality()), (97, 97, 90));
+        assert!(top.clean(true) < 97);
+        assert_eq!(top.route_hits(), u8::MAX);
+        assert_eq!(top.pressure_plans(), u8::MAX);
+        assert_eq!(top.drive_kept(), 0);
+        assert_eq!(plans(top), table.len());
+        // Easy: no long route, no habit memory, no meter spent, no reset.
+        assert!(Level::Easy.route_hits() < LONG_ROUTE);
+        assert_eq!(habit::uses(Level::Easy), 0);
+        assert!(!Level::Easy.spends_meter() && LEVELS[1..].iter().all(|l| l.spends_meter()));
+        assert_eq!(Level::Easy.reset_chance(), 0);
+    }
+
+    #[test]
+    fn a_level_takes_up_only_its_own_game_plans() {
+        // SC11 (`#203`): each level takes every plan the one below takes.
+        // Easy pokes, enters short routes, throws a projectile, jumps in
+        // and walks in to throw after a guard, and no more: no frame trap,
+        // no plan for a knocked-down opponent (only the poke's own follow-up
+        // to a knockdown it caused), no bait, no hovering at the edge of
+        // reach, no Drive Rush in behind a projectile.
+        let table = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::Sf6));
+        for pair in LEVELS.windows(2) {
+            assert!(table.iter().all(|p| !p.for_level(pair[0]) || p.for_level(pair[1])), "{:?} takes all {:?} takes", pair[1], pair[0]);
+        }
+        let easy: Vec<&game::GamePlan> = table.iter().filter(|p| p.for_level(Level::Easy)).collect();
+        assert!(!easy.is_empty());
+        for plan in &easy {
+            let acts: Vec<game::Act> = plan.steps.iter().map(|s| s.act).collect();
+            assert!(
+                !acts.iter().any(|a| matches!(a, game::Act::GuardRise | game::Act::Edge | game::Act::Step { .. } | game::Act::Rush)),
+                "{acts:?}"
+            );
+            assert!(plan.situation != Situation::OpponentKnockedDown, "{acts:?}");
+            assert!(!plan.cornered_only);
+            assert!(!(plan.situation == Situation::ItWasBlocked && acts.contains(&game::Act::Do(Choice::Wait))), "a frame trap at Easy");
+        }
+        // Normal adds no meter-spending or bait plan, Difficult no bait:
+        // reading a reversal off a knockdown is the top's alone.
+        for plan in table.iter().filter(|p| p.for_level(Level::Normal)) {
+            assert!(!plan.steps.iter().any(|s| matches!(s.act, game::Act::Rush | game::Act::GuardRise)));
+        }
+        for plan in table.iter().filter(|p| p.for_level(Level::Hard)) {
+            assert!(!plan.steps.iter().any(|s| s.act == game::Act::GuardRise));
+        }
+    }
+
+    /// A whiff in punish range, with full gauges: every punish route of
+    /// Ryu's SF6 book is in reach, and its ground routes too (the raw Super
+    /// Art among them, three hits spending two bars).
+    fn punish_moment(level: Level, stronger: bool, foe_health: u16) -> (Context, Percept) {
+        let mut c = sf6_ctx(level);
+        c.stronger = stronger;
+        c.meters = [3 * u16::from(crate::era::STOCK_AT), 6 * u16::from(crate::era::STOCK_AT)];
+        c.meter_full = true;
+        let me = Body { facing_left: false, ..body(200) };
+        // His hurtbox 44 pixels off: the punish routes start from 32 and
+        // may walk 6 frames in; the ground routes from 52, and no nearer
+        // than 8 inside that.
+        let foe = Body { facing_left: true, health: foe_health, ..body(254) };
+        (c, Percept { frame: 100, fighting: true, me, foe, ..Percept::default() })
+    }
+
+    /// The most hits of a route taken, whether any spent meter, and how
+    /// many were taken, over `n` fresh CPUs at `level` in
+    /// [`punish_moment`].
+    fn routes_by_level(level: Level, stronger: bool, n: u64) -> (u8, bool, u32) {
+        routes_at(level, stronger, 48, n)
+    }
+
+    /// The same against an opponent with `foe_health` points.
+    fn routes_at(level: Level, stronger: bool, foe_health: u16, n: u64) -> (u8, bool, u32) {
+        let (c, view) = punish_moment(level, stronger, foe_health);
+        let book = crate::route_book::book(TournamentFighter::Ryu, crate::era::Revision::Sf6, crate::era::Loadout::Standard).unwrap();
+        let (mut most, mut meter, mut taken) = (0, false, 0);
+        for seed in 1..=n {
+            let mut cpu = FairCpu::seeded(seed);
+            if cpu.take_route(&c, view, &[crate::route_book::Reach::Punish, crate::route_book::Reach::Ground], game::PUNISH_WALK) {
+                taken += 1;
+                let route = &book.routes[usize::from(cpu.route.unwrap().index)];
+                most = most.max(route.hits);
+                meter |= route.super_spent + route.drive_spent > 0;
+            }
+        }
+        (most, meter, taken)
+    }
+
+    #[test]
+    fn easy_takes_no_long_route_and_none_that_spends_meter_and_no_level_a_longer_one_than_its_own() {
+        // SC11 (`#203`).
+        let n = 400;
+        let top = routes_by_level(Level::VeryHard, true, n);
+        assert_eq!(top.2, n as u32);
+        assert!(top.0 >= LONG_ROUTE && top.1, "the moment allows long and meter-spending routes: {top:?}");
+        for level in LEVELS {
+            let (most, meter, taken) = routes_by_level(level, true, n);
+            assert!(taken > n as u32 / 2, "{level:?} took {taken}");
+            assert!(most <= level.route_hits(), "{level:?} took a route of {most} hits");
+            if level == Level::Easy {
+                assert!(most < LONG_ROUTE, "Easy took a long route of {most} hits");
+                assert!(!meter, "Easy spent meter on a route");
+            } else if level != Level::VeryHard {
+                // Each level below the top takes as long a route as it may.
+                assert_eq!(most, level.route_hits(), "{level:?}");
+            }
+        }
+        // With 15 points left the raw Super Art (three hits, two bars) wins
+        // the round: Normal spends the meter on it, Easy never does.
+        assert!(routes_at(Level::Normal, true, 15, n).1, "the moment allows the Super Art to Normal");
+        let easy = routes_at(Level::Easy, true, 15, n);
+        assert!(easy.2 > n as u32 / 2 && !easy.1, "Easy spent meter on a route: {easy:?}");
+        // The cap is the stronger play's: with the switch off the same
+        // moment is not limited.
+        let old = routes_by_level(Level::Easy, false, n);
+        assert!(old.0 > Level::Easy.route_hits(), "{old:?}");
+    }
+
+    #[test]
+    fn a_plan_its_level_does_not_take_is_never_taken_up() {
+        // SC11 (`#203`): on a knocked-down opponent Easy has no plan; Normal
+        // times an attack to his rise but never holds a guard over it to
+        // bait a reversal, which only Very Difficult does.
+        let view = Percept { frame: 100, fighting: true, me: Body { facing_left: false, ..body(200) }, foe: Body { facing_left: true, ..body(250) }, ..Percept::default() };
+        let table = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::Sf6));
+        let taken = |level: Level| -> Vec<game::Act> {
+            let c = sf6_ctx(level);
+            (1..=300)
+                .filter_map(|seed| {
+                    let mut cpu = FairCpu::seeded(seed);
+                    cpu.judged = Judged { situation: Situation::OpponentKnockedDown, ..Judged::default() };
+                    cpu.start_game_plan(100, view, &c).then(|| table[usize::from(cpu.game.unwrap().plan)].steps[0].act)
+                })
+                .collect()
+        };
+        assert!(taken(Level::Easy).is_empty(), "Easy took {:?}", taken(Level::Easy));
+        for level in [Level::Normal, Level::Hard] {
+            let acts = taken(level);
+            assert!(acts.len() > 100, "{level:?}: {}", acts.len());
+            assert!(!acts.contains(&game::Act::GuardRise), "{level:?} baited a reversal");
+        }
+        assert!(taken(Level::VeryHard).contains(&game::Act::GuardRise), "Very Difficult never baited");
+    }
+
+    /// Whether a fresh CPU at `level`, seeded `seed`, having taken `run`
+    /// pressure plans in a row, takes up another after a guarded attack,
+    /// and whether it backs off instead.
+    fn presses(level: Level, run: u8, seed: u64) -> (bool, bool) {
+        let c = sf6_ctx(level);
+        let mut cpu = FairCpu::seeded(seed);
+        cpu.judged = Judged { situation: Situation::ItWasBlocked, corner: false, foe_cornered: false };
+        cpu.pressure_run = run;
+        let view = Percept { frame: 100, fighting: true, me: Body { facing_left: false, ..body(200) }, foe: Body { facing_left: true, ..body(250) }, ..Percept::default() };
+        let started = cpu.start_game_plan(100, view, &c);
+        let backs = !started && cpu.backs_off(&c);
+        if backs {
+            assert_eq!(cpu.pressure_run, 0, "backing off starts the count again");
+        }
+        (started, backs)
+    }
+
+    #[test]
+    fn after_its_levels_run_of_pressure_plans_it_backs_off_and_very_difficult_never_does() {
+        // SC11 (`#203`): how long it stays on the opponent is a level value.
+        for level in [Level::Easy, Level::Normal, Level::Hard] {
+            let cap = level.pressure_plans();
+            let before: Vec<(bool, bool)> = (1..=100).map(|seed| presses(level, cap - 1, seed)).collect();
+            assert!(before.iter().filter(|r| r.0).count() > 30, "{level:?} presses before its cap");
+            assert!(before.iter().all(|r| !r.1), "{level:?} backed off before its cap");
+            let after: Vec<(bool, bool)> = (1..=100).map(|seed| presses(level, cap, seed)).collect();
+            assert!(after.iter().all(|&r| r == (false, true)), "{level:?} at its cap: {after:?}");
+        }
+        let top: Vec<(bool, bool)> = (1..=100).map(|seed| presses(Level::VeryHard, u8::MAX, seed)).collect();
+        assert!(top.iter().filter(|r| r.0).count() > 60 && top.iter().all(|r| !r.1), "{top:?}");
+        // Counting: a pressure plan adds one, a neutral plan starts again.
+        let c = sf6_ctx(Level::Normal);
+        let view = Percept { frame: 100, fighting: true, me: Body { facing_left: false, ..body(200) }, foe: Body { facing_left: true, ..body(250) }, ..Percept::default() };
+        let mut cpu = (1..=50)
+            .map(FairCpu::seeded)
+            .find_map(|mut cpu| {
+                cpu.judged = Judged { situation: Situation::ItWasBlocked, ..Judged::default() };
+                cpu.start_game_plan(100, view, &c).then_some(cpu)
+            })
+            .unwrap();
+        assert_eq!(cpu.pressure_run, 1);
+        cpu.game = None;
+        cpu.judged = Judged { situation: Situation::NeutralClose, ..Judged::default() };
+        while !cpu.start_game_plan(200, view, &c) {}
+        assert_eq!(cpu.pressure_run, 0);
+        // The count is spent when a round ends, and a new match starts it.
+        let mut cpu = FairCpu::seeded(1);
+        cpu.pressure_run = 1;
+        cpu.press(10, false, &sf6_ctx(Level::Easy));
+        assert_eq!(cpu.pressure_run, 0, "a round's end clears it");
+        cpu.pressure_run = 1;
+        cpu.new_match();
+        assert_eq!(cpu.pressure_run, 0);
+        // A pair with no game plans never backs off: nothing is counted.
+        let mut cpu = FairCpu::seeded(1);
+        cpu.judged = Judged { situation: Situation::ItWasBlocked, ..Judged::default() };
+        cpu.pressure_run = 5;
+        assert!(!cpu.backs_off(&ctx(Level::Easy)));
+    }
+
+    #[test]
+    fn the_measuring_run_can_set_a_level_of_its_own_and_the_hash_covers_it_and_the_pressure_count() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        let cpu = FairCpu::seeded(3);
+        assert_eq!(cpu.forced_level(), None);
+        for level in LEVELS {
+            assert_eq!(cpu.force_level(Some(level)).forced_level(), Some(level));
+            assert_ne!(hash(&cpu.force_level(Some(level))), hash(&cpu));
+        }
+        assert_eq!(cpu.force_level(Some(Level::Hard)).force_level(None).forced_level(), None);
+        let mut pressed = cpu;
+        pressed.pressure_run = 1;
+        assert_ne!(hash(&pressed), hash(&cpu));
     }
 }

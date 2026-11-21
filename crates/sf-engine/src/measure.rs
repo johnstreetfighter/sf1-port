@@ -62,13 +62,13 @@ const MATCH_WINNER: usize = 0x4009;
 const UNITS_PER_POINT: u32 = 20;
 
 /// One match to play: each side's fighter and era style, the difficulty
-/// level both Fair CPUs play at (1 Easy to 4 Very Difficult), and the seed
-/// of their random numbers.
+/// level each Fair CPU plays at (1 Easy to 4 Very Difficult; the match's
+/// own setting is Player 2's), and the seed of their random numbers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MeasureSpec {
     pub fighters: [TournamentFighter; 2],
     pub styles: [(Revision, Loadout); 2],
-    pub difficulty: u8,
+    pub difficulty: [u8; 2],
     pub seed: u64,
     /// Which sides play the stronger Fair CPU's game (spec `#192`); the
     /// others play the old one.
@@ -143,7 +143,7 @@ impl MatchReport {
             s.fighters[1],
             style(s.styles[1]),
             cpu(s.stronger[1]),
-            s.difficulty,
+            if s.difficulty[0] == s.difficulty[1] { s.difficulty[1].to_string() } else { format!("{}/{}", s.difficulty[0], s.difficulty[1]) },
             s.seed,
             if self.ended { "yes" } else { "no" },
             self.winner.map_or("-".to_string(), |w| format!("p{}", w + 1)),
@@ -175,8 +175,8 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
             return Err(format!("{:?} has no {:?} style", spec.fighters[side], spec.styles[side]));
         }
     }
-    if !(1..=4).contains(&spec.difficulty) {
-        return Err(format!("difficulty level {} is not 1 to 4", spec.difficulty));
+    if let Some(bad) = spec.difficulty.iter().find(|d| !(1..=4).contains(*d)) {
+        return Err(format!("difficulty level {bad} is not 1 to 4"));
     }
     let mut config = MatchConfig::definitive();
     config.roster.mode = PlayMode::Versus;
@@ -184,20 +184,20 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
     config.roster.p2 = spec.fighters[1];
     config.roster.what_if_styles = true;
     config.p2_fair_cpu = true;
-    config.difficulty = spec.difficulty;
+    config.difficulty = spec.difficulty[1];
     let setup = FightSetup {
         kind: FightKind::Local,
         players: Players::Two,
         config,
         dsw1: FightDips::DSW1,
-        dsw2: FightDips { difficulty: spec.difficulty, round_time: 100 }.dsw2(),
+        dsw2: FightDips { difficulty: spec.difficulty[1], round_time: 100 }.dsw2(),
     };
     let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
     let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))
         .map_err(|event| format!("the fight did not start: {event:?}"))?;
     fight.set_selected_styles(picks.map(Some));
     let mut machine = fight.machine().clone();
-    machine.seed_measuring_cpus(spec.seed, spec.stronger);
+    machine.seed_measuring_cpus(spec.seed, spec.stronger, spec.difficulty.map(crate::fair_cpu::Level::from_difficulty));
 
     let mut report = MatchReport { spec: *spec, ended: false, winner: None, frames: 0, live_frames: 0, sides: [SideReport::default(); 2] };
     let mut before: Option<([Body; 2], [u32; 2])> = None;

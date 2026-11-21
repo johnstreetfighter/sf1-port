@@ -430,7 +430,7 @@ impl Moment<'_> {
             && route.super_spent <= self.meters[0]
             && (route.super_spent == 0 || self.spend_super || self.wins_round(route))
             && (route.drive_spent == 0
-                || (route.drive_spent + self.drive_reserve <= self.meters[1]
+                || (route.drive_spent.saturating_add(self.drive_reserve) <= self.meters[1]
                     && (!self.avoid_burnout || route.drive_spent < self.meters[1] || self.wins_round(route))))
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
             && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
@@ -642,6 +642,23 @@ pub(super) struct GamePlan {
     pub steps: &'static [Step],
     /// What it leans on, for the habit memory (SC9, `#201`).
     pub lean: Lean,
+    /// The lowest difficulty level that takes it up (SC11, `#203`).
+    pub from: Level,
+}
+
+impl GamePlan {
+    /// The level may take it up: each level takes every plan the one below
+    /// it takes, and more.
+    pub(super) fn for_level(&self, level: Level) -> bool {
+        level.rank() >= self.from.rank()
+    }
+
+    /// A plan that stays on the opponent: after a guarded attack, on a
+    /// knocked-down opponent, or walking a cornered one down. How many of
+    /// these it takes in a row is a level value ([`Level::pressure_plans`]).
+    pub(super) fn pressure(&self) -> bool {
+        self.cornered_only || matches!(self.situation, Situation::ItWasBlocked | Situation::OpponentKnockedDown)
+    }
 }
 
 /// Any gap.
@@ -783,25 +800,25 @@ pub(super) const WATCHED_SHOT_GAPS: (i16, i16) = (140, 160);
 const JUMP_IN_GAP: (i16, i16) = (70, 150);
 
 const RYU_SF6: [GamePlan; 13] = [
-    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None },
-    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE, lean: Lean::None },
-    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP, lean: Lean::FrameTrap },
-    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW, lean: Lean::WalkThrow },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY, lean: Lean::Meaty },
-    GamePlan { situation: Situation::OpponentKnockedDown, score: 52, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT, lean: Lean::Bait },
+    GamePlan { situation: Situation::NeutralClose, score: 60, corner_bonus: 0, cornered_only: false, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None, from: Level::Easy },
+    GamePlan { situation: Situation::NeutralClose, score: 62, corner_bonus: 6, cornered_only: false, gap: ANY, steps: &RYU_SF6_ROUTE, lean: Lean::None, from: Level::Easy },
+    GamePlan { situation: Situation::ItWasBlocked, score: 60, corner_bonus: 4, cornered_only: false, gap: ANY, steps: &RYU_SF6_FRAME_TRAP, lean: Lean::FrameTrap, from: Level::Normal },
+    GamePlan { situation: Situation::ItWasBlocked, score: 56, corner_bonus: 12, cornered_only: false, gap: ANY, steps: &RYU_SF6_WALK_THROW, lean: Lean::WalkThrow, from: Level::Easy },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 62, corner_bonus: 8, cornered_only: false, gap: ANY, steps: &RYU_SF6_MEATY, lean: Lean::Meaty, from: Level::Normal },
+    GamePlan { situation: Situation::OpponentKnockedDown, score: 52, corner_bonus: -10, cornered_only: false, gap: ANY, steps: &RYU_SF6_BAIT, lean: Lean::Bait, from: Level::VeryHard },
     // A cornered opponent out of reach (its own guarded attacks push it
     // back off him): walk him down rather than let him out.
-    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: 0, cornered_only: true, gap: ANY, steps: &RYU_SF6_POKE, lean: Lean::None, from: Level::Normal },
     // Scores set by the measuring run (240 Ryu SF6 mirror matches a side
     // against the old Fair CPU): the projectile from afar won the most and
     // the jump-in least.
-    GamePlan { situation: Situation::NeutralClose, score: 61, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None },
-    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None },
-    GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT, lean: Lean::Shot },
-    GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN, lean: Lean::JumpIn },
-    GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH, lean: Lean::ShotRush },
+    GamePlan { situation: Situation::NeutralClose, score: 61, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None, from: Level::Normal },
+    GamePlan { situation: Situation::NeutralFar, score: 60, corner_bonus: -6, cornered_only: false, gap: ANY, steps: &RYU_SF6_HOVER, lean: Lean::None, from: Level::Normal },
+    GamePlan { situation: Situation::NeutralFar, score: 70, corner_bonus: 0, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT, lean: Lean::Shot, from: Level::Easy },
+    GamePlan { situation: Situation::NeutralFar, score: 40, corner_bonus: 0, cornered_only: false, gap: JUMP_IN_GAP, steps: &RYU_SF6_JUMP_IN, lean: Lean::JumpIn, from: Level::Easy },
+    GamePlan { situation: Situation::NeutralFar, score: 66, corner_bonus: 6, cornered_only: false, gap: (SHOT_GAP, i16::MAX), steps: &RYU_SF6_SHOT_RUSH, lean: Lean::ShotRush, from: Level::Hard },
     // Its score comes from the habit memory alone (SC9, `#201`).
-    GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: WATCHED_SHOT_GAPS, steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch },
+    GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: WATCHED_SHOT_GAPS, steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch, from: Level::Normal },
 ];
 
 /// Game plans of one table whose working the CPU remembers.

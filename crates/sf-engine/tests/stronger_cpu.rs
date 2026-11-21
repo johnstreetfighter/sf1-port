@@ -12,7 +12,7 @@ use std::path::Path;
 
 use sf_engine::config::MatchConfig;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, EraFamily, Loadout, Revision};
-use sf_engine::fair_cpu::{perceive, Attention, Body, Focus, Judged, Level, Percept, ResetKind, Situation};
+use sf_engine::fair_cpu::{perceive, Attention, Body, Focus, Judged, Level, Percept, ResetKind, Situation, LONG_ROUTE};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::fight::FightDips;
 use sf_engine::front::menu::MenuItem;
@@ -2962,4 +2962,99 @@ fn the_habit_memory_turns_more_combo_resets_into_throws_against_one_who_never_te
     // Throw resets per route taken, and resets per route taken.
     assert!(kept.2 * wiped.0 >= 3 * wiped.2 * kept.0 / 2, "throw resets: {kept:?} with its memory, {wiped:?} wiped");
     assert!(5 * kept.1 * wiped.0 >= 6 * wiped.1 * kept.0, "resets: {kept:?} with its memory, {wiped:?} wiped");
+}
+
+/// The CPU's pad every frame of `frames` against the sparring partner,
+/// its habit memory wiped every frame if `forget`, and what it had noted
+/// of him at the end.
+fn sparring_pads(m: &mut PowerOnMachine, frames: u32, forget: bool) -> (Vec<(u8, u8)>, Option<sf_engine::fair_cpu::Habits>) {
+    let mut pads = Vec::with_capacity(frames as usize);
+    for i in 0..frames {
+        let v = seen(m);
+        let (dirs, buttons) = sparring_pad(i, &v);
+        if forget {
+            m.forget_fair_cpu_habits();
+        }
+        step(m, dirs, buttons);
+        pads.push(cpu_pad(m));
+    }
+    (pads, m.fair_cpu_habits())
+}
+
+#[test]
+fn at_easy_the_habit_memory_changes_nothing_it_does_and_it_takes_no_long_route() {
+    // SC11 (`#203`). The same fights twice against a partner who walks
+    // in, guards, sweeps, whiffs, jumps in and throws projectiles, the
+    // CPU's habit memory wiped every frame in one of them: at Easy it
+    // presses the same pad on every frame, though it has noted him; at Very
+    // Difficult the two part ways (the memory is used there, so the
+    // comparison can tell).
+    let frames = 9_000;
+    let mut parted = Vec::new();
+    for difficulty in [1, 4] {
+        for m in starts_at(true, difficulty) {
+            let (kept, noted) = sparring_pads(&mut m.clone(), frames, false);
+            let (wiped, _) = sparring_pads(&mut m.clone(), frames, true);
+            let noted = noted.unwrap();
+            assert_ne!(noted, sf_engine::fair_cpu::Habits::default(), "the memory noted nothing at {difficulty}");
+            let first = kept.iter().zip(&wiped).position(|(a, b)| a != b);
+            if difficulty == 1 {
+                assert_eq!(first, None, "at Easy the memory changed its pad from frame {first:?}");
+            } else {
+                parted.push(first);
+            }
+        }
+    }
+    if !roms_present() {
+        return;
+    }
+    assert!(parted.iter().any(Option::is_some), "at Very Difficult the memory never changed a pad: {parted:?}");
+    // Every route it enters at Easy is short: of the book's, at most the
+    // level's hits, never a long one.
+    let runs: Vec<RouteSeen> = starts_at(true, 1).iter().flat_map(|m| routes_seen(&mut m.clone(), 20_000, standing_in_reach())).collect();
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    let matched: Vec<&Route> = runs.iter().filter_map(|r| r.route(book).map(|(route, _)| route)).collect();
+    assert!(matched.len() >= 10, "routes entered at Easy: {} of {}", matched.len(), runs.len());
+    for route in &matched {
+        assert!(route.hits <= Level::Easy.route_hits() && route.hits < LONG_ROUTE, "Easy entered {} ({} hits)", route.name(), route.hits);
+        assert_eq!(route.super_spent + route.drive_spent, 0, "Easy spent meter on {}", route.name());
+    }
+}
+
+#[test]
+fn below_very_difficult_it_backs_off_after_its_levels_run_of_pressure_and_at_the_top_it_stays_on() {
+    // SC11 (`#203`). Against one who stands guarding low, so every attack
+    // is guarded and the CPU is in its pressure situations again and
+    // again: at Easy it walks away from him after its one pressure plan;
+    // at Very Difficult it keeps pressing (its plans' own retreats after a
+    // second guard still walk back a little). Counted
+    // as frames it walks back while he is in reach, out of frames it is in
+    // a guarded-attack or knockdown situation.
+    let back_share = |difficulty: u8| -> (u32, u32) {
+        let (mut back, mut pressing) = (0, 0);
+        for m in starts_at(true, difficulty) {
+            let mut m = m.clone();
+            for _ in 0..9_000 {
+                let v = seen(&m);
+                step(&mut m, D | away(&v), 0);
+                let v = seen(&m);
+                let judged = m.fair_cpu_situation();
+                if judged.is_some_and(|j| matches!(j.situation, Situation::ItWasBlocked | Situation::OpponentKnockedDown)) {
+                    pressing += 1;
+                    let (dirs, _) = cpu_pad(&m);
+                    if dirs & toward(&v) != 0 && gap(&v) < 80 {
+                        back += 1;
+                    }
+                }
+            }
+        }
+        (back, pressing)
+    };
+    let easy = back_share(1);
+    let top = back_share(4);
+    if !roms_present() {
+        return;
+    }
+    assert!(easy.1 > 200 && top.1 > 200, "pressure situations: Easy {easy:?}, Very Difficult {top:?}");
+    assert!(easy.0 * 100 / easy.1 >= top.0 * 100 / top.1 + 5, "walked back under pressure: Easy {easy:?}, Very Difficult {top:?}");
 }

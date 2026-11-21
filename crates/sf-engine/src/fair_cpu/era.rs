@@ -271,7 +271,7 @@ impl Tactics {
             return true;
         }
         let cost = u16::from(if self.unified { STOCK_AT } else { native_cost });
-        self.drive >= self.reserve + cost && self.drive > cost
+        self.drive >= self.reserve.saturating_add(cost) && self.drive > cost
     }
 
     /// The opponent's era style, which tells his moves apart (another
@@ -284,7 +284,10 @@ impl Tactics {
     /// The kit as the stronger play may spend it (SC8, `#200`): SF6's Drive
     /// Rush, Drive Impact and OD moves only where they leave Drive above the
     /// level's reserve, never down to burnout.
-    pub(super) fn spending_safely(mut self) -> Self {
+    pub(super) fn spending_safely(mut self, level: Level) -> Self {
+        // The stronger play keeps the level's own share of the gauge
+        // (SC11, `#203`).
+        self.reserve = level.drive_kept();
         if self.family == EraFamily::Sf6 {
             self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
             self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
@@ -684,10 +687,40 @@ mod tests {
         let control = EraControl { free: true, ..EraControl::default() };
         let at_cost = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT), &moves, config, Level::VeryHard, control);
         assert!(at_cost.rush.is_some() && at_cost.armor.is_some(), "the old play would spend the last stock");
-        let safe = at_cost.spending_safely();
+        let safe = at_cost.spending_safely(Level::VeryHard);
         assert!(safe.rush.is_none() && safe.armor.is_none(), "the stronger play keeps it");
-        let above = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT + 3), &moves, config, Level::VeryHard, control).spending_safely();
+        let above = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, STOCK_AT + 3), &moves, config, Level::VeryHard, control).spending_safely(Level::VeryHard);
         assert!(above.rush.is_some() && above.armor.is_some());
+    }
+
+    #[test]
+    fn how_much_drive_the_stronger_play_keeps_back_is_a_level_value_and_easy_spends_none() {
+        // SC11 (`#203`): with a full gauge (three stocks of the unified
+        // gauge, which stands in for Drive here) Easy spends nothing
+        // on its own; the others spend down to their level's share, the
+        // top all of it but the last point.
+        use crate::era::Revision;
+        let mut config = MatchConfig::definitive();
+        config.gauge_mode = GaugeMode::Unified;
+        let moves = [
+            entry("DRIVE RUSH", sf6::RUSH, MoveKind::System, &[Dir::Forward, Dir::Neutral, Dir::Forward], ButtonClass::MediumPair),
+            entry("DRIVE IMPACT", sf6::IMPACT, MoveKind::System, &[], ButtonClass::HeavyPair),
+        ];
+        let control = EraControl { free: true, ..EraControl::default() };
+        let full = 3 * u16::from(STOCK_AT);
+        let tactics = |drive: u16, level: Level| {
+            Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, drive as u8), &moves, config, level, control).spending_safely(level)
+        };
+        let easy = tactics(full, Level::Easy);
+        assert!(easy.rush.is_none() && easy.armor.is_none() && easy.rush_in(Percept::default()).is_none(), "Easy spent Drive");
+        for level in [Level::Normal, Level::Hard, Level::VeryHard] {
+            assert!(tactics(full, level).armor.is_some(), "{level:?} spends from a full gauge");
+            // Impact costs a stock: just enough over the level's share, and
+            // one point short of it.
+            let kept = level.drive_kept();
+            assert!(tactics(kept + u16::from(STOCK_AT) + 1, level).armor.is_some(), "{level:?} above its share");
+            assert!(tactics(kept + u16::from(STOCK_AT) - 1, level).armor.is_none() || kept == 0, "{level:?} below its share");
+        }
     }
 
     #[test]
