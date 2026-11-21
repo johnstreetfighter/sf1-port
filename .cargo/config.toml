@@ -1,3 +1,8 @@
 [alias]
 # Run the full workspace suite optimized; see [profile.suite] in Cargo.toml.
 suite = "test --profile suite --workspace --locked --no-fail-fast -j 4"
+# The same suite through cargo-nextest, in the two passes .config/nextest.toml
+# defines: everything that can share the machine on 8 threads, then the
+# network, relay and sf-host library tests one at a time.
+suite-parallel = "nextest run --cargo-profile suite --workspace --locked --no-fail-fast --build-jobs 4"
+suite-serial = "nextest run --cargo-profile suite --workspace --locked --no-fail-fast --build-jobs 4 --profile serial"
