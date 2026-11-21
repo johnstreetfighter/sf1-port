@@ -10,10 +10,10 @@
 //! (the Fair CPU players meet today) or `new` (the stronger play of spec
 //! #192, as far as it is built). The level is 1 (Easy) to 4 (Very
 //! Difficult), for both sides, or Player 1's and Player 2's with a slash
-//! between (`3/4`: one level against the next). A side at a level other
-//! than Player 2's plays its Fair CPU at it; an `old` side's Utility AI
-//! commands still follow the match's level (Player 2's), so compare
-//! levels with `new` sides. Seeds run from `<first seed>` for
+//! between (`3/4`: one level against the next). Each side's Fair CPU then
+//! plays at its own level and the match's setting is the higher. Two levels
+//! need both sides `new` (an `old` side's Utility AI commands follow the
+//! match's level), and are refused otherwise. Seeds run from `<first seed>` for
 //! `<count>` matches; the same seed gives the same row.
 //!
 //! Rows are appended to `<out.tsv>` in seed order once every match has

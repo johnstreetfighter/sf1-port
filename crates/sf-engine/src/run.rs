@@ -1691,7 +1691,9 @@ impl PowerOnMachine {
             4 => (CPU_STRUCT, P2_STRUCT),
             _ => (P2_STRUCT, P1_STRUCT),
         };
-        let mut ctx = self.fair_cpu_context(fighter, slot, me);
+        // The measuring run may set this CPU a level of its own (SC11, `#203`).
+        let forced = self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::forced_level);
+        let mut ctx = self.fair_cpu_context(fighter, slot, me, forced);
         let opponent = &self.program.toggle_state.era.fighters[opponent_slot];
         ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
         let in_fight = self.in_fight();
@@ -1747,7 +1749,8 @@ impl PowerOnMachine {
         }
         let fighter = self.program.match_config.roster.p1;
         let family = self.program.toggle_state.era.fighters[0].style.family;
-        let mut ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT);
+        let forced = self.p1_fair_cpu.as_deref().and_then(crate::fair_cpu::FairCpu::forced_level);
+        let mut ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT, forced);
         let opponent = &self.program.toggle_state.era.fighters[1];
         ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
         let in_fight = self.in_fight();
@@ -1812,6 +1815,7 @@ impl PowerOnMachine {
         fighter: crate::roster::TournamentFighter,
         era_side: usize,
         ps: u32,
+        forced: Option<crate::fair_cpu::Level>,
     ) -> crate::fair_cpu::Context {
         use crate::fair_cpu::{Context, EraControl, Kit, Level};
         let mut cfg = self.program.match_config;
@@ -1824,12 +1828,8 @@ impl PowerOnMachine {
         if era.unified_gauge {
             cfg.gauge_mode = crate::era::GaugeMode::Unified;
         }
-        // The measuring run's CPUs may each play at a level of their own.
-        let forced = match era_side {
-            0 => self.p1_fair_cpu.as_deref().and_then(crate::fair_cpu::FairCpu::forced_level),
-            1 => self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::forced_level),
-            _ => None,
-        };
+        // The CPU being driven may play at a level of its own (the
+        // measuring run's, SC11 `#203`); otherwise the match's.
         let level = forced.unwrap_or(Level::from_difficulty(cfg.difficulty));
         let mut context = if crate::era_fight::EraRules::from(cfg).enabled && era.fighter == Some(fighter)
             && !matches!(era.style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
@@ -1958,7 +1958,7 @@ impl PowerOnMachine {
                 _ => config.roster.p2,
             }
         });
-        let context = self.fair_cpu_context(fighter, slot, me);
+        let context = self.fair_cpu_context(fighter, slot, me, None);
         crate::utility::UtilityAi::step(self, state, me, foe, fighter, era.style.family, &context, None)
     }
 
@@ -1983,7 +1983,7 @@ impl PowerOnMachine {
         use crate::fighter::{CPU_STRUCT, P2_STRUCT};
         let [_, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
         let fighter = self.program.match_config.roster.p2;
-        let boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT);
+        let boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT, None);
         let opponent = self.dramatic_boss_target();
         let families = self.dramatic_era_fighters().map(|era| era.style.family);
         let in_fight = self.in_fight();
@@ -2000,7 +2000,7 @@ impl PowerOnMachine {
             self.dramatic_cpu.as_mut().unwrap()[0].set_utility_pad(self.program.toggle_state.utility[1].pad());
         }
         if !rules.co_op && !scripted_p2 {
-            let ally = self.fair_cpu_context(rules.ally2, 2, P2_STRUCT);
+            let ally = self.fair_cpu_context(rules.ally2, 2, P2_STRUCT, None);
             let cpu = &mut self.dramatic_cpu.as_mut().unwrap()[1];
             let pad = cpu.press(step, in_fight && ally_hp > 0, &ally);
             let idle = cpu.utility_idle();

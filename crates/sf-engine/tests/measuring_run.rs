@@ -86,15 +86,27 @@ fn the_new_fair_cpu_can_be_put_against_the_old_on_either_side() {
 
 #[test]
 fn each_side_can_play_at_a_level_of_its_own() {
-    // SC11 (`#203`): one level against the next. Player 1 at Easy against
-    // Player 2 at Very Difficult plays another fight than both at Very
-    // Difficult, and the row names both levels.
+    // SC11 (`#203`): one level against the next. The match's setting is the
+    // higher level, Very Difficult in all three of these, so a fight that
+    // differs from both sides at Very Difficult differs by the side's own
+    // level: Player 1's at Easy, then Player 2's at Easy (though the
+    // match's difficulty stays Very Difficult). The row names both levels.
     let Some(mixed) = ryu_mirror_at(3, [true; 2], [1, 4]) else { return };
     let same = ryu_mirror_at(3, [true; 2], [4, 4]).unwrap();
     assert_ne!(mixed.sides, same.sides, "Player 1's level reaches its CPU");
     let swapped = ryu_mirror_at(3, [true; 2], [4, 1]).unwrap();
-    assert_ne!(swapped.sides, same.sides, "Player 2's level reaches its CPU");
+    assert_ne!(swapped.sides, same.sides, "Player 2's own level reaches its CPU, not the match's");
     let level = MatchReport::header().split('\t').position(|h| h == "level").unwrap();
     assert_eq!(mixed.row().split('\t').nth(level), Some("1/4"));
     assert_eq!(same.row().split('\t').nth(level), Some("4"));
+    // An old side cannot be measured at a level of its own.
+    let assets = load_assets(ROMS, MANIFEST).unwrap();
+    let spec = MeasureSpec {
+        fighters: [TournamentFighter::Ryu; 2],
+        styles: [(Revision::Sf6, Loadout::Standard); 2],
+        difficulty: [1, 4],
+        seed: 3,
+        stronger: [true, false],
+    };
+    assert!(measure_match(&assets.maincpu, None, &spec).is_err_and(|e| e.contains("both sides")));
 }

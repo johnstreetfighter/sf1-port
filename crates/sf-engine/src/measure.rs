@@ -62,8 +62,11 @@ const MATCH_WINNER: usize = 0x4009;
 const UNITS_PER_POINT: u32 = 20;
 
 /// One match to play: each side's fighter and era style, the difficulty
-/// level each Fair CPU plays at (1 Easy to 4 Very Difficult; the match's
-/// own setting is Player 2's), and the seed of their random numbers.
+/// level each Fair CPU plays at (1 Easy to 4 Very Difficult), and the seed
+/// of their random numbers. Two different levels (SC11, `#203`) set the
+/// match's own difficulty to the higher, and each Fair CPU plays at its
+/// own; only the stronger play can be measured so, as the old play's
+/// Utility AI commands follow the match's difficulty.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MeasureSpec {
     pub fighters: [TournamentFighter; 2],
@@ -178,19 +181,23 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
     if let Some(bad) = spec.difficulty.iter().find(|d| !(1..=4).contains(*d)) {
         return Err(format!("difficulty level {bad} is not 1 to 4"));
     }
+    if spec.difficulty[0] != spec.difficulty[1] && !spec.stronger.iter().all(|&new| new) {
+        return Err("two different levels need both sides to play the new Fair CPU: the old one's Utility AI follows the match's level".into());
+    }
+    let match_level = spec.difficulty[0].max(spec.difficulty[1]);
     let mut config = MatchConfig::definitive();
     config.roster.mode = PlayMode::Versus;
     config.roster.p1 = spec.fighters[0];
     config.roster.p2 = spec.fighters[1];
     config.roster.what_if_styles = true;
     config.p2_fair_cpu = true;
-    config.difficulty = spec.difficulty[1];
+    config.difficulty = match_level;
     let setup = FightSetup {
         kind: FightKind::Local,
         players: Players::Two,
         config,
         dsw1: FightDips::DSW1,
-        dsw2: FightDips { difficulty: spec.difficulty[1], round_time: 100 }.dsw2(),
+        dsw2: FightDips { difficulty: match_level, round_time: 100 }.dsw2(),
     };
     let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
     let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))

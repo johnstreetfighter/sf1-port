@@ -3589,8 +3589,12 @@ mod tests {
     }
 
     /// The same, its own fighter's control as given.
-
     fn sf6_ctx_with(level: Level, control: EraControl) -> Context {
+        sf6_ctx_drive(level, control, None)
+    }
+
+    /// The same, with `drive` points in its Drive gauge (full with `None`).
+    fn sf6_ctx_drive(level: Level, control: EraControl, drive: Option<u16>) -> Context {
         use crate::era::{GaugeMode, Loadout, Revision, StylePick, STOCK_AT};
         let config = crate::config::MatchConfig::definitive();
         let mut state = EraFighterState::default();
@@ -3598,7 +3602,7 @@ mod tests {
         state.style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
         state.max_sub_hp = crate::era_fight::FULL_SUB_HP;
         state.set_gauge_mode(GaugeMode::EraDefault);
-        state.set_sf6_practice_drive(None);
+        state.set_sf6_practice_drive(drive);
         state.super_meter = 2 * STOCK_AT;
         let mut c = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
         c.set_opponent(crate::era::EraFamily::Sf6, crate::era_fight::FULL_SUB_HP);
@@ -4292,6 +4296,31 @@ mod tests {
             assert!(!acts.contains(&game::Act::GuardRise), "{level:?} baited a reversal");
         }
         assert!(taken(Level::VeryHard).contains(&game::Act::GuardRise), "Very Difficult never baited");
+    }
+
+    #[test]
+    fn a_game_plans_drive_rush_keeps_the_levels_share_of_the_gauge() {
+        // SC11 (`#203`): the projectile plan's Drive Rush step spends Drive
+        // only down to the level's share. A Drive Rush costs 50 points;
+        // Difficult keeps 24 of its own (the old play's reserve there is
+        // none), so with 60 it does not rush in, and with a full gauge it
+        // does. Very Difficult keeps none and rushes in with 60.
+        let table = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::Sf6));
+        let plan = table.iter().position(|p| p.steps.iter().any(|s| s.act == game::Act::Rush)).unwrap();
+        let step = table[plan].steps.iter().position(|s| s.act == game::Act::Rush).unwrap();
+        let view = Percept { frame: 100, fighting: true, me: Body { facing_left: false, ..body(200) }, foe: Body { facing_left: true, ..body(330) }, ..Percept::default() };
+        let rushes = |level: Level, drive: Option<u16>| {
+            let c = sf6_ctx_drive(level, EraControl { free: true, ..EraControl::default() }, drive);
+            let mut cpu = FairCpu::seeded(1);
+            cpu.judged = Judged { situation: Situation::NeutralFar, ..Judged::default() };
+            cpu.game = Some(game::Running { plan: plan as u8, step: step as u8, acted: false, pressed: 0, began: 100, hit: false });
+            let pads = cpu.follow_game_plan(100, view, &c);
+            pads.is_some() && cpu.game.is_some_and(|run| usize::from(run.step) == step && run.acted)
+        };
+        assert!(rushes(Level::Hard, None), "Difficult rushes in from a full gauge");
+        assert!(!rushes(Level::Hard, Some(60)), "Difficult spent its kept share");
+        assert!(rushes(Level::VeryHard, Some(60)), "Very Difficult keeps none back");
+        assert!(!rushes(Level::Easy, None), "Easy spends no Drive of its own");
     }
 
     /// Whether a fresh CPU at `level`, seeded `seed`, having taken `run`
