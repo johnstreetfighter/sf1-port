@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Sagat
 style St/Old
 
@@ -14,6 +14,7 @@ stances standing
 confirm 18
 gap 66
 fails-on Ken St/Standard; Mike
+cuts 1 free 33 ahead 20 gap 110; 2 free 37 ahead 16 gap 138
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step MP | wait 8 8..21 | hold 0 | 0:02x2 0:00
 step HP | wait 16 16..27 | hold 0 | 0:04x2 0:00
@@ -31,6 +32,7 @@ stances standing
 confirm 5
 gap 70
 fails-on Ken St/Standard
+cuts 1 free 32 ahead 20 gap 114; 2 free 36 ahead 20 gap 142
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 421+MP | wait 1 1..7 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step HP | wait 11 11..18 | hold 0 | 0:04x2 0:00
@@ -48,6 +50,7 @@ stances standing
 confirm 6
 gap 66
 fails-on Ken St/Standard; Retsu; Geki; Mike; Sagat
+cuts 1 free 32 ahead 16 gap 126; 2 free 36 ahead 20 gap 154
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 421+MP | wait 5 5..9 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step HP | wait 11 11..16 | hold 0 | 0:04x2 0:00
@@ -65,6 +68,7 @@ stances standing
 confirm 18
 gap 88
 fails-on Ken St/Standard
+cuts 1 free 33 ahead 9 gap 118
 step HP | wait 0 0..0 | hold 0 | 0:04x2 0:00
 step HP | wait 19 19..23 | hold 0 | 0:04x2 0:00
 end
@@ -81,6 +85,7 @@ stances standing crouching
 confirm 3
 gap 70
 fails-on Mike crouching
+cuts 1 free 24 ahead 15 gap 106
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 623+LP | wait 0 0..5 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -97,6 +102,7 @@ stances standing crouching
 confirm 4
 gap 76
 fails-on Mike crouching; Gen crouching; Adon crouching
+cuts 1 free 23 ahead 13 gap 102
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step 623+LP | wait 0 0..6 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -113,6 +119,7 @@ stances standing crouching
 confirm 4
 gap 76
 fails-on Mike crouching
+cuts 1 free 25 ahead 13 gap 102
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 623+LP | wait 0 0..7 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -129,6 +136,7 @@ stances standing crouching
 confirm 7
 gap 76
 fails-on Mike crouching
+cuts 1 free 25 ahead 15 gap 102
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 623+LP | wait 0 0..10 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -145,6 +153,7 @@ stances standing
 confirm 1
 gap 124
 fails-on Ken St/Standard; Mike; Lee; Gen; Eagle; Sagat
+cuts 1 free 33 ahead 19 gap 91; 2 free 39 ahead 36 gap 122; 3 free 36 ahead 20 gap 154
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:04x2 0:00
 step 421+MP | wait 1 1..4 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 421+MP | wait 12 12..16 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
@@ -163,6 +172,7 @@ stances standing
 confirm 1
 gap 124
 fails-on Ken St/Standard; Mike; Lee; Gen; Eagle; Sagat
+cuts 1 free 33 ahead 19 gap 91; 2 free 39 ahead 36 gap 122; 3 free 37 ahead 20 gap 154
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:04x2 0:00
 step 421+MP | wait 1 1..4 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step cr.MP | wait 18 18..22 | hold 0 | 4:02x2 4:00
@@ -181,6 +191,7 @@ stances standing
 confirm 8
 gap 124
 fails-on Ken St/Standard; Mike; Lee; Gen; Eagle; Sagat
+cuts 1 free 33 ahead 19 gap 91; 2 free 40 ahead 36 gap 122; 3 free 36 ahead 20 gap 154
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:04x2 0:00
 step cr.MP | wait 7 7..11 | hold 0 | 4:02x2 4:00
 step 421+MP | wait 13 13..17 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
@@ -199,6 +210,7 @@ stances standing
 confirm 8
 gap 124
 fails-on Ken St/Standard; Mike; Lee; Gen; Eagle; Sagat
+cuts 1 free 33 ahead 19 gap 91; 2 free 40 ahead 36 gap 122; 3 free 37 ahead 20 gap 154
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:04x2 0:00
 step cr.MP | wait 7 7..11 | hold 0 | 4:02x2 4:00
 step cr.MP | wait 19 19..23 | hold 0 | 4:02x2 4:00
@@ -217,6 +229,7 @@ stances standing crouching
 confirm 1
 gap 124
 fails-on Ken St/Standard; Retsu crouching; Mike; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+cuts 1 free 33 ahead 19 gap 91; 2 free 39 ahead 36 gap 122
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:04x2 0:00
 step 421+MP | wait 1 1..4 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 623+LP | wait 3 3..14 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
@@ -234,6 +247,7 @@ stances standing
 confirm 8
 gap 124
 fails-on Ken St/Standard; Mike; Gen; Birdie; Eagle
+cuts 1 free 33 ahead 15 gap 90; 2 free 44 ahead 36 gap 138
 step j.HK | wait 0 0..0 | hold 0 | 9:00x3 0:00x27 0:20x2 0:00
 step HP | wait 7 7..11 | hold 0 | 0:04x2 0:00
 step HP | wait 30 30..34 | hold 0 | 0:04x2 0:00
@@ -251,6 +265,7 @@ stances standing
 confirm 6
 gap 124
 fails-on Ken St/Standard; Mike; Gen; Birdie; Eagle
+cuts 1 free 27 ahead 13 gap 82; 2 free 44 ahead 36 gap 138
 step j.MK | wait 0 0..0 | hold 0 | 9:00x3 0:00x31 0:10x2 0:00
 step HP | wait 3 3..7 | hold 0 | 0:04x2 0:00
 step HP | wait 30 30..34 | hold 0 | 0:04x2 0:00
@@ -268,6 +283,7 @@ stances standing crouching
 confirm 15
 gap 124
 fails-on Ken St/Standard; Retsu crouching; Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+cuts 1 free 33 ahead 17 gap 90
 step j.HP | wait 0 0..0 | hold 0 | 9:00x3 0:00x29 0:04x2 0:00
 step 623+LP | wait 0 0..18 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -284,6 +300,7 @@ stances standing crouching
 confirm 7
 gap 93
 fails-on Mike Sf1Plus/Standard crouching; Mike Hf/Standard crouching; Mike St/Standard crouching; Mike St/Old crouching; Mike Sfz3/AIsm crouching; Mike Sfz3/VIsm crouching; Mike Sfz3/XIsm crouching; Mike Sf3ThreeS/Art1 crouching; Mike Sf3ThreeS/Art2 crouching; Mike Sf3ThreeS/Art3 crouching; Mike Usf4/Ultra1 crouching; Mike Usf4/Ultra2 crouching; Mike Usf4/UltraDouble crouching; Mike Sf5Ce/Skill1Trigger1 crouching; Mike Sf5Ce/Skill1Trigger2 crouching; Mike Sf5Ce/Skill2Trigger1 crouching; Mike Sf5Ce/Skill2Trigger2 crouching; Mike Sf6/Standard crouching; Sagat St/Standard; Sagat St/Old
+cuts 1 free 33 ahead 20 gap 148
 step cr.MP | wait 0 0..1 | hold 0 | 4:02x2 4:00
 step 236+LK | wait 0 0..10 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -300,6 +317,7 @@ stances standing crouching
 confirm 0
 gap 93
 fails-on Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Sagat St/Standard; Sagat St/Old
+cuts 1 free 26 ahead 13 gap 148
 step LK | wait 0 0..2 | hold 0 | 0:08x2 0:00
 step 236+LK | wait 0 0..1 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end

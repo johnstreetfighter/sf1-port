@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Ryu
 style Kessen/SuperHeavy
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 19
 gap 30
 fails-on Retsu; Geki; Joe; Mike; Lee; Gen; Birdie; Eagle; Adon; Sagat
+cuts 1 free 33 ahead 6 gap 86
 step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
 step 214+LK | wait 16 16..20 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 step 236+LP | wait 1 1..14 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -31,6 +32,7 @@ stances standing crouching
 confirm 13
 gap 76
 fails-on Mike crouching; Gen crouching; Adon crouching
+cuts
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LP | wait 0 0..15 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -47,6 +49,7 @@ stances standing crouching
 confirm 19
 gap 30
 fails-on Retsu standing; Geki standing; Joe crouching; Lee standing; Gen crouching; Birdie crouching; Eagle; Adon; Sagat standing
+cuts 1 free 34 ahead 6 gap 86
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214+LK | wait 20 20..21 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 step 236+LP | wait 0 0..11 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -64,6 +67,7 @@ stances standing
 confirm 0
 gap 80
 fails-on Retsu; Geki; Joe; Mike; Gen
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -79,6 +83,7 @@ stances standing crouching
 confirm 3
 gap 58
 fails-on
+cuts 1 free 33 ahead 6 gap 86
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 236236+LP | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -95,6 +100,7 @@ stances standing
 confirm 8
 gap 48
 fails-on
+cuts 1 free 28 ahead 3 gap 62
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -111,6 +117,7 @@ stances standing crouching
 confirm 2
 gap 58
 fails-on
+cuts 1 free 27 ahead 3 gap 62
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -127,6 +134,7 @@ stances standing crouching
 confirm 8
 gap 30
 fails-on Retsu crouching; Geki crouching; Joe; Mike; Lee crouching; Gen standing; Birdie standing; Sagat crouching
+cuts 1 free 27 ahead 3 gap 62
 step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 step 236+LP | wait 3 3..8 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end

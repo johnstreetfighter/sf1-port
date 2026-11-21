@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Ryu
 style St/Old
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 14
 gap 80
 fails-on Mike crouching; Gen crouching; Adon crouching
+cuts
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LP | wait 0 0..16 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 9
 gap 30
 fails-on Retsu crouching; Geki crouching; Joe; Mike; Lee crouching; Gen standing; Birdie standing; Sagat crouching
+cuts 1 free 33 ahead 6 gap 86
 step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
 step 236+LP | wait 4 4..10 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -46,6 +48,7 @@ stances standing
 confirm 9
 gap 48
 fails-on
+cuts 1 free 28 ahead 3 gap 62
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step 236+LP | wait 0 0..10 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -62,6 +65,7 @@ stances standing crouching
 confirm 9
 gap 80
 fails-on
+cuts 1 free 34 ahead 6 gap 86
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 236+LP | wait 0 0..11 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -78,6 +82,7 @@ stances standing crouching
 confirm 9
 gap 30
 fails-on Retsu crouching; Geki crouching; Joe; Mike; Lee crouching; Gen standing; Birdie standing; Sagat crouching
+cuts 1 free 27 ahead 3 gap 62
 step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 step 236+LP | wait 3 3..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -94,6 +99,7 @@ stances standing crouching
 confirm 9
 gap 52
 fails-on
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..13 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -110,6 +116,7 @@ stances standing crouching
 confirm 9
 gap 58
 fails-on
+cuts 1 free 28 ahead 3 gap 62
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 236+LP | wait 0 0..10 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -126,5 +133,6 @@ stances standing crouching
 confirm 0
 gap 52
 fails-on Ken St/Standard; Gen crouching
+cuts
 step HK | wait 0 0..0 | hold 0 | 0:20x2 0:00
 end

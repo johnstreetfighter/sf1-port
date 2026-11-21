@@ -12,7 +12,7 @@ use std::path::Path;
 
 use sf_engine::config::MatchConfig;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, EraFamily, Loadout, Revision};
-use sf_engine::fair_cpu::{perceive, Attention, Body, Focus, Judged, Level, Percept, Situation};
+use sf_engine::fair_cpu::{perceive, Attention, Body, Focus, Judged, Level, Percept, ResetKind, Situation};
 use sf_engine::front::cabinet::flow_position;
 use sf_engine::front::fight::FightDips;
 use sf_engine::front::menu::MenuItem;
@@ -724,6 +724,9 @@ struct RouteSeen {
     facing_right: bool,
     /// The CPU has begun an attack of its own since the route ended.
     closed: bool,
+    /// The CPU cut it on purpose into a combo reset (SC10, `#202`): it is
+    /// not meant to go on.
+    reset: bool,
 }
 
 impl RouteSeen {
@@ -806,7 +809,8 @@ fn routes_seen(m: &mut PowerOnMachine, frames: u32, mut pad: impl FnMut(u32, &Pe
         if in_route && live.is_none() {
             let after_whiff = whiffed_at.is_some_and(|at| i - at <= 30);
             let facing_right = v.me.x < v.foe.x;
-            live = Some((RouteSeen { meter_at_start: meter, meter_low: meter, after_whiff, facing_right, ..RouteSeen::default() }, i));
+            let reset = m.fair_cpu_route_reset().is_some();
+            live = Some((RouteSeen { meter_at_start: meter, meter_low: meter, after_whiff, facing_right, reset, ..RouteSeen::default() }, i));
         }
         if let Some((run, began)) = live.as_mut() {
             let (dirs, buttons) = cpu_pad(m);
@@ -861,14 +865,18 @@ fn standing_in_reach() -> impl FnMut(u32, &Percept) -> (u8, u8) {
 
 #[test]
 fn a_hit_from_a_route_is_followed_by_the_routes_further_hits_and_the_routes_vary() {
-    // Over a few fights, so that the variety does not rest on one run of
-    // the CPU's random choices.
-    let runs: Vec<RouteSeen> = starts(true).iter().flat_map(|m| routes_seen(&mut m.clone(), 6_000, standing_in_reach())).collect();
+    // Over eight fights, so that the variety does not rest on one run of
+    // the CPU's random choices (three, with the floor at 4, rested on it:
+    // most of Ryu's routes here are his light kick into a Hadoken, which
+    // never combos in these fights). Routes cut on purpose into a combo
+    // reset (SC10, `#202`) are not meant to go on, and are left out.
+    let runs: Vec<RouteSeen> =
+        starts_from(true, 4, &HOVER_STARTS[..8]).iter().flat_map(|m| routes_seen(&mut m.clone(), 6_000, standing_in_reach())).filter(|r| !r.reset).collect();
     if !roms_present() {
         return;
     }
     let combos: Vec<&RouteSeen> = runs.iter().filter(|r| r.combo >= 2).collect();
-    assert!(combos.len() >= 4, "routes that combo: {} of {}: {runs:?}", combos.len(), runs.len());
+    assert!(combos.len() >= 10, "routes that combo: {} of {}: {runs:?}", combos.len(), runs.len());
     // More than one press in it: the further hits come from its later steps,
     // pressed before the first hit could be seen. (A route cut short by a
     // slip can still combo with what the CPU does next, which is not the
@@ -2685,3 +2693,271 @@ fn an_arcade_continue_starts_the_next_match_with_nothing_noted() {
     assert_eq!(next.1, 0, "the match after the continue starts with nothing noted");
 }
 
+/// One route the CPU cut on purpose at a marked point (SC10, `#202`), and
+/// what the frames showed after it.
+#[derive(Clone, Debug, Default)]
+struct ResetSeen {
+    kind: Option<ResetKind>,
+    /// The route it entered: its pads, its walk in included, matched to the
+    /// book afterwards ([`RouteSeen::route`]).
+    run: RouteSeen,
+    /// Player 1 was hit by the route: in a hit reaction while it ran or
+    /// within 12 frames of its end (its last step's hit can land after
+    /// it), before anything the CPU did next could reach him.
+    hit: bool,
+    /// Frames from the route's end to Player 1's first free frame after
+    /// his hit reaction.
+    free_at: Option<u32>,
+    /// Frames from the route's end to the CPU's throw connecting on him.
+    thrown_at: Option<u32>,
+    /// The CPU began a crouching attack after the route, and what it met.
+    low: Option<&'static str>,
+    /// Player 1's Shoryuken after the route: it began; whether the CPU was
+    /// guarding on its first frame out (see [`resets_seen`]); it hit
+    /// the CPU; and the CPU then hit him.
+    reversal: bool,
+    guarded: Option<bool>,
+    cpu_hit: bool,
+    punished: bool,
+}
+
+/// Every route the CPU cut on purpose over `frames`, with Player 1's pad
+/// given by `pad` each frame, each followed for 120 frames past its end
+/// (through any route it takes next, a punish included), and the routes it
+/// entered in all. With `forget` the habit memory is wiped every frame, as
+/// against an opponent it knows nothing of.
+fn resets_seen(m: &mut PowerOnMachine, frames: u32, forget: bool, mut pad: impl FnMut(u32, &Percept) -> (u8, u8)) -> (Vec<ResetSeen>, u32) {
+    let mut out = Vec::new();
+    let mut routes = 0;
+    // Each record, and the frame its own route ended (`None` while it runs).
+    let mut live: Vec<(ResetSeen, Option<u32>)> = Vec::new();
+    let mut was_in_route = false;
+    for i in 0..frames {
+        let v = seen(m);
+        let (dirs, buttons) = pad(i, &v);
+        let before = v;
+        if forget {
+            m.forget_fair_cpu_habits();
+        }
+        step(m, dirs, buttons);
+        let v = seen(m);
+        let in_route = m.fair_cpu_entering_route();
+        let began = in_route && !was_in_route;
+        routes += u32::from(began);
+        was_in_route = in_route;
+        if began {
+            if let Some(kind) = m.fair_cpu_route_reset() {
+                live.push((ResetSeen { kind: Some(kind), run: RouteSeen { facing_right: v.me.x < v.foe.x, ..RouteSeen::default() }, ..ResetSeen::default() }, None));
+            }
+        }
+        for (seen_reset, ended) in live.iter_mut() {
+            if ended.is_none() {
+                if in_route {
+                    seen_reset.run.pads.push(cpu_pad(m));
+                    seen_reset.hit |= v.foe.reacting();
+                    continue;
+                }
+                *ended = Some(i);
+            }
+            let after = i - ended.unwrap();
+            if after <= 12 {
+                seen_reset.hit |= v.foe.reacting();
+            }
+            if seen_reset.hit && seen_reset.free_at.is_none() && !v.foe.reacting() {
+                seen_reset.free_at = Some(after);
+            }
+            if seen_reset.thrown_at.is_none() && v.me.move_id == sf_engine::combo::throw::THROW_MOVE && v.foe.move_id == sf_engine::combo::throw::THROWN_MOVE {
+                seen_reset.thrown_at = Some(after);
+            }
+            if seen_reset.low.is_none() && v.me.low_attack() && !before.me.low_attack() {
+                seen_reset.low = Some("pressed");
+            }
+            if seen_reset.low == Some("pressed") && v.me.low_attack() {
+                if v.foe.reacting() && !before.foe.reacting() {
+                    seen_reset.low = Some("hit");
+                } else if v.foe.guarding() {
+                    seen_reset.low = Some("guarded");
+                }
+            }
+            if v.foe.move_id == SHORYUKEN {
+                if before.foe.move_id != SHORYUKEN {
+                    seen_reset.reversal = true;
+                }
+                // Guarding as it comes out: in the guard pose, holding the
+                // Drive Parry (SC8), or with the stick held away from him
+                // (the guard pose shows only once an attack reaches it).
+                if v.foe.active && seen_reset.guarded.is_none() {
+                    let back = if v.me.x < v.foe.x { L } else { R };
+                    seen_reset.guarded = Some(v.me.guarding() || v.me.move_id == DRIVE_PARRY || (v.me.free() && cpu_pad(m).0 & back != 0));
+                }
+                // His Shoryuken hit the CPU.
+                seen_reset.cpu_hit |= seen_reset.reversal && (v.me.reacting() || v.me.health < before.me.health);
+            }
+            seen_reset.punished |= seen_reset.reversal && v.foe.move_id != SHORYUKEN && v.foe.reacting() && !before.foe.reacting();
+        }
+        let (done, going): (Vec<_>, Vec<_>) = live.into_iter().partition(|(_, ended)| ended.is_some_and(|e| i - e >= 120));
+        out.extend(done.into_iter().map(|(r, _)| r));
+        live = going;
+    }
+    out.extend(live.into_iter().map(|(r, _)| r));
+    (out, routes)
+}
+
+/// The book's route and marked cut point a run's pads enter: its walk in,
+/// then the route's script up to the cut (the pads after its last button
+/// are its waiting, and two routes can share their first steps, so every
+/// route's cuts are tried).
+fn marked_cut<'a>(run: &RouteSeen, book: &'a RouteBook) -> Option<(&'a Route, usize)> {
+    let all = run.as_written(run.facing_right);
+    let lead = all.iter().take_while(|&&p| p == (R, 0)).count();
+    let pads = &all[lead..];
+    let end = pads.iter().rposition(|&(_, b)| b != 0)? + 1;
+    book.routes.iter().find_map(|route| {
+        let script = route.script(None);
+        route.cuts.iter().find_map(|cut| {
+            let at = route.step_start(usize::from(cut.step));
+            let last = script[..at].iter().rposition(|&(_, b)| b != 0)? + 1;
+            (last == end && script[..end] == pads[..end]).then_some((route, usize::from(cut.step)))
+        })
+    })
+}
+
+/// Player 1 who, as soon as he is out of a hit reaction that did not knock
+/// him down, presses a Shoryuken: a reversal out of every combo reset.
+fn reversal_out_of_hits() -> impl FnMut(u32, &Percept) -> (u8, u8) {
+    let mut reeling = false;
+    let mut motion: Option<u32> = None;
+    let mut left = 0;
+    move |i, v| {
+        let f = toward(v);
+        if let Some(at) = motion {
+            let pads = [(f, 0), (D, 0), (D, 0), (D | f, HP), (D | f, HP), (0, 0)];
+            if let Some(&pad) = pads.get((i - at) as usize) {
+                return pad;
+            }
+            motion = None;
+        }
+        if v.foe.reacting() && !down(&v.foe) {
+            reeling = true;
+        } else if reeling && v.foe.free() {
+            reeling = false;
+            motion = Some(i);
+            return (f, 0);
+        }
+        rising_guard(&mut left, v).unwrap_or(if gap(v) > 70 { (f, 0) } else { (0, 0) })
+    }
+}
+
+#[test]
+fn a_route_is_cut_at_a_marked_point_into_a_throw_that_lands_as_he_comes_out_of_his_hit_reaction() {
+    // SC10 (`#202`): Player 1 stands in reach and never techs. Summed over
+    // a few fights, with the habit memory wiped every frame so these are
+    // the level's own resets.
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    let mut all = Vec::new();
+    let mut routes = 0;
+    for m in starts_from(true, 4, &HOVER_STARTS[..8]) {
+        let (seen, entered) = resets_seen(&mut m.clone(), 12_000, true, standing_in_reach());
+        all.extend(seen);
+        routes += entered;
+    }
+    if !roms_present() {
+        return;
+    }
+    // A route dropped in its walk in, for an attack seen coming, pressed
+    // nothing to tell it by.
+    let all: Vec<ResetSeen> = all.into_iter().filter(|r| r.run.pads.iter().any(|&(_, b)| b != 0)).collect();
+    let throws: Vec<&ResetSeen> = all.iter().filter(|r| r.kind == Some(ResetKind::Throw)).collect();
+    eprintln!("routes {routes}, resets {}, into throws {}", all.len(), throws.len());
+    for r in &all {
+        eprintln!("{:?} cut {:?} hit {} free {:?} thrown {:?} low {:?}", r.kind, marked_cut(&r.run, book).map(|(route, steps)| (route.name(), steps)), r.hit, r.free_at, r.thrown_at, r.low);
+    }
+    // Every reset stops its route at one of the route's marked cut points.
+    for r in &all {
+        assert!(marked_cut(&r.run, book).is_some(), "a reset not at a marked cut point: {r:?}");
+    }
+    // Into a throw: his hit reaction from the route, then the throw lands
+    // once he is out of it: on his first free frame at the earliest, and no
+    // later than its walk in (at most 14 frames from these cuts) allows.
+    let hit_throws: Vec<&&ResetSeen> = throws.iter().filter(|r| r.hit).collect();
+    let landed: Vec<&&&ResetSeen> = hit_throws.iter().filter(|r| r.thrown_at.is_some_and(|t| r.free_at.is_some_and(|f| (f..=f + 16).contains(&t)))).collect();
+    assert!(landed.len() >= 4, "throw resets that landed as he came out of his hit reaction: {} of {}", landed.len(), hit_throws.len());
+    assert_eq!(landed.len(), hit_throws.len(), "every throw reset after a hit lands on one who stands and never techs");
+    // Into a low: after a hit, its crouching kick meets him (he stands
+    // still, so it hits).
+    let lows: Vec<&ResetSeen> = all.iter().filter(|r| r.kind == Some(ResetKind::Low) && r.hit).collect();
+    let met = lows.iter().filter(|r| r.low == Some("hit")).count();
+    assert!(met >= 2 && 4 * met >= 3 * lows.len(), "low resets after a hit that hit him: {met} of {}", lows.len());
+}
+
+#[test]
+fn a_route_is_cut_at_a_marked_point_into_a_bait_whose_guard_meets_his_reversal() {
+    // SC10 (`#202`): Player 1 presses a Shoryuken as soon as he is out of
+    // each hit reaction. A route cut into a bait holds a guard over that
+    // moment: his Shoryuken meets the guard and never hits it. Summed over
+    // a few fights, the habit memory wiped every frame.
+    let book = book(TournamentFighter::Ryu, Revision::Sf6, Loadout::Standard).unwrap();
+    let mut all = Vec::new();
+    for m in starts_from(true, 4, &HOVER_STARTS) {
+        all.extend(resets_seen(&mut m.clone(), 12_000, true, reversal_out_of_hits()).0);
+    }
+    if !roms_present() {
+        return;
+    }
+    // A route dropped in its walk in, for an attack seen coming, pressed
+    // nothing to tell it by.
+    let all: Vec<ResetSeen> = all.into_iter().filter(|r| r.run.pads.iter().any(|&(_, b)| b != 0)).collect();
+    let baits: Vec<&ResetSeen> = all.iter().filter(|r| r.kind == Some(ResetKind::Bait)).collect();
+    for r in &baits {
+        eprintln!("bait cut {:?} hit {} reversal {} guarded {:?} cpu hit {} punished {}", marked_cut(&r.run, book).map(|(route, steps)| (route.name(), steps)), r.hit, r.reversal, r.guarded, r.cpu_hit, r.punished);
+    }
+    for r in &all {
+        assert!(marked_cut(&r.run, book).is_some(), "a reset not at a marked cut point: {r:?}");
+    }
+    // His reversal out of the route's hit came out into the bait's guard
+    // and did not hit it.
+    let reversals: Vec<&&ResetSeen> = baits.iter().filter(|r| r.hit && r.reversal).collect();
+    let met: Vec<&&&ResetSeen> = reversals.iter().filter(|r| r.guarded == Some(true) && !r.cpu_hit).collect();
+    let punished = met.iter().filter(|r| r.punished).count();
+    eprintln!("baits {}, reversals out of them {}, met on its guard {}, then punished {punished}", baits.len(), reversals.len(), met.len());
+    assert!(met.len() >= 5, "baits whose guard met his reversal: {} of {} reversals", met.len(), reversals.len());
+    // Nothing seen while the guard is held cuts it short (an answer to the
+    // route's own late hit, a throw tech's tap): every reversal out of a
+    // bait meets it.
+    assert_eq!(met.len(), reversals.len(), "every reversal out of a bait meets its guard");
+    // And the reversal it drew out is punished (through its Drive Parry,
+    // after which the reversal is a whiff).
+    assert!(4 * punished >= 3 * met.len(), "reversals met on a bait's guard and then punished: {punished} of {}", met.len());
+}
+
+/// Player 1 who guards low, walks in when far, and never techs a throw.
+fn guarding_never_techs(_: u32, v: &Percept) -> (u8, u8) {
+    if gap(v) > 90 { (toward(v), 0) } else { (D | away(v), 0) }
+}
+
+#[test]
+fn the_habit_memory_turns_more_combo_resets_into_throws_against_one_who_never_techs() {
+    // SC10 (`#202`): the same fights against Player 1 who guards and never
+    // techs, with the CPU's habit memory and with it wiped every frame.
+    // With it, it learns he never techs and cuts more of its routes, and
+    // more of those into throws.
+    let tally = |forget: bool| {
+        let (mut routes, mut resets, mut throws) = (0u32, 0u32, 0u32);
+        for m in starts_from(true, 4, &HOVER_STARTS) {
+            let (seen, entered) = resets_seen(&mut m.clone(), 12_000, forget, guarding_never_techs);
+            routes += entered;
+            resets += seen.len() as u32;
+            throws += seen.iter().filter(|r| r.kind == Some(ResetKind::Throw)).count() as u32;
+        }
+        (routes, resets, throws)
+    };
+    let (kept, wiped) = (tally(false), tally(true));
+    if !roms_present() {
+        return;
+    }
+    eprintln!("routes, resets, into throws: {kept:?} with its memory, {wiped:?} wiped");
+    assert!(kept.0 >= 100 && wiped.0 >= 100, "routes taken: {} and {}", kept.0, wiped.0);
+    // Throw resets per route taken, and resets per route taken.
+    assert!(kept.2 * wiped.0 >= 3 * wiped.2 * kept.0 / 2, "throw resets: {kept:?} with its memory, {wiped:?} wiped");
+    assert!(5 * kept.1 * wiped.0 >= 6 * wiped.1 * kept.0, "resets: {kept:?} with its memory, {wiped:?} wiped");
+}

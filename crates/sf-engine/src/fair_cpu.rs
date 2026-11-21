@@ -67,7 +67,7 @@ mod game;
 mod habit;
 pub(crate) use era::EraControl;
 pub use focus::Focus;
-pub use game::{Judged, Situation};
+pub use game::{Judged, ResetKind, Situation};
 pub use habit::{GrabAnswer, GuardAnswer, Habits, JumpFrom, RiseAnswer, ShotAnswer, Spot};
 use era::Tactics;
 
@@ -89,6 +89,19 @@ pub const FIGHT_LOOP: u32 = 0x3eafa;
 const RING: usize = 40;
 /// The longest plan, in pad frames.
 const PLAN_CAP: usize = 48;
+/// Combo resets (SC10, `#202`): the weights of what a cut goes into before
+/// the habit memory shifts them; the gap a throw reset walks in to (from
+/// its fighter's centre to his hurtbox, inside a throw's reach); and the
+/// frames before he is free that a low reset presses its kick, about its
+/// start-up, so it is out as he comes out of his hit reaction.
+const RESET_THROW: i32 = 40;
+const RESET_LOW: i32 = 30;
+const RESET_BAIT: i32 = 30;
+const RESET_THROW_GAP: i16 = 36;
+const RESET_LOW_LEAD: usize = 3;
+/// The farthest a bait is held from (the gap as he comes free): farther,
+/// his reversal would not reach the guard, nor its punish him.
+const BAIT_NEAR: i16 = 80;
 
 /// Pad bits: the stick (right, left, down, up) and the six buttons.
 pub const RIGHT: u16 = 1;
@@ -205,6 +218,19 @@ impl Level {
         }
     }
 
+    /// Percent chance that a route with a marked cut point, which would
+    /// not win the round, is cut there on purpose into a combo reset (SC10,
+    /// `#202`), before the habit memory shifts it
+    /// ([`habit::Habits::reset_lean`]). Easy never resets.
+    pub const fn reset_chance(self) -> u32 {
+        match self {
+            Level::Easy => 0,
+            Level::Normal => 8,
+            Level::Hard => 14,
+            Level::VeryHard => 20,
+        }
+    }
+
     /// Percent chance a special's motion is entered cleanly (execution).
     pub const fn execution(self) -> u32 {
         match self {
@@ -282,10 +308,11 @@ crate::canonical::canonical_struct!(Normal, "Normal.v1", {
     crouch, button, pressed, from, best,
 });
 
-crate::canonical::canonical_struct!(FairCpu, "FairCpu.v7", {
+crate::canonical::canonical_struct!(FairCpu, "FairCpu.v8", {
     seen, rng, seeded, plan, settle, reach, reach_seen, last_normal, shot_range, shot_far, fighter, pad,
     forced_stronger, judge, judged, game, route, recent_routes, route_outcome, route_drops, route_check,
     focus, action_frame, last_view, habits, plan_worked, last_plan, route_landed, out_of_fight, jump_began, jump_met, answered_plan,
+    bait_until, reset_wait,
 });
 
 crate::canonical::canonical_enum!(Role, "Role.v1";
@@ -1088,6 +1115,11 @@ pub struct FairCpu {
     /// and whether it has been answered (or let go by the level's chance).
     jump_began: u32,
     jump_met: bool,
+    /// The step a combo reset's bait holds its guard until (SC10, `#202`):
+    /// nothing seen cuts that guard short.
+    bait_until: u32,
+    /// A combo reset whose route is cut, until its fighter is free.
+    reset_wait: Option<game::ResetWait>,
 }
 
 /// What the Fair CPU watches for, and the frame its last view of the
@@ -1151,6 +1183,8 @@ impl Default for FairCpu {
             jump_began: 0,
             jump_met: false,
             answered_plan: None,
+            bait_until: 0,
+            reset_wait: None,
         }
     }
 }
@@ -1270,6 +1304,12 @@ impl FairCpu {
     /// The route it is entering: its place in its fighter's book.
     pub fn route_index(&self) -> Option<usize> {
         self.route.map(|run| usize::from(run.index))
+    }
+
+    /// The combo reset the route it is entering is cut into, when it is
+    /// cut on purpose at a marked point (SC10, `#202`).
+    pub fn route_reset(&self) -> Option<ResetKind> {
+        self.route.and_then(|run| run.reset).map(|reset| reset.kind)
     }
 
     /// The step of that route its next pad belongs to, once its walk in is
@@ -1394,6 +1434,7 @@ impl FairCpu {
                 self.end_game_plan();
                 self.route = None;
                 self.route_outcome = None;
+                self.reset_wait = None;
                 self.judge = game::Judge::default();
                 self.judged = Judged::default();
                 self.focus = Focus::default();
@@ -1530,6 +1571,30 @@ impl FairCpu {
         }
         if view.me.reacting() {
             self.route = None;
+            self.reset_wait = None;
+            self.bait_until = 0;
+        }
+        if let Some(mut wait) = self.reset_wait.filter(|_| stronger) {
+            // A throw or a low goes on only once it has seen the route hit,
+            // from its fighter's first free frame; seen nothing by his first
+            // free frame (cut after a guard or a whiff), it ends as a slip
+            // does. A bait's guard is up already. The game plan that took
+            // the route goes on from what it saw.
+            wait.hit |= view.foe.reacting();
+            let since = step.saturating_sub(wait.cut);
+            let free_from = u32::from(wait.reset.free.saturating_sub(wait.reset.ahead));
+            let go = wait.hit && since >= free_from;
+            if go || since >= u32::from(wait.reset.free) {
+                self.reset_wait = None;
+                self.route_outcome = Some(if wait.hit { game::Outcome::Hit } else { game::Outcome::Nothing });
+                if go && wait.reset.kind != ResetKind::Bait {
+                    let pads = self.reset_pads(wait.reset, if wait.facing_right { RIGHT } else { LEFT }, since as usize);
+                    self.settle = step + pads.len() as u32;
+                    self.plan = Plan::of(PlanKind::Act, &pads);
+                }
+            } else {
+                self.reset_wait = Some(wait);
+            }
         }
         if let Some(RouteCheck { index, at, hit }) = self.route_check.filter(|_| stronger) {
             let hit = hit || view.foe.reacting();
@@ -1554,7 +1619,12 @@ impl FairCpu {
             return self.next_route_pad(step, view, stronger);
         }
         if let Some(before) = before {
-            let interruptible = self.plan.interruptible();
+            // A combo reset's bait (SC10, `#202`) holds its guard for its
+            // time: nothing seen cuts it short. The guard itself meets his
+            // attack (its Drive Parry included, after which his reversal is
+            // a whiff to punish).
+            let holding_bait = stronger && matches!(self.plan.kind, PlanKind::Guard { .. }) && step < self.bait_until;
+            let interruptible = self.plan.interruptible() && !holding_bait;
             // The stronger play leaves a knocked-down opponent to its
             // knockdown plans: the era kit's answer to a hit (a super on
             // the hit confirm) would only whiff over him.
@@ -1564,7 +1634,9 @@ impl FairCpu {
             // punish it.
             let baiting = stronger && self.out_of_reach(step, view);
             let spend_super = self.spends_super(ctx, view);
-            let era_response = ctx.era.filter(|tactics| !foe_down && !baiting && (interruptible || tactics.can_interrupt()))
+            // Nor does the era kit answer anything while a bait's guard is
+            // held (its hit confirm would give up the bait it chose).
+            let era_response = ctx.era.filter(|tactics| !foe_down && !baiting && !holding_bait && (interruptible || tactics.can_interrupt()))
                 .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before, stronger, spend_super));
             let mut answered = false;
             if let Some(mut plan) = era_response {
@@ -1668,6 +1740,18 @@ impl FairCpu {
                 if run.combo_in_full() {
                     self.route_check = Some(RouteCheck { index: run.index, at: step + game::ROUTE_WATCH, hit: false });
                 }
+                // Cut on purpose: its fighter waits out its own recovery
+                // (a bait guarding through it) and then goes on with the
+                // reset, if it has seen the route hit by then. What came of
+                // the route is known only then.
+                if let Some(reset) = run.reset {
+                    // Still while it waits, to his first free frame at most.
+                    let wait = usize::from(reset.free);
+                    self.reset_wait = Some(game::ResetWait { reset, cut: step, facing_right: run.facing_right(), hit: false });
+                    self.route_outcome = None;
+                    self.last_normal = None;
+                    self.plan = if reset.kind == ResetKind::Bait { self.bait_plan(reset, step) } else { Plan::of(PlanKind::Act, &vec![0; wait][..wait - 1]) };
+                }
                 0
             }
         }
@@ -1727,19 +1811,105 @@ impl FairCpu {
         // Execution: a slip drops the route after one of its steps.
         let pressure = view.me.health < view.foe.health || view.dist() < 60;
         let clean = ctx.level.execution().saturating_sub(if pressure { (100 - ctx.level.execution()) / 2 } else { 0 });
-        let stop = if route.steps.len() >= 2 && !self.rng.chance(clean) {
+        let mut stop = if route.steps.len() >= 2 && !self.rng.chance(clean) {
             route.step_start(1 + self.rng.below(route.steps.len() as u32 - 1) as usize)
         } else {
             route.len()
         };
+        // A combo reset (SC10, `#202`): cut on purpose at a marked point.
+        let reset = if self.stronger(ctx) { self.choose_reset(ctx, route, &moment, stop) } else { None };
+        if let Some((at, _)) = reset {
+            stop = at;
+        }
         let walk = moment.walk_frames(route);
         self.recent_routes.rotate_right(1);
         self.recent_routes[0] = pick as u8 + 1;
-        self.route = Some(game::RouteRun::new(fighter, revision, loadout, pick as u8, walk, stop as u16, !view.me.facing_left));
+        let mut run = game::RouteRun::new(fighter, revision, loadout, pick as u8, walk, stop as u16, !view.me.facing_left);
+        run.reset = reset.map(|(_, reset)| reset);
+        self.route = Some(run);
         self.route_outcome = None;
         self.last_normal = None;
         self.plan = Plan::default();
         true
+    }
+
+    /// Whether to cut `route` on purpose at one of its marked points (SC10,
+    /// `#202`), and into what: the cut's script frame and the reset. Never a
+    /// route that would win the round, and never past where a slip of
+    /// execution already cuts it (`stop`). How often is the level's
+    /// [`Level::reset_chance`], shifted by the habit memory, which also
+    /// weighs what it cuts into. A throw or a low is taken only where its
+    /// walk in and press fit one plan, a bait only near him.
+    fn choose_reset(&mut self, ctx: &Context, route: &crate::route_book::Route, moment: &game::Moment, stop: usize) -> Option<(usize, game::Reset)> {
+        if route.cuts.is_empty() || moment.wins_round(route) {
+            return None;
+        }
+        let lean = self.habits.reset_lean(ctx.level);
+        let chance = ctx.level.reset_chance() as i32 + lean.chance;
+        let cuts: Vec<&crate::route_book::Cut> = route.cuts.iter().filter(|cut| route.step_start(usize::from(cut.step)) <= stop).collect();
+        if chance <= 0 || cuts.is_empty() || !self.rng.chance(chance as u32) {
+            return None;
+        }
+        let cut = *cuts[self.rng.below(cuts.len() as u32) as usize];
+        let reset = |kind| game::Reset { kind, free: cut.free, ahead: cut.ahead, gap: cut.gap };
+        let fits = |kind| self.reset_pads(reset(kind), 0, 0).len() <= PLAN_CAP;
+        let weights = [
+            (ResetKind::Throw, if fits(ResetKind::Throw) { (RESET_THROW + lean.throw).max(0) } else { 0 }),
+            (ResetKind::Low, if fits(ResetKind::Low) { (RESET_LOW + lean.low).max(0) } else { 0 }),
+            (ResetKind::Bait, if cut.gap <= BAIT_NEAR { (RESET_BAIT + lean.bait).max(0) } else { 0 }),
+        ];
+        let total: i32 = weights.iter().map(|w| w.1).sum();
+        if total <= 0 {
+            return None;
+        }
+        let mut roll = self.rng.below(total as u32) as i32;
+        let kind = weights.iter().find(|w| {
+            roll -= w.1;
+            roll < 0
+        })?.0;
+        Some((route.step_start(usize::from(cut.step)), reset(kind)))
+    }
+
+    /// The pads of a throw or low reset from the frame after its route is cut,
+    /// toward the opponent's side `fwd` (empty for a bait, which is a
+    /// guard): it waits for its fighter to be free, walks in as far as the
+    /// book says he will be, and presses so the throw comes once he is out
+    /// of his hit reaction (no throw lands in one) and the low meets him as
+    /// he comes out of it. Throw buttons as the stronger play's throw.
+    ///
+    /// `from` is the frame after the cut the pads begin on: a reset that
+    /// goes on later than its fighter is free walks in from then, its press
+    /// kept no earlier than the book's timing.
+    fn reset_pads(&self, reset: game::Reset, fwd: u16, from: usize) -> Vec<u16> {
+        let free = usize::from(reset.free).saturating_sub(from);
+        let mut pads = vec![0u16; usize::from(reset.free.saturating_sub(reset.ahead)).saturating_sub(from)];
+        match reset.kind {
+            ResetKind::Throw => {
+                let walk = (reset.gap - RESET_THROW_GAP).max(0) as usize;
+                pads.extend(std::iter::repeat_n(fwd, walk.div_ceil(2)));
+                // The engine throws only from a standing fighter.
+                pads.extend([0, 0]);
+                pads.resize(pads.len().max(free), 0);
+                pads.extend([fwd | button(2), fwd | button(2), 0]);
+            }
+            ResetKind::Low => {
+                let walk = (reset.gap - (self.reach[1][3] - 4)).max(0) as usize;
+                pads.extend(std::iter::repeat_n(fwd, walk.div_ceil(2)));
+                pads.resize(pads.len().max(free.saturating_sub(RESET_LOW_LEAD)), 0);
+                pads.extend([DOWN, DOWN | button(3), DOWN | button(3), DOWN | button(3), DOWN, 0]);
+            }
+            ResetKind::Bait => pads.clear(),
+        }
+        pads
+    }
+
+    /// A bait's guard, from the frame its route is cut: held past his
+    /// recovery for a reversal to show; crouching, as over his rise (a
+    /// standing guard with nothing coming is a walk back).
+    fn bait_plan(&mut self, reset: game::Reset, step: u32) -> Plan {
+        let held = u32::from(reset.free) + game::BAIT_FRAMES;
+        self.bait_until = step + held;
+        Plan::guard(true, held as u16)
     }
 
     /// Its longest normal, as far as it knows.
@@ -2261,7 +2431,12 @@ impl FairCpu {
             // an opponent who has walked into throw range, pulse `Back + HP`
             // on a short delay so a grab is teched inside its 7-frame window
             // (and an opponent standing in throw range is thrown).
+            // Not in a combo reset's bait (SC10, `#202`): its guard waits
+            // for his reversal, and the pulse would throw him or come out
+            // as a button into it.
+            let baiting = self.stronger(ctx) && step < self.bait_until;
             if ctx.throws
+                && !baiting
                 && threat.is_none()
                 && !view.foe.jumping()
                 && !view.foe.reacting()
@@ -3533,5 +3708,212 @@ mod tests {
             }
         }
         assert!((100..190).contains(&clean), "{clean} of 200 clean at Easy");
+    }
+
+    /// Routes taken from close neutral by `n` fresh CPUs at `level` (seeded
+    /// 1 to `n`), against an opponent with `foe_health` health bar points,
+    /// each CPU's habit memory filled by `notes` first: the routes taken,
+    /// those cut on purpose into a combo reset (SC10, `#202`), and those
+    /// cut into a throw.
+    fn resets_taken(level: Level, foe_health: u16, notes: &[(Spot, usize)], n: u64) -> (u32, u32, u32) {
+        let c = sf6_ctx(level);
+        let me = Body { facing_left: false, ..body(200) };
+        // His hurtbox 50 pixels from its fighter's centre: in reach of
+        // Ryu's SF6 ground routes, which start from 52 to 58.
+        let foe = Body { facing_left: true, health: foe_health, ..body(260) };
+        let view = Percept { frame: 100, fighting: true, me, foe, ..Percept::default() };
+        let (mut taken, mut cut, mut throws) = (0, 0, 0);
+        for seed in 1..=n {
+            let mut cpu = FairCpu::seeded(seed);
+            for &(spot, answer) in notes {
+                for _ in 0..6 {
+                    cpu.habits.record(spot, answer);
+                }
+            }
+            if !cpu.take_route(&c, view, &[crate::route_book::Reach::Ground], game::NEUTRAL_WALK) {
+                continue;
+            }
+            taken += 1;
+            let run = cpu.route.unwrap();
+            if let Some(reset) = run.reset {
+                cut += 1;
+                throws += u32::from(reset.kind == ResetKind::Throw);
+                // Cut at one of the route's marked points.
+                let book = crate::route_book::book(TournamentFighter::Ryu, crate::era::Revision::Sf6, crate::era::Loadout::Standard).unwrap();
+                let route = &book.routes[usize::from(run.index)];
+                assert!(route.cuts.iter().any(|c| route.step_start(usize::from(c.step)) == run.route_stop()), "{}", route.name());
+            }
+        }
+        (taken, cut, throws)
+    }
+
+    #[test]
+    fn a_route_that_would_win_the_round_is_never_cut_on_purpose() {
+        // SC10 (`#202`): with a point of health left every route wins the
+        // round, and none is cut, even with a memory that asks for resets;
+        // with his health full the same CPUs cut many.
+        let notes = [(Spot::Grabbed, GrabAnswer::NotTeched as usize), (Spot::AfterGuard, GuardAnswer::KeptGuarding as usize)];
+        let (full, nearly_out) = (resets_taken(Level::VeryHard, 48, &notes, 600), resets_taken(Level::VeryHard, 1, &notes, 600));
+        assert_eq!(full.0, 600);
+        assert_eq!(nearly_out.0, 600);
+        assert!(full.1 >= 120, "routes cut with his health full: {full:?}");
+        assert_eq!(nearly_out.1, 0, "routes that win the round cut: {nearly_out:?}");
+    }
+
+    #[test]
+    fn how_often_a_route_is_cut_is_a_level_value_and_the_habit_memory_shifts_it() {
+        // SC10 (`#202`): Easy never cuts a route on purpose, and the higher
+        // levels cut more. Against one who never techs and keeps guarding
+        // the memory cuts more, and more into throws, as far as the level
+        // uses it: not at all at Easy.
+        let n = 2_000;
+        let none: [(Spot, usize); 0] = [];
+        let notes = [(Spot::Grabbed, GrabAnswer::NotTeched as usize), (Spot::AfterGuard, GuardAnswer::KeptGuarding as usize)];
+        let [easy, normal, hard, very] = [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard].map(|level| resets_taken(level, 48, &none, n));
+        assert_eq!(easy.1, 0, "Easy cut {easy:?}");
+        assert!(normal.1 > 0 && normal.1 < hard.1 && hard.1 < very.1, "{normal:?} {hard:?} {very:?}");
+        // Each level's share near its value (the routes all have cuts).
+        for (level, (taken, cut, _)) in [(Level::Normal, normal), (Level::Hard, hard), (Level::VeryHard, very)] {
+            let share = 100 * cut / taken;
+            let want = level.reset_chance();
+            assert!(share + 3 >= want && share <= want + 3, "{level:?}: {share}% cut, its value {want}%");
+        }
+        let very_noted = resets_taken(Level::VeryHard, 48, &notes, n);
+        assert!(very_noted.1 >= very.1 + n as u32 / 20, "cut with the memory {very_noted:?}, without {very:?}");
+        // Into throws: about 56% of its resets with the memory, 40% without.
+        assert!(100 * very_noted.2 / very_noted.1 >= 100 * very.2 / very.1 + 10, "share into throws with the memory {very_noted:?}, without {very:?}");
+        assert_eq!(resets_taken(Level::Easy, 48, &notes, n).1, 0, "Easy uses no memory and never resets");
+        // A memory of reversals out of its pressure leans to baits.
+        let reversals = [(Spot::AfterGuard, GuardAnswer::Button as usize), (Spot::Rising, RiseAnswer::Reversal as usize)];
+        let lean = Habits::default();
+        let mut noted = Habits::default();
+        for &(spot, answer) in &reversals {
+            for _ in 0..6 {
+                noted.record(spot, answer);
+            }
+        }
+        assert!(noted.reset_lean(Level::VeryHard).bait > lean.reset_lean(Level::VeryHard).bait);
+        assert_eq!(noted.reset_lean(Level::Easy), lean.reset_lean(Level::Easy));
+    }
+
+    #[test]
+    fn the_canonical_hash_covers_a_planned_reset_a_bait_held_and_a_reset_waiting() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        let mut planned = FairCpu::seeded(3);
+        let c = sf6_ctx(Level::VeryHard);
+        let me = Body { facing_left: false, ..body(200) };
+        let view = Percept { frame: 100, fighting: true, me, foe: Body { facing_left: true, ..body(260) }, ..Percept::default() };
+        assert!(planned.take_route(&c, view, &[crate::route_book::Reach::Ground], game::NEUTRAL_WALK));
+        let mut other = planned;
+        let mut run = planned.route.unwrap();
+        run.reset = Some(game::Reset { kind: ResetKind::Bait, free: 20, ahead: 3, gap: 60 });
+        planned.route = Some(run);
+        run.reset = Some(game::Reset { kind: ResetKind::Throw, free: 20, ahead: 3, gap: 60 });
+        other.route = Some(run);
+        assert_ne!(hash(&planned), hash(&other));
+        let mut held = planned;
+        held.bait_until = 500;
+        assert_ne!(hash(&held), hash(&planned));
+        let mut waiting = planned;
+        waiting.reset_wait = Some(game::ResetWait { reset: game::Reset { kind: ResetKind::Low, free: 20, ahead: 3, gap: 60 }, cut: 90, facing_right: true, hit: false });
+        assert_ne!(hash(&waiting), hash(&planned));
+        let mut seen_hit = waiting;
+        seen_hit.reset_wait.as_mut().unwrap().hit = true;
+        assert_ne!(hash(&seen_hit), hash(&waiting));
+    }
+
+    /// A Very Difficult CPU that has taken a route cut into a throw reset
+    /// (SC10, `#202`), fed frames with the opponent standing in reach and,
+    /// with `reacting`, in a hit reaction for 20 frames from the cut. The
+    /// reset, the step its fighter is free on, and its pads from then.
+    fn throw_reset_played(reacting: bool) -> (game::Reset, Vec<u16>) {
+        let c = sf6_ctx(Level::VeryHard);
+        let me = Body { facing_left: false, ..body(200) };
+        let foe = Body { facing_left: true, ..body(260) };
+        let at = |frame: u32, foe: Body| Percept { frame, fighting: true, me, foe, ..Percept::default() };
+        for seed in 1..2_000u64 {
+            let mut cpu = FairCpu::seeded(seed);
+            for f in 1..=40 {
+                cpu.observe(at(f, foe));
+                cpu.press(f + 1, true, &c);
+            }
+            cpu.game = None;
+            if !cpu.take_route(&c, at(40, foe), &[crate::route_book::Reach::Ground], game::NEUTRAL_WALK) {
+                continue;
+            }
+            let Some(reset) = cpu.route.and_then(|run| run.reset).filter(|r| r.kind == ResetKind::Throw) else { continue };
+            let mut cut = None;
+            let mut pads = Vec::new();
+            for f in 41..200u32 {
+                let reeling = reacting && cut.is_some_and(|c: u32| f >= c && f < c + 20);
+                let seen = if reeling { Body { move_id: 0x30, state: 0x8a, ..foe } } else { foe };
+                cpu.observe(at(f, seen));
+                let pad = cpu.press(f + 1, true, &c);
+                if cut.is_none() && cpu.route.is_none() {
+                    cut = Some(f + 1);
+                }
+                if let Some(c) = cut {
+                    if f + 1 >= c + u32::from(reset.free - reset.ahead) {
+                        pads.push(pad);
+                    }
+                }
+            }
+            return (reset, pads);
+        }
+        panic!("no throw reset taken");
+    }
+
+    #[test]
+    fn a_throw_reset_goes_on_only_once_the_route_is_seen_to_hit() {
+        // SC10 (`#202`): the same CPU, the same route cut into a throw. Seen
+        // to hit him, it walks in and throws on the book's timing once its
+        // fighter is free; seen to meet nothing, it lets the reset go.
+        let (reset, hit) = throw_reset_played(true);
+        let (_, missed) = throw_reset_played(false);
+        let cpu = FairCpu::new();
+        let wait = usize::from(reset.free - reset.ahead);
+        // Seen to hit by its first free frame, its pads go on from there as
+        // they were planned from the cut.
+        let want = &cpu.reset_pads(reset, RIGHT, 0)[wait..];
+        assert_eq!(cpu.reset_pads(reset, RIGHT, wait), want);
+        assert_eq!(&hit[..want.len()], want, "after a hit: {reset:?}");
+        assert!(want.contains(&(RIGHT | button(2))));
+        assert_ne!(&missed[..want.len()], want, "after nothing: the reset went on");
+    }
+
+    #[test]
+    fn of_two_routes_the_one_that_wins_the_round_is_never_cut_and_the_other_can_be() {
+        // SC10 (`#202`): with 14 health bar points left (280 of an era
+        // style's units), Ryu's SF6 routes of 300 damage win the round and
+        // those of 260 or less do not. Over many CPUs, none of the winning
+        // routes it takes is cut on purpose; some of the others are.
+        let c = sf6_ctx(Level::VeryHard);
+        let me = Body { facing_left: false, ..body(200) };
+        let view = Percept { frame: 100, fighting: true, me, foe: Body { facing_left: true, health: 14, ..body(260) }, ..Percept::default() };
+        let book = crate::route_book::book(TournamentFighter::Ryu, crate::era::Revision::Sf6, crate::era::Loadout::Standard).unwrap();
+        let (mut winning, mut winning_cut, mut other, mut other_cut) = (0, 0, 0, 0);
+        for seed in 1..=4_000u64 {
+            let mut cpu = FairCpu::seeded(seed);
+            if !cpu.take_route(&c, view, &[crate::route_book::Reach::Ground], game::NEUTRAL_WALK) {
+                continue;
+            }
+            let run = cpu.route.unwrap();
+            let route = &book.routes[usize::from(run.index)];
+            if u32::from(route.damage) * 48 >= 14 * u32::from(crate::era_fight::FULL_SUB_HP) {
+                winning += 1;
+                winning_cut += u32::from(run.reset.is_some());
+            } else {
+                other += 1;
+                other_cut += u32::from(run.reset.is_some());
+            }
+        }
+        assert!(winning >= 1_000 && other >= 100, "winning routes taken {winning}, others {other}");
+        assert_eq!(winning_cut, 0, "winning routes cut");
+        assert!(other_cut >= 10, "other routes cut: {other_cut} of {other}");
     }
 }

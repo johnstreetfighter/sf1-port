@@ -16,6 +16,12 @@
 //! measures every checked-in route's step windows again and rewrites the
 //! books whose windows change (see `route_book::set_windows`).
 //!
+//! `cargo run -p sf-host --release --example route_search -- cuts [only]`
+//!
+//! measures every checked-in route's cut points again (where it may be cut
+//! on purpose for a combo reset, SC10 `#202`; see `route_book::Cut`) and
+//! rewrites the books whose cuts change. A search marks them as it goes.
+//!
 //! `cargo run -p sf-host --release --example route_search -- all [threads] [nodes] [keep] [only] [--keep-books]`
 //!
 //! searches every fighter in every style (only those whose route book file
@@ -39,14 +45,14 @@ use std::sync::{Arc, Mutex};
 use sf_engine::data_bank::DataBank;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, Loadout, Revision};
 use sf_engine::roster::TournamentFighter;
-use sf_engine::route_book::{books, file_name, ground_actions, opponent_key, opponents, position, replay, search, set_windows, Budget, Pair, RouteBook, Searched, Stance};
+use sf_engine::route_book::{books, file_name, ground_actions, measure_cuts, opponent_key, opponents, position, replay, search, set_windows, Budget, Pair, RouteBook, Searched, Stance};
 use sf_host::log::Log;
 use sf_video::romset::load_assets;
 
 const ROMS: &str = "tools/reference/local/roms/sf";
 const MANIFEST: &str = "tools/reference/rom-manifest.json";
 const BOOKS: &str = "crates/sf-engine/route-books";
-const USAGE: &str = "route_search <fighter> <style> [nodes] [keep]\nroute_search all [threads] [nodes] [keep] [only] [--keep-books]";
+const USAGE: &str = "route_search <fighter> <style> [nodes] [keep]\nroute_search all [threads] [nodes] [keep] [only] [--keep-books]\nroute_search windows [only]\nroute_search cuts [only]";
 /// Why a 1987 pair has no book.
 const NO_COMBOS: &str = "the 1987 rules allow no combo: a hit fighter cannot be hit again";
 
@@ -238,12 +244,48 @@ fn measure_windows_again(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// Measure every checked-in route's cut points again from its reference
+/// positions (`route_book::measure_cuts`), keeping all else in its book,
+/// and write the books whose cuts changed. Only books whose file name
+/// contains `only`, when given.
+fn measure_cuts_again(args: &[String]) -> Result<(), String> {
+    let only = args.get(2).map(|s| s.to_ascii_lowercase()).unwrap_or_default();
+    let (rom, data) = load()?;
+    let data = data.unwrap_or_else(|| Arc::new(DataBank::build(&rom, &[])));
+    let (mut written, mut marked) = (0, 0);
+    for book in books().iter().filter(|b| file_name(b.fighter, b.revision, b.loadout).contains(&only)) {
+        let mut new = book.clone();
+        let mut bases = std::collections::HashMap::new();
+        for route in &mut new.routes {
+            let mut base = |stance: Stance| {
+                bases
+                    .entry((route.reach, stance == Stance::Crouching))
+                    .or_insert_with(|| position(&rom, Some(data.clone()), book.fighter, (book.revision, book.loadout), route.reach, stance).ok())
+                    .clone()
+            };
+            let (standing, crouching) = (base(Stance::Standing), base(Stance::Crouching));
+            let Some(standing) = standing else {
+                return Err(format!("{}: no reference position for {:?}", opponent_key(book.fighter, (book.revision, book.loadout)), route.reach));
+            };
+            route.cuts = measure_cuts(&standing, crouching.as_ref(), route);
+            marked += usize::from(!route.cuts.is_empty());
+        }
+        if new != *book {
+            written += 1;
+            write_book(&new)?;
+        }
+    }
+    println!("{written} books written; {marked} routes with a cut point");
+    Ok(())
+}
+
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         None => Err(USAGE.into()),
         Some("all") => search_every_pair(&args),
         Some("windows") => measure_windows_again(&args),
+        Some("cuts") => measure_cuts_again(&args),
         Some(_) => search_pair(&args),
     }
 }

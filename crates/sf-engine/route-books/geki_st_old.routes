@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Geki
 style St/Old
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 2
 gap 62
 fails-on Mike crouching
+cuts
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 623+LP | wait 1 1..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 3
 gap 62
 fails-on Mike crouching
+cuts 1 free 32 ahead 3 gap 98
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 623+LP | wait 1 1..10 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -46,6 +48,7 @@ stances standing crouching
 confirm 2
 gap 70
 fails-on Joe standing; Mike crouching
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 623+LP | wait 2 2..10 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -62,6 +65,7 @@ stances standing crouching
 confirm 2
 gap 70
 fails-on Joe standing; Mike crouching
+cuts 1 free 33 ahead 3 gap 98
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 623+LP | wait 2 2..10 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -78,6 +82,7 @@ stances standing crouching
 confirm 2
 gap 46
 fails-on Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+cuts
 step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
 step 623+LP | wait 1 1..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -94,6 +99,7 @@ stances standing
 confirm 2
 gap 46
 fails-on
+cuts
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step 623+LP | wait 0 0..4 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -110,6 +116,7 @@ stances standing crouching
 confirm 2
 gap 62
 fails-on Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 623+LP | wait 0 0..6 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end

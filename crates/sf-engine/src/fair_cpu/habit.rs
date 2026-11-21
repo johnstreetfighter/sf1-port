@@ -152,6 +152,16 @@ pub enum Lean {
     WalkThrow,
 }
 
+/// What the memory adds to the chance of a combo reset and to the weight of
+/// each thing it cuts into ([`Habits::reset_lean`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ResetLean {
+    pub chance: i32,
+    pub throw: i32,
+    pub low: i32,
+    pub bait: i32,
+}
+
 /// The share of the memory a level leans on, in percent: Easy notes but
 /// never uses it.
 pub fn uses(level: Level) -> u16 {
@@ -514,6 +524,40 @@ impl Habits {
         let jumps = expected(&self.after_shot, ShotAnswer::Jumped as usize, level);
         let bonus = if jumps && !(watched.0..=watched.1).contains(&gap) { -40 } else { 0 };
         bonus * i32::from(uses(level)) / 100
+    }
+
+    /// What the memory does to its combo resets (SC10, `#202`), as far as
+    /// the level uses it: points added to the level's chance of cutting a
+    /// route at a marked point, and to the weights of what it cuts into.
+    /// One who does not tech, or keeps guarding after its pressure, is
+    /// thrown or hit low; one who presses a button or a reversal out of a
+    /// spot is baited; one who throws out of one is baited less.
+    pub(super) fn reset_lean(&self, level: Level) -> ResetLean {
+        let is = |tally: &[u16], answer: usize| expected(tally, answer, level);
+        let mut lean = ResetLean::default();
+        if is(&self.grabbed, GrabAnswer::NotTeched as usize) {
+            lean.chance += 8;
+            lean.throw += 40;
+        } else if is(&self.grabbed, GrabAnswer::Teched as usize) {
+            lean.throw -= 25;
+        }
+        if is(&self.after_guard, GuardAnswer::KeptGuarding as usize) {
+            lean.chance += 5;
+            lean.throw += 15;
+            lean.low += 15;
+        }
+        if is(&self.after_guard, GuardAnswer::Button as usize) || is(&self.rising, RiseAnswer::Reversal as usize) {
+            lean.chance += 8;
+            lean.bait += 40;
+        } else if is(&self.rising, RiseAnswer::Button as usize) {
+            lean.bait += 15;
+        }
+        // A bait's guard loses to a throw.
+        if is(&self.after_guard, GuardAnswer::Throw as usize) || is(&self.rising, RiseAnswer::Throw as usize) {
+            lean.bait -= 25;
+        }
+        let used = i32::from(uses(level));
+        ResetLean { chance: lean.chance * used / 100, throw: lean.throw * used / 100, low: lean.low * used / 100, bait: lean.bait * used / 100 }
     }
 
     pub(super) fn throw_bonus(&self, level: Level) -> i32 {

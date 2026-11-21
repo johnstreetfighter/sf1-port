@@ -31,8 +31,12 @@
 //! engine ([`replay`]): hits on the engine's own combo count, damage,
 //! meter spent and gained, whether the defender ends knocked down, the
 //! stances it works on, the rules it needs, how long after the first hit
-//! the second step can still begin (the time there is to see the hit), and
-//! how far apart the fighters can start. A step is named by its input, not
+//! the second step can still begin (the time there is to see the hit),
+//! how far apart the fighters can start, and where it may be cut on
+//! purpose for a combo reset ([`Cut`], SC10 `#202`: the defender comes out
+//! of the hit reaction on his feet with the attacker free first; format 2
+//! of the book added the line, `route_search cuts` marks the checked-in
+//! books). A step is named by its input, not
 //! by the move the input gave: the same motion gives a super with meter
 //! and a special without. Meter gained is measured from full meters, so it
 //! undercounts; and a punish's Drive gain includes what guarding the sweep
@@ -75,7 +79,7 @@ pub type Pad = (u8, u8);
 const BOOKS: &[&str] = include!("../route-books/books.rs");
 
 /// The first line of a route book file.
-const HEADING: &str = "route-book 1";
+const HEADING: &str = "route-book 2";
 /// The reference defender.
 const DEFENDER: TournamentFighter = TournamentFighter::Ryu;
 /// An era style's health units in one health bar point.
@@ -182,6 +186,28 @@ pub struct Route {
     /// or in one (as [`opponent_key`] names it), in every stance the route
     /// works on or in one. See [`Route::fails_against`].
     pub fails_on: Vec<String>,
+    /// Where the route may be cut on purpose (SC10, `#202`): see [`Cut`].
+    pub cuts: Vec<Cut>,
+}
+
+/// A marked point where a route may be cut on purpose, to attack again at
+/// once (a combo reset; SC10, `#202`). Cut before step `step`: the steps
+/// before it have hit, the defender is in a hit reaction he comes out of
+/// on his feet, and the attacker is free to act before he is. Measured by
+/// [`cut_at`] at the route's recorded waits from its reference position;
+/// the numbers are against a standing defender, and the cut holds in every
+/// stance the route lists.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cut {
+    pub step: u8,
+    /// Frames from the cut (the script frame step `step` would begin on)
+    /// to the defender's first free frame.
+    pub free: u8,
+    /// Frames the attacker is free before he is (at least 1).
+    pub ahead: u8,
+    /// From the attacker's centre to the near edge of the defender's
+    /// hurtbox, on the defender's first free frame.
+    pub gap: i16,
 }
 
 impl Route {
@@ -323,7 +349,7 @@ impl RouteBook {
             let rules: Vec<&str> = [("true_combos", route.true_combos), ("cancels", route.cancels)].into_iter().filter(|r| r.1).map(|r| r.0).collect();
             let stances: Vec<&str> = route.stances.iter().map(|s| s.name()).collect();
             out.push_str(&format!(
-                "\nroute {}\nname {}\nhits {}\ndamage {}\nrules {}\nmeter super -{} +{} drive -{} +{}\nknockdown {}\ncorner {}\nstances {}\nconfirm {}\ngap {}\nfails-on {}\n",
+                "\nroute {}\nname {}\nhits {}\ndamage {}\nrules {}\nmeter super -{} +{} drive -{} +{}\nknockdown {}\ncorner {}\nstances {}\nconfirm {}\ngap {}\nfails-on {}\ncuts {}\n",
                 route.reach.name(),
                 route.name(),
                 route.hits,
@@ -339,6 +365,7 @@ impl RouteBook {
                 route.confirm,
                 route.gap,
                 route.fails_on.join("; "),
+                route.cuts.iter().map(|c| format!("{} free {} ahead {} gap {}", c.step, c.free, c.ahead, c.gap)).collect::<Vec<_>>().join("; "),
             ));
             for step in &route.steps {
                 out.push_str(&format!(
@@ -403,6 +430,15 @@ impl RouteBook {
             if let Some(entry) = fails_on.iter().find(|entry| !known(entry)) {
                 return Err(format!("no opponent {entry}"));
             }
+            let cuts = field(&mut lines, "cuts")?
+                .split("; ")
+                .filter(|s| !s.is_empty())
+                .map(|text| {
+                    let parts: Vec<&str> = text.split_whitespace().collect();
+                    let [step, "free", free, "ahead", ahead, "gap", gap] = parts[..] else { return Err(format!("bad cut {text}")) };
+                    Ok(Cut { step: number(step)?, free: number(free)?, ahead: number(ahead)?, gap: number(gap)? })
+                })
+                .collect::<Result<Vec<Cut>, String>>()?;
             let mut steps = Vec::new();
             loop {
                 let line = lines.next().ok_or("a route does not end")?;
@@ -441,12 +477,18 @@ impl RouteBook {
                 confirm,
                 gap,
                 fails_on,
+                cuts,
             };
             if route.name() != name || route.steps.is_empty() || route.stances.is_empty() {
                 return Err(format!("route {name} does not match its steps"));
             }
             if route.steps.iter().any(|s| s.pads.is_empty() || !(s.window.0..=s.window.1).contains(&s.wait)) {
                 return Err(format!("route {name} has an empty step or a wait outside its window"));
+            }
+            if route.cuts.iter().any(|c| c.step == 0 || usize::from(c.step) >= route.steps.len() || c.ahead == 0)
+                || route.cuts.windows(2).any(|w| w[0].step >= w[1].step)
+            {
+                return Err(format!("route {name} has a cut that is not between two of its steps, in order, with the attacker free first"));
             }
             routes.push(route);
         }
@@ -1250,6 +1292,73 @@ pub fn set_windows(base: &PowerOnMachine, route: &mut Route, first_hit: Option<u
     }
 }
 
+/// Frames after a cut that the defender is watched for coming out of his
+/// hit reaction.
+const CUT_WATCH: usize = 120;
+
+/// The cut before step `step` of `route`, played from `base` (its reference
+/// position against a defender in `stance`) at its recorded waits: see
+/// [`Cut`]. `None` where the route may not be cut there: the steps before
+/// it dropped or did not hit, the defender is not in a hit reaction at the
+/// cut, he is knocked down, or the attacker is not free before he is.
+pub fn cut_at(base: &PowerOnMachine, route: &Route, step: usize, stance: Stance) -> Option<Cut> {
+    if step == 0 || step >= route.steps.len() {
+        return None;
+    }
+    let script = route.script(None);
+    let at = route.step_start(step);
+    let mut m = base.clone();
+    let foe = (stance.stick(), 0);
+    let mut combo = Combo { count: 0, ..Combo::at(&m) };
+    for &pad in &script[..at] {
+        tick(&mut m, pad, foe);
+        combo.follow(&m);
+        if combo.dropped {
+            return None;
+        }
+    }
+    let knocked = |body: &Body| body.move_id == crate::combo::throw::GET_UP_MOVE || (body.move_id >= 0x30 && body.state & 1 != 0);
+    // The last step before the cut can still be on its way in (its hit
+    // lands some frames after its input): the cut needs that hit, then
+    // the defender out of his reaction on his feet.
+    let [me, _] = bodies(&m);
+    let mut me_free = me.free().then_some(0);
+    for frame in 1..=CUT_WATCH {
+        tick(&mut m, (0, 0), foe);
+        combo.follow(&m);
+        let [me, defender] = bodies(&m);
+        if combo.dropped || knocked(&defender) {
+            return None;
+        }
+        if me_free.is_none() && me.free() {
+            me_free = Some(frame);
+        }
+        if combo.count > 0 && !defender.reacting() {
+            if !defender.free() && !defender.guarding() {
+                return None;
+            }
+            let ahead = frame.checked_sub(me_free?).filter(|&a| a >= 1)?;
+            return Some(Cut { step: step as u8, free: frame.min(255) as u8, ahead: ahead.min(255) as u8, gap: gap(&m) });
+        }
+    }
+    None
+}
+
+/// Every cut `route` may take: each between two of its steps that holds
+/// against a standing defender from `standing` and, if the route works on
+/// a crouching one, from `crouching` too (with no crouching position, no
+/// cut is marked on such a route).
+pub fn measure_cuts(standing: &PowerOnMachine, crouching: Option<&PowerOnMachine>, route: &Route) -> Vec<Cut> {
+    (1..route.steps.len())
+        .filter_map(|step| {
+            let cut = cut_at(standing, route, step, Stance::Standing)?;
+            let crouch_ok = !route.stances.contains(&Stance::Crouching)
+                || crouching.is_some_and(|base| cut_at(base, route, step, Stance::Crouching).is_some());
+            crouch_ok.then_some(cut)
+        })
+        .collect()
+}
+
 /// Play the steps a search state holds and record the route they make, or
 /// nothing if they do not replay as a combo of two hits or more.
 fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -> Option<Route> {
@@ -1270,6 +1379,7 @@ fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -
         confirm: 0,
         gap: gap(base),
         fails_on: Vec::new(),
+        cuts: Vec::new(),
     };
     let played = replay(base, &route.script(None), Stance::Standing);
     if played.hits < 2 || (reach == Reach::Punish && !played.punished) {
@@ -1299,8 +1409,9 @@ fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -
     // while the last attack is still drawn needs cancels.
     route.true_combos = route.hits >= 2 || needs(|toggles| toggles.true_combos = false);
     route.cancels = played.cancelled || needs(|toggles| toggles.cancels = false);
-    if let Ok(crouching) = pair.position(reach, Stance::Crouching) {
-        let played = replay(&crouching, &script, Stance::Crouching);
+    let crouching = pair.position(reach, Stance::Crouching).ok();
+    if let Some(crouching) = &crouching {
+        let played = replay(crouching, &script, Stance::Crouching);
         if played.hits == route.hits && (reach != Reach::Punish || played.punished) {
             route.stances.push(Stance::Crouching);
         }
@@ -1319,6 +1430,7 @@ fn measure(pair: &Pair, reach: Reach, base: &PowerOnMachine, steps: Vec<Step>) -
             route.gap = route.gap.max(gap(&settled));
         }
     }
+    route.cuts = measure_cuts(base, crouching.as_ref(), &route);
     Some(route)
 }
 
@@ -1336,7 +1448,7 @@ mod tests {
 
     #[test]
     fn a_book_with_a_missing_line_or_a_wait_outside_its_window_is_refused() {
-        let book = "route-book 1\nfighter Ryu\nstyle Sf6/Standard\n\nroute ground\nname cr.MK\nhits 2\ndamage 100\nrules cancels\nmeter super -0 +0 drive -0 +0\nknockdown no\ncorner no\nstances standing\nconfirm 0\ngap 40\nfails-on \nstep cr.MK | wait 0 0..0 | hold 0 | 4:10x2 4:00\nend\n";
+        let book = "route-book 2\nfighter Ryu\nstyle Sf6/Standard\n\nroute ground\nname cr.MK\nhits 2\ndamage 100\nrules cancels\nmeter super -0 +0 drive -0 +0\nknockdown no\ncorner no\nstances standing\nconfirm 0\ngap 40\nfails-on \ncuts \nstep cr.MK | wait 0 0..0 | hold 0 | 4:10x2 4:00\nend\n";
         let parsed = RouteBook::parse(book).unwrap();
         assert_eq!(parsed.routes[0].steps[0].pads, [(4, 0x10), (4, 0x10), (4, 0)]);
         assert!(parsed.routes[0].cancels && !parsed.routes[0].true_combos);
@@ -1369,5 +1481,44 @@ mod tests {
         assert_eq!(RouteBook::parse(&every.to_text()).unwrap(), every);
         assert!(RouteBook::parse(&book.replace("fails-on \n", "fails-on Leo\n")).is_err(), "no such fighter");
         assert!(RouteBook::parse(&book.replace("fails-on \n", "fails-on Lee kneeling\n")).is_err(), "no such stance");
+    }
+
+    #[test]
+    fn a_routes_cut_points_round_trip_and_one_not_between_its_steps_is_refused() {
+        let book = "route-book 2
+fighter Ryu
+style Sf6/Standard
+
+route ground
+name MP, 236+LP
+hits 2
+damage 300
+rules true_combos cancels
+meter super -0 +0 drive -0 +0
+knockdown yes
+corner no
+stances standing
+confirm 0
+gap 52
+fails-on 
+cuts 1 free 24 ahead 3 gap 64
+step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
+step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
+end
+";
+        let parsed = RouteBook::parse(book).unwrap();
+        assert_eq!(parsed.routes[0].cuts, [Cut { step: 1, free: 24, ahead: 3, gap: 64 }]);
+        assert_eq!(RouteBook::parse(&parsed.to_text()).unwrap(), parsed);
+        assert_eq!(parsed.to_text(), book.replace("fails-on 
+", "fails-on
+"));
+        // No cuts: the line stays, empty.
+        assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64", "cuts")).unwrap().routes[0].cuts.is_empty());
+        assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64
+", "")).is_err(), "the line is required");
+        for bad in ["cuts 0 free 24 ahead 3 gap 64", "cuts 2 free 24 ahead 3 gap 64", "cuts 1 free 24 ahead 0 gap 64", "cuts 1 free 24 gap 64", "cuts 1 free 24 ahead 3 gap 64; 1 free 20 ahead 2 gap 60"] {
+            assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64", bad)).is_err(), "{bad}");
+        }
+        assert!(RouteBook::parse(&book.replace("route-book 2", "route-book 1")).is_err(), "the old format");
     }
 }

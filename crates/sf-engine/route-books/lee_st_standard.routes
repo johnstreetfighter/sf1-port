@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Lee
 style St/Standard
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Retsu standing; Geki standing; Joe standing; Mike crouching
+cuts 1 free 30 ahead 3 gap 54
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 236236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Geki standing; Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -46,6 +48,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Geki standing; Mike crouching
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -62,6 +65,7 @@ stances standing crouching
 confirm 0
 gap 70
 fails-on Retsu standing; Geki standing; Joe standing; Mike crouching
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -77,6 +81,7 @@ stances standing crouching
 confirm 5
 gap 30
 fails-on Mike crouching
+cuts 1 free 30 ahead 3 gap 54
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -93,6 +98,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -109,6 +115,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Mike crouching
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -125,6 +132,7 @@ stances standing
 confirm 3
 gap 30
 fails-on
+cuts 1 free 15 ahead 5 gap 62
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step 623+LK | wait 0 0..3 | hold 0 | 1:00x2 4:00x2 5:00x2 5:08x3 5:00
 end

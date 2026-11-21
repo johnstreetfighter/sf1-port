@@ -18,7 +18,7 @@ use sf_engine::data_bank::DataBank;
 use sf_engine::era::{Loadout, Revision};
 use sf_engine::roster::TournamentFighter;
 use sf_engine::route_book::{
-    book, book_texts, books, does_something, ground_actions, opponent_key, opponents, position, replay, search, Action, Budget, Pair, Reach,
+    book, book_texts, books, does_something, ground_actions, measure_cuts, opponent_key, opponents, position, replay, search, Action, Budget, Pair, Reach,
     RouteBook, Stance,
 };
 use sf_engine::run::PowerOnMachine;
@@ -132,6 +132,22 @@ fn prove(rom: &[u8], bank: &Arc<DataBank>, book: &RouteBook) -> Vec<String> {
                         fault(format!("step {} after {edge} frames: super -{}", step.name, played.super_spent));
                     }
                 }
+            }
+        }
+        // Its cut points (SC10, `#202`) are exactly those that hold: each
+        // marked one leaves him reeling on his feet with the attacker free
+        // first, as many frames as it says, and none that holds is missing.
+        let mut base = |stance: Stance| {
+            positions
+                .entry((route.reach, stance == Stance::Crouching))
+                .or_insert_with(|| position(rom, Some(bank.clone()), book.fighter, (book.revision, book.loadout), route.reach, stance).ok())
+                .clone()
+        };
+        if let Some(standing) = base(Stance::Standing) {
+            let crouching = base(Stance::Crouching);
+            let measured = measure_cuts(&standing, crouching.as_ref(), route);
+            if measured != route.cuts {
+                faults.push(format!("{who}: cuts {measured:?}, the book says {:?}", route.cuts));
             }
         }
     }

@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Lee
 style Sf6/Standard
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Retsu standing; Geki standing; Joe standing; Mike crouching
+cuts 1 free 30 ahead 3 gap 54
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214214+LP | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -46,6 +48,7 @@ stances standing crouching
 confirm 0
 gap 30
 fails-on Mike crouching
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -62,6 +65,7 @@ stances standing crouching
 confirm 0
 gap 102
 fails-on Retsu standing; Geki standing; Mike crouching
+cuts
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
 
@@ -77,6 +81,7 @@ stances standing
 confirm 0
 gap 86
 fails-on Retsu; Geki; Joe
+cuts
 step 236236+LK | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
 
@@ -92,6 +97,7 @@ stances standing crouching
 confirm 0
 gap 70
 fails-on Retsu standing; Geki standing; Joe standing; Mike crouching
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -107,6 +113,7 @@ stances standing
 confirm 5
 gap 30
 fails-on Retsu; Geki; Joe; Birdie; Eagle
+cuts 1 free 30 ahead 3 gap 54
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214+KK | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
 end
@@ -123,6 +130,7 @@ stances standing crouching
 confirm 5
 gap 30
 fails-on Mike crouching
+cuts 1 free 30 ahead 3 gap 54
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 236+LP | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -139,6 +147,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Retsu Sf1Plus/Standard standing; Retsu Sf6/Standard standing; Retsu Hf/Standard standing; Retsu St/Standard standing; Retsu St/Old standing; Retsu Sfz3/AIsm standing; Retsu Sfz3/VIsm standing; Retsu Sfz3/XIsm standing; Retsu Sf3ThreeS/Art1 standing; Retsu Sf3ThreeS/Art2 standing; Retsu Sf3ThreeS/Art3 standing; Retsu Usf4/Ultra1 standing; Retsu Usf4/Ultra2 standing; Retsu Usf4/UltraDouble standing; Retsu Sf5Ce/Skill1Trigger1 standing; Retsu Sf5Ce/Skill1Trigger2 standing; Retsu Sf5Ce/Skill2Trigger1 standing; Retsu Sf5Ce/Skill2Trigger2 standing; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 78
 step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
 step 214214+LP | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -155,6 +164,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LP | wait 0 0..2 | hold 0 | 4:01x2 4:00
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -171,6 +181,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -187,6 +198,7 @@ stances standing crouching
 confirm 2
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 78
 step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
 step 236+LP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -203,6 +215,7 @@ stances standing crouching
 confirm 2
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 78
 step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
 step 236+PP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:03x3 1:00
 end
@@ -219,6 +232,7 @@ stances standing crouching
 confirm 5
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Gen Sf1Plus/Standard crouching; Gen Sfz2/Standard crouching; Gen Sfz2A/Standard crouching; Gen Sfz3/AIsm crouching; Gen Sfz3/VIsm crouching; Gen Sfz3/XIsm crouching; Gen Sf4/Ultra1 crouching; Gen Ssf4/Ultra1 crouching; Gen Ssf4/Ultra2 crouching; Gen Ae2012/Ultra1 crouching; Gen Ae2012/Ultra2 crouching; Gen Usf4/Ultra1 crouching; Gen Usf4/Ultra2 crouching; Gen Usf4/UltraDouble crouching; Gen Hf/Standard crouching; Gen St/Standard crouching; Gen St/Old crouching; Gen Sf3ThreeS/Art1 crouching; Gen Sf3ThreeS/Art2 crouching; Gen Sf3ThreeS/Art3 crouching; Gen Sf5Ce/Skill1Trigger1 crouching; Gen Sf5Ce/Skill1Trigger2 crouching; Gen Sf5Ce/Skill2Trigger1 crouching; Gen Sf5Ce/Skill2Trigger2 crouching; Gen Sf6/Standard crouching; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 78
 step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
 step 236+KK | wait 0 0..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:18x3 1:00
 end
@@ -235,6 +249,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -251,6 +266,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Geki Arcade1987/Standard standing; Mike Arcade1987/Standard crouching; Mike Sf1Plus/Standard; Mike Hf/Standard; Mike St/Standard; Mike St/Old; Mike Sfz3/AIsm; Mike Sfz3/VIsm; Mike Sfz3/XIsm; Mike Sf3ThreeS/Art1; Mike Sf3ThreeS/Art2; Mike Sf3ThreeS/Art3; Mike Usf4/Ultra1; Mike Usf4/Ultra2; Mike Usf4/UltraDouble; Mike Sf5Ce/Skill1Trigger1; Mike Sf5Ce/Skill1Trigger2; Mike Sf5Ce/Skill2Trigger1; Mike Sf5Ce/Skill2Trigger2; Mike Sf6/Standard; Gen Arcade1987/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+PP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 1:03x3 1:00
 end

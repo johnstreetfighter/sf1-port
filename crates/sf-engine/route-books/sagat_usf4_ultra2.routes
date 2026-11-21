@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Sagat
 style Usf4/Ultra2
 
@@ -14,6 +14,7 @@ stances standing
 confirm 0
 gap 46
 fails-on
+cuts 1 free 29 ahead 3 gap 110
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 623+KK | wait 0 0..2 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 0
 gap 46
 fails-on Mike crouching; Lee crouching; Gen crouching; Eagle crouching; Adon crouching
+cuts 1 free 30 ahead 3 gap 97
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 236236+LK | wait 0 0..1 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -46,6 +48,7 @@ stances standing
 confirm 4
 gap 46
 fails-on
+cuts 1 free 30 ahead 3 gap 97
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 623+KK | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
@@ -62,6 +65,7 @@ stances standing
 confirm 1
 gap 46
 fails-on
+cuts
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 623+KK | wait 0 0..4 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
@@ -78,6 +82,7 @@ stances standing
 confirm 0
 gap 46
 fails-on Sagat
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 236236+LK | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -94,6 +99,7 @@ stances standing
 confirm 4
 gap 46
 fails-on
+cuts
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 623+KK | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
@@ -110,6 +116,7 @@ stances standing
 confirm 0
 gap 46
 fails-on
+cuts 1 free 29 ahead 3 gap 110
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 623+LK | wait 0 0..2 | hold 0 | 1:00x2 4:00x2 5:00x2 5:08x3 5:00
 end
@@ -126,6 +133,7 @@ stances standing crouching
 confirm 0
 gap 46
 fails-on Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236236+LK | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -142,6 +150,7 @@ stances standing crouching
 confirm 3
 gap 36
 fails-on Ryu Arcade1987/Standard standing; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard standing; Retsu; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard standing; Mike; Lee; Gen; Birdie Arcade1987/Standard standing; Eagle; Adon Arcade1987/Standard crouching; Adon Sf1Plus/Standard; Adon Sfz1/Standard; Adon Sfz2/Standard; Adon Sfz2A/Standard; Adon Sfz3/AIsm; Adon Sfz3/VIsm; Adon Sfz3/XIsm; Adon Ssf4/Ultra1; Adon Ssf4/Ultra2; Adon Ae2012/Ultra1; Adon Ae2012/Ultra2; Adon Usf4/Ultra1; Adon Usf4/Ultra2; Adon Usf4/UltraDouble; Adon Hf/Standard; Adon St/Standard; Adon St/Old; Adon Sf3ThreeS/Art1; Adon Sf3ThreeS/Art2; Adon Sf3ThreeS/Art3; Adon Sf5Ce/Skill1Trigger1; Adon Sf5Ce/Skill1Trigger2; Adon Sf5Ce/Skill2Trigger1; Adon Sf5Ce/Skill2Trigger2; Adon Sf6/Standard; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 91
 step cr.MP | wait 0 0..2 | hold 0 | 4:02x2 4:00
 step 236+KK | wait 0 0..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:18x3 1:00
 end
@@ -158,6 +167,7 @@ stances standing
 confirm 0
 gap 36
 fails-on Ryu Arcade1987/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Retsu Arcade1987/Standard; Geki Arcade1987/Standard; Joe Arcade1987/Standard; Mike; Lee Arcade1987/Standard; Gen Arcade1987/Standard; Birdie Arcade1987/Standard; Eagle; Sagat Arcade1987/Standard; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236236+LK | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -174,6 +184,7 @@ stances standing
 confirm 1
 gap 36
 fails-on Ryu Arcade1987/Standard; Ryu Ww/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard; Ken Ww/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Retsu Arcade1987/Standard; Geki; Joe Arcade1987/Standard; Mike; Lee Arcade1987/Standard; Gen Arcade1987/Standard; Birdie Arcade1987/Standard; Eagle; Sagat Arcade1987/Standard; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 623+KK | wait 1 1..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:18x3 5:00
 end
@@ -190,6 +201,7 @@ stances standing crouching
 confirm 3
 gap 36
 fails-on Ryu Arcade1987/Standard standing; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard standing; Retsu Arcade1987/Standard standing; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard standing; Mike; Lee Arcade1987/Standard standing; Gen Arcade1987/Standard; Eagle crouching; Adon crouching; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 30 ahead 3 gap 91
 step cr.MP | wait 0 0..3 | hold 0 | 4:02x2 4:00
 step 236+LK | wait 0 0..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -206,6 +218,7 @@ stances standing
 confirm 0
 gap 36
 fails-on Ryu Arcade1987/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard; Ken Hf/Standard; Ken St/Standard; Retsu Arcade1987/Standard; Geki Arcade1987/Standard; Joe Arcade1987/Standard; Mike; Lee Arcade1987/Standard; Gen Arcade1987/Standard; Birdie Arcade1987/Standard; Eagle; Sagat Arcade1987/Standard; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236+KK | wait 1 1..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:18x3 1:00
 end
@@ -222,6 +235,7 @@ stances standing
 confirm 2
 gap 36
 fails-on Ryu Arcade1987/Standard; Ryu Ww/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard; Ken Ww/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Retsu Arcade1987/Standard; Geki; Joe Arcade1987/Standard; Mike; Lee Arcade1987/Standard; Gen Arcade1987/Standard; Birdie Arcade1987/Standard; Eagle; Sagat Arcade1987/Standard; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236+PP | wait 1 1..9 | hold 0 | 4:00x2 5:00x2 1:00x2 1:03x3 1:00
 end
@@ -238,6 +252,7 @@ stances standing
 confirm 1
 gap 36
 fails-on Ryu Arcade1987/Standard; Ryu Ww/Standard; Ryu Ce/Standard; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard; Ken Ww/Standard; Ken Ce/Standard; Ken Hf/Standard; Ken St/Standard; Ken St/Old; Retsu Arcade1987/Standard; Geki; Joe Arcade1987/Standard; Mike; Lee Arcade1987/Standard; Gen Arcade1987/Standard; Birdie Arcade1987/Standard; Eagle; Sagat Arcade1987/Standard; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 623+LK | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:08x3 5:00
 end
@@ -254,6 +269,7 @@ stances standing crouching
 confirm 0
 gap 36
 fails-on Ryu Arcade1987/Standard standing; Ryu Hf/Standard; Ryu St/Standard; Ryu St/Old; Ryu Kessen/Balanced; Ryu Kessen/Versatile; Ryu Kessen/SuperHeavy; Ken Arcade1987/Standard standing; Ken Hf/Standard; Ken St/Standard; Retsu Arcade1987/Standard standing; Geki Arcade1987/Standard standing; Joe Arcade1987/Standard standing; Mike; Lee Arcade1987/Standard standing; Gen Arcade1987/Standard; Birdie Arcade1987/Standard standing; Eagle; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 236+LK | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end

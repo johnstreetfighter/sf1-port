@@ -444,7 +444,7 @@ impl Moment<'_> {
     }
 
     /// The route's damage takes the rest of the opponent's health.
-    fn wins_round(&self, route: &Route) -> bool {
+    pub(super) fn wins_round(&self, route: &Route) -> bool {
         // His bar shows a point while any of it is left, so the points
         // shown are the most he can have.
         self.foe_health > 0 && u32::from(route.damage) * 48 >= u32::from(self.foe_health) * u32::from(self.foe_max_sub_hp)
@@ -463,8 +463,48 @@ impl Moment<'_> {
     }
 }
 
+/// What a route cut on purpose at one of its marked points goes into: a
+/// combo reset (SC10, `#202`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ResetKind {
+    /// A walk in and a throw as he comes out of his hit reaction.
+    Throw,
+    /// A crouching short kick timed to meet him as he comes out of it: a
+    /// low he must guard crouching.
+    Low,
+    /// Nothing: a crouching guard held past his recovery, so a reversal he
+    /// presses out of it meets the guard and can be punished.
+    Bait,
+}
+
+/// A combo reset planned for a route: what it goes into, and what the
+/// book's cut point says of the moment it is cut ([`crate::route_book::Cut`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Reset {
+    pub kind: ResetKind,
+    /// Frames from the cut to his first free frame, frames the CPU's fighter
+    /// is free before him, and the gap to him then.
+    pub free: u8,
+    pub ahead: u8,
+    pub gap: i16,
+}
+
+/// A combo reset whose route has been cut, until it goes on (it has seen
+/// the route hit and its fighter is free) or is let go (nothing seen by
+/// his first free frame).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct ResetWait {
+    pub reset: Reset,
+    /// The step the route was cut on, the way the route faced him, and
+    /// whether it has seen him in a hit reaction since the cut.
+    pub cut: u32,
+    pub facing_right: bool,
+    pub hit: bool,
+}
+
 /// A route being entered: which one, where it is in its script, where it
-/// stops (a slip cuts it short), and what the CPU has seen of it.
+/// stops (a slip, or a combo reset at a marked point, cuts it short), and
+/// what the CPU has seen of it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct RouteRun {
     fighter: TournamentFighter,
@@ -477,6 +517,8 @@ pub(super) struct RouteRun {
     facing_right: bool,
     hit: bool,
     guarded: bool,
+    /// The reset its cut goes into, when it is cut on purpose.
+    pub reset: Option<Reset>,
 }
 
 impl RouteRun {
@@ -490,7 +532,7 @@ impl RouteRun {
         stop: u16,
         facing_right: bool,
     ) -> Self {
-        RouteRun { fighter, revision, loadout, index, walk, at: 0, stop, facing_right, hit: false, guarded: false }
+        RouteRun { fighter, revision, loadout, index, walk, at: 0, stop, facing_right, hit: false, guarded: false, reset: None }
     }
 
     fn route(&self) -> Option<&'static Route> {
@@ -527,6 +569,17 @@ impl RouteRun {
         let route = self.route()?;
         let frame = usize::from(self.at.checked_sub(u16::from(self.walk))?);
         (0..route.steps.len()).rev().find(|&index| route.step_start(index) <= frame)
+    }
+
+    /// The script frame it stops on: its end, or where it is cut.
+    #[cfg(test)]
+    pub(super) fn route_stop(&self) -> usize {
+        usize::from(self.stop)
+    }
+
+    /// It was entered facing right (its pads as the book writes them).
+    pub(super) fn facing_right(&self) -> bool {
+        self.facing_right
     }
 
     /// It is still walking in, before the route's first pad.
@@ -838,9 +891,12 @@ crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v4", {
     foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
 });
 crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v4", { plan, step, acted, pressed, began, hit });
-crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v1", {
-    fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded,
+crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v2", {
+    fighter, revision, loadout, index, walk, at, stop, facing_right, hit, guarded, reset,
 });
+crate::canonical::canonical_struct!(Reset, "FairCpuReset.v1", { kind, free, ahead, gap });
+crate::canonical::canonical_struct!(ResetWait, "FairCpuResetWait.v1", { reset, cut, facing_right, hit });
+crate::canonical::canonical_enum!(ResetKind, "FairCpuResetKind.v1"; Throw => 0, Low => 1, Bait => 2);
 crate::canonical::canonical_enum!(Outcome, "FairCpuOutcome.v1"; Hit => 0, Guard => 1, Whiff => 2, Jumped => 3, Nothing => 4);
 
 #[cfg(test)]

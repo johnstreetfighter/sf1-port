@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Gen
 style Sf6/Standard
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 0
 gap 22
 fails-on Mike crouching; Lee crouching
+cuts 1 free 30 ahead 3 gap 61
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214214+LP | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 0
 gap 22
 fails-on Mike crouching
+cuts
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
 
@@ -45,6 +47,7 @@ stances standing crouching
 confirm 0
 gap 130
 fails-on Mike crouching
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -60,6 +63,7 @@ stances standing
 confirm 0
 gap 22
 fails-on
+cuts 1 free 29 ahead 3 gap 73
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 214214+LP | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -76,6 +80,7 @@ stances standing
 confirm 0
 gap 49
 fails-on Joe
+cuts
 step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
 step 214214+LP | wait 0 0..5 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -92,6 +97,7 @@ stances standing crouching
 confirm 3
 gap 22
 fails-on Mike crouching
+cuts 1 free 29 ahead 3 gap 73
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 236+LP | wait 0 0..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -108,6 +114,7 @@ stances standing crouching
 confirm 5
 gap 22
 fails-on Mike crouching
+cuts
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 623+LP | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end
@@ -124,6 +131,7 @@ stances standing crouching
 confirm 5
 gap 22
 fails-on Mike crouching
+cuts
 step cr.LK | wait 0 0..0 | hold 0 | 4:08x2 4:00
 step 623+LP | wait 0 0..9 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 end

@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Mike
 style Sfz3/XIsm
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 0
 gap 82
 fails-on Retsu standing; Joe standing; Mike crouching; Eagle crouching
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -29,6 +30,7 @@ stances standing crouching
 confirm 3
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step 421+LP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 end
@@ -45,6 +47,7 @@ stances standing crouching
 confirm 3
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step 421+MP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 end
@@ -61,6 +64,7 @@ stances standing crouching
 confirm 9
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step cr.HK | wait 7 7..11 | hold 0 | 4:20x2 4:00
 end
@@ -77,6 +81,7 @@ stances standing crouching
 confirm 9
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step cr.LK | wait 7 7..11 | hold 0 | 4:08x2 4:00
 end
@@ -93,6 +98,7 @@ stances standing crouching
 confirm 9
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step cr.LP | wait 7 7..11 | hold 0 | 4:01x2 4:00
 end
@@ -109,6 +115,7 @@ stances standing crouching
 confirm 9
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LK | wait 0 0..1 | hold 0 | 4:08x2 4:00
 step cr.MP | wait 7 7..11 | hold 0 | 4:02x2 4:00
 end
@@ -125,6 +132,7 @@ stances standing crouching
 confirm 3
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LP | wait 0 0..1 | hold 0 | 4:01x2 4:00
 step 421+LP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 end
@@ -141,6 +149,7 @@ stances standing crouching
 confirm 3
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen Arcade1987/Standard standing; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 17 ahead 5 gap 86
 step cr.LP | wait 0 0..1 | hold 0 | 4:01x2 4:00
 step 421+MP | wait 1 1..5 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 end

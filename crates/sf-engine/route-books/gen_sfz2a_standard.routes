@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Gen
 style Sfz2A/Standard
 
@@ -14,6 +14,7 @@ stances standing crouching
 confirm 0
 gap 22
 fails-on Mike crouching
+cuts 1 free 29 ahead 3 gap 73
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 214214+LP | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -30,6 +31,7 @@ stances standing crouching
 confirm 0
 gap 49
 fails-on Mike crouching
+cuts 1 free 29 ahead 3 gap 69
 step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
 step 214214+LP | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -46,6 +48,7 @@ stances standing crouching
 confirm 0
 gap 49
 fails-on Retsu crouching; Joe standing; Mike crouching
+cuts
 step LK | wait 0 0..0 | hold 0 | 0:08x2 0:00
 step 214214+LP | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -62,6 +65,7 @@ stances standing crouching
 confirm 0
 gap 49
 fails-on Mike crouching
+cuts 1 free 30 ahead 3 gap 61
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214214+LP | wait 0 0..3 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -78,6 +82,7 @@ stances standing crouching
 confirm 0
 gap 22
 fails-on Mike crouching
+cuts 1 free 29 ahead 3 gap 73
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 236236+LP | wait 0 0..2 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -94,6 +99,7 @@ stances standing crouching
 confirm 7
 gap 22
 fails-on Retsu crouching; Mike crouching; Lee; Gen; Birdie standing; Eagle; Adon; Sagat standing
+cuts 1 free 13 ahead 5 gap 78
 step LP | wait 0 0..0 | hold 0 | 0:01x2 0:00
 step HK | wait 3 3..7 | hold 0 | 0:20x2 0:00
 end
@@ -110,6 +116,7 @@ stances standing crouching
 confirm 0
 gap 130
 fails-on Mike crouching
+cuts
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
 
@@ -125,6 +132,7 @@ stances standing crouching
 confirm 5
 gap 22
 fails-on Mike crouching
+cuts
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 623+LK | wait 0 0..8 | hold 0 | 1:00x2 4:00x2 5:00x2 5:08x3 5:00
 end

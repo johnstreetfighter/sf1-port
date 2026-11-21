@@ -2086,6 +2086,12 @@ impl PowerOnMachine {
         self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_step)
     }
 
+    /// The combo reset Player 2's Fair CPU cuts the route it is entering
+    /// into, when it cuts it on purpose (SC10, `#202`).
+    pub fn fair_cpu_route_reset(&self) -> Option<crate::fair_cpu::ResetKind> {
+        self.fair_cpu.as_ref().and_then(crate::fair_cpu::FairCpu::route_reset)
+    }
+
     /// What Player 2's Fair CPU's habit memory holds (SC9, `#201`).
     pub fn fair_cpu_habits(&self) -> Option<crate::fair_cpu::Habits> {
         self.fair_cpu.as_ref().map(crate::fair_cpu::FairCpu::habits)

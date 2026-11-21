@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Eagle
 style Sfz3/XIsm
 
@@ -14,6 +14,7 @@ stances standing
 confirm 0
 gap 30
 fails-on
+cuts
 step 214214+LP | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
 
@@ -29,6 +30,7 @@ stances standing
 confirm 4
 gap 78
 fails-on Gen; Adon
+cuts 1 free 23 ahead 1 gap 86
 step 421+LP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:01x3 6:00
 step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -45,6 +47,7 @@ stances standing
 confirm 4
 gap 78
 fails-on Gen; Adon
+cuts 1 free 25 ahead 3 gap 102
 step 421+MP | wait 0 0..0 | hold 0 | 2:00x2 4:00x2 6:00x2 6:02x3 6:00
 step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -61,6 +64,7 @@ stances standing
 confirm 4
 gap 78
 fails-on Gen; Adon
+cuts 1 free 23 ahead 1 gap 86
 step 623+LP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:01x3 5:00
 step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -77,6 +81,7 @@ stances standing
 confirm 4
 gap 78
 fails-on Gen; Adon
+cuts 1 free 25 ahead 3 gap 102
 step 623+MP | wait 0 0..0 | hold 0 | 1:00x2 4:00x2 5:00x2 5:02x3 5:00
 step 214+LP | wait 0 0..9 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -93,6 +98,7 @@ stances standing
 confirm 5
 gap 78
 fails-on Gen; Adon
+cuts 1 free 26 ahead 3 gap 102
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 214+LP | wait 0 0..11 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -109,6 +115,7 @@ stances standing
 confirm 4
 gap 78
 fails-on Gen; Adon
+cuts 1 free 24 ahead 1 gap 86
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 214+LP | wait 0 0..10 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -125,6 +132,7 @@ stances standing
 confirm 5
 gap 78
 fails-on Gen; Adon
+cuts 1 free 26 ahead 3 gap 102
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214+LP | wait 0 0..11 | hold 0 | 4:00x2 6:00x2 2:00x2 2:01x3 2:00
 end
@@ -141,6 +149,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+cuts 1 free 26 ahead 3 gap 91
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 end
@@ -157,6 +166,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+cuts 1 free 24 ahead 1 gap 91
 step cr.LP | wait 0 0..0 | hold 0 | 4:01x2 4:00
 step 214+LK | wait 0 0..2 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 end
@@ -173,6 +183,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Ryu Hf/Standard; Ken Hf/Standard; Gen Sf1Plus/Standard; Gen Sfz2/Standard; Gen Sfz2A/Standard; Gen Sfz3/AIsm; Gen Sfz3/VIsm; Gen Sfz3/XIsm; Gen Sf4/Ultra1; Gen Ssf4/Ultra1; Gen Ssf4/Ultra2; Gen Ae2012/Ultra1; Gen Ae2012/Ultra2; Gen Usf4/Ultra1; Gen Usf4/Ultra2; Gen Usf4/UltraDouble; Gen Hf/Standard; Gen St/Standard; Gen St/Old; Gen Sf3ThreeS/Art1; Gen Sf3ThreeS/Art2; Gen Sf3ThreeS/Art3; Gen Sf5Ce/Skill1Trigger1; Gen Sf5Ce/Skill1Trigger2; Gen Sf5Ce/Skill2Trigger1; Gen Sf5Ce/Skill2Trigger2; Gen Sf6/Standard; Sagat St/Standard; Sagat St/Old
+cuts 1 free 26 ahead 3 gap 91
 step cr.MP | wait 0 0..0 | hold 0 | 4:02x2 4:00
 step 214+LK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 end
@@ -189,6 +200,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Sagat St/Standard; Sagat St/Old
+cuts
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 214+LK | wait 0 0..0 | hold 0 | 4:00x2 6:00x2 2:00x2 2:08x3 2:00
 end

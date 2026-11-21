@@ -1,4 +1,4 @@
-route-book 1
+route-book 2
 fighter Ken
 style Sf6/Standard
 
@@ -14,6 +14,7 @@ stances standing
 confirm 0
 gap 30
 fails-on Lee; Gen; Eagle; Adon; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236236+LP | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -30,6 +31,7 @@ stances standing
 confirm 0
 gap 30
 fails-on Retsu; Joe; Lee; Gen; Birdie; Eagle; Adon; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LK | wait 5 5..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 step 236+LK | wait 0 0..4 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
@@ -48,6 +50,7 @@ stances standing
 confirm 0
 gap 58
 fails-on Joe; Lee; Gen; Birdie; Eagle; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LK | wait 5 5..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 step 214+KK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
@@ -66,6 +69,7 @@ stances standing
 confirm 0
 gap 52
 fails-on Joe; Lee; Gen; Birdie; Eagle; Adon; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LK | wait 5 5..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 step 214+KK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
@@ -85,6 +89,7 @@ stances standing
 confirm 0
 gap 58
 fails-on Joe; Lee; Gen; Birdie; Eagle; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LK | wait 5 5..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 step 214+KK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
@@ -103,6 +108,7 @@ stances standing
 confirm 0
 gap 58
 fails-on Retsu; Joe
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236236+LK | wait 0 0..0 | hold 0 | 4:00x2 5:00x2 1:00x2 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 end
@@ -119,6 +125,7 @@ stances standing
 confirm 0
 gap 52
 fails-on Lee; Sagat
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
@@ -135,6 +142,7 @@ stances standing
 confirm 0
 gap 58
 fails-on Joe
+cuts 1 free 24 ahead 3 gap 64
 step MP | wait 0 0..0 | hold 0 | 0:02x2 0:00
 step 236+LK | wait 5 5..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:08x3 1:00
 step 214+KK | wait 0 0..4 | hold 0 | 4:00x2 6:00x2 2:00x2 2:18x3 2:00
@@ -152,6 +160,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Birdie Arcade1987/Standard crouching; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138; 4 free 41 ahead 19 gap 154
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -171,6 +180,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Birdie Arcade1987/Standard crouching; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138; 4 free 41 ahead 19 gap 154
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -190,6 +200,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Birdie Arcade1987/Standard crouching; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138; 4 free 39 ahead 19 gap 154
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..6 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -209,6 +220,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138; 4 free 41 ahead 19 gap 154
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -228,6 +240,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138; 4 free 41 ahead 19 gap 154
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -247,6 +260,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122; 3 free 39 ahead 19 gap 138
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -265,6 +279,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Retsu Arcade1987/Standard crouching; Retsu Sf1Plus/Standard; Retsu Sf6/Standard; Retsu Hf/Standard; Retsu St/Standard; Retsu St/Old; Retsu Sfz3/AIsm; Retsu Sfz3/VIsm; Retsu Sfz3/XIsm; Retsu Sf3ThreeS/Art1; Retsu Sf3ThreeS/Art2; Retsu Sf3ThreeS/Art3; Retsu Usf4/Ultra1; Retsu Usf4/Ultra2; Retsu Usf4/UltraDouble; Retsu Sf5Ce/Skill1Trigger1; Retsu Sf5Ce/Skill1Trigger2; Retsu Sf5Ce/Skill2Trigger1; Retsu Sf5Ce/Skill2Trigger2; Geki Arcade1987/Standard standing; Gen; Eagle Arcade1987/Standard standing; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70; 2 free 34 ahead 19 gap 122
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 step 236+LP | wait 3 3..7 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
@@ -282,6 +297,7 @@ stances standing crouching
 confirm 0
 gap 32
 fails-on Geki Arcade1987/Standard standing; Gen; Sagat Arcade1987/Standard standing; Sagat St/Standard; Sagat St/Old
+cuts 1 free 22 ahead 5 gap 70
 step cr.LK | wait 0 0..2 | hold 0 | 4:08x2 4:00
 step 236+LP | wait 0 0..3 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00
 end
