@@ -1935,6 +1935,18 @@ impl PowerOnMachine {
     /// A replay branch's opponent uses the live fighter's command bank.
     /// The playback owns this controller separately from the recorded CPU.
     pub fn utility_takeover_pad(&self, side: usize, state: &mut crate::utility::UtilityState) -> crate::front::PlayerInputs {
+        let Some((slot, me, foe, fighter)) = self.takeover_seat(side) else {
+            return crate::front::PlayerInputs::default();
+        };
+        let context = self.fair_cpu_context(fighter, slot, me, None);
+        let family = self.dramatic_era_fighters()[slot].style.family;
+        crate::utility::UtilityAi::step(self, state, me, foe, fighter, family, &context, None)
+    }
+
+    /// The fighter a replay takeover's opponent plays on `side` (0 Player
+    /// 1): its era slot, its player struct and its opponent's, and who it
+    /// is.
+    fn takeover_seat(&self, side: usize) -> Option<(usize, u32, u32, crate::roster::TournamentFighter)> {
         use crate::fight_reader::player_struct;
         use crate::fighter::{CPU_STRUCT, P1_STRUCT, P2_STRUCT};
         use sf_video::callouts::Side;
@@ -1943,10 +1955,10 @@ impl PowerOnMachine {
             match side {
                 0 => (0, P1_STRUCT, CPU_STRUCT),
                 1 => (2, P2_STRUCT, CPU_STRUCT),
-                _ => return crate::front::PlayerInputs::default(),
+                _ => return None,
             }
         } else {
-            let Some(&player) = Side::BOTH.get(side) else { return crate::front::PlayerInputs::default(); };
+            let &player = Side::BOTH.get(side)?;
             (side, player_struct(player, mode), player_struct(if player == Side::P1 { Side::P2 } else { Side::P1 }, mode))
         };
         let era = &self.dramatic_era_fighters()[slot];
@@ -1958,8 +1970,37 @@ impl PowerOnMachine {
                 _ => config.roster.p2,
             }
         });
-        let context = self.fair_cpu_context(fighter, slot, me, None);
-        crate::utility::UtilityAi::step(self, state, me, foe, fighter, era.style.family, &context, None)
+        Some((slot, me, foe, fighter))
+    }
+
+    /// A replay takeover's Fair CPU opponent on `side` (0 Player 1), in a
+    /// two-sided fight (SC22, `#214`): its pad for the coming frame, at the
+    /// match's level (or one forced on the CPU, as the measuring run's
+    /// are; the playback forces none). The playback
+    /// owns the CPU; it plays the stronger game alone on the pad, with no
+    /// Utility AI beside it. Dramatic Battle keeps the Utility AI (SC23,
+    /// `#215`), and gets an empty pad here.
+    pub(crate) fn takeover_fair_cpu_pad(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) -> crate::front::PlayerInputs {
+        let Some((slot, me, _, fighter)) = self.takeover_seat(side).filter(|_| self.program.match_config.dramatic.is_none()) else {
+            return crate::front::PlayerInputs::default();
+        };
+        let mut ctx = self.fair_cpu_context(fighter, slot, me, cpu.forced_level());
+        let opponent = &self.dramatic_era_fighters()[1 - slot];
+        ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
+        let pad = cpu.press(self.state.frame + 1, self.in_fight(), &ctx);
+        let (directions, buttons) = crate::fair_cpu::pad_parts(pad);
+        crate::front::PlayerInputs { directions, buttons }
+    }
+
+    /// The replay takeover's Fair CPU on `side` looks at the frame just
+    /// stepped.
+    pub(crate) fn takeover_fair_cpu_observe(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) {
+        use sf_video::callouts::Side;
+        if let Some(&player) = Side::BOTH.get(side) {
+            cpu.observe(crate::fair_cpu::perceive(
+                self.state.frame, self.in_fight(), &self.program.work, &self.state.objectram, player,
+            ));
+        }
     }
 
     /// Human-controlled sides can always take over. A one-player cabinet

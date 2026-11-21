@@ -1,6 +1,7 @@
 //! Native match input files. The host owns file I/O.
 
-use super::{ReplayMode, TakeoverPlayer, DEFAULT_TAKEOVER_WINDOW_FRAMES};
+use super::{ReplayMode, TakeoverOpponent, TakeoverPlayer, DEFAULT_TAKEOVER_WINDOW_FRAMES};
+use crate::fair_cpu::FairCpu;
 use crate::config::{MatchConfig, RulesetPreset};
 use crate::era::StylePick;
 use crate::front::cabinet::Players;
@@ -325,6 +326,13 @@ pub struct ReplayPlayback {
     branch_side: Option<TakeoverPlayer>,
     fallback: bool,
     utility: UtilityState,
+    /// The developer-only switch for the stronger Fair CPU (spec `#192`),
+    /// as the session that opened the replay has it: with it on, a
+    /// takeover's opponent is the Fair CPU (SC22, `#214`).
+    stronger_cpu: bool,
+    /// That opponent, from the takeover to the rewind: it sees no frame
+    /// from before the takeover.
+    fair_cpu: Option<Box<FairCpu>>,
 }
 
 impl ReplayPlayback {
@@ -344,7 +352,34 @@ impl ReplayPlayback {
             branch_side: None,
             fallback: false,
             utility: UtilityState::default(),
+            stronger_cpu: false,
+            fair_cpu: None,
         }
+    }
+
+    /// Play a takeover's opponent with the Fair CPU, with the switch on
+    /// (SC22, `#214`). The replay's own pads and rules are unchanged.
+    pub fn with_stronger_cpu(mut self, on: bool) -> Self {
+        self.stronger_cpu = on;
+        self
+    }
+
+    /// The Fair CPU playing the takeover's opponent, while one does.
+    pub fn takeover_cpu(&self) -> Option<&FairCpu> {
+        self.fair_cpu.as_deref()
+    }
+
+    /// Who plays the side the player did not take over, during a
+    /// takeover: the recording until the fight leaves it, then a CPU.
+    pub fn takeover_opponent(&self) -> Option<TakeoverOpponent> {
+        let other = usize::from(self.branch_side? == TakeoverPlayer::P1);
+        Some(if !self.fallback || !self.fight.machine().utility_takeover_side_available(other) {
+            TakeoverOpponent::Recorded
+        } else if self.fair_cpu.is_some() {
+            TakeoverOpponent::FairCpu
+        } else {
+            TakeoverOpponent::UtilityAi
+        })
     }
 
     pub fn fight(&self) -> &Fight {
@@ -416,6 +451,12 @@ impl ReplayPlayback {
         self.branch_side = Some(side);
         self.fallback = false;
         self.utility = UtilityState::seeded(self.replay.seed ^ u64::from(self.frame));
+        // A fresh Fair CPU for each takeover, at the match's level: its
+        // delayed view starts empty here. Dramatic Battle keeps the
+        // Utility AI until SC23 (`#215`).
+        self.fair_cpu = (self.stronger_cpu && self.replay.config.dramatic.is_none()).then(|| {
+            Box::new(FairCpu::seeded(self.replay.seed ^ u64::from(self.frame) ^ 0x3c6e_f372_fe94_f82b).force_stronger(true))
+        });
         self.mode = ReplayMode::Takeover {
             player: side,
             start_frame: self.frame,
@@ -435,6 +476,7 @@ impl ReplayPlayback {
         self.branch_side = None;
         self.fallback = false;
         self.utility = UtilityState::default();
+        self.fair_cpu = None;
         self.mode = ReplayMode::Paused;
         true
     }
@@ -527,16 +569,21 @@ impl ReplayPlayback {
                 }
                 pads[controlled] = live;
                 if self.fallback && self.fight.machine().utility_takeover_side_available(other) {
-                    pads[other] = self
-                        .fight
-                        .machine()
-                        .utility_takeover_pad(other, &mut self.utility);
+                    pads[other] = match self.fair_cpu.as_deref_mut() {
+                        Some(cpu) => self.fight.machine().takeover_fair_cpu_pad(other, cpu),
+                        None => self.fight.machine().utility_takeover_pad(other, &mut self.utility),
+                    };
                     bypass[other] = true;
                     override_p2 |= other == 1;
                 }
                 let result =
                     self.fight
                         .step_with_pad_override(assets, pads, start, bypass, override_p2);
+                // It watches every frame from the takeover on, the
+                // recording's included, as its own reaction delay shows them.
+                if let Some(cpu) = self.fair_cpu.as_deref_mut() {
+                    self.fight.machine().takeover_fair_cpu_observe(other, cpu);
+                }
                 self.frame += 1;
                 let elapsed_frames = elapsed_frames + 1;
                 self.mode = if elapsed_frames >= window_frames || result.event.is_some() {

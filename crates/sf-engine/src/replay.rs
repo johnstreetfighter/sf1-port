@@ -27,6 +27,18 @@ pub enum TakeoverPlayer {
     P2,
 }
 
+/// Who plays the side a replay takeover leaves to the machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TakeoverOpponent {
+    /// The recording's pad, until the fight leaves the recording.
+    Recorded,
+    /// The Utility AI: with the stronger Fair CPU's switch off, and in
+    /// Dramatic Battle.
+    UtilityAi,
+    /// The Fair CPU, with the switch on (SC22, `#214`).
+    FairCpu,
+}
+
 /// Live per-frame logical inputs for one player during Replay Takeover.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PlayerInputs {

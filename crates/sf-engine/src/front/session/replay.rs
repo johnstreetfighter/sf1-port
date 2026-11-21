@@ -262,7 +262,7 @@ impl GameSession {
         self.notice = None;
         self.sounds = [sound::STOP_ALL].into();
         self.playback = Some(Watching {
-            playback: ReplayPlayback::new(replay, fight),
+            playback: ReplayPlayback::new(replay, fight).with_stronger_cpu(self.stronger_cpu),
             pause: None,
         });
     }
