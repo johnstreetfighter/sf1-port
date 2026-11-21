@@ -293,6 +293,8 @@ fn with_the_switch_off_the_cpu_judges_no_situation_and_follows_no_game_plan() {
         step(&mut m, if i < 600 { toward(&v) } else { 0 }, 0);
         assert_eq!(m.fair_cpu_situation(), Some(Judged::default()), "frame {i}");
         assert!(!m.fair_cpu_following_game_plan(), "frame {i}");
+        // Nor cuts a route into a combo reset (SC10, `#202`).
+        assert_eq!(m.fair_cpu_route_reset(), None, "frame {i}");
     }
 }
 
@@ -2887,7 +2889,7 @@ fn a_route_is_cut_at_a_marked_point_into_a_throw_that_lands_as_he_comes_out_of_h
     // still, so it hits).
     let lows: Vec<&ResetSeen> = all.iter().filter(|r| r.kind == Some(ResetKind::Low) && r.hit).collect();
     let met = lows.iter().filter(|r| r.low == Some("hit")).count();
-    assert!(met >= 2 && 4 * met >= 3 * lows.len(), "low resets after a hit that hit him: {met} of {}", lows.len());
+    assert!(met >= 2 && met == lows.len(), "low resets after a hit that hit him: {met} of {}", lows.len());
 }
 
 #[test]

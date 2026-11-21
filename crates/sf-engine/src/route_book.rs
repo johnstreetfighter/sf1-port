@@ -485,10 +485,10 @@ impl RouteBook {
             if route.steps.iter().any(|s| s.pads.is_empty() || !(s.window.0..=s.window.1).contains(&s.wait)) {
                 return Err(format!("route {name} has an empty step or a wait outside its window"));
             }
-            if route.cuts.iter().any(|c| c.step == 0 || usize::from(c.step) >= route.steps.len() || c.ahead == 0)
+            if route.cuts.iter().any(|c| c.step == 0 || usize::from(c.step) >= route.steps.len() || c.ahead == 0 || c.free == 0 || c.ahead > c.free)
                 || route.cuts.windows(2).any(|w| w[0].step >= w[1].step)
             {
-                return Err(format!("route {name} has a cut that is not between two of its steps, in order, with the attacker free first"));
+                return Err(format!("route {name} has a cut that is not between two of its steps, in order, with the attacker free first and not before the cut"));
             }
             routes.push(route);
         }
@@ -1516,7 +1516,7 @@ end
         assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64", "cuts")).unwrap().routes[0].cuts.is_empty());
         assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64
 ", "")).is_err(), "the line is required");
-        for bad in ["cuts 0 free 24 ahead 3 gap 64", "cuts 2 free 24 ahead 3 gap 64", "cuts 1 free 24 ahead 0 gap 64", "cuts 1 free 24 gap 64", "cuts 1 free 24 ahead 3 gap 64; 1 free 20 ahead 2 gap 60"] {
+        for bad in ["cuts 0 free 24 ahead 3 gap 64", "cuts 2 free 24 ahead 3 gap 64", "cuts 1 free 24 ahead 0 gap 64", "cuts 1 free 24 gap 64", "cuts 1 free 24 ahead 3 gap 64; 1 free 20 ahead 2 gap 60", "cuts 1 free 0 ahead 0 gap 64", "cuts 1 free 3 ahead 4 gap 64"] {
             assert!(RouteBook::parse(&book.replace("cuts 1 free 24 ahead 3 gap 64", bad)).is_err(), "{bad}");
         }
         assert!(RouteBook::parse(&book.replace("route-book 2", "route-book 1")).is_err(), "the old format");

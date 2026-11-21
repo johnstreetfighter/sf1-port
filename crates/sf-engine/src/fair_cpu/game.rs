@@ -450,6 +450,15 @@ impl Moment<'_> {
         self.foe_health > 0 && u32::from(route.damage) * 48 >= u32::from(self.foe_health) * u32::from(self.foe_max_sub_hp)
     }
 
+    /// The route's damage may take the rest of the opponent's health: his
+    /// bar shows a point while any of it is left, so with `foe_health`
+    /// points shown he has more than `foe_health - 1` points' worth. The
+    /// safe side for not cutting a route (SC10, `#202`), where
+    /// [`Self::wins_round`] is the safe side for spending meter.
+    pub(super) fn may_win_round(&self, route: &Route) -> bool {
+        self.foe_health > 0 && u32::from(route.damage) * 48 > u32::from(self.foe_health - 1) * u32::from(self.foe_max_sub_hp)
+    }
+
     /// How good the route is now: one that wins the round above all;
     /// otherwise its damage, a knockdown at its end, and meter kept; a
     /// route taken lately scores lower.

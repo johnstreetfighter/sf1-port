@@ -218,8 +218,8 @@ impl Level {
         }
     }
 
-    /// Percent chance that a route with a marked cut point, which would
-    /// not win the round, is cut there on purpose into a combo reset (SC10,
+    /// Percent chance that a route with a marked cut point, which could
+    /// not win the round on the health his bar shows, is cut there on purpose into a combo reset (SC10,
     /// `#202`), before the habit memory shifts it
     /// ([`habit::Habits::reset_lean`]). Easy never resets.
     pub const fn reset_chance(self) -> u32 {
@@ -1583,8 +1583,15 @@ impl FairCpu {
             wait.hit |= view.foe.reacting();
             let since = step.saturating_sub(wait.cut);
             let free_from = u32::from(wait.reset.free.saturating_sub(wait.reset.ahead));
-            let go = wait.hit && since >= free_from;
-            if go || since >= u32::from(wait.reset.free) {
+            // Knocked down, he is not where the cut was proven (on his
+            // feet): a throw or a low is let go at once.
+            let down = game::knocked_down(&view.foe);
+            let go = wait.hit && !down && since >= free_from;
+            if down && wait.reset.kind != ResetKind::Bait {
+                self.reset_wait = None;
+                self.route_outcome = Some(game::Outcome::Hit);
+                self.plan = Plan::default();
+            } else if go || since >= u32::from(wait.reset.free) {
                 self.reset_wait = None;
                 self.route_outcome = Some(if wait.hit { game::Outcome::Hit } else { game::Outcome::Nothing });
                 if go && wait.reset.kind != ResetKind::Bait {
@@ -1835,13 +1842,14 @@ impl FairCpu {
 
     /// Whether to cut `route` on purpose at one of its marked points (SC10,
     /// `#202`), and into what: the cut's script frame and the reset. Never a
-    /// route that would win the round, and never past where a slip of
+    /// route that might win the round (on the health its bar shows), and
+    /// never past where a slip of
     /// execution already cuts it (`stop`). How often is the level's
     /// [`Level::reset_chance`], shifted by the habit memory, which also
     /// weighs what it cuts into. A throw or a low is taken only where its
     /// walk in and press fit one plan, a bait only near him.
     fn choose_reset(&mut self, ctx: &Context, route: &crate::route_book::Route, moment: &game::Moment, stop: usize) -> Option<(usize, game::Reset)> {
-        if route.cuts.is_empty() || moment.wins_round(route) {
+        if route.cuts.is_empty() || moment.may_win_round(route) {
             return None;
         }
         let lean = self.habits.reset_lean(ctx.level);
@@ -3827,11 +3835,19 @@ mod tests {
         assert_ne!(hash(&seen_hit), hash(&waiting));
     }
 
+    /// What the opponent is shown doing for 20 frames from a route's cut.
+    #[derive(Clone, Copy, PartialEq)]
+    enum Seen {
+        Standing,
+        Reeling,
+        KnockedDown,
+    }
+
     /// A Very Difficult CPU that has taken a route cut into a throw reset
-    /// (SC10, `#202`), fed frames with the opponent standing in reach and,
-    /// with `reacting`, in a hit reaction for 20 frames from the cut. The
-    /// reset, the step its fighter is free on, and its pads from then.
-    fn throw_reset_played(reacting: bool) -> (game::Reset, Vec<u16>) {
+    /// (SC10, `#202`), fed frames with the opponent standing in reach, and
+    /// for 20 frames from the cut as `shown`. The reset, and its pads from
+    /// the step its fighter is free on.
+    fn throw_reset_played(shown: Seen) -> (game::Reset, Vec<u16>) {
         let c = sf6_ctx(Level::VeryHard);
         let me = Body { facing_left: false, ..body(200) };
         let foe = Body { facing_left: true, ..body(260) };
@@ -3850,8 +3866,13 @@ mod tests {
             let mut cut = None;
             let mut pads = Vec::new();
             for f in 41..200u32 {
-                let reeling = reacting && cut.is_some_and(|c: u32| f >= c && f < c + 20);
-                let seen = if reeling { Body { move_id: 0x30, state: 0x8a, ..foe } } else { foe };
+                let then = cut.is_some_and(|c: u32| f >= c && f < c + 20);
+                let seen = match shown {
+                    Seen::Reeling if then => Body { move_id: 0x30, state: 0x8a, ..foe },
+                    // A hit reaction drawn off the ground: a knockdown.
+                    Seen::KnockedDown if then => Body { move_id: 0x30, state: 0x8b, ..foe },
+                    _ => foe,
+                };
                 cpu.observe(at(f, seen));
                 let pad = cpu.press(f + 1, true, &c);
                 if cut.is_none() && cpu.route.is_none() {
@@ -3872,9 +3893,11 @@ mod tests {
     fn a_throw_reset_goes_on_only_once_the_route_is_seen_to_hit() {
         // SC10 (`#202`): the same CPU, the same route cut into a throw. Seen
         // to hit him, it walks in and throws on the book's timing once its
-        // fighter is free; seen to meet nothing, it lets the reset go.
-        let (reset, hit) = throw_reset_played(true);
-        let (_, missed) = throw_reset_played(false);
+        // fighter is free; seen to meet nothing, or to knock him down, it
+        // lets the reset go.
+        let (reset, hit) = throw_reset_played(Seen::Reeling);
+        let (_, missed) = throw_reset_played(Seen::Standing);
+        let (_, down) = throw_reset_played(Seen::KnockedDown);
         let cpu = FairCpu::new();
         let wait = usize::from(reset.free - reset.ahead);
         // Seen to hit by its first free frame, its pads go on from there as
@@ -3883,7 +3906,8 @@ mod tests {
         assert_eq!(cpu.reset_pads(reset, RIGHT, wait), want);
         assert_eq!(&hit[..want.len()], want, "after a hit: {reset:?}");
         assert!(want.contains(&(RIGHT | button(2))));
-        assert_ne!(&missed[..want.len()], want, "after nothing: the reset went on");
+        assert!(!missed[..want.len()].contains(&(RIGHT | button(2))), "after nothing: the reset's throw went in: {missed:?}");
+        assert!(!down[..want.len()].contains(&(RIGHT | button(2))), "after a knockdown: the reset's throw went in: {down:?}");
     }
 
     #[test]
@@ -3904,7 +3928,8 @@ mod tests {
             }
             let run = cpu.route.unwrap();
             let route = &book.routes[usize::from(run.index)];
-            if u32::from(route.damage) * 48 >= 14 * u32::from(crate::era_fight::FULL_SUB_HP) {
+            // Might win on the 14 points shown (261 to 280 units).
+            if u32::from(route.damage) * 48 > 13 * u32::from(crate::era_fight::FULL_SUB_HP) {
                 winning += 1;
                 winning_cut += u32::from(run.reset.is_some());
             } else {
@@ -3915,5 +3940,57 @@ mod tests {
         assert!(winning >= 1_000 && other >= 100, "winning routes taken {winning}, others {other}");
         assert_eq!(winning_cut, 0, "winning routes cut");
         assert!(other_cut >= 10, "other routes cut: {other_cut} of {other}");
+    }
+
+    #[test]
+    fn a_route_that_might_win_the_round_on_the_health_shown_is_never_cut() {
+        // SC10 (`#202`, second review): 24 points shown is anything from 461
+        // to 480 of an era style's units (20 a point), so a 468-damage route
+        // may win and is never cut; with 25 points shown it cannot, and is
+        // cut sometimes. The same with a whole health of 1,200 (25 a point):
+        // 24 points shown is 576 to 600, so 580 damage may win.
+        let text = |damage: u16| {
+            format!(
+                "route-book 2\nfighter Ryu\nstyle Sf6/Standard\n\nroute ground\nname MP, 236+LP\nhits 2\ndamage {damage}\nrules true_combos cancels\nmeter super -0 +0 drive -0 +0\nknockdown yes\ncorner no\nstances standing\nconfirm 0\ngap 52\nfails-on\ncuts 1 free 24 ahead 3 gap 64\nstep MP | wait 0 0..0 | hold 0 | 0:02x2 0:00\nstep 236+LP | wait 0 0..5 | hold 0 | 4:00x2 5:00x2 1:00x2 1:01x3 1:00\nend\n"
+            )
+        };
+        let c = sf6_ctx(Level::VeryHard);
+        let cut = |damage: u16, foe_health: u16, foe_max_sub_hp: u16| {
+            let book = crate::route_book::RouteBook::parse(&text(damage)).unwrap();
+            let route = &book.routes[0];
+            let moment = game::Moment {
+                reaches: &[crate::route_book::Reach::Ground],
+                era: true,
+                true_combos: true,
+                cancels: true,
+                crouching: false,
+                meters: [0, 0],
+                corner: false,
+                gap: 52,
+                walk: 0,
+                foe_health,
+                foe_max_sub_hp,
+                spend_super: false,
+                drive_reserve: 0,
+                avoid_burnout: true,
+                foe: None,
+            };
+            // A memory that asks for resets, so the chance is high.
+            let mut cuts = 0;
+            for seed in 1..=500u64 {
+                let mut cpu = FairCpu::seeded(seed);
+                for _ in 0..6 {
+                    cpu.habits.record(Spot::Grabbed, GrabAnswer::NotTeched as usize);
+                }
+                cuts += u32::from(cpu.choose_reset(&c, route, &moment, route.len()).is_some());
+            }
+            cuts
+        };
+        let full = crate::era_fight::FULL_SUB_HP;
+        assert_eq!(cut(468, 24, full), 0, "468 damage on 24 points shown (461 to 480)");
+        assert_eq!(cut(480, 24, full), 0);
+        assert!(cut(468, 25, full) >= 50, "468 damage on 25 points shown (481 to 500)");
+        assert_eq!(cut(580, 24, 1_200), 0, "580 damage on 24 points of 1,200 (576 to 600)");
+        assert!(cut(575, 24, 1_200) >= 50, "575 damage on 24 points of 1,200");
     }
 }
