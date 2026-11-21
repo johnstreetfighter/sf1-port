@@ -18,7 +18,9 @@
 test-threads = 8
 fail-fast = false
 retries = 0
-slow-timeout = { period = "120s" }
+# Flag a test after 2 minutes; end one that hangs after 20 (the slowest
+# real test, fair_cpu's walking test, takes under 10).
+slow-timeout = { period = "120s", terminate-after = 10 }
 # Everything except the serial set below.
 default-filter = 'not (package(sf-relay) | (package(sf-host) & (binary(/^net_/) | kind(lib))))'
 
@@ -26,6 +28,11 @@ default-filter = 'not (package(sf-relay) | (package(sf-host) & (binary(/^net_/) 
 [[profile.default.overrides]]
 filter = 'binary(fair_cpu) | binary(dip_switches) | binary(fixed_fight_dips) | binary(held_jump) | binary(full_1p) | binary(arcade_mode) | binary(era_cross)'
 priority = 50
+
+# Each pass writes its results as JUnit XML, for comparing runs test by test:
+# target/nextest/default/junit.xml and target/nextest/serial/junit.xml.
+[profile.default.junit]
+path = "junit.xml"
 
 [profile.serial]
 # Wall-clock limits (sf-host net_*, sf-relay service and rooms), real UDP
@@ -36,3 +43,7 @@ test-threads = 1
 fail-fast = false
 retries = 0
 default-filter = 'package(sf-relay) | (package(sf-host) & (binary(/^net_/) | kind(lib)))'
+slow-timeout = { period = "120s", terminate-after = 10 }
+
+[profile.serial.junit]
+path = "junit.xml"

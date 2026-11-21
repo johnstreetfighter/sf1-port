@@ -14,6 +14,12 @@ sha1 = "0.10"
 png = "0.17"
 clap = { version = "4", features = ["derive"] }
 
+# Debug builds keep file and line tables only: backtraces and panic locations
+# stay exact, but the variable and type info that made each test's .pdb huge
+# is left out.
+[profile.dev]
+debug = "line-tables-only"
+
 # The full test suite emulates whole fights, which is many times slower
 # unoptimized. `cargo suite` (.cargo/config.toml) builds it with this profile
 # into target/suite; overflow checks and debug assertions stay on from dev.
