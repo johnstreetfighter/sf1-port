@@ -75,6 +75,14 @@ pub struct DramaticState {
     pub boss_pad: PlayerInputs,
     pub boss_trackers: [u8; 9],
     pub boss_latches: [u8; 16],
+    /// The ally a boss playing the stronger game faces (his player struct,
+    /// 0 for none yet), and the frames in a row the other ally has been
+    /// the nearer (SC23, `#215`). It turns to the other only once he has
+    /// been the nearer for its slower reaction delay, so it never turns on
+    /// something newer than it could have seen, nor flips back and forth.
+    /// The old play leaves both at 0 and faces the nearer each frame.
+    pub boss_target: u32,
+    pub boss_nearer: u8,
 }
 
 impl DramaticState {
@@ -87,6 +95,6 @@ canonical_enum!(LifebarMode, "dramatic-lifebar/v1"; Shared => 0, Independent => 
 canonical_struct!(DramaticRules, "dramatic-rules/v1", {
     co_op, ally2, stage, lifebar, friendly_fire, styles, rivalry,
 });
-canonical_struct!(DramaticState, "dramatic-state/v1", {
-    health, boss_pad, boss_trackers, boss_latches,
+canonical_struct!(DramaticState, "dramatic-state/v2", {
+    health, boss_pad, boss_trackers, boss_latches, boss_target, boss_nearer,
 });

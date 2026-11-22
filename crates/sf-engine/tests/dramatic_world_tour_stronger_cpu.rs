@@ -128,15 +128,50 @@ struct Watched {
     /// Views each decided from that were checked against the frames.
     views: [u32; 2],
     hashes: Vec<u64>,
+    /// The stronger boss turned from one ally to the other, and frames the
+    /// other ally was the nearer while it kept facing the one it held.
+    turns: u32,
+    held_off: u32,
+}
+
+/// Which ally is nearer the boss in `at` (Ally 1, the boss, Ally 2), as
+/// the boss's old target rule picks: Ally 2 when Ally 1 is out of health.
+fn nearer(at: &[Body; 3], health: [u16; 3]) -> u32 {
+    let gap = |ally: &Body| ally.x.abs_diff(at[1].x);
+    if health[0] == 0 || (health[2] > 0 && gap(&at[2]) < gap(&at[0])) { P2_STRUCT } else { P1_STRUCT }
 }
 
 fn watch(assets: &Assets, fight: &mut Fight, frames: u32) -> Watched {
     let mut w = Watched::default();
-    let mut seen: HashMap<u32, [Body; 3]> = HashMap::new();
+    let mut seen: HashMap<u32, ([Body; 3], u32)> = HashMap::new();
+    // The nearer ally after each frame, and the health then: what the
+    // boss's next press decides from.
+    let mut nearest: VecDeque<u32> = VecDeque::new();
+    let (mut held, mut health_before) = (0u32, [0u16; 3]);
+    let delay = sf_engine::fair_cpu::Level::from_difficulty(fight.setup().config.difficulty).unfocused_reaction() as usize;
     for i in 0..frames {
         fight.step(assets, p1_script(i), PlayerInputs::default(), false);
         let m = fight.machine();
-        seen.insert(m.state.frame, bodies(m));
+        let at = bodies(m);
+        let target = m.toggle_state().dramatic.boss_target;
+        seen.insert(m.state.frame, (at, target));
+        let health = m.toggle_state().dramatic.health;
+        // The stronger boss turns to the other ally only once he has been
+        // the nearer for its slower reaction delay in a row (or the one it
+        // faced is out of health).
+        if target != 0 && held != 0 && target != held {
+            let faced_out = health_before[if held == P1_STRUCT { 0 } else { 2 }] == 0;
+            let waited = nearest.len() >= delay && nearest.iter().rev().take(delay).all(|&n| n == target);
+            assert!(faced_out || waited, "frame {i}: turned to {target:x} with the nearer {:?}", nearest.iter().rev().take(delay).collect::<Vec<_>>());
+            w.turns += 1;
+        }
+        let now_nearer = nearer(&at, health);
+        w.held_off += u32::from(target != 0 && now_nearer != target);
+        nearest.push_back(now_nearer);
+        if nearest.len() > 64 {
+            nearest.pop_front();
+        }
+        (held, health_before) = (target, health);
         w.fought += u32::from(flow_position(m) == FIGHT_LOOP);
         w.hashes.push(fight.state_checksum());
         let cpus = m.dramatic_fair_cpus().expect("the boss's and the ally's CPUs");
@@ -156,10 +191,16 @@ fn watch(assets: &Assets, fight: &mut Fight, frames: u32) -> Watched {
         for k in 0..2 {
             w.plans[k] |= cpus[k].following_game_plan();
             let view = cpus[k].last_view();
-            let Some(at) = seen.get(&view.frame).filter(|_| view.fighting) else { continue };
-            // Each sees its own fighter, and its own opponent: the boss
-            // one of the allies, the ally the boss.
-            let (me, foes) = if k == 0 { (at[1], vec![at[0], at[2]]) } else { (at[2], vec![at[1]]) };
+            let Some(&(at, target)) = seen.get(&view.frame).filter(|_| view.fighting) else { continue };
+            // Each sees its own fighter, and its own opponent: the stronger
+            // boss the ally it held as its target on that frame (the old
+            // boss the nearer, either), the ally the boss.
+            let foes = match (k, target) {
+                (1, _) => vec![at[1]],
+                (_, 0) => vec![at[0], at[2]],
+                (_, t) => vec![at[if t == P1_STRUCT { 0 } else { 2 }]],
+            };
+            let me = at[if k == 0 { 1 } else { 2 }];
             assert_eq!(view.me, me, "frame {i}: CPU {k} sees its own fighter");
             assert!(
                 foes.iter().any(|foe| foe.x == view.foe.x && foe.health == view.foe.health),
@@ -184,6 +225,9 @@ fn with_the_switch_on_the_boss_and_the_ally_each_play_the_stronger_game_alone() 
         // Alone on its pad: no Utility AI command is ever queued beside it.
         assert_eq!(w.utility, [0, 0], "frames with a Utility AI command queued");
         assert!(w.views[0] > 600 && w.views[1] > 600, "views checked: {:?}", w.views);
+        // The held target was exercised: the other ally was the nearer on
+        // some frames while the boss kept its target, and it did turn.
+        assert!(w.turns >= 1 && w.held_off > 0, "turns {}, frames held against the nearer {}", w.turns, w.held_off);
     });
 }
 
@@ -195,6 +239,7 @@ fn with_the_switch_off_the_boss_and_the_ally_play_the_old_game_beside_the_utilit
         let w = watch(&assets, &mut fight, 3_600);
         assert!(w.fought > 900, "the round was fought: {} frames", w.fought);
         assert_eq!(w.plans, [false, false], "no game plan in the old play");
+        assert_eq!(w.turns + w.held_off, 0, "the old boss holds no target: it faces the nearer");
         assert!(w.utility[0] > 0 && w.utility[1] > 0, "the Utility AI adds commands: {:?}", w.utility);
         let mut on = dramatic_fight(&assets, true, [Revision::Sf6; 3], 4, 5);
         let stronger = watch(&assets, &mut on, 3_600);
@@ -299,33 +344,78 @@ fn three_fair_cpus_at_once_rerun_under_rollback_to_the_same_fight() {
     });
 }
 
+/// A solo Dramatic `Fight` (drawn as the front end draws it) with the
+/// measuring run's three Fair CPUs on Ryu in the SF6 era style, a second
+/// into the first round.
+fn three_cpu_fight(assets: &Assets, stronger: bool, seed: u64) -> Fight {
+    let spec = DramaticSpec {
+        fighters: [TournamentFighter::Ryu; 3],
+        styles: [Revision::Sf6; 3],
+        difficulty: [4; 3],
+        seed,
+        stronger: [stronger; 3],
+    };
+    let mut fight = sf_engine::measure::dramatic_fight(&assets.maincpu, None, &spec).expect("the Dramatic fight starts");
+    let mut live = 0;
+    for _ in 0..3_000 {
+        fight.step(assets, PlayerInputs::default(), PlayerInputs::default(), false);
+        live += u32::from(flow_position(fight.machine()) == FIGHT_LOOP);
+        if live == 60 {
+            break;
+        }
+    }
+    assert_eq!(live, 60, "the round starts");
+    fight
+}
+
+/// One frame as netplay's rollback engine runs it (`RollbackEngine::simulate`):
+/// a snapshot saved, the frame stepped and drawn, the checksum taken.
+fn simulate(fight: &mut Fight, assets: &Assets, frame: u32) {
+    std::hint::black_box(fight.save_netplay_snapshot(frame));
+    fight.step(assets, PlayerInputs::default(), PlayerInputs::default(), false);
+    std::hint::black_box(fight.state_checksum());
+}
+
+/// The worst rollback netplay allows, timed: back 8 frames, and those and
+/// the new one re-run as netplay re-runs them. The fight comes out one
+/// frame on.
+fn worst_rollback(fight: &mut Fight, assets: &Assets) -> Duration {
+    let back = fight.save_netplay_snapshot(0);
+    for frame in 0..MAX_ROLLBACK as u32 {
+        simulate(fight, assets, frame);
+    }
+    let t = Instant::now();
+    fight.restore_netplay_snapshot(&back);
+    for frame in 0..=MAX_ROLLBACK as u32 {
+        simulate(fight, assets, frame);
+    }
+    t.elapsed()
+}
+
+fn median(times: &mut [Duration]) -> Duration {
+    times.sort();
+    times[times.len() / 2]
+}
+
 #[test]
-#[ignore = "timing: run optimized and alone, with --release -- --ignored"]
-fn the_worst_rollback_with_three_fair_cpus_fits_the_frame_budget() {
-    // The worst rollback netplay allows re-runs 9 frames in one 60 Hz
-    // frame. Nine in ten of 40 such re-runs with three Fair CPUs playing
-    // the stronger game must fit in 16.67 ms on this machine (so a stall
-    // or two of the machine does not fail it; `dramatic_cost` reports the
-    // spread).
+fn a_worst_rollback_with_three_stronger_fair_cpus_costs_little_more_than_with_the_old_play() {
+    // SC23 (`#215`): the stronger play's share of a worst rollback, as
+    // netplay re-runs one, measured in this process against the old play's
+    // on the same machine, taken in turns so both see the same load. The
+    // median must stay under twice the old play's: what the frames cost
+    // with drawing and checksums is the same for both, so a stronger play
+    // that grew costly (a search each frame, a slow route lookup) shows.
     let Some(assets) = assets() else { return };
     deep(move || {
-        let mut m = three_cpus(&assets, 1);
-        let mut times = Vec::new();
-        for _ in 0..40 {
-            let snapshot = m.save_snapshot();
-            for _ in 0..=MAX_ROLLBACK {
-                step(&mut m);
+        let mut fights = [three_cpu_fight(&assets, false, 1), three_cpu_fight(&assets, true, 1)];
+        let mut times = [Vec::new(), Vec::new()];
+        for _ in 0..24 {
+            for (fight, times) in fights.iter_mut().zip(times.iter_mut()) {
+                times.push(worst_rollback(fight, &assets));
             }
-            let t = Instant::now();
-            m.restore_snapshot(&snapshot);
-            for _ in 0..=MAX_ROLLBACK {
-                step(&mut m);
-            }
-            times.push(t.elapsed());
         }
-        times.sort();
-        let ninetieth = times[35];
-        assert!(ninetieth < Duration::from_micros(16_667), "the 90th percentile of worst rollbacks took {ninetieth:?}: {times:?}");
+        let [old, new] = times.map(|mut t| median(&mut t));
+        assert!(new < old * 2, "a worst rollback: stronger play {new:?}, old play {old:?}");
     });
 }
 
@@ -428,6 +518,45 @@ fn another_world_tour_mission_leaves_the_stronger_play_its_specials() {
         for mission in [MissionKind::RivalBout, MissionKind::RuleModifierTrial(RuleModifier::NoBlocking)] {
             let found = specials(&assets, &mut tour_fight(&assets, Some(mission), Revision::Sf6), 4_800);
             assert!(found.motions + found.chords + found.routes > 0, "{mission:?}: {found:?}");
+        }
+    });
+}
+
+/// Player 1 stands and kicks the air, so the Fair CPU has whiffs to
+/// punish as it comes in: a heavy kick every 40 frames.
+fn whiff_script(i: u32) -> PlayerInputs {
+    inputs(if i % 40 < 4 { 0x200 } else { 0 })
+}
+
+#[test]
+fn under_pure_footsies_a_fighter_whose_book_has_plain_normal_routes_takes_only_those() {
+    // SC23 (`#215`): Ryu in the CE era style (no art pack needed) has a
+    // plain-normal ground route, light punch twice, beside routes with
+    // specials; he takes routes when he punishes a whiff. Under the trial
+    // every route he takes is plain normals, and he takes one; without it
+    // he takes routes with specials too.
+    let Some(assets) = assets() else { return };
+    deep(move || {
+        let book = sf_engine::route_book::book(TournamentFighter::Ryu, Revision::Ce, loadouts(Revision::Ce)[0]).expect("Ryu's CE book");
+        assert!(book.routes.iter().any(|r| r.normals_only()) && book.routes.iter().any(|r| !r.normals_only()));
+        let footsies = MissionKind::RuleModifierTrial(RuleModifier::PureFootsies);
+        for mission in [None, Some(footsies)] {
+            let mut fight = tour_fight(&assets, mission, Revision::Ce);
+            let (mut plain, mut other, mut last) = (0, 0, None);
+            for i in 0..9_600 {
+                fight.step(&assets, whiff_script(i), PlayerInputs::default(), false);
+                let Some(cpu) = fight.machine().fair_cpu() else { continue };
+                let entered = cpu.route_index().filter(|_| cpu.route_step().is_none_or(|step| step == 0));
+                if entered.is_some() && entered != last {
+                    let route = &book.routes[entered.unwrap()];
+                    if route.normals_only() { plain += 1 } else { other += 1 }
+                }
+                last = cpu.route_index();
+            }
+            match mission {
+                None => assert!(other > 0, "without the mission: plain {plain}, with specials {other}"),
+                Some(_) => assert!(plain > 0 && other == 0, "under the trial: plain {plain}, with specials {other}"),
+            }
         }
     });
 }

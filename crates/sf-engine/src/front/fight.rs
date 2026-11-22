@@ -787,6 +787,11 @@ impl Fight {
                 _ => false,
             }
         });
+        // The stronger play reads the route books: parsed before the fight,
+        // not on the first route it takes (SC23, `#215`).
+        if setup.config.stronger_cpu {
+            crate::route_book::warm();
+        }
         let mut machine = PowerOnMachine::with_io(
             program_rom.to_vec(),
             Io {

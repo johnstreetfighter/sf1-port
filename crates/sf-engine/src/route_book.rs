@@ -517,6 +517,12 @@ pub fn books() -> &'static [RouteBook] {
     PARSED.get_or_init(|| BOOKS.iter().map(|text| RouteBook::parse(text).expect("a checked-in route book parses")).collect())
 }
 
+/// Parse every route book now, so the first route a Fair CPU takes in a
+/// fight does not stall a frame on it (SC23, `#215`: about 50 ms).
+pub fn warm() {
+    let _ = books();
+}
+
 /// The checked-in text of every route book, as the build holds it.
 pub fn book_texts() -> &'static [&'static str] {
     BOOKS

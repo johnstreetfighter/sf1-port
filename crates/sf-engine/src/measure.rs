@@ -478,9 +478,11 @@ pub fn dramatic_config(spec: &DramaticSpec) -> Result<MatchConfig, String> {
     Ok(config)
 }
 
-/// Start `spec`'s solo Dramatic fight on a machine running `program_rom`,
-/// with a Fair CPU seeded on each of the three fighters, ready to step.
-pub fn dramatic_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &DramaticSpec) -> Result<crate::run::PowerOnMachine, String> {
+/// Start `spec`'s solo Dramatic fight as the front end runs one, with a
+/// Fair CPU seeded on each of the three fighters (SC23, `#215`): stepped
+/// with [`Fight::step`] it draws its frames, as netplay's rollback re-runs
+/// them. `data` is the extended data bank, as for [`measure_match`].
+pub fn dramatic_fight(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &DramaticSpec) -> Result<Fight, String> {
     let config = dramatic_config(spec)?;
     let level = config.difficulty;
     let setup = FightSetup {
@@ -491,11 +493,19 @@ pub fn dramatic_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &
         dsw2: FightDips { difficulty: level, round_time: 100 }.dsw2(),
     };
     let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
-    let fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))
+    let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))
         .map_err(|event| format!("the fight did not start: {event:?}"))?;
     let mut machine = fight.machine().clone();
     machine.seed_measuring_dramatic_cpus(spec.seed, spec.stronger, spec.difficulty.map(crate::fair_cpu::Level::from_difficulty));
-    Ok(machine)
+    let mut snapshot = fight.save_netplay_snapshot(0);
+    snapshot.machine = machine.save_snapshot();
+    fight.restore_netplay_snapshot(&snapshot);
+    Ok(fight)
+}
+
+/// The machine of [`dramatic_fight`], to step bare with nothing drawn.
+pub fn dramatic_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &DramaticSpec) -> Result<crate::run::PowerOnMachine, String> {
+    Ok(dramatic_fight(program_rom, data, spec)?.machine().clone())
 }
 
 /// Play `spec`'s solo Dramatic match with three Fair CPUs and count what

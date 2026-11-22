@@ -460,6 +460,7 @@ impl ReplayPlayback {
         let config = self.fight.machine().match_config();
         let fair = config.preset != RulesetPreset::Faithful1987;
         self.fair_cpu = (self.stronger_cpu && fair).then(|| {
+            crate::route_book::warm();
             Box::new(FairCpu::seeded(self.replay.seed ^ u64::from(self.frame) ^ 0x3c6e_f372_fe94_f82b).force_stronger(true))
         });
         self.mode = ReplayMode::Takeover {

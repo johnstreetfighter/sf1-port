@@ -1407,9 +1407,10 @@ pub struct PowerOnMachine {
     /// histories only in Dramatic so other fights keep small snapshots.
     dramatic_cpu: Option<Box<[crate::fair_cpu::FairCpu; 2]>>,
     /// A Fair CPU on Player 1's pad too, for the measuring run (SC1,
-    /// `#193`): a developer tool sets it, no game mode does. It plays only
-    /// in a two-pad fight whose Player 2 the Fair CPU already plays. Boxed
-    /// so other fights keep small snapshots.
+    /// `#193`): a developer tool sets it, no game mode does. It plays in a
+    /// two-pad fight whose Player 2 the Fair CPU already plays, and as
+    /// Ally 1 in a solo Dramatic fight (SC23, `#215`). Boxed so other
+    /// fights keep small snapshots.
     p1_fair_cpu: Option<Box<crate::fair_cpu::FairCpu>>,
 }
 
@@ -1739,6 +1740,9 @@ impl PowerOnMachine {
     pub(crate) fn seed_measuring_cpus(&mut self, seed: u64, stronger: [bool; 2], levels: [crate::fair_cpu::Level; 2]) {
         use crate::fair_cpu::FairCpu;
         self.seed_utility_cpu(seed);
+        if stronger.contains(&true) {
+            crate::route_book::warm();
+        }
         self.fair_cpu =
             Some(FairCpu::seeded(0x9e37_79b9_7f4a_7c15 ^ seed.rotate_left(17)).force_stronger(stronger[1]).force_level(Some(levels[1])));
         self.p1_fair_cpu = Some(Box::new(
@@ -2068,14 +2072,17 @@ impl PowerOnMachine {
         let fighter = self.program.match_config.roster.p2;
         let forced = self.dramatic_cpu.get_or_insert_with(Default::default).each_ref().map(crate::fair_cpu::FairCpu::forced_level);
         let mut boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT, forced[0]);
-        let opponent = self.dramatic_boss_target();
         let families = self.dramatic_era_fighters().map(|era| era.style.family);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
         let owned = self.dramatic_cpu.as_ref().unwrap()[0].owns_pad(&boss);
-        if owned {
-            self.dramatic_face(&mut boss, opponent);
-        }
+        let opponent = if owned {
+            let target = self.dramatic_held_target(boss.level);
+            self.dramatic_face(&mut boss, target);
+            target
+        } else {
+            self.dramatic_boss_target()
+        };
         let cpu = &mut self.dramatic_cpu.as_mut().unwrap()[0];
         let pad = cpu.press(step, in_fight && boss_hp > 0, &boss);
         let idle = cpu.utility_idle();
@@ -2141,6 +2148,9 @@ impl PowerOnMachine {
     pub(crate) fn seed_measuring_dramatic_cpus(&mut self, seed: u64, stronger: [bool; 3], levels: [crate::fair_cpu::Level; 3]) {
         use crate::fair_cpu::FairCpu;
         self.seed_utility_cpu(seed);
+        if stronger.contains(&true) {
+            crate::route_book::warm();
+        }
         let cpu = |salt: u64, turn: u32, side: usize| {
             FairCpu::seeded(salt ^ seed.rotate_left(turn)).force_stronger(stronger[side]).force_level(Some(levels[side]))
         };
@@ -2215,7 +2225,10 @@ impl PowerOnMachine {
     fn dramatic_cpu_observe(&mut self, rules: crate::dramatic::DramaticRules) {
         use crate::fair_cpu::perceive_fighters;
         use crate::fighter::{CPU_STRUCT, P2_STRUCT};
-        let target = self.dramatic_boss_target();
+        // The stronger boss watches the ally it holds as its target; the
+        // old play the nearer.
+        let held = self.program.toggle_state.dramatic.boss_target;
+        let target = if held != 0 { held } else { self.dramatic_boss_target() };
         let fighting = self.in_fight();
         let [p1_hp, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
         let boss = perceive_fighters(self.state.frame, fighting && boss_hp > 0 && (p1_hp > 0 || ally_hp > 0),
@@ -2227,6 +2240,31 @@ impl PowerOnMachine {
         if let Some(ally) = ally {
             cpu[1].observe(ally);
         }
+    }
+
+    /// The ally a boss playing the stronger game faces this frame, held
+    /// from frame to frame (SC23, `#215`): the nearer at first, the other
+    /// once he has been the nearer for `level`'s slower reaction delay in a
+    /// row, and the other at once when the one it faces is out of health.
+    fn dramatic_held_target(&mut self, level: crate::fair_cpu::Level) -> u32 {
+        use crate::fighter::P1_STRUCT;
+        let nearest = self.dramatic_boss_target();
+        let [p1_hp, _, p2_hp] = self.program.toggle_state.dramatic.health;
+        let state = &mut self.program.toggle_state.dramatic;
+        let alive = |ps: u32| if ps == P1_STRUCT { p1_hp > 0 } else { p2_hp > 0 };
+        if state.boss_target == 0 || !alive(state.boss_target) {
+            state.boss_target = nearest;
+            state.boss_nearer = 0;
+        } else if nearest != state.boss_target {
+            state.boss_nearer = state.boss_nearer.saturating_add(1);
+            if u32::from(state.boss_nearer) >= level.unfocused_reaction() {
+                state.boss_target = nearest;
+                state.boss_nearer = 0;
+            }
+        } else {
+            state.boss_nearer = 0;
+        }
+        state.boss_target
     }
 
     fn dramatic_boss_target(&self) -> u32 {

@@ -812,10 +812,12 @@ pub struct Context {
     /// round's start is a new match, where the habit memory starts empty.
     pub(crate) round: u8,
     /// A World Tour mission allows only normals and throws (Pure Footsies):
-    /// the engine refuses every special, era command, command normal and
-    /// air throw to both fighters. The stronger play keeps to that rule
-    /// (SC23, `#215`): see [`Context::normals_and_throws`]. The old play
-    /// ignores it, as it always has.
+    /// the engine refuses specials, supers, era commands, command normals
+    /// and air throws to both fighters, though it still lets through the
+    /// SF3 era style's overhead and the Alpha styles' moves of the normal
+    /// kind. The stronger play keeps to plain normals and throws (SC23,
+    /// `#215`), stricter than the rule: see [`Context::normals_and_throws`].
+    /// The old play ignores it, as it always has.
     pub(crate) pure_footsies: bool,
 }
 
