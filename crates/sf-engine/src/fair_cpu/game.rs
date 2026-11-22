@@ -19,6 +19,9 @@ use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
 
+mod sfz;
+pub(super) use sfz::{chain_pads, custom_combo_pads, EraAct, Signature, Signatures, THROW_REACH, THROW_SPACE};
+
 /// The playfield's walls as a fighter's centre meets them, and how near one
 /// counts as the corner. Measured by walking Ryu into each wall of
 /// Training's stage in the SF6 era style; other stages are not checked.
@@ -101,6 +104,17 @@ pub(super) fn knocked_down(body: &Body) -> bool {
 
 fn cornered(body: &Body) -> bool {
     body.present && (body.x <= LEFT_WALL + CORNER || body.x >= RIGHT_WALL - CORNER)
+}
+
+/// How far from the walls of Training's stage a fighter must stand to have
+/// room to walk back: other stages' walls stand nearer (in the measuring
+/// run's matches an SFZ fighter walking back met one at about x 375).
+const BACK_ROOM: i16 = 70;
+
+/// The CPU's fighter has room behind it to walk back, as far as the walls
+/// it knows go (SC16, `#208`).
+pub(super) fn room_behind(view: &Percept) -> bool {
+    if view.foe.x >= view.me.x { view.me.x > LEFT_WALL + BACK_ROOM } else { view.me.x < RIGHT_WALL - BACK_ROOM }
 }
 
 /// What judging remembers from one seen frame to the next.
@@ -309,6 +323,14 @@ pub(super) enum Act {
     /// The era style's dash that spends meter to close in (SF6's Drive
     /// Rush, SC8 `#200`). Without the gauge for it the plan ends.
     Rush,
+    /// One of its fighter's own moves of a kind (SC16, `#208`): a command
+    /// throw, a teleport, a charge move. A fighter without one, or out of
+    /// its reach, ends the plan.
+    Signature(Signature),
+    /// One of the era style's own tools (SC16, `#208`): starting Custom
+    /// Combo and the chain played in it, a change of stance. Without the
+    /// tool, or the meter it needs, the plan ends.
+    Era(EraAct),
 }
 
 impl Act {
@@ -324,6 +346,8 @@ impl Act {
                 | Act::Step { forward: true }
                 | Act::Shot
                 | Act::Rush
+                | Act::Signature(_)
+                | Act::Era(_)
                 | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach | Choice::JumpIn)
         )
     }
@@ -339,7 +363,7 @@ impl Act {
     /// step does not by itself: which routes may be taken is the moment's
     /// call ([`Moment::allows`]).
     pub(super) fn needs_special(self) -> bool {
-        matches!(self, Act::Shot | Act::Rush | Act::Do(Choice::Special(_) | Choice::Cancel { .. }))
+        matches!(self, Act::Shot | Act::Rush | Act::Signature(_) | Act::Era(_) | Act::Do(Choice::Special(_) | Choice::Cancel { .. }))
     }
 }
 
@@ -888,6 +912,7 @@ pub(super) fn repeat_score(level: Level, worked: u8, last: bool) -> i32 {
 pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily>) -> &'static [GamePlan] {
     match (fighter, family) {
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
+        (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
         _ => &[],
     }
 }

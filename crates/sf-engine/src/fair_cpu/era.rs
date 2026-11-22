@@ -52,6 +52,8 @@ pub(super) struct Tactics {
     unified: bool,
     /// The opponent's era style, where known.
     foe_family: Option<EraFamily>,
+    /// Custom Combo is running (SC16, `#208`).
+    custom: bool,
 }
 
 impl Tactics {
@@ -258,6 +260,7 @@ impl Tactics {
             reserve,
             unified,
             foe_family: None,
+            custom: era.custom_combo_active(),
         }
     }
 
@@ -310,6 +313,28 @@ impl Tactics {
     /// would cancel it into a Drive Rush.
     pub(super) fn can_hold_parry(self) -> bool {
         self.parry_hold && !self.control.cancel
+    }
+
+    /// Custom Combo can be started now (SC16, `#208`): the SFZ3 V-ism's
+    /// meter holds enough, and its fighter is free.
+    pub(super) fn custom_combo_ready(self) -> bool {
+        self.family == EraFamily::SfZ && self.install.is_some() && self.control.free && !self.custom
+    }
+
+    /// Custom Combo is running.
+    pub(super) fn custom_active(self) -> bool {
+        self.custom
+    }
+
+    /// Its fighter changes stance (Gen's Mantis and Crane).
+    pub(super) fn has_stance(self) -> bool {
+        self.stance.is_some()
+    }
+
+    /// The pads of a change of stance, when its fighter is free to make one.
+    pub(super) fn stance_change(self, view: Percept) -> Option<Plan> {
+        let entry = self.stance.filter(|_| self.control.free)?;
+        Some(self.pad(&entry, view, 1))
     }
 
     pub(super) fn can_interrupt(self) -> bool {

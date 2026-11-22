@@ -180,10 +180,21 @@ struct Opening {
     quiet: u32,
 }
 
-/// Play `spec`'s match on a machine running `program_rom` and count what
-/// each side did. `data` is the extended data bank holding the bosses'
-/// player tables; without one only Ryu and Ken can be played.
-pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<MatchReport, String> {
+/// The machine `spec`'s match is played on, at its first frame, with
+/// Player 2's Fair CPU seeded as [`measure_match`] seeds it and no Fair CPU
+/// on Player 1's pad, which the caller sets (SC16, `#208`: the SFZ fight
+/// tests play any fighter and style this way). `spec.stronger[0]` is then
+/// unused; the match's level is still the higher of the two. `data` is as
+/// for [`measure_match`].
+pub fn pad_match_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
+    let mut machine = match_machine(program_rom, data, spec)?;
+    machine.drop_measuring_p1_cpu();
+    Ok(machine)
+}
+
+/// The machine `spec`'s match is played on, at its first frame, with each
+/// side's Fair CPU seeded as [`measure_match`] seeds them.
+fn match_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
     let picks = spec.styles.map(|(revision, loadout)| StylePick::for_revision(revision, loadout));
     for (side, pick) in picks.iter().enumerate() {
         if !pick.available_for(spec.fighters[side], true) {
@@ -217,7 +228,14 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
     fight.set_selected_styles(picks.map(Some));
     let mut machine = fight.machine().clone();
     machine.seed_measuring_cpus(spec.seed, spec.stronger, spec.difficulty.map(crate::fair_cpu::Level::from_difficulty));
+    Ok(machine)
+}
 
+/// Play `spec`'s match on a machine running `program_rom` and count what
+/// each side did. `data` is the extended data bank holding the bosses'
+/// player tables; without one only Ryu and Ken can be played.
+pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<MatchReport, String> {
+    let mut machine = match_machine(program_rom, data, spec)?;
     let mut report = MatchReport { spec: *spec, ended: false, winner: None, frames: 0, live_frames: 0, sides: [SideReport::default(); 2] };
     let mut before: Option<([Body; 2], [u32; 2])> = None;
     let mut open: [Option<Opening>; 2] = [None; 2];

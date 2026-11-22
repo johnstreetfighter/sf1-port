@@ -819,6 +819,10 @@ pub struct Context {
     /// `#215`), stricter than the rule: see [`Context::normals_and_throws`].
     /// The old play ignores it, as it always has.
     pub(crate) pure_footsies: bool,
+    /// Its fighter's command throw, teleport and charge move, where the
+    /// SFZ era style is in force (SC16, `#208`): the game plans step into
+    /// them by kind.
+    signatures: game::Signatures,
 }
 
 impl Context {
@@ -841,6 +845,7 @@ impl Context {
             foe: None,
             round: 0,
             pure_footsies: false,
+            signatures: game::Signatures::default(),
         }
     }
 
@@ -857,6 +862,7 @@ impl Context {
         if context.pure_footsies {
             context.kit = Kit { fighter: self.kit.fighter, ..Kit::default() };
             context.era = None;
+            context.signatures = game::Signatures::default();
         }
         context
     }
@@ -875,6 +881,9 @@ impl Context {
         context.era = Some(Tactics::of(state, &entries, config, level, control));
         context.family = Some(state.style.family);
         context.style = Some((state.style.revision, state.style.loadout));
+        if state.style.family == crate::era::EraFamily::SfZ {
+            context.signatures = game::Signatures::of(&entries);
+        }
         context.meters = [u16::from(state.super_meter), state.sf6_drive_points().unwrap_or(0)];
         context.meter_full = state.super_capacity() != 0 && state.super_meter >= state.super_capacity();
         context
@@ -961,6 +970,25 @@ impl Context {
     }
 }
 
+/// Every move and era tool the plan steps into is its fighter's now (SC16,
+/// `#208`): its command throw (with the opponent near enough to walk in
+/// to), teleport or charge move (with room behind to hold it), Custom Combo
+/// with the meter to start it, a change of stance. A plan that needs none
+/// is. `felt` is the frame as the CPU decides from it, its own fighter as
+/// it feels it now.
+fn playable(plan: &game::GamePlan, ctx: &Context, felt: &Percept) -> bool {
+    plan.steps.iter().all(|step| match step.act {
+        game::Act::Signature(game::Signature::CommandThrow) => {
+            ctx.signatures.command_throw.is_some() && felt.gap() <= game::THROW_REACH
+        }
+        game::Act::Signature(game::Signature::Charge) => ctx.signatures.charge.is_some() && game::room_behind(felt),
+        game::Act::Signature(kind) => ctx.signatures.get(kind).is_some(),
+        game::Act::Era(game::EraAct::CustomCombo) => ctx.era.is_some_and(|tactics| tactics.custom_combo_ready()),
+        game::Act::Era(game::EraAct::Stance) => ctx.era.is_some_and(|tactics| tactics.has_stance()),
+        _ => true,
+    })
+}
+
 /// The fighter's route book in its era style holds a route of plain
 /// normals ([`crate::route_book::Route::normals_only`]) that starts in
 /// `reach`: what a mission allowing only normals and throws leaves it.
@@ -968,6 +996,18 @@ fn normals_route(ctx: &Context, reach: crate::route_book::Reach) -> bool {
     let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
     crate::route_book::book(fighter, revision, loadout)
         .is_some_and(|book| book.routes.iter().any(|route| route.reach == reach && route.normals_only()))
+}
+
+/// A game plan step that steps into its fighter's own kind of move or an
+/// era style's tool ([`FairCpu::own_move_step`], SC16 `#208`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnMoveStep {
+    CommandThrow,
+    Teleport,
+    Charge,
+    CustomCombo,
+    CustomChain,
+    Stance,
 }
 
 /// What a plan is doing.
@@ -1345,6 +1385,24 @@ impl FairCpu {
     /// The situation the stronger play last judged the fight to be in, from
     /// the frame its reaction delay showed it. A CPU playing the old game
     /// judges none and this stays at its default.
+    /// The fighter's own move or era tool the game plan step it is on
+    /// steps into, if it is on such a step (SC16, `#208`): what a test
+    /// reads to tell these moves from the same moves chosen elsewhere.
+    /// `fighter` and `family` are its fighter and era style.
+    pub fn own_move_step(&self, fighter: TournamentFighter, family: crate::era::EraFamily) -> Option<OwnMoveStep> {
+        let run = self.game?;
+        let step = game::plans(Some(fighter), Some(family)).get(usize::from(run.plan))?.steps.get(usize::from(run.step))?;
+        Some(match step.act {
+            game::Act::Signature(game::Signature::CommandThrow) => OwnMoveStep::CommandThrow,
+            game::Act::Signature(game::Signature::Teleport) => OwnMoveStep::Teleport,
+            game::Act::Signature(game::Signature::Charge) => OwnMoveStep::Charge,
+            game::Act::Era(game::EraAct::CustomCombo) => OwnMoveStep::CustomCombo,
+            game::Act::Era(game::EraAct::CustomChain) => OwnMoveStep::CustomChain,
+            game::Act::Era(game::EraAct::Stance) => OwnMoveStep::Stance,
+            _ => return None,
+        })
+    }
+
     pub fn situation(&self) -> Judged {
         self.judged
     }
@@ -2101,6 +2159,7 @@ impl FairCpu {
         let table = game::plans(ctx.kit.fighter, ctx.family);
         let mut best: Option<(u8, i32)> = None;
         let gap = view.gap();
+        let felt = self.felt(step, view);
         let pressed_enough = self.pressed_enough(ctx.level);
         for (index, plan) in table.iter().enumerate() {
             if plan.situation == self.judged.situation
@@ -2112,6 +2171,9 @@ impl FairCpu {
                 // plan that needs a special or an era command, or a route
                 // its book has none of plain normals for (SC23, `#215`).
                 && !(ctx.pure_footsies && !plan.keeps_to_normals(|reach| normals_route(ctx, reach)))
+                // A plan that steps into a move or an era tool its fighter
+                // has not got now (SC16, `#208`).
+                && playable(plan, ctx, &felt)
             {
                 // A cornered opponent is pressed harder.
                 let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
@@ -2298,6 +2360,60 @@ impl FairCpu {
                     run.pressed = step;
                     self.game = Some(run);
                     return Some(self.plan_for(choice, step, view, ctx, false));
+                }
+                (Act::Signature(kind), false) => {
+                    self.game = Some(run);
+                    if !self.ready(step, view, stronger) {
+                        return Some(wait);
+                    }
+                    let Some(entry) = ctx.signatures.get(kind) else { break };
+                    // A grab walks in first, as the plain throw does: from
+                    // farther than it can walk in a plan, the plan ends.
+                    // Its own fighter's place and facing are felt now.
+                    let felt = self.felt(step, view);
+                    let gap = felt.gap();
+                    if kind == game::Signature::CommandThrow && gap > game::THROW_REACH {
+                        break;
+                    }
+                    // A charge is held walking back: with a wall behind it,
+                    // it would stand still charging. The plan ends instead.
+                    if kind == game::Signature::Charge && !game::room_behind(&felt) {
+                        break;
+                    }
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    self.last_normal = None;
+                    let mut pads = Vec::new();
+                    if kind == game::Signature::CommandThrow {
+                        let walk = ((gap - game::THROW_SPACE).max(0) + 1) / 2;
+                        pads.extend(std::iter::repeat_n(if felt.toward() > 0 { RIGHT } else { LEFT }, walk as usize));
+                        pads.push(0);
+                    }
+                    pads.extend(self.motion(&entry, !felt.me.facing_left, felt, ctx));
+                    self.settle = step + pads.len().min(PLAN_CAP) as u32;
+                    return Some(Plan::of(PlanKind::Act, &pads));
+                }
+                (Act::Era(act), false) => {
+                    self.game = Some(run);
+                    if !self.ready(step, view, stronger) {
+                        return Some(wait);
+                    }
+                    let Some(tactics) = ctx.era else { break };
+                    let felt = self.felt(step, view);
+                    let forward = if felt.toward() > 0 { RIGHT } else { LEFT };
+                    let plan = match act {
+                        game::EraAct::CustomCombo => tactics.custom_combo_ready().then(|| Plan::of(PlanKind::Act, &game::custom_combo_pads(forward))),
+                        game::EraAct::CustomChain => tactics.custom_active().then(|| Plan::of(PlanKind::Act, &game::chain_pads(forward, PLAN_CAP))),
+                        game::EraAct::Stance => tactics.stance_change(felt),
+                    };
+                    let Some(plan) = plan else { break };
+                    run.acted = true;
+                    run.pressed = step;
+                    self.game = Some(run);
+                    self.last_normal = None;
+                    self.settle = step + u32::from(plan.len);
+                    return Some(plan);
                 }
                 (Act::Route(reach), false) => {
                     self.game = Some(run);
@@ -3731,6 +3847,107 @@ mod tests {
                 assert!(era_answers.get(what).is_some_and(|&n| n >= 1), "{level:?}: the {what} answered with an era command: {era_answers:?}");
             }
         }
+    }
+
+    /// Ryu in the SFZ3 era style (`loadout`) with two stocks of Super
+    /// meter, its own fighter's control as given, playing the stronger game.
+    fn sfz_ctx(level: Level, loadout: crate::era::Loadout, control: EraControl) -> Context {
+        use crate::era::{GaugeMode, Revision, StylePick, STOCK_AT};
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ryu);
+        state.style = StylePick::for_revision(Revision::Sfz3, loadout);
+        state.max_sub_hp = crate::era_fight::FULL_SUB_HP;
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.super_meter = 2 * STOCK_AT;
+        let mut c = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
+        c.set_opponent(crate::era::EraFamily::SfZ, crate::era_fight::FULL_SUB_HP);
+        c.stronger = true;
+        c
+    }
+
+    #[test]
+    fn with_the_stronger_play_no_sfz_tool_answers_anything_sooner_than_the_applicable_delay() {
+        // SC16 (`#208`): an Alpha Counter out of a guard, and a guard held in
+        // the air, answer an attack the CPU sees. Two stronger CPUs with the
+        // same past; one is then shown an attack in its reach. Their pads
+        // stay the same until the frame is the applicable delay old (the
+        // focused one if it watches for an attack as it decides, else the
+        // slower one). Over the tries the answers include the tool.
+        let mut attack = body(340);
+        attack.move_id = 0x10;
+        attack.state = 0xc2;
+        // Its fighter at 300, the opponent at 340: back is left.
+        let away = LEFT;
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            let guarding = sfz_ctx(level, crate::era::Loadout::AIsm, EraControl { blockstun: true, ..EraControl::default() });
+            let airborne = sfz_ctx(level, crate::era::Loadout::AIsm, EraControl { airborne: true, ..EraControl::default() });
+            let mut answers = std::collections::HashMap::new();
+            for (c, what) in [(guarding, "Alpha Counter"), (airborne, "air guard")] {
+                for seed in 1..=24u64 {
+                    let mut a = FairCpu::seeded(seed);
+                    for f in 1..=40 {
+                        a.observe(percept(f, body(340)));
+                    }
+                    for f in 41..=80 {
+                        a.press(f, true, &c);
+                        a.observe(percept(f, body(340)));
+                    }
+                    let mut b = a;
+                    let shown = 81;
+                    let mut earliest = shown + level.unfocused_reaction();
+                    let (mut first_diff, mut tool) = (None, false);
+                    for f in shown..shown + 120 {
+                        if f >= shown + level.reaction() && f < earliest && b.attention().focus == Focus::Attack {
+                            earliest = f;
+                        }
+                        let (pa, pb) = (a.press(f, true, &c), b.press(f, true, &c));
+                        if pa != pb {
+                            first_diff.get_or_insert(f);
+                            // Out of a guard the counter's button; in the
+                            // air the stick held back, toward neither jump.
+                            tool |= if what == "Alpha Counter" { pb & BUTTONS != 0 } else { pb == away };
+                        }
+                        a.observe(percept(f, body(340)));
+                        b.observe(percept(f, attack));
+                    }
+                    // The level's guard chance may leave one unanswered.
+                    let Some(f) = first_diff else { continue };
+                    assert!(f >= earliest, "{level:?} seed {seed}: the {what} came on {f}, shown on {shown}, earliest {earliest}");
+                    if tool {
+                        *answers.entry(what).or_insert(0) += 1;
+                    }
+                }
+            }
+            for what in ["Alpha Counter", "air guard"] {
+                assert!(answers.get(what).is_some_and(|&n| n >= 1), "{level:?}: the attack answered with an {what}: {answers:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_sfz_game_plan_that_needs_a_tool_or_a_move_its_fighter_lacks_is_not_taken_up() {
+        // SC16 (`#208`): Custom Combo only in the V-ism with the meter for
+        // it; a command throw only for a fighter who has one.
+        use crate::era::Loadout::{AIsm, VIsm};
+        let free = EraControl { free: true, ..EraControl::default() };
+        let custom = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::SfZ))
+            .iter()
+            .find(|p| p.steps.iter().any(|s| s.act == game::Act::Era(game::EraAct::CustomCombo)))
+            .expect("Ryu's SFZ plans start Custom Combo");
+        // Its fighter at 300, the opponent at 330: up close, mid-screen.
+        let near = percept(1, body(330));
+        assert!(playable(custom, &sfz_ctx(Level::VeryHard, VIsm, free), &near), "V-ism with meter");
+        assert!(!playable(custom, &sfz_ctx(Level::VeryHard, AIsm, free), &near), "the A-ism has no Custom Combo");
+        let throw = game::plans(Some(TournamentFighter::Birdie), Some(crate::era::EraFamily::SfZ))
+            .iter()
+            .find(|p| p.steps.iter().any(|s| s.act == game::Act::Signature(game::Signature::CommandThrow)))
+            .expect("Birdie's SFZ plans grab");
+        assert!(!playable(throw, &sfz_ctx(Level::VeryHard, AIsm, free), &near), "Ryu has no command throw");
+        // And under a mission that allows only normals and throws, none.
+        let mut footsies = sfz_ctx(Level::VeryHard, VIsm, free);
+        footsies.pure_footsies = true;
+        assert!(!playable(custom, &footsies.normals_and_throws(), &near));
     }
 
     #[test]
