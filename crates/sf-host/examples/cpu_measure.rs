@@ -20,6 +20,21 @@
 //! run, under a heading row when the file is new, and printed. A match that
 //! fails leaves a `# seed N failed` line in its place. The art pack's
 //! loading notes go to a `.log` file beside the output.
+//!
+//! Dramatic Battle (SC23, `#215`):
+//!
+//! `cargo run -p sf-host --release --example cpu_measure -- <out.tsv> dramatic <ally1> <style> <cpu> <boss> <style> <cpu> <ally2> <style> <cpu> <level> <first seed> <count> [threads]`
+//!
+//! A solo Dramatic match, each of the three fighters played by a Fair CPU
+//! of its own (Ally 1's is the measuring run's, on Player 1's pad), with
+//! two lifebars and no friendly fire as a World Tour boss mission has. A
+//! style is a revision only (Dramatic Battle plays its first loadout). The
+//! level is one for all three, or Ally 1's, the boss's and Ally 2's with
+//! slashes between (`4/4/2`), which needs all three `new`. Each row gives
+//! the boss's results first (rounds won and lost, damage dealt and taken)
+//! and then how active each fighter was. After the rows a summary line
+//! gives the boss's totals, and a boss that never lost a round in the run
+//! is flagged.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -27,7 +42,7 @@ use std::sync::{Arc, Mutex};
 
 use sf_engine::data_bank::DataBank;
 use sf_engine::era::{listed_families, listed_revisions, loadouts, Loadout, Revision};
-use sf_engine::measure::{measure_match, MatchReport, MeasureSpec};
+use sf_engine::measure::{boss_ever_lost, measure_dramatic, measure_match, DramaticReport, DramaticSpec, MatchReport, MeasureSpec};
 use sf_engine::roster::TournamentFighter;
 use sf_host::log::Log;
 use sf_video::romset::load_assets;
@@ -75,9 +90,110 @@ fn number<T: std::str::FromStr>(args: &[String], at: usize, what: &str) -> Resul
     args.get(at).and_then(|t| t.parse().ok()).ok_or_else(|| format!("{what} missing or not a number\n{USAGE}"))
 }
 
+/// `lines` appended to `out` and printed, under `header` when the file is
+/// new.
+fn write_rows(out: &Path, header: String, lines: impl IntoIterator<Item = String>) -> Result<(), String> {
+    let new = !out.exists();
+    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out).map_err(|e| e.to_string())?;
+    let mut put = |line: String| {
+        println!("{line}");
+        writeln!(file, "{line}").map_err(|e| e.to_string())
+    };
+    if new {
+        put(header)?;
+    }
+    for line in lines {
+        put(line)?;
+    }
+    Ok(())
+}
+
+const DRAMATIC_USAGE: &str = "cpu_measure <out.tsv> dramatic <ally1> <style> <cpu> <boss> <style> <cpu> <ally2> <style> <cpu> <level> <first seed> <count> [threads]";
+
+fn run_dramatic(args: &[String], out: PathBuf) -> Result<(), String> {
+    let names = |at: usize| args.get(at).map(String::as_str).ok_or(DRAMATIC_USAGE);
+    let fighters = [fighter(names(3)?)?, fighter(names(6)?)?, fighter(names(9)?)?];
+    let styles = [style(fighters[0], names(4)?)?.0, style(fighters[1], names(7)?)?.0, style(fighters[2], names(10)?)?.0];
+    let cpus = [stronger(names(5)?)?, stronger(names(8)?)?, stronger(names(11)?)?];
+    let difficulty: [u8; 3] = {
+        let text = names(12)?;
+        let parts: Vec<&str> = text.split('/').collect();
+        let level = |t: &str| t.parse::<u8>().map_err(|_| format!("level {t} is not a number
+{DRAMATIC_USAGE}"));
+        match parts.as_slice() {
+            [all] => [level(all)?; 3],
+            [a, b, c] => [level(a)?, level(b)?, level(c)?],
+            _ => return Err(format!("a level is one number or three with slashes
+{DRAMATIC_USAGE}")),
+        }
+    };
+    let first: u64 = args.get(13).and_then(|t| t.parse().ok()).ok_or(DRAMATIC_USAGE)?;
+    let count: u64 = args.get(14).and_then(|t| t.parse().ok()).ok_or(DRAMATIC_USAGE)?;
+    let threads: usize = if args.len() > 15 { args[15].parse().map_err(|_| DRAMATIC_USAGE)? } else { 4 };
+
+    let assets = load_assets(ROMS, MANIFEST).map_err(|e| e.to_string())?;
+    // The bosses' player tables come from the art pack; Ryu and Ken need none.
+    let mut log = Log::create(&out.with_extension("log"));
+    let art = sf_host::art::load_with_fallbacks(&assets, &[Path::new(ROMS)], &[Path::new("assets").to_path_buf()], &mut log);
+    if art.is_none() && fighters.iter().any(|f| !f.is_shoto()) {
+        return Err("the art pack did not load, and only Ryu and Ken can be played without it".into());
+    }
+    let catalogues = art.as_ref().map_or(&[][..], |a| &a.catalogues[..]);
+    let data = Arc::new(DataBank::build(&assets.maincpu, catalogues));
+    let rom = Arc::new(assets.maincpu);
+
+    let queue = Arc::new(Mutex::new(first..first.saturating_add(count)));
+    let workers: Vec<_> = (0..threads.max(1))
+        .map(|_| {
+            let (queue, rom, data) = (queue.clone(), rom.clone(), data.clone());
+            // A whole match is deep in the translated program's calls.
+            std::thread::Builder::new()
+                .stack_size(256 << 20)
+                .spawn(move || {
+                    let mut rows = Vec::new();
+                    loop {
+                        let Some(seed) = queue.lock().unwrap().next() else { break };
+                        let spec = DramaticSpec { fighters, styles, difficulty, seed, stronger: cpus };
+                        rows.push((seed, measure_dramatic(&rom, Some(data.clone()), &spec)));
+                    }
+                    rows
+                })
+                .unwrap()
+        })
+        .collect();
+    let mut rows: Vec<_> = workers.into_iter().flat_map(|w| w.join().unwrap()).collect();
+    rows.sort_by_key(|(seed, _)| *seed);
+
+    let reports: Vec<DramaticReport> = rows.iter().filter_map(|(_, row)| row.as_ref().ok().copied()).collect();
+    let failed = rows.iter().filter(|(_, row)| row.is_err()).count();
+    let lines = rows.into_iter().map(|(seed, row)| match row {
+        Ok(report) => report.row(),
+        Err(e) => format!("# seed {seed} failed: {e}"),
+    });
+    write_rows(&out, DramaticReport::header(), lines)?;
+    let won: u32 = reports.iter().map(|r| r.boss_rounds_won).sum();
+    let lost: u32 = reports.iter().map(|r| r.boss_rounds_lost).sum();
+    let drawn: u32 = reports.iter().map(|r| r.rounds_drawn).sum();
+    let mut notes = vec![format!(
+        "# boss {:?}: {} matches, {} won by the boss, {} by the allies; rounds {won} won, {lost} lost, {drawn} drawn",
+        fighters[1],
+        reports.len(),
+        reports.iter().filter(|r| r.boss_won() == Some(true)).count(),
+        reports.iter().filter(|r| r.boss_won() == Some(false)).count(),
+    )];
+    if !reports.is_empty() && !boss_ever_lost(&reports) {
+        notes.push("# FLAG: the boss never lost a round in this run: for the maintainer (SC23, #215)".to_string());
+    }
+    write_rows(&out, String::new(), notes)?;
+    if failed == 0 { Ok(()) } else { Err(format!("{failed} matches failed")) }
+}
+
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     let out = PathBuf::from(args.get(1).ok_or(USAGE)?);
+    if args.get(2).map(String::as_str) == Some("dramatic") {
+        return run_dramatic(&args, out);
+    }
     let names = |at: usize| args.get(at).map(String::as_str).ok_or(USAGE);
     let fighters = [fighter(names(2)?)?, fighter(names(5)?)?];
     let styles = [style(fighters[0], names(3)?)?, style(fighters[1], names(6)?)?];

@@ -947,7 +947,7 @@ impl Fight {
         &self.setup
     }
 
-    pub(crate) fn set_selected_styles(&mut self, styles: [Option<StylePick>; 2]) {
+    pub fn set_selected_styles(&mut self, styles: [Option<StylePick>; 2]) {
         if self.setup.config.dramatic.is_some() && self.setup.config.world_tour.is_none() {
             return;
         }
@@ -996,7 +996,9 @@ impl Fight {
         }
     }
 
-    pub(super) fn seed_dramatic_cpu(&mut self, seed: u64) {
+    /// Seed the Dramatic boss's and solo Ally 2's CPUs from `seed`, each
+    /// with random numbers of its own, as a fight the session launches is.
+    pub fn seed_dramatic_cpu(&mut self, seed: u64) {
         self.machine.seed_dramatic_cpu(seed);
     }
 

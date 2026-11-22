@@ -330,7 +330,7 @@ impl StylePick {
             && loadouts(self.revision).contains(&self.loadout)
     }
 
-    pub(crate) fn for_revision(revision: Revision, loadout: Loadout) -> Self {
+    pub fn for_revision(revision: Revision, loadout: Loadout) -> Self {
         Self { family: revision.family(), revision, loadout, ..Self::default() }
     }
 

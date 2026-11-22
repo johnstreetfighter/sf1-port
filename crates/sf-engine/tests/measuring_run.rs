@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use sf_engine::era::{Loadout, Revision};
-use sf_engine::measure::{measure_match, MatchReport, MeasureSpec};
+use sf_engine::measure::{boss_ever_lost, dramatic_round, measure_dramatic, measure_match, DramaticReport, DramaticSpec, MatchReport, MeasureSpec};
 use sf_engine::roster::TournamentFighter;
 use sf_video::romset::load_assets;
 
@@ -109,4 +109,97 @@ fn each_side_can_play_at_a_level_of_its_own() {
         stronger: [true, false],
     };
     assert!(measure_match(&assets.maincpu, None, &spec).is_err_and(|e| e.contains("both sides")));
+}
+
+/// A solo Dramatic match of Ryu in the SF6 era style as both allies and
+/// the boss, each played by its own Fair CPU at Very Difficult.
+fn dramatic(seed: u64, stronger: [bool; 3], difficulty: [u8; 3]) -> Option<Result<DramaticReport, String>> {
+    if !Path::new(ROMS).is_dir() {
+        eprintln!("skipping: local ROM set not present");
+        return None;
+    }
+    let assets = load_assets(ROMS, MANIFEST).expect("local ROM set assembles");
+    let spec = DramaticSpec {
+        fighters: [TournamentFighter::Ryu; 3],
+        styles: [Revision::Sf6; 3],
+        difficulty,
+        seed,
+        stronger,
+    };
+    let run = std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(move || measure_dramatic(&assets.maincpu, None, &spec))
+        .unwrap();
+    Some(run.join().unwrap())
+}
+
+#[test]
+fn a_dramatic_match_with_three_fair_cpus_is_played_and_reports_the_boss() {
+    // SC23 (`#215`): three Fair CPUs at once, the boss's results first.
+    let Some(report) = dramatic(2, [true; 3], [4; 3]) else { return };
+    let report = report.expect("the match runs");
+    assert!(report.ended, "the match reached its end: {report:?}");
+    assert!(report.boss_rounds_won + report.boss_rounds_lost + report.rounds_drawn >= 2, "rounds were judged: {report:?}");
+    assert!(report.boss_rounds_won.max(report.boss_rounds_lost) >= 2, "someone took the match: {report:?}");
+    assert!(report.live_frames > 600, "rounds were fought: {report:?}");
+    for (i, side) in report.sides.iter().enumerate() {
+        assert!(side.attacks > 0, "fighter {i} attacked: {report:?}");
+        assert!(side.idle_frames < report.live_frames, "fighter {i}: {report:?}");
+    }
+    assert!(report.boss_damage > 0 && report.team_damage > 0, "both sides landed hits: {report:?}");
+    let header = DramaticReport::header().split('\t').count();
+    assert_eq!(report.row().split('\t').count(), header, "one row per match, a column per heading");
+    // The flag: a run whose boss never lost a round shows it.
+    assert_eq!(boss_ever_lost(&[report]), report.boss_rounds_lost > 0);
+    let unbeaten = DramaticReport { boss_rounds_lost: 0, boss_rounds_won: 2, ..report };
+    assert!(!boss_ever_lost(&[unbeaten, unbeaten]));
+    assert!(boss_ever_lost(&[unbeaten, DramaticReport { boss_rounds_lost: 1, ..unbeaten }]));
+}
+
+#[test]
+fn a_dramatic_match_is_set_by_its_seed_and_refuses_mixed_levels_with_an_old_cpu() {
+    let Some(first) = dramatic(4, [true; 3], [4; 3]) else { return };
+    let first = first.expect("the match runs");
+    assert_eq!(dramatic(4, [true; 3], [4; 3]).unwrap().unwrap(), first);
+    let old = dramatic(4, [false; 3], [4; 3]).unwrap().unwrap();
+    assert_ne!(old.sides, first.sides, "the old play is another fight");
+    let error = dramatic(4, [true, false, true], [4, 4, 2]).unwrap().unwrap_err();
+    assert!(error.contains("every fighter"), "{error}");
+}
+
+#[test]
+fn a_dramatic_round_is_judged_as_the_game_judges_it() {
+    // SC23 (`#215`): (Ally 1, the boss, Ally 2). A drawn round is not a
+    // round the boss lost, so a boss nobody beats is still flagged.
+    use sf_engine::dramatic::{ALLY_SUB_HP, BOSS_SUB_HP};
+    assert_eq!(dramatic_round([100, 0, 0]), Some(false), "the boss knocked out");
+    assert_eq!(dramatic_round([0, 1, 0]), Some(true), "both allies knocked out");
+    assert_eq!(dramatic_round([0, 0, 0]), None, "a double knockout");
+    assert_eq!(dramatic_round([ALLY_SUB_HP, BOSS_SUB_HP, ALLY_SUB_HP]), None, "nobody hit at time over");
+    // Time over: the healthier ally's share against the boss's share.
+    assert_eq!(dramatic_round([480, 768, 0]), None, "half and half");
+    assert_eq!(dramatic_round([481, 768, 10]), Some(false), "the ally's share higher");
+    assert_eq!(dramatic_round([10, 769, 480]), Some(true), "the boss's share higher");
+    let drawn = sf_engine::measure::DramaticReport {
+        boss_rounds_won: 2,
+        boss_rounds_lost: 0,
+        rounds_drawn: 1,
+        ..a_report()
+    };
+    assert!(!boss_ever_lost(&[drawn]), "a draw is not a loss");
+}
+
+fn a_report() -> DramaticReport {
+    DramaticReport {
+        spec: DramaticSpec { fighters: [TournamentFighter::Ryu; 3], styles: [Revision::Sf6; 3], difficulty: [4; 3], seed: 1, stronger: [true; 3] },
+        ended: true,
+        boss_rounds_won: 0,
+        boss_rounds_lost: 0,
+        rounds_drawn: 0,
+        frames: 0,
+        live_frames: 0,
+        boss_damage: 0,
+        team_damage: 0,
+        sides: Default::default(),
+    }
 }

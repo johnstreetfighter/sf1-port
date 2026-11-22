@@ -333,6 +333,14 @@ impl Act {
     pub(super) fn meets_the_rise(self) -> bool {
         matches!(self, Act::Meaty { .. } | Act::GuardRise | Act::Reach { .. })
     }
+
+    /// The step needs a special or an era command: its projectile, the
+    /// era style's meter dash, or a special or a cancel into one. A route
+    /// step does not by itself: which routes may be taken is the moment's
+    /// call ([`Moment::allows`]).
+    pub(super) fn needs_special(self) -> bool {
+        matches!(self, Act::Shot | Act::Rush | Act::Do(Choice::Special(_) | Choice::Cancel { .. }))
+    }
 }
 
 /// Frames past a route's last pad by which what it met shows (its last
@@ -393,6 +401,9 @@ pub(super) struct Moment<'a> {
     pub reaches: &'a [Reach],
     /// An era style is in force: it brings true combos and cancels with it.
     pub era: bool,
+    /// A mission allows only normals and throws (SC23, `#215`): only a
+    /// route of plain normals ([`Route::normals_only`]) may be taken.
+    pub normals_only: bool,
     pub true_combos: bool,
     pub cancels: bool,
     pub crouching: bool,
@@ -436,6 +447,7 @@ impl Moment<'_> {
             && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
             && (!super_punish(route) || self.gap >= route.gap - ROUTE_NEAR)
             && !self.foe.is_some_and(|foe| route.fails_against(foe, stance))
+            && (!self.normals_only || route.normals_only())
     }
 
     /// Frames to walk before the route reaches from here.
@@ -658,6 +670,26 @@ impl GamePlan {
     /// these it takes in a row is a level value ([`Level::pressure_plans`]).
     pub(super) fn pressure(&self) -> bool {
         self.cornered_only || matches!(self.situation, Situation::ItWasBlocked | Situation::OpponentKnockedDown)
+    }
+
+    /// Some step of it needs a special or an era command
+    /// ([`Act::needs_special`]): not taken under a mission that allows only
+    /// normals and throws (SC23, `#215`).
+    pub(super) fn needs_specials(&self) -> bool {
+        self.steps.iter().any(|step| step.act.needs_special())
+    }
+
+    /// It can be played with normals and throws alone: no step needs a
+    /// special or an era command, and each route step has a route of
+    /// plain normals to take (`normals_route` says whether the fighter's
+    /// book holds one starting that way). A plan whose route step could
+    /// take none would walk to its spacing and end there.
+    pub(super) fn keeps_to_normals(&self, normals_route: impl Fn(Reach) -> bool) -> bool {
+        !self.needs_specials()
+            && self.steps.iter().all(|step| match step.act {
+                Act::Route(reach) => normals_route(reach),
+                _ => true,
+            })
     }
 }
 
@@ -991,6 +1023,7 @@ mod tests {
         Moment {
             reaches,
             era: true,
+            normals_only: false,
             true_combos: false,
             cancels: false,
             crouching: false,
@@ -1110,5 +1143,75 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn under_a_normals_only_mission_a_route_is_taken_only_if_every_step_is_a_plain_normal() {
+        // SC23 (`#215`): a World Tour mission that allows only normals and
+        // throws. Every route of every book that a moment allows is still
+        // allowed under the mission exactly when it is all plain normals
+        // and spends no meter; there are both kinds in the books.
+        let all = [Reach::Ground, Reach::JumpIn, Reach::Punish, Reach::AntiAir, Reach::DriveRush];
+        let (mut plain, mut other) = (0, 0);
+        for book in crate::route_book::books() {
+            for route in &book.routes {
+                let crouching = !route.stances.contains(&Stance::Standing);
+                let open = Moment { gap: route.gap, crouching, corner: true, ..moment(&all) };
+                if !open.allows(route) {
+                    continue;
+                }
+                let kept = Moment { normals_only: true, ..open }.allows(route);
+                assert_eq!(kept, route.normals_only(), "{:?} {:?}: {}", book.fighter, book.revision, route.name());
+                if kept {
+                    plain += 1;
+                } else {
+                    other += 1;
+                }
+            }
+        }
+        assert!(plain >= 20 && other >= 1_000, "plain-normal routes {plain}, others {other}");
+    }
+
+    #[test]
+    fn a_plain_normal_route_is_one_of_one_button_normals_and_no_meter() {
+        // SC23 (`#215`): Joe's 1987+ links and jump-ins are plain normals;
+        // a special, a command normal, a charge move and a two-button era
+        // command are not, nor are Ryu's SF6 routes (each has a special).
+        let joe = crate::route_book::book(TournamentFighter::Joe, crate::era::Revision::Sf1Plus, crate::era::Loadout::Standard).unwrap();
+        let named = |name: &str| joe.routes.iter().find(|r| r.name() == name).unwrap_or_else(|| panic!("{name}"));
+        for name in ["LP, LP, LK", "LK, MK", "j.HK, HK"] {
+            assert!(named(name).normals_only(), "{name}");
+        }
+        for name in ["LK, 214+LK", "LP, [2]8+LP, LK", "j.HK, 421+LP"] {
+            assert!(!named(name).normals_only(), "{name}");
+        }
+        let mut route = named("LK, MK").clone();
+        route.drive_spent = 1;
+        assert!(!route.normals_only(), "meter spent");
+        let mut route = named("LK, MK").clone();
+        route.steps[1].name = "MP+MK".into();
+        assert!(!route.normals_only(), "a two-button era command");
+        route.steps[1].name = "f+LK".into();
+        assert!(!route.normals_only(), "a command normal");
+        assert!(ryu_sf6().routes.iter().all(|r| !r.normals_only()));
+    }
+
+    #[test]
+    fn a_game_plan_that_needs_a_special_or_an_era_command_is_told_apart() {
+        // SC23 (`#215`): the projectile plans and the Drive Rush plan need
+        // one; the pokes, the hover, the frame trap, the throw and the
+        // jump-in do not. A route step keeps to normals only if the book
+        // has a plain-normal route starting that way.
+        let plan = |steps: &'static [Step]| GamePlan { steps, ..RYU_SF6[0] };
+        for steps in [&RYU_SF6_SHOT[..], &RYU_SF6_SHOT_WATCH[..], &RYU_SF6_SHOT_RUSH[..]] {
+            assert!(plan(steps).needs_specials(), "{steps:?}");
+        }
+        for steps in [&RYU_SF6_POKE[..], &RYU_SF6_HOVER[..], &RYU_SF6_FRAME_TRAP[..], &RYU_SF6_WALK_THROW[..], &RYU_SF6_MEATY[..], &RYU_SF6_BAIT[..], &RYU_SF6_JUMP_IN[..], &RYU_SF6_ROUTE[..]] {
+            assert!(!plan(steps).needs_specials(), "{steps:?}");
+        }
+        assert!(plan(&RYU_SF6_ROUTE).keeps_to_normals(|reach| reach == Reach::Ground));
+        assert!(!plan(&RYU_SF6_ROUTE).keeps_to_normals(|_| false), "no plain-normal ground route: the plan cannot be played");
+        assert!(plan(&RYU_SF6_POKE).keeps_to_normals(|_| false));
+        assert!(!plan(&RYU_SF6_SHOT).keeps_to_normals(|_| true));
     }
 }

@@ -216,6 +216,20 @@ impl Route {
         self.steps.iter().map(|s| s.name.as_str()).collect::<Vec<_>>().join(", ")
     }
 
+    /// Every step is a plain normal (standing, crouching or jumping, one
+    /// button: `MP`, `cr.LK`, `j.HK`) and no meter is spent: what a World
+    /// Tour mission that allows only normals and throws leaves (SC23,
+    /// `#215`). A special, a super, a command normal (`f+LK`) and a
+    /// two-button era command (`MP+MK`, `HP+HK`) are not.
+    pub fn normals_only(&self) -> bool {
+        const BUTTONS: [&str; 6] = ["LP", "MP", "HP", "LK", "MK", "HK"];
+        let normal = |name: &str| {
+            let button = name.strip_prefix("cr.").or_else(|| name.strip_prefix("j.")).unwrap_or(name);
+            BUTTONS.contains(&button)
+        };
+        self.super_spent == 0 && self.drive_spent == 0 && self.steps.iter().all(|step| normal(&step.name))
+    }
+
     /// The pad on frame `frame` of the route's script with its recorded
     /// waits, if the script lasts that long.
     pub fn pad_at(&self, frame: usize) -> Option<Pad> {

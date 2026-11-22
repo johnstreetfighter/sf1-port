@@ -1623,8 +1623,16 @@ impl PowerOnMachine {
         if let Some(rules) = self.program.match_config.dramatic {
             self.fair_cpu = None;
             self.dramatic_cpu_press(rules, scripted_p2);
+            // The measuring run's third Fair CPU, on Ally 1 (SC23, `#215`).
+            let p1_cpu = !rules.co_op && self.p1_fair_cpu.is_some();
+            if p1_cpu {
+                self.dramatic_p1_fair_cpu_press();
+            }
             self.step_frame();
             self.dramatic_cpu_observe(rules);
+            if p1_cpu {
+                self.dramatic_p1_fair_cpu_observe();
+            }
             self.program.toggle_state.scripted_cpu_pad = false;
             self.program.toggle_state.cpu_drive_reserve = [0; 3];
             return;
@@ -1789,7 +1797,7 @@ impl PowerOnMachine {
     }
 
     /// P2's logical cabinet pad after any CPU or Training script supplied it.
-    pub(crate) fn applied_p2_pad(&self) -> crate::front::PlayerInputs {
+    pub fn applied_p2_pad(&self) -> crate::front::PlayerInputs {
         let held = |port: u16, bit: u8| port & (1 << bit) == 0;
         crate::front::PlayerInputs {
             directions: [8, 9, 10, 11].map(|bit| held(self.io.in1, bit)),
@@ -1860,8 +1868,18 @@ impl PowerOnMachine {
         } else {
             Context::new(level, Kit::of(fighter, cfg.preset, slots), &cfg.toggles)
         };
-        // Dramatic Battle's CPUs keep the old play until SC23 (`#215`).
-        context.stronger = cfg.stronger_cpu && cfg.dramatic.is_none();
+        // Dramatic Battle's boss and ally play it too (SC23, `#215`).
+        context.stronger = cfg.stronger_cpu;
+        // A World Tour mission that allows only normals and throws, read as
+        // the engine reads it (`Bus::world_tour_pure_footsies`): the
+        // stronger play keeps to it (SC23).
+        context.pure_footsies = self.program.work[(crate::fighter::MODE_DEMO - crate::fighter::WORK_BASE) as usize] != 0
+            && cfg.world_tour.is_some_and(|rules| {
+                rules.mission
+                    == crate::world_tour::native::MissionKind::RuleModifierTrial(
+                        crate::world_tour::native::RuleModifier::PureFootsies,
+                    )
+            });
         // The two fighting players' structs (as the three-rounds rule reads
         // them) and the rounds each has won, at `+8`.
         context.round_decides_match = self.round_decides_match();
@@ -1973,35 +1991,52 @@ impl PowerOnMachine {
         Some((slot, me, foe, fighter))
     }
 
-    /// A replay takeover's Fair CPU opponent on `side` (0 Player 1), in a
-    /// two-sided fight (SC22, `#214`): its pad for the coming frame, at the
-    /// match's level (or one forced on the CPU, as the measuring run's
-    /// are; the playback forces none). The playback
-    /// owns the CPU; it plays the stronger game alone on the pad, with no
-    /// Utility AI beside it. Dramatic Battle keeps the Utility AI (SC23,
-    /// `#215`): `None` there, and the caller asks the Utility AI.
+    /// A replay takeover's Fair CPU opponent on `side` (0 Player 1) (SC22,
+    /// `#214`): its pad for the coming frame, at the match's level (or one
+    /// forced on the CPU, as the measuring run's are; the playback forces
+    /// none). The playback owns the CPU; it plays the stronger game alone
+    /// on the pad, with no Utility AI beside it. In Dramatic Battle (SC23,
+    /// `#215`) it plays the ally on that side against the boss. `None`
+    /// when the side has no fighter to play.
     pub(crate) fn takeover_fair_cpu_pad(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) -> Option<crate::front::PlayerInputs> {
-        if self.program.match_config.dramatic.is_some() {
-            return None;
-        }
-        let (slot, me, _, fighter) = self.takeover_seat(side)?;
+        let (slot, me, foe, fighter) = self.takeover_seat(side)?;
         let mut ctx = self.fair_cpu_context(fighter, slot, me, cpu.forced_level());
-        let opponent = &self.dramatic_era_fighters()[1 - slot];
-        ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
-        let pad = cpu.press(self.state.frame + 1, self.in_fight(), &ctx);
+        if self.program.match_config.dramatic.is_some() {
+            self.dramatic_face(&mut ctx, foe);
+        } else {
+            let opponent = &self.dramatic_era_fighters()[1 - slot];
+            ctx.set_opponent(opponent.style.family, opponent.max_sub_hp);
+        }
+        let pad = cpu.press(self.state.frame + 1, self.takeover_fighting(slot), &ctx);
         let (directions, buttons) = crate::fair_cpu::pad_parts(pad);
         Some(crate::front::PlayerInputs { directions, buttons })
     }
 
     /// The replay takeover's Fair CPU on `side` looks at the frame just
-    /// stepped.
+    /// stepped. In Dramatic Battle it watches its ally and the boss (SC23,
+    /// `#215`).
     pub(crate) fn takeover_fair_cpu_observe(&self, side: usize, cpu: &mut crate::fair_cpu::FairCpu) {
         use sf_video::callouts::Side;
-        if let Some(&player) = Side::BOTH.get(side) {
+        if self.program.match_config.dramatic.is_some() {
+            if let Some((slot, me, foe, _)) = self.takeover_seat(side) {
+                cpu.observe(crate::fair_cpu::perceive_fighters(
+                    self.state.frame, self.takeover_fighting(slot), &self.program.work, &self.state.objectram, me, foe,
+                ));
+            }
+        } else if let Some(&player) = Side::BOTH.get(side) {
             cpu.observe(crate::fair_cpu::perceive(
                 self.state.frame, self.in_fight(), &self.program.work, &self.state.objectram, player,
             ));
         }
+    }
+
+    /// A round is being fought for the takeover's fighter in era slot
+    /// `slot`: in Dramatic Battle only while its ally and the boss both
+    /// have health left, as for the machine's own Dramatic CPUs (SC23,
+    /// `#215`).
+    fn takeover_fighting(&self, slot: usize) -> bool {
+        let health = self.program.toggle_state.dramatic.health;
+        self.in_fight() && (self.program.match_config.dramatic.is_none() || (health[slot] > 0 && health[1] > 0))
     }
 
     /// Human-controlled sides can always take over. A one-player cabinet
@@ -2020,43 +2055,161 @@ impl PowerOnMachine {
             || self.program.data_bank.as_ref().is_some_and(|bank| bank.table(fighter).is_some()))
     }
 
+    /// The Dramatic boss's pad, and solo Ally 2's. With the stronger play
+    /// (the switch, or the measuring run's forced side; SC23, `#215`) each
+    /// plays it on its own: its own Fair CPU, state and random numbers,
+    /// alone on its pad with no Utility AI beside it, facing its own
+    /// opponent (the boss the ally it targets, the ally the boss), and no
+    /// teamwork between them. The old play is as it was.
     fn dramatic_cpu_press(&mut self, rules: crate::dramatic::DramaticRules, scripted_p2: bool) {
         use crate::fair_cpu::pad_parts;
         use crate::fighter::{CPU_STRUCT, P2_STRUCT};
         let [_, boss_hp, ally_hp] = self.program.toggle_state.dramatic.health;
         let fighter = self.program.match_config.roster.p2;
-        let boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT, None);
+        let forced = self.dramatic_cpu.get_or_insert_with(Default::default).each_ref().map(crate::fair_cpu::FairCpu::forced_level);
+        let mut boss = self.fair_cpu_context(fighter, 1, CPU_STRUCT, forced[0]);
         let opponent = self.dramatic_boss_target();
         let families = self.dramatic_era_fighters().map(|era| era.style.family);
         let in_fight = self.in_fight();
         let step = self.state.frame + 1;
-        let cpu = &mut self.dramatic_cpu.get_or_insert_with(Default::default)[0];
+        let owned = self.dramatic_cpu.as_ref().unwrap()[0].owns_pad(&boss);
+        if owned {
+            self.dramatic_face(&mut boss, opponent);
+        }
+        let cpu = &mut self.dramatic_cpu.as_mut().unwrap()[0];
         let pad = cpu.press(step, in_fight && boss_hp > 0, &boss);
         let idle = cpu.utility_idle();
-        self.program.toggle_state.dramatic.boss_pad = if boss_hp > 0 {
-            self.step_utility_cpu(1, CPU_STRUCT, opponent, fighter, families[1], &boss, Some((pad, idle)))
-        } else {
+        self.program.toggle_state.dramatic.boss_pad = if boss_hp == 0 {
             crate::front::PlayerInputs::default()
+        } else if owned {
+            self.program.toggle_state.utility[1].drop_macro();
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
+        } else {
+            self.step_utility_cpu(1, CPU_STRUCT, opponent, fighter, families[1], &boss, Some((pad, idle)))
         };
-        if boss_hp > 0 {
+        if boss_hp > 0 && !owned {
             self.dramatic_cpu.as_mut().unwrap()[0].set_utility_pad(self.program.toggle_state.utility[1].pad());
         }
         if !rules.co_op && !scripted_p2 {
-            let ally = self.fair_cpu_context(rules.ally2, 2, P2_STRUCT, None);
+            let mut ally = self.fair_cpu_context(rules.ally2, 2, P2_STRUCT, forced[1]);
+            let owned = self.dramatic_cpu.as_ref().unwrap()[1].owns_pad(&ally);
+            if owned {
+                self.dramatic_face(&mut ally, CPU_STRUCT);
+            }
             let cpu = &mut self.dramatic_cpu.as_mut().unwrap()[1];
             let pad = cpu.press(step, in_fight && ally_hp > 0, &ally);
             let idle = cpu.utility_idle();
-            let input = if ally_hp > 0 && boss_hp > 0 {
+            let utility = ally_hp > 0 && boss_hp > 0 && !owned;
+            let input = if utility {
                 self.step_utility_cpu(2, P2_STRUCT, CPU_STRUCT, rules.ally2, families[2], &ally, Some((pad, idle)))
             } else {
+                if owned {
+                    self.program.toggle_state.utility[2].drop_macro();
+                }
                 let (directions, buttons) = pad_parts(pad);
                 crate::front::PlayerInputs { directions, buttons }
             };
-            if ally_hp > 0 && boss_hp > 0 {
+            if utility {
                 self.dramatic_cpu.as_mut().unwrap()[1].set_utility_pad(self.program.toggle_state.utility[2].pad());
             }
             self.apply_cpu_pad(input);
         }
+    }
+
+    /// Tell a Dramatic Fair CPU playing the stronger game who it faces
+    /// (the fighter whose player struct is `foe`): his era style and whole
+    /// health, and the fighter and style its route book names him by, so
+    /// it takes no route recorded failing on him (SC23, `#215`).
+    fn dramatic_face(&self, ctx: &mut crate::fair_cpu::Context, foe: u32) {
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT};
+        let slot = match foe {
+            P1_STRUCT => 0,
+            CPU_STRUCT => 1,
+            _ => 2,
+        };
+        let era = &self.dramatic_era_fighters()[slot];
+        ctx.set_opponent(era.style.family, era.max_sub_hp);
+        ctx.foe = era.fighter.map(|who| (who, (era.style.revision, era.style.loadout)));
+    }
+
+    /// Put a Fair CPU on each of a solo Dramatic fight's three fighters,
+    /// each with its own random numbers from `seed` (SC23, `#215`: the
+    /// measuring run). In slot order, Ally 1 (Player 1's, the machine's
+    /// measuring CPU), the boss and Ally 2, each at its own `levels` entry,
+    /// and each playing the stronger game where `stronger` says.
+    pub(crate) fn seed_measuring_dramatic_cpus(&mut self, seed: u64, stronger: [bool; 3], levels: [crate::fair_cpu::Level; 3]) {
+        use crate::fair_cpu::FairCpu;
+        self.seed_utility_cpu(seed);
+        let cpu = |salt: u64, turn: u32, side: usize| {
+            FairCpu::seeded(salt ^ seed.rotate_left(turn)).force_stronger(stronger[side]).force_level(Some(levels[side]))
+        };
+        self.dramatic_cpu = Some(Box::new([cpu(0x9e37_79b9_7f4a_7c15, 17, 1), cpu(0xbb67_ae85_84ca_a73b, 33, 2)]));
+        self.p1_fair_cpu = Some(Box::new(cpu(0x3c6e_f372_fe94_f82b, 49, 0)));
+    }
+
+    /// The measuring run's Fair CPU on Player 1's pad in a solo Dramatic
+    /// fight: Ally 1 against the boss, as the ally's CPU plays Ally 2.
+    fn dramatic_p1_fair_cpu_press(&mut self) {
+        use crate::fair_cpu::pad_parts;
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT};
+        let Some(forced) = self.p1_fair_cpu.as_deref().map(crate::fair_cpu::FairCpu::forced_level) else { return };
+        let [p1_hp, boss_hp, _] = self.program.toggle_state.dramatic.health;
+        let fighter = self.program.match_config.roster.p1;
+        let family = self.dramatic_era_fighters()[0].style.family;
+        let mut ctx = self.fair_cpu_context(fighter, 0, P1_STRUCT, forced);
+        let owned = self.p1_fair_cpu.as_deref().unwrap().owns_pad(&ctx);
+        if owned {
+            self.dramatic_face(&mut ctx, CPU_STRUCT);
+        }
+        let in_fight = self.in_fight() && p1_hp > 0 && boss_hp > 0;
+        let step = self.state.frame + 1;
+        let cpu = self.p1_fair_cpu.as_mut().unwrap();
+        let pad = cpu.press(step, in_fight, &ctx);
+        let idle = cpu.utility_idle();
+        let input = if owned || family == crate::era::EraFamily::Sf1987 {
+            if owned {
+                self.program.toggle_state.utility[0].drop_macro();
+            }
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
+        } else {
+            self.step_utility_cpu(0, P1_STRUCT, CPU_STRUCT, fighter, family, &ctx, Some((pad, idle)));
+            let pad = self.program.toggle_state.utility[0].pad();
+            self.p1_fair_cpu.as_mut().unwrap().set_utility_pad(pad);
+            let (directions, buttons) = pad_parts(pad);
+            crate::front::PlayerInputs { directions, buttons }
+        };
+        let [right, left, down, up] = input.directions;
+        self.set_p1_direction(right, left, down, up);
+        self.set_p1_buttons(input.buttons);
+    }
+
+    fn dramatic_p1_fair_cpu_observe(&mut self) {
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT};
+        let [p1_hp, boss_hp, _] = self.program.toggle_state.dramatic.health;
+        let fighting = self.in_fight() && p1_hp > 0 && boss_hp > 0;
+        let view = crate::fair_cpu::perceive_fighters(
+            self.state.frame, fighting, &self.program.work, &self.state.objectram, P1_STRUCT, CPU_STRUCT,
+        );
+        if let Some(cpu) = self.p1_fair_cpu.as_mut() {
+            cpu.observe(view);
+        }
+    }
+
+    /// Player 2's Fair CPU, while one plays.
+    pub fn fair_cpu(&self) -> Option<&crate::fair_cpu::FairCpu> {
+        self.fair_cpu.as_ref()
+    }
+
+    /// The Dramatic boss's Fair CPU and solo Ally 2's, in a Dramatic fight.
+    pub fn dramatic_fair_cpus(&self) -> Option<&[crate::fair_cpu::FairCpu; 2]> {
+        self.dramatic_cpu.as_deref()
+    }
+
+    /// The measuring run's Fair CPU on Player 1's pad, while one plays.
+    pub fn p1_fair_cpu(&self) -> Option<&crate::fair_cpu::FairCpu> {
+        self.p1_fair_cpu.as_deref()
     }
 
     fn dramatic_cpu_observe(&mut self, rules: crate::dramatic::DramaticRules) {
@@ -2588,6 +2741,14 @@ impl PowerOnMachine {
         let cfg = self.program.match_config;
         self.set_match_config(cfg);
         next
+    }
+
+    /// A hash of the machine's gameplay state, the CPUs' included: two
+    /// machines with the same hash play on the same.
+    pub fn gameplay_hash(&self) -> u64 {
+        let mut out = crate::canonical::CanonicalHasher::new();
+        self.encode_gameplay(&mut out);
+        out.finish()
     }
 
     /// Save a deterministic full-session state snapshot at the current frame boundary (`#93`, `O2`).

@@ -561,7 +561,7 @@ pub fn perceive(frame: u32, in_fight: bool, work: &[u8], obj: &[u8], side: Side)
 }
 
 /// Dramatic controllers observe their own fighter and one designated opponent.
-pub(crate) fn perceive_fighters(
+pub fn perceive_fighters(
     frame: u32,
     in_fight: bool,
     work: &[u8],
@@ -811,6 +811,12 @@ pub struct Context {
     /// The round of the match being fought, from 0 (`ROUND_NO`): the first
     /// round's start is a new match, where the habit memory starts empty.
     pub(crate) round: u8,
+    /// A World Tour mission allows only normals and throws (Pure Footsies):
+    /// the engine refuses every special, era command, command normal and
+    /// air throw to both fighters. The stronger play keeps to that rule
+    /// (SC23, `#215`): see [`Context::normals_and_throws`]. The old play
+    /// ignores it, as it always has.
+    pub(crate) pure_footsies: bool,
 }
 
 impl Context {
@@ -832,7 +838,25 @@ impl Context {
             foe_max_sub_hp: crate::era_fight::FULL_SUB_HP,
             foe: None,
             round: 0,
+            pure_footsies: false,
         }
+    }
+
+    /// What the stronger play may use under a mission that allows only
+    /// normals and throws (SC23, `#215`): its fighter's specials and the
+    /// era style's commands (Drive moves, parries, supers and the rest)
+    /// are gone, and with them every choice, game plan and route that
+    /// needs one ([`game::GamePlan::needs_specials`],
+    /// [`crate::route_book::Route::normals_only`]). Its normals, link
+    /// strings, jump-ins and throws stay. Any other context is returned as
+    /// it is.
+    pub(crate) fn normals_and_throws(&self) -> Context {
+        let mut context = *self;
+        if context.pure_footsies {
+            context.kit = Kit { fighter: self.kit.fighter, ..Kit::default() };
+            context.era = None;
+        }
+        context
     }
 
     pub(crate) fn with_era(
@@ -933,6 +957,15 @@ impl Context {
         pads.truncate(max_frames);
         Some(pads)
     }
+}
+
+/// The fighter's route book in its era style holds a route of plain
+/// normals ([`crate::route_book::Route::normals_only`]) that starts in
+/// `reach`: what a mission allowing only normals and throws leaves it.
+fn normals_route(ctx: &Context, reach: crate::route_book::Reach) -> bool {
+    let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
+    crate::route_book::book(fighter, revision, loadout)
+        .is_some_and(|book| book.routes.iter().any(|route| route.reach == reach && route.normals_only()))
 }
 
 /// What a plan is doing.
@@ -1287,7 +1320,9 @@ impl FairCpu {
         ctx.stronger || self.forced_stronger
     }
 
-    /// Play the stronger game whatever the match's switch says.
+    /// Play the stronger game whatever the match's switch says. `false`
+    /// leaves it to the switch: it does not force the old play where the
+    /// switch is on (the measuring run's old sides play with it off).
     pub(crate) fn force_stronger(mut self, on: bool) -> Self {
         self.forced_stronger = on;
         self
@@ -1316,6 +1351,12 @@ impl FairCpu {
     /// actions came from.
     pub fn attention(&self) -> Attention {
         Attention { focus: self.focus, action_frame: self.action_frame }
+    }
+
+    /// The frame it last decided from, as it saw it (the default between
+    /// rounds): whose fighter it plays and whom it faces.
+    pub fn last_view(&self) -> Percept {
+        self.last_view
     }
 
     /// What its habit memory holds (SC9, `#201`).
@@ -1470,6 +1511,15 @@ impl FairCpu {
             self.new_match();
         }
         let stronger = self.stronger(ctx);
+        // A mission that allows only normals and throws: the stronger play
+        // keeps to it (SC23, `#215`).
+        let limited;
+        let ctx = if stronger && ctx.pure_footsies {
+            limited = ctx.normals_and_throws();
+            &limited
+        } else {
+            ctx
+        };
         let delay = ctx.level.reaction();
         let view = step.checked_sub(delay).and_then(|f| self.shown(f, step, ctx.level, stronger));
         let pad = match view {
@@ -1871,7 +1921,10 @@ impl FairCpu {
         let foe = ctx.foe.map(|(who, style)| crate::route_book::opponent_key(who, style));
         let moment = game::Moment {
             reaches,
-            era: ctx.era.is_some(),
+            // An era style is in force (its kit may be set aside under a
+            // mission's rules, its true combos and cancels are not).
+            era: ctx.family.is_some(),
+            normals_only: ctx.pure_footsies,
             true_combos: ctx.true_combos,
             cancels: ctx.cancels,
             crouching: view.foe.crouching(),
@@ -2053,6 +2106,10 @@ impl FairCpu {
                 && (plan.gap.0..=plan.gap.1).contains(&gap)
                 && plan.for_level(ctx.level)
                 && !(plan.pressure() && pressed_enough)
+                // Under a mission that allows only normals and throws, no
+                // plan that needs a special or an era command, or a route
+                // its book has none of plain normals for (SC23, `#215`).
+                && !(ctx.pure_footsies && !plan.keeps_to_normals(|reach| normals_route(ctx, reach)))
             {
                 // A cornered opponent is pressed harder.
                 let corner = if self.judged.foe_cornered { plan.corner_bonus } else { 0 };
@@ -4096,6 +4153,7 @@ mod tests {
             let moment = game::Moment {
                 reaches: &[crate::route_book::Reach::Ground],
                 era: true,
+                normals_only: false,
                 true_combos: true,
                 cancels: true,
                 crouching: false,
@@ -4401,5 +4459,86 @@ mod tests {
         let mut pressed = cpu;
         pressed.pressure_run = 1;
         assert_ne!(hash(&pressed), hash(&cpu));
+    }
+
+    #[test]
+    fn under_a_normals_only_mission_the_stronger_play_takes_no_game_plan_that_needs_a_special() {
+        // SC23 (`#215`): Pure Footsies. Its kit loses its specials and the
+        // era commands, and keeps its rules; far off it takes no projectile
+        // or Drive Rush plan and close in no route plan (Ryu's SF6 book has
+        // no route of plain normals), where the same CPUs without the
+        // mission take them; it still takes plans.
+        let open = sf6_ctx(Level::VeryHard);
+        let footsies = Context { pure_footsies: true, ..open }.normals_and_throws();
+        assert!(footsies.kit.projectile.is_none() && footsies.kit.anti_air.is_none() && footsies.kit.advance.is_none());
+        assert!(footsies.era.is_none() && footsies.kit.fighter == open.kit.fighter && footsies.style == open.style);
+        assert_eq!((footsies.true_combos, footsies.cancels, footsies.throws), (open.true_combos, open.cancels, open.throws));
+        assert!(open.normals_and_throws().era.is_some(), "without the mission nothing is set aside");
+        let table = game::plans(Some(TournamentFighter::Ryu), Some(crate::era::EraFamily::Sf6));
+        let me = Body { facing_left: false, ..body(100) };
+        for (situation, foe_x) in [(Situation::NeutralFar, 240), (Situation::NeutralClose, 150)] {
+            let foe = Body { facing_left: true, ..body(foe_x) };
+            let view = Percept { frame: 100, fighting: true, me, foe, ..Percept::default() };
+            let (mut taken, mut special, mut route) = ([0; 2], 0, 0);
+            for seed in 1..=400u64 {
+                for (i, ctx) in [open, footsies].iter().enumerate() {
+                    let mut cpu = FairCpu::seeded(seed);
+                    cpu.judged = Judged { situation, ..Judged::default() };
+                    if !cpu.start_game_plan(100, view, ctx) {
+                        continue;
+                    }
+                    taken[i] += 1;
+                    let plan = &table[usize::from(cpu.game.unwrap().plan)];
+                    let routes = plan.steps.iter().any(|step| matches!(step.act, game::Act::Route(_)));
+                    if i == 0 {
+                        special += u32::from(plan.needs_specials());
+                        route += u32::from(routes);
+                    } else {
+                        assert!(!plan.needs_specials() && !routes, "{situation:?}: {plan:?}");
+                    }
+                }
+            }
+            assert!(taken[1] >= 100, "{situation:?}: plans taken under the mission {taken:?}");
+            match situation {
+                Situation::NeutralFar => assert!(special >= 50, "far off without the mission: {special} projectile or Drive Rush plans"),
+                _ => assert!(route >= 50, "close in without the mission: {route} route plans"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_normals_only_mission_leaves_the_old_play_as_it_was() {
+        // SC23 (`#215`): the old play never kept to the mission (the engine
+        // refuses its specials), and still does not: the same pads with the
+        // mission and without, at every level, while the opponent walks in
+        // and out of reach. The stronger play's pads differ, so the check
+        // reaches a CPU that presses for specials.
+        let foe_at = |f: u32| Body { facing_left: false, ..body(100 + ((f / 3) % 160) as i16) };
+        let me = Body { facing_left: true, ..body(300) };
+        let mut stronger_parted = false;
+        for level in LEVELS {
+            for (open, strong) in [(ctx(level), false), (sf6_ctx(level), true)] {
+                let open = Context { stronger: strong, ..open };
+                let footsies = Context { pure_footsies: true, ..open };
+                for seed in 1..=6u64 {
+                    let (mut a, mut b) = (FairCpu::seeded(seed), FairCpu::seeded(seed));
+                    for f in 1..=900u32 {
+                        let p = Percept { frame: f, fighting: true, me, foe: foe_at(f), ..Percept::default() };
+                        a.observe(p);
+                        b.observe(p);
+                        let (pa, pb) = (a.press(f, true, &open), b.press(f, true, &footsies));
+                        if strong {
+                            stronger_parted |= pa != pb;
+                        } else {
+                            assert_eq!(pa, pb, "{level:?} seed {seed} frame {f}");
+                        }
+                    }
+                    if !strong {
+                        assert_eq!(a, b, "{level:?} seed {seed}");
+                    }
+                }
+            }
+        }
+        assert!(stronger_parted, "the stronger play keeps to the mission");
     }
 }

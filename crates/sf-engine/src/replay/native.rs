@@ -452,13 +452,13 @@ impl ReplayPlayback {
         self.fallback = false;
         self.utility = UtilityState::seeded(self.replay.seed ^ u64::from(self.frame));
         // A fresh Fair CPU for each takeover, at the match's level: its
-        // delayed view starts empty here. Dramatic Battle keeps the
-        // Utility AI until SC23 (`#215`). Faithful 1987 has no Fair CPU and
-        // keeps its takeover as it was (the maintainer, 2026-11-21): the
-        // fight's preset now decides, as a Training recording may have
-        // changed it.
+        // delayed view starts empty here. Dramatic Battle's too (SC23,
+        // `#215`): it plays the ally on that side. Faithful 1987 has no
+        // Fair CPU and keeps its takeover as it was (the maintainer,
+        // 2026-11-21): the fight's preset now decides, as a Training
+        // recording may have changed it.
         let config = self.fight.machine().match_config();
-        let fair = config.dramatic.is_none() && config.preset != RulesetPreset::Faithful1987;
+        let fair = config.preset != RulesetPreset::Faithful1987;
         self.fair_cpu = (self.stronger_cpu && fair).then(|| {
             Box::new(FairCpu::seeded(self.replay.seed ^ u64::from(self.frame) ^ 0x3c6e_f372_fe94_f82b).force_stronger(true))
         });
