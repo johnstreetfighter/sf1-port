@@ -320,6 +320,11 @@ impl Tactics {
         self.can_parry && (self.control.free || self.control.airborne)
     }
 
+    /// Its fighter is in blockstun, as it feels its own state.
+    pub(super) fn in_blockstun(self) -> bool {
+        self.control.blockstun
+    }
+
     pub(super) fn can_fadc(self) -> bool {
         self.fadc && self.control.special
     }

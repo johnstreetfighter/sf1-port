@@ -1750,6 +1750,12 @@ impl PowerOnMachine {
         ));
     }
 
+    /// Player 1's pad is the caller's again: the measuring run's Fair CPU
+    /// on it is dropped (SC15, `#207`: [`crate::measure::sparring_machine`]).
+    pub(crate) fn drop_p1_fair_cpu(&mut self) {
+        self.p1_fair_cpu = None;
+    }
+
     /// The measuring run's Fair CPU on Player 1's pad: what
     /// [`Self::fair_cpu_press`] does for Player 2 in a two-pad fight, with
     /// the sides exchanged.
