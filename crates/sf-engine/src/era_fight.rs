@@ -810,6 +810,11 @@ impl EraFighterState {
         if self.gen_crane { Stance::Crane } else { Stance::Mantis }
     }
 
+    /// Gen is in his Crane stance (read by fight tests, SC16 `#208`).
+    pub fn in_crane(&self) -> bool {
+        self.gen_crane
+    }
+
     fn alpha_roster(&self) -> &'static [AlphaMove] {
         if !self.is_alpha() {
             return &[];

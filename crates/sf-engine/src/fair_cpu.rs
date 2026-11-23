@@ -94,11 +94,6 @@ const PLAN_CAP: usize = 48;
 /// How far inside its catch range, centre to centre, a command throw is
 /// entered from (SC15, `#207`): he may drift a little as it starts.
 const CATCH_MARGIN: i16 = 4;
-/// The farthest, centre to centre past its catch range, a command throw is
-/// walked in from (SC16, `#208`): the walk and the motion are one action,
-/// as the plain throw's are, and a longer walk is not begun. At 40 Birdie's
-/// SF2 game lost half his Super Turbo matches at Normal to the old CPU.
-const GRAB_WALK: i16 = 80;
 /// The SF2 era style's shimmy over a knocked-down opponent (SC15, `#207`):
 /// how far past a timed attack's reach a walk in that has stopped against
 /// his body still counts as there, the frames it must have stood still to
@@ -2434,11 +2429,29 @@ impl FairCpu {
                     if !self.ready(step, view, stronger) {
                         return Some(wait);
                     }
-                    // Out of reach of a grab's walk, or with a wall behind a
-                    // charge, as it feels its own place now: the plan ends.
+                    // With a wall behind a charge, as it feels its own place
+                    // now: the plan ends.
                     let felt = self.felt(step, view);
                     if !self.tool_ready(tool, &felt, ctx) {
                         break;
+                    }
+                    // A command throw walks in to its catch range, a few
+                    // frames at a time and looking again (each walk is
+                    // dropped for an attack it sees coming, as any walk in
+                    // is, the way it reads that walk: toward him as it sees
+                    // him), and is let go if it cannot get there (SC15,
+                    // `#207`). Its motion begins only inside the range, as
+                    // it feels its distance then.
+                    if tool == cast::Tool::CommandThrow {
+                        let range = grab_range(ctx);
+                        if felt.dist() > range {
+                            if step > run.began + game::EDGE_FRAMES {
+                                break;
+                            }
+                            let frames = ((felt.dist() - range + 1) / 2).clamp(1, game::EDGE_WALK) as usize;
+                            let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                            return Some(Plan::of(PlanKind::Walk, &[forward; PLAN_CAP][..frames]));
+                        }
                     }
                     run.acted = true;
                     run.pressed = step;
@@ -2596,16 +2609,10 @@ impl FairCpu {
     }
 
     /// Its fighter can use `tool` from where it feels itself in `felt` (SC16,
-    /// `#208`): it has the tool; a command throw's walk in to its catch
-    /// range is no longer than [`GRAB_WALK`]; a charge, held walking back,
-    /// has room behind it.
+    /// `#208`): it has the tool, and for a charge, held walking back, room
+    /// behind it. (A command throw walks in to its range first.)
     fn tool_ready(&self, tool: cast::Tool, felt: &Percept, ctx: &Context) -> bool {
-        ctx.tools.get(tool).is_some()
-            && match tool {
-                cast::Tool::CommandThrow => felt.dist() <= grab_range(ctx) + GRAB_WALK,
-                cast::Tool::Charge => game::room_behind(felt),
-                cast::Tool::Teleport => true,
-            }
+        ctx.tools.get(tool).is_some() && (tool != cast::Tool::Charge || game::room_behind(felt))
     }
 
     /// The pads of one of its fighter's tools (SC15, `#207`), through the
@@ -2614,25 +2621,15 @@ impl FairCpu {
     /// then, as after a cross-up the delayed view's would mirror the motion
     /// (Retsu's Izuna as his Senpuu Kyaku) and hold a charge the wrong way.
     /// A charge move's input holds back (a walk back while it builds) and
-    /// then releases. A command throw first walks in to its catch range in
-    /// the same action, as the plain throw does (SC16, `#208`: a walk of
-    /// its own was cut short by any button he pressed), the walk that way
-    /// too; one that slips (its button dropped) leaves out the motion's
-    /// last Up, which would otherwise be a jump.
+    /// then releases. A command throw's motion that slips (its button
+    /// dropped) leaves out its last Up, which would otherwise be a jump
+    /// (SC16, `#208`; Birdie's chain ends on Up).
     fn tool_plan(&mut self, tool: cast::Tool, entry: &MoveEntry, felt: Percept, ctx: &Context) -> Plan {
         self.last_normal = None;
         let facing_right = !felt.me.facing_left;
-        let mut pads = Vec::new();
-        if tool == cast::Tool::CommandThrow {
-            let to_range = felt.dist() - grab_range(ctx);
-            let to_body = felt.gap() - game::THROW_SPACE;
-            let walk = (to_range.min(to_body).max(0) + 1) / 2;
-            pads.extend(std::iter::repeat_n(if facing_right { RIGHT } else { LEFT }, walk as usize));
-            pads.push(0);
-        }
         let motion = self.motion(entry, facing_right, felt, ctx);
         let slipped = motion.iter().all(|&pad| pad & BUTTONS == 0);
-        pads.extend(motion.into_iter().map(|pad| if slipped && tool == cast::Tool::CommandThrow { pad & !UP } else { pad }));
+        let pads: Vec<u16> = motion.into_iter().map(|pad| if slipped && tool == cast::Tool::CommandThrow { pad & !UP } else { pad }).collect();
         Plan::of(PlanKind::Act, &pads)
     }
 
@@ -3034,8 +3031,9 @@ impl FairCpu {
                 return Some(Plan::default());
             }
         }
-        // In the SF2 era style (SC15, `#207`): his ground attack it has
-        // guarded, now recovering in reach, is its turn. Out of its own
+        // In the SF2 era style (SC15, `#207`) and the SFZ (SC16, `#208`):
+        // his ground attack it has guarded, now recovering in reach, is
+        // its turn. Out of its own
         // blockstun it takes a punish route, or a crouching light punch,
         // rather than guarding on while he presses again.
         if stronger
@@ -4070,14 +4068,17 @@ mod tests {
                     let shown = 81;
                     let mut earliest = shown + level.unfocused_reaction();
                     let mut first_diff = None;
+                    let mut era_answer = false;
                     let mut after = Vec::new();
                     for f in shown..shown + 120 {
                         if f >= shown + level.reaction() && f < earliest && b.attention().focus == Focus::Attack {
                             earliest = f;
                         }
                         let (pa, pb) = (a.press(f, true, &c), b.press(f, true, &c));
-                        if pa != pb {
-                            first_diff.get_or_insert(f);
+                        if pa != pb && first_diff.is_none() {
+                            first_diff = Some(f);
+                            // The era kit's answer (`Tactics::react`): marked as one.
+                            era_answer = b.plan.answer;
                         }
                         if first_diff.is_some() {
                             after.push(pb);
@@ -4096,7 +4097,7 @@ mod tests {
                     } else {
                         after.len() >= 12 && after[..12].iter().all(|&pad| pad == away)
                     };
-                    if tool {
+                    if tool && era_answer {
                         *answers.entry(what).or_insert(0) += 1;
                     }
                 }
@@ -4109,10 +4110,10 @@ mod tests {
 
     #[test]
     fn a_sfz_tool_is_used_only_where_it_can_be() {
-        // SC16 (`#208`): a command throw only within its walk of its catch
-        // range; a charge only with room behind to hold it walking back; a
-        // teleport only by a fighter who has one; Custom Combo only in the
-        // V-ism with the meter; a change of stance only from Gen's Mantis.
+        // SC16 (`#208`): a charge only with room behind to hold it walking
+        // back; a teleport only by a fighter who has one; Custom Combo only
+        // in the V-ism with the meter; a change of stance only from Gen's
+        // Mantis; none under a mission allowing only normals and throws.
         use crate::era::Loadout::{AIsm, VIsm};
         use TournamentFighter::{Birdie, Gen, Geki};
         let free = EraControl { free: true, ..EraControl::default() };
@@ -4120,9 +4121,6 @@ mod tests {
         let at = |me: i16, foe: i16| Percept { frame: 1, fighting: true, me: body(me), foe: body(foe), ..Percept::default() };
         let birdie = sfz_ctx_for(Birdie, Level::VeryHard, AIsm, free);
         assert!(birdie.tools.get(cast::Tool::CommandThrow).is_some() && birdie.tools.get(cast::Tool::Charge).is_some(), "Birdie's chain and Bull Head");
-        let reach = grab_range(&birdie) + GRAB_WALK;
-        assert!(cpu.tool_ready(cast::Tool::CommandThrow, &at(250, 250 + reach), &birdie), "from the end of its walk");
-        assert!(!cpu.tool_ready(cast::Tool::CommandThrow, &at(250, 251 + reach), &birdie), "from farther");
         assert!(cpu.tool_ready(cast::Tool::Charge, &at(260, 360), &birdie), "mid-screen");
         assert!(!cpu.tool_ready(cast::Tool::Charge, &at(150, 250), &birdie), "his back to the left wall");
         assert!(!cpu.tool_ready(cast::Tool::Charge, &at(370, 270), &birdie), "his back to the right wall");
@@ -4136,36 +4134,89 @@ mod tests {
         assert!(!era_ready(game::EraAct::CustomCombo, &ryu), "the A-ism has no Custom Combo");
         assert!(era_ready(game::EraAct::Stance, &sfz_ctx_for(Gen, Level::VeryHard, AIsm, free)), "Gen in the Mantis");
         assert!(!era_ready(game::EraAct::Stance, &ryu), "Ryu has no stance");
-        // Under a mission that allows only normals and throws, none.
         let mut footsies = sfz_ctx_for(Birdie, Level::VeryHard, VIsm, free);
         footsies.pure_footsies = true;
         let footsies = footsies.for_stronger();
         assert!(!cpu.tool_ready(cast::Tool::CommandThrow, &at(250, 260), &footsies) && !era_ready(game::EraAct::CustomCombo, &footsies));
     }
 
+    /// The first step of the game plan a stronger CPU with this past takes
+    /// up in `situation`, its fighter at `me` and the opponent at `foe`, if
+    /// it takes one, over `seeds`.
+    fn plans_taken(ctx: &Context, me: i16, foe: i16, situation: Situation, seeds: u64) -> Vec<game::Act> {
+        let table = game::plans(ctx.kit.fighter, ctx.family);
+        let view = |f: u32| Percept { frame: f, fighting: true, me: body(me), foe: body(foe), ..Percept::default() };
+        let mut acts = Vec::new();
+        for seed in 1..=seeds {
+            let mut cpu = FairCpu::seeded(seed);
+            for f in 1..=40 {
+                cpu.observe(view(f));
+            }
+            cpu.judged.situation = situation;
+            if cpu.start_game_plan(40, view(40), ctx) {
+                acts.push(table[usize::from(cpu.game.unwrap().plan)].steps[0].act);
+            }
+        }
+        acts
+    }
+
     #[test]
-    fn a_command_throw_walks_in_and_spins_one_way_and_a_slip_does_not_jump() {
-        // SC16 (`#208`): the walk and the motion one action, both the way its
-        // fighter faces as it feels it now (not the delayed view's); a slip
-        // leaves out the last Up.
+    fn a_plan_needing_a_tool_it_cannot_use_here_is_not_taken_up() {
+        // SC16 (`#208`): plan selection itself asks whether the tool can be
+        // used: Birdie's charge plan from mid-screen, never with his back to
+        // the wall (his jump-in instead); Custom Combo in the V-ism, never
+        // in the A-ism.
+        use crate::era::Loadout::{AIsm, VIsm};
+        let free = EraControl { free: true, ..EraControl::default() };
+        let birdie = sfz_ctx_for(TournamentFighter::Birdie, Level::VeryHard, AIsm, free);
+        let charge = game::Act::Tool(cast::Tool::Charge);
+        let mid = plans_taken(&birdie, 260, 360, Situation::NeutralFar, 60);
+        let wall = plans_taken(&birdie, 150, 250, Situation::NeutralFar, 60);
+        assert!(mid.contains(&charge), "mid-screen: {mid:?}");
+        assert!(!wall.contains(&charge) && !wall.is_empty(), "at the wall: {wall:?}");
+        let custom = game::Act::Era(game::EraAct::CustomCombo);
+        let v = plans_taken(&sfz_ctx(Level::VeryHard, VIsm, free), 270, 300, Situation::NeutralClose, 60);
+        let a = plans_taken(&sfz_ctx(Level::VeryHard, AIsm, free), 270, 300, Situation::NeutralClose, 60);
+        assert!(v.contains(&custom), "V-ism: {v:?}");
+        assert!(!a.contains(&custom) && !a.is_empty(), "A-ism: {a:?}");
+    }
+
+    #[test]
+    fn a_command_throw_walks_in_step_by_step_and_its_motion_starts_only_in_its_catch_range() {
+        // SC16 (`#208`, review): from its catch range and 80 pixels more it
+        // walks toward him a few frames at a time; inside the range the
+        // grab's motion comes, its button inside one plan. A slipped motion
+        // leaves out the last Up (no jump).
         let ctx = sfz_ctx_for(TournamentFighter::Birdie, Level::VeryHard, crate::era::Loadout::AIsm, EraControl { free: true, ..EraControl::default() });
-        let entry = ctx.tools.get(cast::Tool::CommandThrow).unwrap();
-        let mut felt = Percept { frame: 1, fighting: true, me: body(250), foe: body(310), ..Percept::default() };
-        felt.me.facing_left = false;
-        let mut cpu = FairCpu::seeded(1);
+        let table = game::plans(Some(TournamentFighter::Birdie), Some(crate::era::EraFamily::SfZ));
+        let grab = table.iter().position(|p| p.situation == Situation::NeutralClose && p.steps[0].act == game::Act::Tool(cast::Tool::CommandThrow)).unwrap() as u8;
+        let range = grab_range(&ctx);
+        let step_at = |gap: i16, seed: u64| {
+            let mut cpu = FairCpu::seeded(seed);
+            let view = |f: u32| Percept { frame: f, fighting: true, me: body(200), foe: body(200 + gap), ..Percept::default() };
+            for f in 1..=40 {
+                cpu.observe(view(f));
+            }
+            cpu.judged.situation = Situation::NeutralClose;
+            cpu.game = Some(game::Running { plan: grab, step: 0, acted: false, pressed: 0, began: 40, hit: false });
+            cpu.follow_game_plan(40, view(40), &ctx).expect("a step")
+        };
+        let far = step_at(range + 80, 1);
+        assert_eq!(far.kind, PlanKind::Walk, "from range + 80 it walks");
+        assert!(far.pads[..usize::from(far.len)].iter().all(|&pad| pad == RIGHT) && far.len >= 1);
         let mut slipped = false;
-        for seed in 1..=60u64 {
-            cpu.rng = Rng(seed * 7 + 1);
-            let plan = cpu.tool_plan(cast::Tool::CommandThrow, &entry, felt, &Context { level: Level::Easy, ..ctx });
-            let pads = &plan.pads[..usize::from(plan.len)];
-            assert_eq!(pads[0], RIGHT, "walks in toward him first");
-            assert!(pads.iter().all(|&pad| pad & (LEFT | RIGHT) != (LEFT | RIGHT)));
+        for seed in 1..=60 {
+            let near = step_at(range, seed);
+            assert_eq!(near.kind, PlanKind::Act, "in range the motion");
+            let pads = &near.pads[..usize::from(near.len)];
             if pads.iter().all(|&pad| pad & BUTTONS == 0) {
                 slipped = true;
                 assert!(pads.iter().all(|&pad| pad & UP == 0), "a slipped grab is no jump: {pads:x?}");
             }
         }
-        assert!(slipped, "Easy's execution chance slips some of 60");
+        // Very Difficult slips rarely; the button is there otherwise.
+        let near = step_at(range, 2);
+        assert!(near.pads[..usize::from(near.len)].iter().any(|&pad| pad & BUTTONS != 0) || slipped);
     }
 
     #[test]

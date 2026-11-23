@@ -22,7 +22,7 @@ use crate::route_book::{Reach, Route, Stance};
 
 mod sfz;
 pub use sfz::EraAct;
-pub(super) use sfz::{chain_pads, custom_combo_pads, THROW_SPACE};
+pub(super) use sfz::{chain_pads, custom_combo_pads};
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
 /// counts as the corner. Measured by walking Ryu into each wall of

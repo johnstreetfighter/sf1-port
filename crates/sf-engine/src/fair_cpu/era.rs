@@ -291,6 +291,9 @@ impl Tactics {
         // The stronger play keeps the level's own share of the gauge
         // (SC11, `#203`).
         self.reserve = level.drive_kept();
+        // Nor does it switch Gen back from the Crane to the Mantis: back
+        // and forth at range only stood him still (SC16, `#208`).
+        self.stance = self.stance.filter(|_| self.can_change_stance());
         if self.family == EraFamily::Sf6 {
             self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
             self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));

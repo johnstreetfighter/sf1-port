@@ -34,12 +34,6 @@ pub enum EraAct {
     Stance,
 }
 
-/// The gap, centre to his hurtbox, a command throw walks in to before its
-/// motion, as near as two fighters stand in the measured fights (about 14
-/// to 16 pixels; a nearer mark is never reached). The walk stops sooner
-/// where the fighter's catch range is reached first
-/// ([`super::super::cast::catch_range`]).
-pub(in crate::fair_cpu) const THROW_SPACE: i16 = 16;
 /// The gaps a charge move is entered from: it carries him in from the
 /// middle distance.
 const CHARGE_GAPS: (i16, i16) = (60, 170);
@@ -197,9 +191,10 @@ pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
     }
 }
 
-/// The pads that start Custom Combo (a punch and a kick of one strength
-/// pressed together), then walk in and chain attacks, each a new button,
-/// toward the opponent's side `forward`.
+/// The pads that start Custom Combo, then walk in and chain attacks, each a
+/// new button, toward the opponent's side `forward`. Its input is a punch
+/// and a kick of one strength together (`ButtonClass::SameStrength`, which
+/// the engine takes in any strength): the light pair is pressed.
 pub(in crate::fair_cpu) fn custom_combo_pads(forward: u16) -> Vec<u16> {
     let start = button(0) | button(3);
     let mut pads = vec![0, start, start, 0];

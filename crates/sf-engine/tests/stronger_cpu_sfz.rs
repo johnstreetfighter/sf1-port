@@ -62,6 +62,8 @@ const LK: u8 = 8;
 const HK: u8 = 32;
 /// The move an Alpha Counter (and Custom Combo's start) plays.
 const ALPHA_COUNTER: u8 = 0x2e;
+/// A fighter being thrown, as he is drawn (`combo::throw::THROWN_MOVE`).
+const THROWN_MOVE: u8 = 0x3e;
 /// Super meter points in one stock, as the gauge counts them.
 const STOCK_AT: u8 = 48;
 
@@ -199,9 +201,13 @@ struct Seen {
     /// an era tool, by the step: on that step that frame or the one before
     /// (the move shows a frame or two after its input).
     began_on_step: Vec<(u8, OwnStep)>,
-    /// Moves begun from a tool step that took health off Player 1 before
-    /// another move began: a grab that caught him, by move id.
+    /// Moves begun from a tool step that landed within 90 frames, by move
+    /// id: a grab that put him in the thrown move, another tool that took
+    /// health off him.
     landed_on_step: Vec<(u8, OwnStep)>,
+    /// Gen's changes of stance seen inside a round, each way.
+    to_crane: u32,
+    to_mantis: u32,
     /// Alpha Counters (by move id) begun out of its guard.
     alpha_counters: u32,
     /// Frames of an air block: both in the air, his live attack box reaching
@@ -249,6 +255,7 @@ fn watch_with(
             let mut custom = false;
             let mut rounds = 0u8;
             let mut step_before = None;
+            let mut before_era = m.era_fighters()[1];
             // Player 1's health in the era style's fine units: a hit in
             // Custom Combo (its damage halved) can leave the bar's coarse
             // points as they were.
@@ -307,7 +314,8 @@ fn watch_with(
                 let foe_hurt = now_foe_hp < foe_hp && !now.foe.guarding();
                 foe_hp = now_foe_hp;
                 if let Some((id, kind, from)) = last_begun {
-                    if foe_hurt {
+                    let landed = if kind == OwnStep::Tool(Tool::CommandThrow) { now.foe.move_id == THROWN_MOVE } else { foe_hurt };
+                    if landed {
                         s.landed_on_step.push((id, kind));
                         last_begun = None;
                     } else if i > from + 90 {
@@ -326,6 +334,10 @@ fn watch_with(
                     s.air_guards += 1;
                 }
                 let era = m.era_fighters()[1];
+                if era.in_crane() != before_era.in_crane() && before.fighting {
+                    if era.in_crane() { s.to_crane += 1 } else { s.to_mantis += 1 }
+                }
+                before_era = era;
                 let now_custom = era.custom_combo_active();
                 if me.move_id == ALPHA_COUNTER && before.me.guarding() && !now_custom {
                     s.alpha_counters += 1;
@@ -410,6 +422,11 @@ fn fighter_specific_moves_are_used_by_the_fighters_who_have_them() {
         let from_step: Vec<String> = s.began_on_step.iter().filter(|&&(_, on)| on == kind).map(|(id, _)| format!("{id:x}")).collect();
         assert!(on_step >= 1, "{fighter:?} uses {what} from its game plan step; that step began {from_step:?}");
     }
+    // Gen goes to the Crane for its Jasen and is never switched back by the
+    // stronger play inside a round.
+    let gen = &by_fighter.iter().find(|(f, _)| *f == Gen).unwrap().1;
+    eprintln!("Gen: to the Crane {}, back to the Mantis {}", gen.to_crane, gen.to_mantis);
+    assert!(gen.to_crane >= 1 && gen.to_mantis == 0, "Gen's stance: to the Crane {}, back {}", gen.to_crane, gen.to_mantis);
 }
 
 #[test]
