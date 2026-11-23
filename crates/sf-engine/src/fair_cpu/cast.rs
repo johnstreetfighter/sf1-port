@@ -61,6 +61,19 @@ impl Tools {
     }
 }
 
+/// How near, centre to centre, a fighter's command throw catches in the
+/// SF2 era style: the catch record the data bank writes for it (Retsu's
+/// Izuna 43, Geki's Execution Drop 48; Birdie's chain is his Alpha chain's,
+/// 54). `None` for a fighter without one.
+pub fn catch_range(fighter: TournamentFighter) -> Option<i16> {
+    match fighter {
+        TournamentFighter::Retsu => Some(43),
+        TournamentFighter::Geki => Some(48),
+        TournamentFighter::Birdie => Some(54),
+        _ => None,
+    }
+}
+
 /// What a move is for in the stronger play.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Use {

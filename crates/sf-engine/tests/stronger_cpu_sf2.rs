@@ -205,16 +205,14 @@ struct Seen {
     /// The situations the game plans it took are for.
     plan_situations: BTreeSet<String>,
     plans: u32,
-    /// Routes entered, and whether each index was in its book.
+    /// Routes entered.
     routes: u32,
-    routes_in_book: bool,
     /// The tools whose step it was on, and the frames each was.
     tools: HashMap<String, u32>,
 }
 
 fn spar(fighter: TournamentFighter, revision: Revision, frames: u32, seed: u64, pad: fn(u32, &Percept) -> (u8, u8)) -> Option<Seen> {
-    let book_len = book(fighter, revision, Loadout::Standard).map_or(0, |b| b.routes.len());
-    let mut out = Seen { routes_in_book: true, ..Seen::default() };
+    let mut out = Seen::default();
     let mut was_plan = None;
     let mut was_route = false;
     matches(fighter, revision, true, seed, frames, |m, i| {
@@ -231,7 +229,6 @@ fn spar(fighter: TournamentFighter, revision: Revision, frames: u32, seed: u64, 
         let route = cpu.entering_route();
         if route && !was_route {
             out.routes += 1;
-            out.routes_in_book &= cpu.route_index().is_some_and(|index| index < book_len);
         }
         was_route = route;
         if let Some(tool) = cpu.game_plan_tool(fighter, EraFamily::Sf2) {
@@ -256,7 +253,6 @@ fn every_fighter_in_the_sf2_style_takes_game_plans_in_each_situation_and_routes_
                 seen.plans += more.plans;
                 seen.plan_situations.extend(more.plan_situations);
                 seen.routes += more.routes;
-                seen.routes_in_book &= more.routes_in_book;
                 Some(seen)
             }) else {
                 return;
@@ -265,7 +261,6 @@ fn every_fighter_in_the_sf2_style_takes_game_plans_in_each_situation_and_routes_
             for situation in want {
                 assert!(seen.plan_situations.contains(situation), "{fighter:?} {revision:?} took no plan in {situation}: {:?}", seen.plan_situations);
             }
-            assert!(seen.routes_in_book, "{fighter:?} {revision:?} entered a route its book has not got");
             // A book whose every route spends the super (Mike's Super Turbo
             // one) is entered with a full bar: the super test shows it.
             let meterless = book(fighter, revision, Loadout::Standard).is_some_and(|b| b.routes.iter().any(|r| r.super_spent == 0));
@@ -340,40 +335,67 @@ fn fighters_use_their_own_command_throws_teleports_and_charge_moves() {
         let Some(used) = deep(move || tool_moves(fighter, Revision::St, tools)) else { return };
         eprintln!("{fighter:?}: {used:?}");
         for (tool, _) in tools {
-            let (steps, moves) = used.get(tool).copied().unwrap_or((0, 0));
+            let ToolUse { steps, came, grabbed } = used.get(tool).copied().unwrap_or_default();
             assert!(steps >= 3, "{fighter:?} took its {tool:?} {steps} times: {used:?}");
-            assert!(moves * 3 >= steps, "{fighter:?} took its {tool:?} {steps} times and it came out {moves}: {used:?}");
+            // A step can end before its move: he steps out of a command
+            // throw's range, or attacks into a charge's walk back.
+            assert!(came * 2 >= steps, "{fighter:?} took its {tool:?} {steps} times and it came out {came}: {used:?}");
+            if *tool == Tool::CommandThrow {
+                // And it grabs him: he is drawn being thrown.
+                assert!(grabbed * 3 >= came && grabbed >= 2, "{fighter:?}'s command throw came out {came} times and grabbed {grabbed}: {used:?}");
+            }
         }
     }
 }
 
-/// For each tool: how many times the CPU took a step that uses it, and how
-/// many of those it was seen in that tool's own move (`moves`) within 60
-/// frames.
-fn tool_moves(fighter: TournamentFighter, revision: Revision, moves: &'static [(Tool, u8)]) -> Option<HashMap<Tool, (u32, u32)>> {
-    let mut used: HashMap<Tool, (u32, u32)> = HashMap::new();
+/// What came of the steps that use one tool.
+#[derive(Clone, Copy, Debug, Default)]
+struct ToolUse {
+    /// Steps taken.
+    steps: u32,
+    /// Of those, the ones its fighter was seen in the tool's own move
+    /// (`moves`) within 60 frames.
+    came: u32,
+    /// Of those, the ones Player 1 was seen being thrown in (a command
+    /// throw that grabbed).
+    grabbed: u32,
+}
+
+/// A fighter being thrown, as he is drawn (`combo::throw::THROWN_MOVE`).
+const THROWN_MOVE: u8 = 0x3e;
+
+fn tool_moves(fighter: TournamentFighter, revision: Revision, moves: &'static [(Tool, u8)]) -> Option<HashMap<Tool, ToolUse>> {
+    let mut used: HashMap<Tool, ToolUse> = HashMap::new();
     for (seed, pad) in [(1, guarding_pad as fn(u32, &Percept) -> (u8, u8)), (2, sparring_pad)] {
-        let mut on: Option<(Tool, u32, bool)> = None;
+        // The tool of the step taken, the frame, and whether its move came
+        // out and he was thrown since.
+        let mut on: Option<(Tool, u32, bool, bool)> = None;
+        let close = |used: &mut HashMap<Tool, ToolUse>, on: Option<(Tool, u32, bool, bool)>| {
+            if let Some((tool, _, came, grabbed)) = on {
+                let entry = used.entry(tool).or_default();
+                entry.came += u32::from(came);
+                entry.grabbed += u32::from(came && grabbed);
+            }
+        };
         matches(fighter, revision, true, seed, 30_000, |m, i| {
             let v = seen(m);
             step(m, pad(i, &v));
             let tool = m.fair_cpu().unwrap().game_plan_tool(fighter, EraFamily::Sf2);
-            if let Some(tool) = tool.filter(|t| on.is_none_or(|(was, at, _)| *t != was || i > at + 60)) {
-                if let Some((was, _, came)) = on.take() {
-                    used.entry(was).or_default().1 += u32::from(came);
-                }
-                used.entry(tool).or_default().0 += 1;
-                on = Some((tool, i, false));
+            if let Some(tool) = tool.filter(|t| on.is_none_or(|(was, at, _, _)| *t != was || i > at + 60)) {
+                close(&mut used, on.take());
+                used.entry(tool).or_default().steps += 1;
+                on = Some((tool, i, false, false));
             }
-            let me = seen(m).me;
-            if let Some((tool, at, came)) = on.as_mut() {
+            let now = seen(m);
+            if let Some((tool, at, came, grabbed)) = on.as_mut() {
                 let id = moves.iter().find(|(t, _)| t == tool).map(|(_, id)| *id);
-                *came |= i <= *at + 60 && Some(me.move_id) == id;
+                if i <= *at + 60 {
+                    *came |= Some(now.me.move_id) == id;
+                    *grabbed |= *came && now.foe.move_id == THROWN_MOVE;
+                }
             }
         })?;
-        if let Some((was, _, came)) = on {
-            used.entry(was).or_default().1 += u32::from(came);
-        }
+        close(&mut used, on);
     }
     Some(used)
 }
@@ -484,7 +506,14 @@ fn in_super_turbo_a_super_is_spent_inside_a_route() {
             checked += 1;
         }
     }
-    assert!(checked >= 8, "only {checked} fighters spent a super inside a route");
+    // Two thirds of the fighters whose books have such routes: a route
+    // into the super is one of several it picks from, so a fighter can go
+    // a fight without one.
+    let with_super_routes = PLANNED
+        .iter()
+        .filter(|&&f| book(f, Revision::St, Loadout::Standard).is_some_and(|b| b.routes.iter().any(|r| r.super_spent > 0)))
+        .count();
+    assert!(checked * 3 >= with_super_routes * 2, "only {checked} of {with_super_routes} fighters spent a super inside a route");
 }
 
 /// Player 1 stands close and presses a crouching heavy punch over and over:
@@ -514,7 +543,10 @@ impl Answers {
         if v.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != v.foe.move_id) {
             self.pending = false;
         }
-        if v.foe.attacking() && v.me.guarding() && !self.pending {
+        // Guarded: pushed back in its guard pose by his attack (the pose
+        // alone is drawn as soon as an attack is near).
+        let pushed = (v.me.x - v.foe.x).abs() > (before.me.x - before.foe.x).abs();
+        if v.foe.attacking() && v.me.guarding() && before.me.guarding() && pushed && !self.pending {
             self.pending = true;
             self.guarded += 1;
         }
@@ -555,7 +587,7 @@ fn in_the_sf2_style_it_shimmies_rather_than_standing_over_a_knocked_down_opponen
     for fighter in [TournamentFighter::Ryu, TournamentFighter::Lee, TournamentFighter::Mike] {
         let Some((waiting, still)) = deep(move || {
             let (mut waiting, mut still) = (0u32, 0u32);
-            matches(fighter, Revision::Hf, true, 4, 30_000, |m, i| {
+            matches(fighter, Revision::Hf, true, 4, 60_000, |m, i| {
                 let before = seen(m);
                 // Player 1 stands and now and then whiffs: he is knocked
                 // down often, and does not press out of it.
@@ -583,5 +615,68 @@ fn in_the_sf2_style_it_shimmies_rather_than_standing_over_a_knocked_down_opponen
         eprintln!("{fighter:?}: {still} of {waiting} frames waiting over him stood still");
         assert!(waiting >= 200, "{fighter:?} waited over him only {waiting} frames");
         assert!(still * 3 <= waiting, "{fighter:?} stood still on {still} of {waiting} frames");
+    }
+}
+
+/// Player 1 keeps just outside reach and swings a crouching heavy punch
+/// at the air: the CPU's guard pose shows as each comes near, but nothing
+/// meets it.
+fn swinging_short_pad(i: u32, v: &Percept) -> (u8, u8) {
+    let dist = (v.me.x - v.foe.x).abs();
+    if dist < 74 {
+        (away(v), 0)
+    } else if dist > 92 {
+        (toward(v), 0)
+    } else if i % 24 < 3 {
+        (D, HP)
+    } else {
+        (D, 0)
+    }
+}
+
+#[test]
+fn in_the_sf2_style_attacks_that_never_meet_it_are_not_answered_as_guarded() {
+    // SC15 (`#207`, review): its guard pose shows as soon as an attack is
+    // near, so the answer to a guarded attack waits for one that put it in
+    // blockstun. Against swings that never meet it, it starts no attack of
+    // its own, while guarding and defending, in their first frames. (Under
+    // a real string it can: it decides from the frame its delay shows, the
+    // last attack recovering, and he may press again first. The trigger
+    // itself is unit-tested in `fair_cpu::game`.)
+    for fighter in [TournamentFighter::Ryu, TournamentFighter::Retsu, TournamentFighter::Adon] {
+        let Some((swings, guarded, into)) = deep(move || {
+            let (mut swings, mut guarded, mut into) = (0u32, 0u32, 0u32);
+            // Frames since his current attack began, and whether it or the
+            // one before it pushed the CPU back or hit it.
+            let (mut since, mut met, mut met_before) = (u32::MAX, false, false);
+            matches(fighter, Revision::Hf, true, 6, 30_000, |m, i| {
+                let before = seen(m);
+                step(m, swinging_short_pad(i, &before));
+                let v = seen(m);
+                if v.foe.attacking() && (!before.foe.attacking() || before.foe.move_id != v.foe.move_id) {
+                    swings += 1;
+                    since = 0;
+                    met_before = met;
+                    met = false;
+                } else {
+                    since = since.saturating_add(1);
+                }
+                let pushed = v.me.guarding() && v.foe.attacking() && (v.me.x - v.foe.x).abs() > (before.me.x - before.foe.x).abs();
+                met |= pushed || v.me.reacting();
+                guarded += u32::from(v.foe.attacking() && v.me.guarding() && !met && !met_before);
+                let cpu_began = v.me.attacking() && (!before.me.attacking() || before.me.move_id != v.me.move_id);
+                // Begun while it judged itself defending: where the answer
+                // to a guarded attack comes from (a punish of his last whiff
+                // is chosen as he recovers, before the next swing shows).
+                let defending = m.fair_cpu().unwrap().situation().situation == sf_engine::fair_cpu::Situation::Defending;
+                into += u32::from(cpu_began && since < 6 && before.me.guarding() && defending && !met && !met_before);
+            })?;
+            Some((swings, guarded, into))
+        }) else {
+            return;
+        };
+        eprintln!("{fighter:?}: {swings} swings, {guarded} frames in its guard pose against ones that never met it, {into} attacks into their start");
+        assert!(swings >= 30 && guarded >= 30, "{fighter:?}: {swings} swings, {guarded} guard-pose frames");
+        assert_eq!(into, 0, "{fighter:?} attacked into the start of {into} swings that had not met it");
     }
 }

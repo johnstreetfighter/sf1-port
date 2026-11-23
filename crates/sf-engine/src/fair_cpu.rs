@@ -91,6 +91,9 @@ pub const FIGHT_LOOP: u32 = 0x3eafa;
 const RING: usize = 40;
 /// The longest plan, in pad frames.
 const PLAN_CAP: usize = 48;
+/// How far inside its catch range, centre to centre, a command throw is
+/// entered from (SC15, `#207`): he may drift a little as it starts.
+const CATCH_MARGIN: i16 = 4;
 /// The SF2 era style's shimmy over a knocked-down opponent (SC15, `#207`):
 /// how far past a timed attack's reach a walk in that has stopped against
 /// his body still counts as there, the frames it must have stood still to
@@ -843,6 +846,9 @@ pub struct Context {
     /// and charge moves. Only the stronger play uses either.
     strong_kit: Option<Kit>,
     tools: cast::Tools,
+    /// Its own fighter is in blockstun, as it feels its own state (SC15,
+    /// `#207`). Kept under a mission that sets the era kit aside.
+    own_blockstun: bool,
 }
 
 impl Context {
@@ -867,6 +873,7 @@ impl Context {
             pure_footsies: false,
             strong_kit: None,
             tools: cast::Tools::default(),
+            own_blockstun: false,
         }
     }
 
@@ -916,6 +923,7 @@ impl Context {
         context.style = Some((state.style.revision, state.style.loadout));
         context.meters = [u16::from(state.super_meter), state.sf6_drive_points().unwrap_or(0)];
         context.meter_full = state.super_capacity() != 0 && state.super_meter >= state.super_capacity();
+        context.own_blockstun = control.blockstun;
         if let Some((kit, tools)) = cast::stronger_kit(fighter, state.style.family, &entries) {
             context.strong_kit = Some(kit);
             context.tools = tools;
@@ -1766,6 +1774,9 @@ impl FairCpu {
         if stronger {
             let was_blocked = self.judged.situation == Situation::ItWasBlocked;
             self.judged = self.judge.judge(view, before, self.longest_reach());
+            if ctx.own_blockstun {
+                self.judge.felt_blockstun(step);
+            }
             if let Some(before) = before {
                 let blocked = !was_blocked && self.judged.situation == Situation::ItWasBlocked;
                 let shots = [ctx.kit.projectile, ctx.kit.projectile_alt].map(|entry| entry.map(|entry| entry.produces));
@@ -2390,15 +2401,25 @@ impl FairCpu {
                     if !self.ready(step, view, stronger) {
                         return Some(wait);
                     }
-                    // A command throw only from a throw's reach: one he has
-                    // stepped out of is let go.
-                    if tool == cast::Tool::CommandThrow && self.felt(step, view).gap() > game::COMMAND_THROW_REACH {
-                        break;
+                    // A command throw walks in to its catch range, a few
+                    // frames at a time and looking again, and is let go if
+                    // it cannot get there.
+                    if tool == cast::Tool::CommandThrow {
+                        let range = ctx.kit.fighter.and_then(cast::catch_range).unwrap_or(40) - CATCH_MARGIN;
+                        let dist = self.felt(step, view).dist();
+                        if dist > range {
+                            if step > run.began + game::EDGE_FRAMES {
+                                break;
+                            }
+                            let frames = ((dist - range + 1) / 2).clamp(1, game::EDGE_WALK) as usize;
+                            let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                            return Some(Plan::of(PlanKind::Walk, &[forward; PLAN_CAP][..frames]));
+                        }
                     }
                     run.acted = true;
                     run.pressed = step;
                     self.game = Some(run);
-                    let plan = self.tool_plan(&entry, view, ctx);
+                    let plan = self.tool_plan(&entry, step, view, ctx);
                     self.settle = step + u32::from(plan.len);
                     return Some(plan);
                 }
@@ -2532,9 +2553,13 @@ impl FairCpu {
     /// last seen, through the level's execution chance as a special's are
     /// ([`Self::motion`]): a charge move's input holds back (a walk back
     /// while it builds) and then releases.
-    fn tool_plan(&mut self, entry: &MoveEntry, view: Percept, ctx: &Context) -> Plan {
+    fn tool_plan(&mut self, entry: &MoveEntry, step: u32, view: Percept, ctx: &Context) -> Plan {
         self.last_normal = None;
-        Plan::of(PlanKind::Act, &self.motion(entry, !view.me.facing_left, view, ctx))
+        // Its own facing as it feels it now: after a cross-up the delayed
+        // view's would mirror the motion (Retsu's Izuna as his Senpuu
+        // Kyaku) and hold a charge the wrong way.
+        let facing_right = !self.felt(step, view).me.facing_left;
+        Plan::of(PlanKind::Act, &self.motion(entry, facing_right, view, ctx))
     }
 
     /// A frame of a timed step's walk in toward a knocked-down opponent, or
@@ -2942,7 +2967,7 @@ impl FairCpu {
         if stronger
             && ctx.family == Some(crate::era::EraFamily::Sf2)
             && self.judge.recovering_after_meeting(view)
-            && !ctx.era.is_some_and(Tactics::in_blockstun)
+            && !ctx.own_blockstun
             && (view.me.free() || view.me.guarding())
             && view.gap() <= self.longest_reach() + 2 * i16::from(game::PUNISH_WALK)
             && self.settled(step, view, stronger)

@@ -115,9 +115,15 @@ pub(super) struct Judge {
     /// box has reached the CPU's fighter (or hit him).
     foe_attack_shown: bool,
     foe_attack_met: bool,
-    /// The CPU's fighter was seen guarding during the opponent's current
-    /// attack (SC15, `#207`): some attacks show no box it can read.
-    foe_attack_guarded: bool,
+    /// The frame the opponent's current attack was first seen, and the
+    /// step the CPU's latest spell of blockstun, as it feels its own
+    /// fighter, began and the last step of it (SC15, `#207`): some attacks
+    /// show no box it can read, and its guard pose alone is drawn as soon
+    /// as an attack is near, so a guarded one is known by the blockstun it
+    /// put it in.
+    foe_attack_began: u32,
+    blockstun_from: u32,
+    blockstun_at: u32,
     /// The opponent's current attack began on the ground: one that rises
     /// (a Shoryuken) is still a whiff to punish as it falls.
     foe_attack_grounded: bool,
@@ -144,7 +150,9 @@ impl Default for Judge {
         Judge {
             foe_attack_shown: false,
             foe_attack_met: false,
-            foe_attack_guarded: false,
+            foe_attack_began: 0,
+            blockstun_from: 0,
+            blockstun_at: 0,
             foe_attack_grounded: false,
             foe_reach: DEFAULT_FOE_REACH,
             foe_reach_seen: 0,
@@ -167,7 +175,7 @@ impl Judge {
             if foe_was.is_none_or(|was| !was.attacking() || was.move_id != foe.move_id) {
                 self.foe_attack_shown = false;
                 self.foe_attack_met = false;
-                self.foe_attack_guarded = false;
+                self.foe_attack_began = view.frame;
                 self.foe_attack_grounded = foe_was.is_some_and(|was| !was.jumping());
                 self.foe_attack_from = foe_was.map_or(foe.x, |was| was.x);
             }
@@ -190,11 +198,9 @@ impl Judge {
             if me.reacting() {
                 self.foe_attack_met = true;
             }
-            self.foe_attack_guarded |= me.guarding();
         } else {
             self.foe_attack_shown = false;
             self.foe_attack_met = false;
-            self.foe_attack_guarded = false;
         }
         // A guard pose alone is not a guarded attack: the pose is drawn as
         // soon as an attack is near. The attack must also be in reach.
@@ -251,13 +257,24 @@ impl Judge {
         Judged { situation, corner: cornered(&me) || cornered(&foe), foe_cornered: cornered(&foe) }
     }
 
+    /// The CPU felt its own fighter in blockstun on machine step `step`.
+    pub(super) fn felt_blockstun(&mut self, step: u32) {
+        if step != self.blockstun_at + 1 {
+            self.blockstun_from = step;
+        }
+        self.blockstun_at = step;
+    }
+
     /// The opponent's ground attack in `view`, the frame last judged, has
-    /// been guarded and is no longer live (SC15, `#207`): its box has come
-    /// and gone, or, for an attack that shows none it can read, the CPU's
-    /// fighter guarded while it was out.
+    /// met the CPU's fighter and is no longer live (SC15, `#207`): its box
+    /// reached it and has gone; or, for an attack that shows no box it can
+    /// read, a spell of blockstun began after it began, so it is the one
+    /// that met it and its start-up is behind it (not a spell from the
+    /// attack before, still running as it began).
     pub(super) fn recovering_after_meeting(&self, view: Percept) -> bool {
-        let met = (self.foe_attack_shown && self.foe_attack_met) || self.foe_attack_guarded;
-        met && self.foe_attack_grounded && view.foe.attacking() && !view.foe.active && !view.foe.jumping()
+        let boxed = self.foe_attack_shown && self.foe_attack_met && !view.foe.active;
+        let boxless = !self.foe_attack_shown && self.blockstun_at != 0 && self.blockstun_from >= self.foe_attack_began;
+        (boxed || boxless) && self.foe_attack_grounded && view.foe.attacking() && !view.foe.jumping()
     }
 
     /// The edge of the opponent's reach: the farthest his ground attacks
@@ -893,18 +910,10 @@ const RYU_SF6: [GamePlan; 13] = [
     GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: WATCHED_SHOT_GAPS, steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch, from: Level::Normal },
 ];
 
-/// After a guarded attack, or in close neutral, a walk in to a command
-/// throw's reach and the throw itself (SC15, `#207`): it takes a guarding
-/// opponent and cannot be teched.
-const COMMAND_THROW: [Step; 2] = [
-    step(Act::Space(COMMAND_THROW_GAP), always(Some(1))),
-    step(Act::Tool(Tool::CommandThrow), always(None)),
-];
-
-/// The gap a command throw is entered from: as near as a throw's; and the
-/// farthest it is thrown from once there.
-const COMMAND_THROW_GAP: i16 = 30;
-pub(super) const COMMAND_THROW_REACH: i16 = COMMAND_THROW_GAP + 12;
+/// After a guarded attack, or in close neutral, a command throw (SC15,
+/// `#207`): it takes a guarding opponent and cannot be teched. The step
+/// walks in to its fighter's catch range first ([`super::cast::catch_range`]).
+const COMMAND_THROW: [Step; 1] = [step(Act::Tool(Tool::CommandThrow), always(None))];
 
 /// Far off, a projectile and a teleport while he deals with it (SC15,
 /// `#207`): the situation's own plans go on from wherever it lands.
@@ -981,13 +990,13 @@ const SF2_RETSU: [GamePlan; 11] = [ROUTE, WALK_THROW, MEATY, BAIT, HOVER_CLOSE, 
 const SF2_GEKI: [GamePlan; 12] = [POKE, ROUTE, FRAME_TRAP, BAIT, CORNERED, HOVER_CLOSE, SHOT, JUMP_IN, SHOT_WATCH, THROW_CLOSE, THROW_BLOCKED, TELEPORT_FAR];
 const SF2_JOE: [GamePlan; 5] = [ROUTE, WALK_THROW, BAIT, SHOT, SHOT_WATCH];
 const SF2_MIKE: [GamePlan; 4] = [ROUTE, WALK_THROW, MEATY, JUMP_IN];
-const SF2_LEE: [GamePlan; 8] = [ROUTE, WALK_THROW, MEATY, SHOT, JUMP_IN, SHOT_WATCH, JUMP_ROUTE, CHARGE_FAR];
+const SF2_LEE: [GamePlan; 6] = [ROUTE, WALK_THROW, MEATY, JUMP_IN, JUMP_ROUTE, CHARGE_FAR];
 // Birdie idles more than the old Fair CPU with this set (his slow walk
 // back while his charge builds stands still on many frames); with the far
 // hover added he idles less but no longer wins half his Super Turbo
 // matches as Player 1. Listed on #207.
-const SF2_BIRDIE: [GamePlan; 12] = [POKE, ROUTE, FRAME_TRAP, WALK_THROW, BAIT, SHOT, JUMP_IN, SHOT_WATCH, JUMP_ROUTE, THROW_CLOSE, THROW_BLOCKED, CHARGE_FAR];
-const SF2_ADON: [GamePlan; 8] = [ROUTE, FRAME_TRAP, WALK_THROW, BAIT, SHOT, JUMP_IN, SHOT_WATCH, JUMP_ROUTE];
+const SF2_BIRDIE: [GamePlan; 10] = [POKE, ROUTE, FRAME_TRAP, WALK_THROW, BAIT, JUMP_IN, JUMP_ROUTE, THROW_CLOSE, THROW_BLOCKED, CHARGE_FAR];
+const SF2_ADON: [GamePlan; 6] = [ROUTE, FRAME_TRAP, WALK_THROW, BAIT, JUMP_IN, JUMP_ROUTE];
 
 /// How often, in percent, a fighter takes up a game plan where one would
 /// do (SC15, `#207`); otherwise it plays its single choices for that
@@ -1108,8 +1117,8 @@ crate::canonical::canonical_enum!(Situation, "FairCpuSituation.v1";
     OpponentWhiffed => 5, Defending => 6, KnockedDown => 7,
 );
 crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v2", { situation, corner, foe_cornered });
-crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v5", {
-    foe_attack_shown, foe_attack_met, foe_attack_guarded, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
+crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v6", {
+    foe_attack_shown, foe_attack_met, foe_attack_began, blockstun_from, blockstun_at, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
 });
 crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v4", { plan, step, acted, pressed, began, hit });
 crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v2", {
@@ -1445,6 +1454,46 @@ mod tests {
         // own game.
         assert_eq!(super::super::cast::covered(EraFamily::Sf2).len(), 7);
         assert!(super::super::cast::covered(EraFamily::Sf6).is_empty());
+    }
+
+    #[test]
+    fn a_boxless_attack_counts_as_guarded_only_from_the_blockstun_it_caused() {
+        // SC15 (`#207`, review): his attack shows no box; the CPU's guard
+        // pose alone is no sign it met him. A spell of blockstun that began
+        // after it began is; the spell of the attack before it, still felt
+        // as it began, is not.
+        let body = |x: i16, move_id: u8| Body { x, present: true, move_id, front: x, hurt: (x - 10, x + 10), ..Body::default() };
+        let frame = |f: u32, foe_move: u8, me_move: u8| Percept {
+            frame: f,
+            fighting: true,
+            me: body(200, me_move),
+            foe: body(160, foe_move),
+            ..Percept::default()
+        };
+        let (guard, stand, attack) = (8, 1, 0x1e);
+        let run = |blockstun: &[u32]| {
+            // His attack begins on frame 100; before it he stands.
+            let mut judge = Judge::default();
+            let mut before = frame(94, stand, guard);
+            let mut seen = Vec::new();
+            for f in 95..130 {
+                let view = frame(f, if f < 100 { stand } else { attack }, guard);
+                judge.judge(view, Some(before), 60);
+                if blockstun.contains(&f) {
+                    judge.felt_blockstun(f);
+                }
+                if f >= 100 {
+                    seen.push(judge.recovering_after_meeting(view));
+                }
+                before = view;
+            }
+            seen
+        };
+        assert!(run(&[]).iter().all(|&r| !r), "its guard pose alone");
+        assert!(run(&[97, 98, 99, 100, 101, 102]).iter().all(|&r| !r), "a spell begun before it: the last attack's");
+        let met = run(&[104, 105, 106]);
+        assert!(met[..4].iter().all(|&r| !r), "not before it met him: {met:?}");
+        assert!(met[4..].iter().all(|&r| r), "met, and after: {met:?}");
     }
 
     #[test]
