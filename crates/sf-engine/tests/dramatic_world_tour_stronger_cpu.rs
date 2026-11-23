@@ -530,18 +530,20 @@ fn whiff_script(i: u32) -> PlayerInputs {
 
 #[test]
 fn under_pure_footsies_a_fighter_whose_book_has_plain_normal_routes_takes_only_those() {
-    // SC23 (`#215`): Ryu in the CE era style (no art pack needed) has a
-    // plain-normal ground route, light punch twice, beside routes with
-    // specials; he takes routes when he punishes a whiff. Under the trial
-    // every route he takes is plain normals, and he takes one; without it
-    // he takes routes with specials too.
+    // SC23 (`#215`): Ryu in the SF3 New Generation style (no art pack
+    // needed; no game plans, so the whiffs he punishes are what bring his
+    // routes) has a plain-normal ground route, light punch twice, beside
+    // routes with specials. Under the trial every route he takes is plain
+    // normals, and he takes one; without it he takes routes with specials
+    // too. (SC15 `#207` moved it off CE, where Ryu's SF2 game plans now win
+    // the fight before many whiffs.)
     let Some(assets) = assets() else { return };
     deep(move || {
-        let book = sf_engine::route_book::book(TournamentFighter::Ryu, Revision::Ce, loadouts(Revision::Ce)[0]).expect("Ryu's CE book");
+        let book = sf_engine::route_book::book(TournamentFighter::Ryu, Revision::Sf3Ng, loadouts(Revision::Sf3Ng)[0]).expect("Ryu's SF3 New Generation book");
         assert!(book.routes.iter().any(|r| r.normals_only()) && book.routes.iter().any(|r| !r.normals_only()));
         let footsies = MissionKind::RuleModifierTrial(RuleModifier::PureFootsies);
         for mission in [None, Some(footsies)] {
-            let mut fight = tour_fight(&assets, mission, Revision::Ce);
+            let mut fight = tour_fight(&assets, mission, Revision::Sf3Ng);
             let (mut plain, mut other, mut last) = (0, 0, None);
             for i in 0..9_600 {
                 fight.step(&assets, whiff_script(i), PlayerInputs::default(), false);
@@ -558,5 +560,41 @@ fn under_pure_footsies_a_fighter_whose_book_has_plain_normal_routes_takes_only_t
                 Some(_) => assert!(plain > 0 && other == 0, "under the trial: plain {plain}, with specials {other}"),
             }
         }
+    });
+}
+
+#[test]
+fn under_pure_footsies_ryu_in_the_ce_style_keeps_his_sf2_game_to_plain_normals() {
+    // SC15 (`#207`, review): Ryu in the CE style now plays the SF2 era
+    // style's game plans. Under the trial every route he takes is plain
+    // normals (his CE book has one, light punch twice) and he takes no
+    // step needing a special or a tool, over fights one after another.
+    let Some(assets) = assets() else { return };
+    deep(move || {
+        let book = sf_engine::route_book::book(TournamentFighter::Ryu, Revision::Ce, loadouts(Revision::Ce)[0]).expect("Ryu's CE book");
+        let footsies = MissionKind::RuleModifierTrial(RuleModifier::PureFootsies);
+        let (mut plain, mut other, mut tools, mut plans, mut last) = (0, 0, 0, 0, None);
+        let mut fight = tour_fight(&assets, Some(footsies), Revision::Ce);
+        for i in 0..20_000 {
+            fight.step(&assets, whiff_script(i), PlayerInputs::default(), false);
+            if fight.machine().match_over() {
+                fight = tour_fight(&assets, Some(footsies), Revision::Ce);
+                last = None;
+                continue;
+            }
+            let Some(cpu) = fight.machine().fair_cpu() else { continue };
+            let entered = cpu.route_index().filter(|_| cpu.route_step().is_none_or(|step| step == 0));
+            if entered.is_some() && entered != last {
+                if book.routes[entered.unwrap()].normals_only() { plain += 1 } else { other += 1 }
+            }
+            last = cpu.route_index();
+            plans += u32::from(cpu.following_game_plan());
+            tools += u32::from(cpu.game_plan_tool(TournamentFighter::Ryu, sf_engine::era::EraFamily::Sf2).is_some());
+        }
+        eprintln!("under the trial in CE: plain routes {plain}, with specials {other}, plan frames {plans}, tool frames {tools}");
+        assert!(plans > 0, "he followed no game plan");
+        assert_eq!(other, 0, "routes with specials under the trial");
+        assert_eq!(tools, 0, "tool steps under the trial");
+        assert!(plain > 0, "no plain-normal route under the trial");
     });
 }

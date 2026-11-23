@@ -180,62 +180,11 @@ struct Opening {
     quiet: u32,
 }
 
-/// The machine `spec`'s match is played on, at its first frame, with
-/// Player 2's Fair CPU seeded as [`measure_match`] seeds it and no Fair CPU
-/// on Player 1's pad, which the caller sets (SC16, `#208`: the SFZ fight
-/// tests play any fighter and style this way). `spec.stronger[0]` is then
-/// unused; the match's level is still the higher of the two. `data` is as
-/// for [`measure_match`].
-pub fn pad_match_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
-    let mut machine = match_machine(program_rom, data, spec)?;
-    machine.drop_measuring_p1_cpu();
-    Ok(machine)
-}
-
-/// The machine `spec`'s match is played on, at its first frame, with each
-/// side's Fair CPU seeded as [`measure_match`] seeds them.
-fn match_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
-    let picks = spec.styles.map(|(revision, loadout)| StylePick::for_revision(revision, loadout));
-    for (side, pick) in picks.iter().enumerate() {
-        if !pick.available_for(spec.fighters[side], true) {
-            return Err(format!("{:?} has no {:?} style", spec.fighters[side], spec.styles[side]));
-        }
-    }
-    if let Some(bad) = spec.difficulty.iter().find(|d| !(1..=4).contains(*d)) {
-        return Err(format!("difficulty level {bad} is not 1 to 4"));
-    }
-    if spec.difficulty[0] != spec.difficulty[1] && !spec.stronger.iter().all(|&new| new) {
-        return Err("two different levels need both sides to play the new Fair CPU: the old one's Utility AI follows the match's level".into());
-    }
-    let match_level = spec.difficulty[0].max(spec.difficulty[1]);
-    let mut config = MatchConfig::definitive();
-    config.roster.mode = PlayMode::Versus;
-    config.roster.p1 = spec.fighters[0];
-    config.roster.p2 = spec.fighters[1];
-    config.roster.what_if_styles = true;
-    config.p2_fair_cpu = true;
-    config.difficulty = match_level;
-    let setup = FightSetup {
-        kind: FightKind::Local,
-        players: Players::Two,
-        config,
-        dsw1: FightDips::DSW1,
-        dsw2: FightDips { difficulty: match_level, round_time: 100 }.dsw2(),
-    };
-    let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
-    let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))
-        .map_err(|event| format!("the fight did not start: {event:?}"))?;
-    fight.set_selected_styles(picks.map(Some));
-    let mut machine = fight.machine().clone();
-    machine.seed_measuring_cpus(spec.seed, spec.stronger, spec.difficulty.map(crate::fair_cpu::Level::from_difficulty));
-    Ok(machine)
-}
-
 /// Play `spec`'s match on a machine running `program_rom` and count what
 /// each side did. `data` is the extended data bank holding the bosses'
 /// player tables; without one only Ryu and Ken can be played.
 pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<MatchReport, String> {
-    let mut machine = match_machine(program_rom, data, spec)?;
+    let mut machine = measuring_machine(program_rom, data, spec)?;
     let mut report = MatchReport { spec: *spec, ended: false, winner: None, frames: 0, live_frames: 0, sides: [SideReport::default(); 2] };
     let mut before: Option<([Body; 2], [u32; 2])> = None;
     let mut open: [Option<Opening>; 2] = [None; 2];
@@ -316,6 +265,53 @@ pub fn measure_match(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &Mea
         before = Some((now, health));
     }
     Ok(report)
+}
+
+/// The machine of `spec`'s match as the measuring run sets it up, with
+/// Player 1's pad left to the caller: only Player 2 is a Fair CPU, playing
+/// the side `spec` gives it (SC15, `#207`: fight tests for any fighter and
+/// style).
+pub fn sparring_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
+    let mut machine = measuring_machine(program_rom, data, spec)?;
+    machine.drop_p1_fair_cpu();
+    Ok(machine)
+}
+
+fn measuring_machine(program_rom: &[u8], data: Option<Arc<DataBank>>, spec: &MeasureSpec) -> Result<crate::run::PowerOnMachine, String> {
+    let picks = spec.styles.map(|(revision, loadout)| StylePick::for_revision(revision, loadout));
+    for (side, pick) in picks.iter().enumerate() {
+        if !pick.available_for(spec.fighters[side], true) {
+            return Err(format!("{:?} has no {:?} style", spec.fighters[side], spec.styles[side]));
+        }
+    }
+    if let Some(bad) = spec.difficulty.iter().find(|d| !(1..=4).contains(*d)) {
+        return Err(format!("difficulty level {bad} is not 1 to 4"));
+    }
+    if spec.difficulty[0] != spec.difficulty[1] && !spec.stronger.iter().all(|&new| new) {
+        return Err("two different levels need both sides to play the new Fair CPU: the old one's Utility AI follows the match's level".into());
+    }
+    let match_level = spec.difficulty[0].max(spec.difficulty[1]);
+    let mut config = MatchConfig::definitive();
+    config.roster.mode = PlayMode::Versus;
+    config.roster.p1 = spec.fighters[0];
+    config.roster.p2 = spec.fighters[1];
+    config.roster.what_if_styles = true;
+    config.p2_fair_cpu = true;
+    config.difficulty = match_level;
+    let setup = FightSetup {
+        kind: FightKind::Local,
+        players: Players::Two,
+        config,
+        dsw1: FightDips::DSW1,
+        dsw2: FightDips { difficulty: match_level, round_time: 100 }.dsw2(),
+    };
+    let data = data.unwrap_or_else(|| Arc::new(DataBank::build(program_rom, &[])));
+    let mut fight = Fight::start_banked(program_rom, setup, Some(0), None, Some(data))
+        .map_err(|event| format!("the fight did not start: {event:?}"))?;
+    fight.set_selected_styles(picks.map(Some));
+    let mut machine = fight.machine().clone();
+    machine.seed_measuring_cpus(spec.seed, spec.stronger, spec.difficulty.map(crate::fair_cpu::Level::from_difficulty));
+    Ok(machine)
 }
 
 /// One solo Dramatic match to play (SC23, `#215`): Ally 1, the boss and

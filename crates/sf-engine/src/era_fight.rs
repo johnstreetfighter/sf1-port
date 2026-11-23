@@ -789,6 +789,13 @@ impl EraFighterState {
         self.what_if
     }
 
+    /// Mark the style a what-if one, as a fight does for a style the
+    /// fighter never had: for unit tests that build a state by hand.
+    #[cfg(test)]
+    pub(crate) fn set_what_if(&mut self, on: bool) {
+        self.what_if = on;
+    }
+
     pub(crate) fn uses_family_bank(&self) -> bool {
         self.what_if_active()
             || self.sf2_air_tatsumaki_available()

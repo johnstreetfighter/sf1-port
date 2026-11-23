@@ -1750,9 +1750,9 @@ impl PowerOnMachine {
         ));
     }
 
-    /// Take the measuring run's Fair CPU off Player 1's pad, leaving it to
-    /// whoever sets Player 1's inputs (SC16, `#208`).
-    pub(crate) fn drop_measuring_p1_cpu(&mut self) {
+    /// Player 1's pad is the caller's again: the measuring run's Fair CPU
+    /// on it is dropped (SC15, `#207`: [`crate::measure::sparring_machine`]).
+    pub(crate) fn drop_p1_fair_cpu(&mut self) {
         self.p1_fair_cpu = None;
     }
 
@@ -2358,13 +2358,6 @@ impl PowerOnMachine {
         self.fair_cpu.as_ref().is_some_and(crate::fair_cpu::FairCpu::following_game_plan)
     }
 
-    /// The own move or era tool Player 2's Fair CPU's game plan step steps
-    /// into, if it is on such a step (SC16, `#208`).
-    pub fn fair_cpu_own_move_step(&self) -> Option<crate::fair_cpu::OwnMoveStep> {
-        let family = self.program.toggle_state.era.fighters[1].style.family;
-        self.fair_cpu.as_ref()?.own_move_step(self.program.match_config.roster.p2, family)
-    }
-
     /// The machine step Player 2's Fair CPU began the game plan it is
     /// following on, if it is following one.
     pub fn fair_cpu_game_plan_began(&self) -> Option<u32> {
@@ -2595,11 +2588,12 @@ impl PowerOnMachine {
     }
 
     /// Set the Super meter of the fighter on fight side `side` (0 or 1), in
-    /// the gauge's points: a seam for fight tests that need meter at once
-    /// (SC16, `#208`), as Training's FILL METERS gives it. No game mode
-    /// calls it.
+    /// the gauge's points, at most what his gauge holds: a seam for fight
+    /// tests that need meter at once (SC16, `#208`), as Training's FILL
+    /// METERS gives it. No game mode calls it.
     pub fn set_era_super_meter(&mut self, side: usize, points: u8) {
-        self.program.toggle_state.era.fighters[side].super_meter = points;
+        let fighter = &mut self.program.toggle_state.era.fighters[side];
+        fighter.super_meter = points.min(fighter.super_capacity());
     }
 
     /// Native Dramatic slot order: Ally 1, boss, Ally 2.

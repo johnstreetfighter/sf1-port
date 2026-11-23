@@ -13,6 +13,7 @@
 //! fighter and era style, so choosing and following one costs a few
 //! comparisons a frame.
 
+use super::cast::Tool;
 use super::habit::Lean;
 use super::{Body, Choice, Level, Percept};
 use crate::era::EraFamily;
@@ -20,7 +21,8 @@ use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
 
 mod sfz;
-pub(super) use sfz::{chain_pads, custom_combo_pads, EraAct, Signature, Signatures, THROW_REACH, THROW_SPACE};
+pub use sfz::EraAct;
+pub(super) use sfz::{chain_pads, custom_combo_pads, THROW_SPACE};
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
 /// counts as the corner. Measured by walking Ryu into each wall of
@@ -45,6 +47,10 @@ const RISE_STEP: i64 = 3;
 /// after he rises. (This engine lets a hit land on a knockdown's last
 /// frame and knock him down again; six frames' lead met that frame.)
 pub(super) const MEATY_LEAD: u32 = 4;
+/// How far inside a timed attack's reach the SF2 era style's shimmy over
+/// a knocked-down opponent steps back to before walking in again (SC15,
+/// `#207`).
+pub(super) const SHIMMY: i16 = 10;
 /// Frames a guard held over a rise lasts past it, for a reversal to show.
 pub(super) const BAIT_FRAMES: u32 = 24;
 /// Frames before a rising opponent is free at which the guard over his
@@ -107,12 +113,14 @@ fn cornered(body: &Body) -> bool {
 }
 
 /// How far from the walls of Training's stage a fighter must stand to have
-/// room to walk back: other stages' walls stand nearer (in the measuring
-/// run's matches an SFZ fighter walking back met one at about x 375).
+/// room to walk back. Other stages' walls stand nearer: in the measuring
+/// run's matches an SFZ fighter walking back met one at about x 375, 25 in
+/// from Training's; this margin covers that, not a stage it has not seen.
 const BACK_ROOM: i16 = 70;
 
 /// The CPU's fighter has room behind it to walk back, as far as the walls
-/// it knows go (SC16, `#208`).
+/// it knows go (SC16, `#208`): a charge is held walking back, and against a
+/// wall it would stand still charging.
 pub(super) fn room_behind(view: &Percept) -> bool {
     if view.foe.x >= view.me.x { view.me.x > LEFT_WALL + BACK_ROOM } else { view.me.x < RIGHT_WALL - BACK_ROOM }
 }
@@ -124,6 +132,15 @@ pub(super) struct Judge {
     /// box has reached the CPU's fighter (or hit him).
     foe_attack_shown: bool,
     foe_attack_met: bool,
+    /// The frame the opponent's current attack was first seen, and the
+    /// step the CPU's latest spell of blockstun, as it feels its own
+    /// fighter, began and the last step of it (SC15, `#207`): some attacks
+    /// show no box it can read, and its guard pose alone is drawn as soon
+    /// as an attack is near, so a guarded one is known by the blockstun it
+    /// put it in.
+    foe_attack_began: u32,
+    blockstun_from: u32,
+    blockstun_at: u32,
     /// The opponent's current attack began on the ground: one that rises
     /// (a Shoryuken) is still a whiff to punish as it falls.
     foe_attack_grounded: bool,
@@ -150,6 +167,9 @@ impl Default for Judge {
         Judge {
             foe_attack_shown: false,
             foe_attack_met: false,
+            foe_attack_began: 0,
+            blockstun_from: 0,
+            blockstun_at: 0,
             foe_attack_grounded: false,
             foe_reach: DEFAULT_FOE_REACH,
             foe_reach_seen: 0,
@@ -172,6 +192,7 @@ impl Judge {
             if foe_was.is_none_or(|was| !was.attacking() || was.move_id != foe.move_id) {
                 self.foe_attack_shown = false;
                 self.foe_attack_met = false;
+                self.foe_attack_began = view.frame;
                 self.foe_attack_grounded = foe_was.is_some_and(|was| !was.jumping());
                 self.foe_attack_from = foe_was.map_or(foe.x, |was| was.x);
             }
@@ -253,6 +274,26 @@ impl Judge {
         Judged { situation, corner: cornered(&me) || cornered(&foe), foe_cornered: cornered(&foe) }
     }
 
+    /// The CPU felt its own fighter in blockstun on machine step `step`.
+    pub(super) fn felt_blockstun(&mut self, step: u32) {
+        if step != self.blockstun_at + 1 {
+            self.blockstun_from = step;
+        }
+        self.blockstun_at = step;
+    }
+
+    /// The opponent's ground attack in `view`, the frame last judged, has
+    /// met the CPU's fighter and is no longer live (SC15, `#207`): its box
+    /// reached it and has gone; or, for an attack that shows no box it can
+    /// read, a spell of blockstun began after it began, so it is the one
+    /// that met it and its start-up is behind it (not a spell from the
+    /// attack before, still running as it began).
+    pub(super) fn recovering_after_meeting(&self, view: Percept) -> bool {
+        let boxed = self.foe_attack_shown && self.foe_attack_met && !view.foe.active;
+        let boxless = !self.foe_attack_shown && self.blockstun_at != 0 && self.blockstun_from >= self.foe_attack_began;
+        (boxed || boxless) && self.foe_attack_grounded && view.foe.attacking() && !view.foe.jumping()
+    }
+
     /// The edge of the opponent's reach: the farthest his ground attacks
     /// have been seen to reach from where he stood as each began (capped at
     /// [`EDGE_CAP`]), or a guess until one is seen.
@@ -323,13 +364,15 @@ pub(super) enum Act {
     /// The era style's dash that spends meter to close in (SF6's Drive
     /// Rush, SC8 `#200`). Without the gauge for it the plan ends.
     Rush,
-    /// One of its fighter's own moves of a kind (SC16, `#208`): a command
-    /// throw, a teleport, a charge move. A fighter without one, or out of
-    /// its reach, ends the plan.
-    Signature(Signature),
+    /// One of the fighter's own tools (SC15, `#207`): a command throw, a
+    /// teleport or a charge move. A plan with such a
+    /// step is taken only by a fighter who has the tool
+    /// ([`GamePlan::playable`]).
+    Tool(Tool),
     /// One of the era style's own tools (SC16, `#208`): starting Custom
-    /// Combo and the chain played in it, a change of stance. Without the
-    /// tool, or the meter it needs, the plan ends.
+    /// Combo and the chain played in it, a change of stance. A plan with
+    /// such a step is taken only when the tool is there now
+    /// ([`GamePlan::playable`]); without it the step ends the plan.
     Era(EraAct),
 }
 
@@ -346,7 +389,7 @@ impl Act {
                 | Act::Step { forward: true }
                 | Act::Shot
                 | Act::Rush
-                | Act::Signature(_)
+                | Act::Tool(_)
                 | Act::Era(_)
                 | Act::Do(Choice::Normal { .. } | Choice::Throw | Choice::Special(_) | Choice::Approach | Choice::JumpIn)
         )
@@ -363,7 +406,7 @@ impl Act {
     /// step does not by itself: which routes may be taken is the moment's
     /// call ([`Moment::allows`]).
     pub(super) fn needs_special(self) -> bool {
-        matches!(self, Act::Shot | Act::Rush | Act::Signature(_) | Act::Era(_) | Act::Do(Choice::Special(_) | Choice::Cancel { .. }))
+        matches!(self, Act::Shot | Act::Rush | Act::Tool(_) | Act::Era(_) | Act::Do(Choice::Special(_) | Choice::Cancel { .. }))
     }
 }
 
@@ -468,7 +511,7 @@ impl Moment<'_> {
                 || (route.drive_spent.saturating_add(self.drive_reserve) <= self.meters[1]
                     && (!self.avoid_burnout || route.drive_spent < self.meters[1] || self.wins_round(route))))
             && self.gap <= route.gap + i16::from(self.walk) * WALK_SPEED
-            && (route.reach != Reach::Ground || self.gap >= route.gap - ROUTE_NEAR)
+            && (!matches!(route.reach, Reach::Ground | Reach::JumpIn) || self.gap >= route.gap - ROUTE_NEAR)
             && (!super_punish(route) || self.gap >= route.gap - ROUTE_NEAR)
             && !self.foe.is_some_and(|foe| route.fails_against(foe, stance))
             && (!self.normals_only || route.normals_only())
@@ -703,6 +746,23 @@ impl GamePlan {
         self.steps.iter().any(|step| step.act.needs_special())
     }
 
+    /// Its fighter has what each step needs (SC15, `#207`): a projectile for
+    /// a projectile step, the tool for a tool step and a route in his book
+    /// for a route step that starts other than on the ground; and the era
+    /// style's tool for an era step that starts one (SC16, `#208`: Custom
+    /// Combo with the meter for it, a change of stance). A plan he cannot
+    /// play is not taken.
+    pub(super) fn playable(&self, projectile: bool, tool: impl Fn(Tool) -> bool, route: impl Fn(Reach) -> bool, era: impl Fn(EraAct) -> bool) -> bool {
+        self.steps.iter().all(|step| match step.act {
+            Act::Shot => projectile,
+            Act::Tool(t) => tool(t),
+            Act::Era(EraAct::CustomChain) => true,
+            Act::Era(act) => era(act),
+            Act::Route(reach) if reach != Reach::Ground => route(reach),
+            _ => true,
+        })
+    }
+
     /// It can be played with normals and throws alone: no step needs a
     /// special or an era command, and each route step has a route of
     /// plain normals to take (`normals_route` says whether the fighter's
@@ -877,6 +937,105 @@ const RYU_SF6: [GamePlan; 13] = [
     GamePlan { situation: Situation::NeutralFar, score: 0, corner_bonus: 0, cornered_only: false, gap: WATCHED_SHOT_GAPS, steps: &RYU_SF6_SHOT_WATCH, lean: Lean::ShotWatch, from: Level::Normal },
 ];
 
+/// After a guarded attack, or in close neutral, a command throw (SC15,
+/// `#207`): it takes a guarding opponent and cannot be teched. The step
+/// walks in to its fighter's catch range first ([`super::cast::catch_range`]).
+const COMMAND_THROW: [Step; 1] = [step(Act::Tool(Tool::CommandThrow), always(None))];
+
+/// Far off, a projectile and a teleport while he deals with it (SC15,
+/// `#207`): the situation's own plans go on from wherever it lands.
+const TELEPORT: [Step; 2] = [
+    step(Act::Shot, always(Some(1))),
+    step(Act::Tool(Tool::Teleport), always(None)),
+];
+
+/// From the middle distance, a charge built walking back and released into
+/// the charge move (SC15, `#207`).
+const CHARGE: [Step; 1] = [step(Act::Tool(Tool::Charge), always(None))];
+
+/// From the range a jump carries him to the opponent: a jump-in route from
+/// the fighter's route book (SC15, `#207`), taken only by a fighter whose
+/// book has one.
+const JUMP_IN_ROUTE: [Step; 1] = [step(Act::Route(Reach::JumpIn), always(None))];
+
+/// The gaps the charge move is released from: about its reach, and far
+/// enough that the charge's crouch is not walked into.
+const CHARGE_GAP: (i16, i16) = (60, 150);
+/// The gaps a jump-in route is begun from: the jump-in routes of the SF2
+/// era style's books start from 98 to 124 pixels.
+const JUMP_IN_ROUTE_GAP: (i16, i16) = (90, 132);
+
+/// The SF2 era style's frame trap after a guarded attack (SC15, `#207`):
+/// the same short wait, then a crouching light punch, which starts sooner
+/// than Ryu's SF6 standing medium punch in every fighter's kit.
+const SF2_FRAME_TRAP: [Step; 4] = [
+    step(Act::Do(Choice::Wait), always(Some(1))),
+    step(Act::Do(Choice::Normal { crouch: true, button: 0 }), [None, Some(2), Some(2), None, None]),
+    step(Act::Do(Choice::Retreat), always(Some(3))),
+    step(Act::Do(Choice::Guard), always(None)),
+];
+
+/// A plan of the SF2 era style's tables.
+const fn plan(situation: Situation, score: i32, corner_bonus: i32, gap: (i16, i16), steps: &'static [Step], lean: Lean, from: Level) -> GamePlan {
+    GamePlan { situation, score, corner_bonus, cornered_only: false, gap, steps, lean, from }
+}
+
+// The SF2 era style's plans (SC15, `#207`): Ryu's SF6 game without the
+// Drive Rush the style has not got, a frame trap of a crouching light
+// punch, a jump-in route where the book has one, and plans for each
+// fighter's own tools. Which of them a fighter takes was set by the
+// measuring run (mirror matches against the old Fair CPU at Very
+// Difficult, in Super Turbo, each side): from all of them, a plan was left
+// out while that raised the new CPU's wins on its worse side, keeping a
+// plan for each of close and far neutral, a guarded attack and a
+// knocked-down opponent, and every plan for a tool of the fighter's own. A
+// plan needing a projectile, a tool or a jump-in route the fighter has not
+// got is never taken ([`GamePlan::playable`]).
+const POKE: GamePlan = plan(Situation::NeutralClose, 60, 0, ANY, &RYU_SF6_POKE, Lean::None, Level::Easy);
+const ROUTE: GamePlan = plan(Situation::NeutralClose, 62, 6, ANY, &RYU_SF6_ROUTE, Lean::None, Level::Easy);
+const FRAME_TRAP: GamePlan = plan(Situation::ItWasBlocked, 60, 4, ANY, &SF2_FRAME_TRAP, Lean::FrameTrap, Level::Normal);
+const WALK_THROW: GamePlan = plan(Situation::ItWasBlocked, 56, 12, ANY, &RYU_SF6_WALK_THROW, Lean::WalkThrow, Level::Easy);
+const MEATY: GamePlan = plan(Situation::OpponentKnockedDown, 62, 8, ANY, &RYU_SF6_MEATY, Lean::Meaty, Level::Normal);
+const BAIT: GamePlan = plan(Situation::OpponentKnockedDown, 52, -10, ANY, &RYU_SF6_BAIT, Lean::Bait, Level::VeryHard);
+const CORNERED: GamePlan = GamePlan { cornered_only: true, ..plan(Situation::NeutralFar, 60, 0, ANY, &RYU_SF6_POKE, Lean::None, Level::Normal) };
+const HOVER_CLOSE: GamePlan = plan(Situation::NeutralClose, 61, -6, ANY, &RYU_SF6_HOVER, Lean::None, Level::Normal);
+const HOVER_FAR: GamePlan = plan(Situation::NeutralFar, 60, -6, ANY, &RYU_SF6_HOVER, Lean::None, Level::Normal);
+const SHOT: GamePlan = plan(Situation::NeutralFar, 70, 0, (SHOT_GAP, i16::MAX), &RYU_SF6_SHOT, Lean::Shot, Level::Easy);
+const JUMP_IN: GamePlan = plan(Situation::NeutralFar, 40, 0, JUMP_IN_GAP, &RYU_SF6_JUMP_IN, Lean::JumpIn, Level::Easy);
+const SHOT_WATCH: GamePlan = plan(Situation::NeutralFar, 0, 0, WATCHED_SHOT_GAPS, &RYU_SF6_SHOT_WATCH, Lean::ShotWatch, Level::Normal);
+const JUMP_ROUTE: GamePlan = plan(Situation::NeutralFar, 44, 0, JUMP_IN_ROUTE_GAP, &JUMP_IN_ROUTE, Lean::JumpIn, Level::Easy);
+/// A command throw in close neutral and after a guarded attack.
+const THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 58, 8, ANY, &COMMAND_THROW, Lean::None, Level::Easy);
+const THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 12, ANY, &COMMAND_THROW, Lean::WalkThrow, Level::Easy);
+const TELEPORT_FAR: GamePlan = plan(Situation::NeutralFar, 66, 0, (SHOT_GAP, i16::MAX), &TELEPORT, Lean::Shot, Level::Normal);
+const CHARGE_FAR: GamePlan = plan(Situation::NeutralFar, 64, 0, CHARGE_GAP, &CHARGE, Lean::None, Level::Easy);
+
+const SF2_RYU: [GamePlan; 10] = [POKE, ROUTE, FRAME_TRAP, MEATY, CORNERED, HOVER_CLOSE, HOVER_FAR, SHOT, SHOT_WATCH, JUMP_ROUTE];
+const SF2_KEN: [GamePlan; 10] = [POKE, WALK_THROW, MEATY, BAIT, CORNERED, HOVER_CLOSE, HOVER_FAR, SHOT, JUMP_IN, SHOT_WATCH];
+const SF2_SAGAT: [GamePlan; 7] = [ROUTE, WALK_THROW, BAIT, SHOT, JUMP_IN, SHOT_WATCH, JUMP_ROUTE];
+const SF2_RETSU: [GamePlan; 11] = [ROUTE, WALK_THROW, MEATY, BAIT, HOVER_CLOSE, SHOT, JUMP_IN, SHOT_WATCH, JUMP_ROUTE, THROW_CLOSE, THROW_BLOCKED];
+const SF2_GEKI: [GamePlan; 12] = [POKE, ROUTE, FRAME_TRAP, BAIT, CORNERED, HOVER_CLOSE, SHOT, JUMP_IN, SHOT_WATCH, THROW_CLOSE, THROW_BLOCKED, TELEPORT_FAR];
+const SF2_JOE: [GamePlan; 5] = [ROUTE, WALK_THROW, BAIT, SHOT, SHOT_WATCH];
+const SF2_MIKE: [GamePlan; 4] = [ROUTE, WALK_THROW, MEATY, JUMP_IN];
+const SF2_LEE: [GamePlan; 6] = [ROUTE, WALK_THROW, MEATY, JUMP_IN, JUMP_ROUTE, CHARGE_FAR];
+// Birdie idles more than the old Fair CPU with this set (his slow walk
+// back while his charge builds stands still on many frames); with the far
+// hover added he idles less but no longer wins half his Super Turbo
+// matches as Player 1. Listed on #207.
+const SF2_BIRDIE: [GamePlan; 10] = [POKE, ROUTE, FRAME_TRAP, WALK_THROW, BAIT, JUMP_IN, JUMP_ROUTE, THROW_CLOSE, THROW_BLOCKED, CHARGE_FAR];
+const SF2_ADON: [GamePlan; 6] = [ROUTE, FRAME_TRAP, WALK_THROW, BAIT, JUMP_IN, JUMP_ROUTE];
+
+/// How often, in percent, a fighter takes up a game plan where one would
+/// do (SC15, `#207`); otherwise it plays its single choices for that
+/// decision. Mike in the SF2 era style: the measuring run had his single
+/// choices win more of his fights than his plans.
+pub(super) fn plan_rate(fighter: Option<TournamentFighter>, family: Option<EraFamily>) -> u32 {
+    match (fighter, family) {
+        (Some(TournamentFighter::Mike), Some(EraFamily::Sf2)) => 40,
+        _ => 100,
+    }
+}
+
 /// Game plans of one table whose working the CPU remembers.
 pub(super) const PLAN_SLOTS: usize = 16;
 /// The most times in a row a plan's working is counted.
@@ -913,6 +1072,22 @@ pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily
     match (fighter, family) {
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
+        // Gen and Eagle have none yet: the measuring run found no set of
+        // these that beats the old Fair CPU with them (SC15, `#207`); a
+        // follow-up builds their own game.
+        (Some(fighter), Some(EraFamily::Sf2)) => match fighter {
+            TournamentFighter::Ryu => &SF2_RYU,
+            TournamentFighter::Ken => &SF2_KEN,
+            TournamentFighter::Sagat => &SF2_SAGAT,
+            TournamentFighter::Retsu => &SF2_RETSU,
+            TournamentFighter::Geki => &SF2_GEKI,
+            TournamentFighter::Joe => &SF2_JOE,
+            TournamentFighter::Mike => &SF2_MIKE,
+            TournamentFighter::Lee => &SF2_LEE,
+            TournamentFighter::Birdie => &SF2_BIRDIE,
+            TournamentFighter::Adon => &SF2_ADON,
+            TournamentFighter::Gen | TournamentFighter::Eagle => &[],
+        },
         _ => &[],
     }
 }
@@ -970,8 +1145,8 @@ crate::canonical::canonical_enum!(Situation, "FairCpuSituation.v1";
     OpponentWhiffed => 5, Defending => 6, KnockedDown => 7,
 );
 crate::canonical::canonical_struct!(Judged, "FairCpuJudged.v2", { situation, corner, foe_cornered });
-crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v4", {
-    foe_attack_shown, foe_attack_met, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
+crate::canonical::canonical_struct!(Judge, "FairCpuJudge.v6", {
+    foe_attack_shown, foe_attack_met, foe_attack_began, blockstun_from, blockstun_at, foe_attack_grounded, foe_reach, foe_reach_seen, foe_attack_from, blocked, foe_down, foe_down_since, rise_frames,
 });
 crate::canonical::canonical_struct!(Running, "FairCpuGamePlan.v4", { plan, step, acted, pressed, began, hit });
 crate::canonical::canonical_struct!(RouteRun, "FairCpuRouteRun.v2", {
@@ -1238,5 +1413,154 @@ mod tests {
         assert!(!plan(&RYU_SF6_ROUTE).keeps_to_normals(|_| false), "no plain-normal ground route: the plan cannot be played");
         assert!(plan(&RYU_SF6_POKE).keeps_to_normals(|_| false));
         assert!(!plan(&RYU_SF6_SHOT).keeps_to_normals(|_| true));
+    }
+
+    const SF2_CAST: [TournamentFighter; 12] = TournamentFighter::ALL;
+
+    #[test]
+    fn every_sf2_table_but_gen_and_eagle_has_a_plan_for_each_situation_any_fighter_can_play() {
+        // SC15 (`#207`): close and far neutral, a guarded attack and a
+        // knocked-down opponent, each with a plan the fighter can play with
+        // what he has in Hyper Fighting and in Super Turbo (at Very
+        // Difficult): a projectile (the canon three's Hadoken and Tiger
+        // Shot, Retsu's Kiai Shot, Geki's Shuriken, Joe's Shockwave), his
+        // tools, the jump-in routes of his books. Gen and Eagle have none
+        // yet.
+        let wanted = [Situation::NeutralClose, Situation::NeutralFar, Situation::ItWasBlocked, Situation::OpponentKnockedDown];
+        for fighter in SF2_CAST {
+            let table = plans(Some(fighter), Some(EraFamily::Sf2));
+            if matches!(fighter, TournamentFighter::Gen | TournamentFighter::Eagle) {
+                assert!(table.is_empty(), "{fighter:?}");
+                continue;
+            }
+            assert!(table.len() <= PLAN_SLOTS, "{fighter:?}");
+            use TournamentFighter::{Geki, Joe, Ken, Retsu, Ryu, Sagat};
+            let projectile = matches!(fighter, Ryu | Ken | Sagat | Retsu | Geki | Joe);
+            let tools: Vec<Tool> = super::super::cast::named(fighter, EraFamily::Sf2).into_iter().filter_map(|(_, tool)| tool).collect();
+            for revision in [crate::era::Revision::Hf, crate::era::Revision::St] {
+                let book = crate::route_book::book(fighter, revision, crate::era::Loadout::Standard);
+                let has_route = |reach: Reach| book.is_some_and(|b| b.routes.iter().any(|r| r.reach == reach));
+                for situation in wanted {
+                    assert!(
+                        table.iter().any(|p| p.situation == situation && p.from.rank() <= Level::VeryHard.rank() && p.playable(projectile, |t| tools.contains(&t), has_route, |_| true)),
+                        "{fighter:?} in {revision:?} has no plan for {situation:?} he can play"
+                    );
+                }
+            }
+            for plan in table {
+                assert!(plan.steps.iter().all(|step| !matches!(step.act, Act::Rush)), "{fighter:?}: the SF2 style has no Drive Rush");
+                for step in plan.steps {
+                    for next in step.then.into_iter().flatten() {
+                        assert!(usize::from(next) < plan.steps.len());
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn each_fighter_has_a_plan_for_every_tool_his_kit_names_and_none_for_another() {
+        // SC15 (`#207`): a command throw, a teleport or a charge the
+        // stronger play reads in his kit is one of his plans, and no plan
+        // uses a tool he has not got.
+        for fighter in SF2_CAST {
+            let named: Vec<Tool> = super::super::cast::named(fighter, EraFamily::Sf2).into_iter().filter_map(|(_, tool)| tool).collect();
+            let used: Vec<Tool> = plans(Some(fighter), Some(EraFamily::Sf2))
+                .iter()
+                .flat_map(|p| p.steps.iter())
+                .filter_map(|s| if let Act::Tool(tool) = s.act { Some(tool) } else { None })
+                .collect();
+            for tool in &named {
+                assert!(used.contains(tool), "{fighter:?} has no plan for its {tool:?}");
+            }
+            for tool in &used {
+                assert!(named.contains(tool), "{fighter:?} has a plan for a {tool:?} it has not got");
+            }
+        }
+        // The what-if kits are read by the tables; the canon three's ROM
+        // specials keep the old reading, and Gen and Eagle wait for their
+        // own game.
+        assert_eq!(super::super::cast::covered(EraFamily::Sf2).len(), 7);
+        assert!(super::super::cast::covered(EraFamily::Sf6).is_empty());
+    }
+
+    #[test]
+    fn a_boxless_attack_counts_as_guarded_only_from_the_blockstun_it_caused() {
+        // SC15 (`#207`, review): his attack shows no box; the CPU's guard
+        // pose alone is no sign it met him. A spell of blockstun that began
+        // after it began is; the spell of the attack before it, still felt
+        // as it began, is not.
+        let body = |x: i16, move_id: u8| Body { x, present: true, move_id, front: x, hurt: (x - 10, x + 10), ..Body::default() };
+        let frame = |f: u32, foe_move: u8, me_move: u8| Percept {
+            frame: f,
+            fighting: true,
+            me: body(200, me_move),
+            foe: body(160, foe_move),
+            ..Percept::default()
+        };
+        let (guard, stand, attack) = (8, 1, 0x1e);
+        let run = |blockstun: &[u32]| {
+            // His attack begins on frame 100; before it he stands.
+            let mut judge = Judge::default();
+            let mut before = frame(94, stand, guard);
+            let mut seen = Vec::new();
+            for f in 95..130 {
+                let view = frame(f, if f < 100 { stand } else { attack }, guard);
+                judge.judge(view, Some(before), 60);
+                if blockstun.contains(&f) {
+                    judge.felt_blockstun(f);
+                }
+                if f >= 100 {
+                    seen.push(judge.recovering_after_meeting(view));
+                }
+                before = view;
+            }
+            seen
+        };
+        assert!(run(&[]).iter().all(|&r| !r), "its guard pose alone");
+        assert!(run(&[97, 98, 99, 100, 101, 102]).iter().all(|&r| !r), "a spell begun before it: the last attack's");
+        let met = run(&[104, 105, 106]);
+        assert!(met[..4].iter().all(|&r| !r), "not before it met him: {met:?}");
+        assert!(met[4..].iter().all(|&r| r), "met, and after: {met:?}");
+    }
+
+    #[test]
+    fn only_mike_in_the_sf2_style_takes_plans_less_than_always() {
+        // SC15 (`#207`): a rate below 100 draws a random number, so every
+        // other pair, Ryu's SF6 included, plays as before.
+        assert_eq!(plan_rate(Some(TournamentFighter::Mike), Some(EraFamily::Sf2)), 40);
+        for fighter in SF2_CAST.into_iter().filter(|f| *f != TournamentFighter::Mike) {
+            assert_eq!(plan_rate(Some(fighter), Some(EraFamily::Sf2)), 100, "{fighter:?}");
+        }
+        assert_eq!(plan_rate(Some(TournamentFighter::Mike), Some(EraFamily::Sf6)), 100);
+        assert_eq!(plan_rate(Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)), 100);
+    }
+
+    #[test]
+    fn a_plan_is_playable_only_with_what_its_steps_need() {
+        let plan = |steps: &'static [Step]| GamePlan { steps, ..RYU_SF6[0] };
+        assert!(plan(&RYU_SF6_POKE).playable(false, |_| false, |_| false, |_| true));
+        assert!(!plan(&RYU_SF6_SHOT).playable(false, |_| true, |_| true, |_| true), "a projectile");
+        assert!(plan(&RYU_SF6_SHOT).playable(true, |_| false, |_| false, |_| true));
+        assert!(!plan(&COMMAND_THROW).playable(true, |tool| tool != Tool::CommandThrow, |_| true, |_| true), "the tool");
+        assert!(plan(&COMMAND_THROW).playable(false, |tool| tool == Tool::CommandThrow, |_| false, |_| true));
+        assert!(!plan(&JUMP_IN_ROUTE).playable(true, |_| true, |reach| reach != Reach::JumpIn, |_| true), "a jump-in route");
+        assert!(plan(&JUMP_IN_ROUTE).playable(false, |_| false, |reach| reach == Reach::JumpIn, |_| true));
+        assert!(plan(&RYU_SF6_ROUTE).playable(false, |_| false, |_| false, |_| true), "a ground route is the book's own");
+        // Ryu's SF6 table is played as before: he has a projectile and none
+        // of his plans uses a tool or a jump-in route.
+        assert!(RYU_SF6.iter().all(|p| p.playable(true, |_| false, |_| false, |_| true)));
+    }
+
+    #[test]
+    fn a_jump_in_route_is_not_begun_much_nearer_than_it_is_proven() {
+        // SC15 (`#207`): as a ground route, so the jump does not carry him
+        // past the opponent.
+        let joe = crate::route_book::book(TournamentFighter::Joe, crate::era::Revision::St, crate::era::Loadout::Standard).unwrap();
+        let route = joe.routes.iter().find(|r| r.reach == Reach::JumpIn).expect("Joe's Super Turbo book has jump-ins");
+        let at = |gap: i16, walk: u8| Moment { gap, walk, crouching: !route.stances.contains(&Stance::Standing), ..moment(&[Reach::JumpIn]) }.allows(route);
+        assert!(at(route.gap, 0) && at(route.gap - ROUTE_NEAR, 0) && at(route.gap + 20, 10));
+        assert!(!at(route.gap - ROUTE_NEAR - 1, 0), "much nearer");
+        assert!(!at(route.gap + 21, 10), "beyond its walk");
     }
 }

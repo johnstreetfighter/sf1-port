@@ -326,14 +326,15 @@ impl Tactics {
         self.custom
     }
 
-    /// Its fighter changes stance (Gen's Mantis and Crane).
-    pub(super) fn has_stance(self) -> bool {
-        self.stance.is_some()
+    /// Its fighter can change stance from the Mantis to the Crane (Gen):
+    /// the stronger play's game plans never switch him back (SC16, `#208`).
+    pub(super) fn can_change_stance(self) -> bool {
+        self.stance.is_some_and(|entry| entry.name == "SWITCH TO CRANE")
     }
 
     /// The pads of a change of stance, when its fighter is free to make one.
     pub(super) fn stance_change(self, view: Percept) -> Option<Plan> {
-        let entry = self.stance.filter(|_| self.control.free)?;
+        let entry = self.stance.filter(|_| self.control.free && self.can_change_stance())?;
         Some(self.pad(&entry, view, 1))
     }
 

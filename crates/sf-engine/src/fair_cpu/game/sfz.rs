@@ -14,23 +14,12 @@
 //! super on a hit it sees, on its wake-up, or inside a route of its book,
 //! at the level its meter allows.
 
+use super::super::cast::Tool;
 use super::super::habit::Lean;
-use super::super::{button, Choice, Level, DOWN};
-use super::{always, step, Act, GamePlan, Situation, Step, ANY, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
+use super::super::{button, Choice, Level};
+use super::{always, step, Act, GamePlan, Situation, Step, ANY, CHARGE, COMMAND_THROW, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
 use super::{RYU_SF6_BAIT, RYU_SF6_FRAME_TRAP, RYU_SF6_JUMP_IN, RYU_SF6_ROUTE, RYU_SF6_SHOT, RYU_SF6_SHOT_WATCH, RYU_SF6_WALK_THROW};
-use crate::moves::{ButtonClass, Dir, MoveEntry, MoveKind};
 use crate::roster::TournamentFighter;
-
-/// A kind of move some fighters have and others do not.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Signature {
-    /// A special that grabs: walked in to close range first.
-    CommandThrow,
-    /// A special that moves him across the screen at once.
-    Teleport,
-    /// A special entered by holding a direction (or two buttons) first.
-    Charge,
-}
 
 /// One of the era style's own tools a game plan can step into.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,51 +28,18 @@ pub enum EraAct {
     CustomCombo,
     /// Go on chaining while Custom Combo lasts.
     CustomChain,
-    /// Change stance (Gen's Mantis and Crane).
+    /// Change stance from Gen's Mantis to his Crane, whose Jasen is a
+    /// charge move (never back: switching back and forth at range only
+    /// stood him still).
     Stance,
 }
 
-/// Its fighter's moves of each [`Signature`] kind, from the moves the fight
-/// gives him now, where the SFZ era style is in force.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Signatures {
-    pub command_throw: Option<MoveEntry>,
-    pub teleport: Option<MoveEntry>,
-    pub charge: Option<MoveEntry>,
-}
-
-/// The command throws and the teleport by name: their inputs look like any
-/// other special's.
-const COMMAND_THROWS: [&str; 3] = ["MURDERER CHAIN", "IZUNA SHOULDER THROW", "EXECUTION DROP"];
-const TELEPORTS: [&str; 1] = ["UTSUSEMI"];
-
-impl Signatures {
-    pub(crate) fn of(entries: &[MoveEntry]) -> Signatures {
-        let ground = |entry: &&MoveEntry| entry.kind == MoveKind::Special && entry.input.motion.first() != Some(&Dir::Jump);
-        let named = |names: &[&str]| entries.iter().filter(ground).find(|entry| names.contains(&entry.name)).copied();
-        let charge = entries
-            .iter()
-            .filter(ground)
-            .find(|entry| entry.input.motion.iter().any(|dir| dir.is_charge()) || entry.input.button == ButtonClass::ReleasePair)
-            .copied();
-        Signatures { command_throw: named(&COMMAND_THROWS), teleport: named(&TELEPORTS), charge }
-    }
-
-    pub(crate) fn get(&self, kind: Signature) -> Option<MoveEntry> {
-        match kind {
-            Signature::CommandThrow => self.command_throw,
-            Signature::Teleport => self.teleport,
-            Signature::Charge => self.charge,
-        }
-    }
-}
-
-/// The gap a command throw walks in to before its motion: as near as two
-/// fighters stand in the measured fights (about 14 to 16 pixels from its
-/// centre to his hurtbox; a nearer mark is never reached).
+/// The gap, centre to his hurtbox, a command throw walks in to before its
+/// motion, as near as two fighters stand in the measured fights (about 14
+/// to 16 pixels; a nearer mark is never reached). The walk stops sooner
+/// where the fighter's catch range is reached first
+/// ([`super::super::cast::catch_range`]).
 pub(in crate::fair_cpu) const THROW_SPACE: i16 = 16;
-/// The farthest a command throw is walked in from: past it the plan ends.
-pub(in crate::fair_cpu) const THROW_REACH: i16 = 56;
 /// The gaps a charge move is entered from: it carries him in from the
 /// middle distance.
 const CHARGE_GAPS: (i16, i16) = (60, 170);
@@ -95,21 +51,13 @@ const TELEPORT_GAPS: (i16, i16) = (130, i16::MAX);
 /// first attacks meet him after a short walk.
 pub(in crate::fair_cpu) const CUSTOM_GAP: i16 = 60;
 
-/// After a guarded attack (his guard is still up), or up close: walk in
-/// and grab him with the command throw, the walk and the motion one action
-/// as the plain throw's are (a walk of its own was cut short by any button
-/// he pressed). On a hit the pressure goes on from the knockdown's plans.
-const COMMAND_THROW: [Step; 1] = [step(Act::Signature(Signature::CommandThrow), always(None))];
-
 /// From afar: across the screen at once, then whatever the situation he
-/// lands in asks for.
-const TELEPORT: [Step; 1] = [step(Act::Signature(Signature::Teleport), always(None))];
+/// lands in asks for (the SF2 style's teleport follows a projectile; the
+/// SFZ fighter with one, Geki, takes it alone).
+const TELEPORT_ALONE: [Step; 1] = [step(Act::Tool(Tool::Teleport), always(None))];
 
-/// From the middle distance: the charge move that carries him in (the
-/// charge is held walking back, which also guards).
-const CHARGE: [Step; 1] = [step(Act::Signature(Signature::Charge), always(None))];
-
-/// From afar: change stance, for the other stance's moves.
+/// From afar, in the Mantis stance: change to the Crane, then the charge
+/// move it has from the middle distance.
 const STANCE: [Step; 1] = [step(Act::Era(EraAct::Stance), always(None))];
 
 /// Up close with the meter for it: start Custom Combo and chain attacks
@@ -197,11 +145,11 @@ const fn walk_down(poke: &'static [Step]) -> GamePlan {
 /// A projectile from afar, and the watch for a jump over it.
 const SHOT_PLAN: GamePlan = plan(Situation::NeutralFar, 70, 0, (SHOT_GAP, i16::MAX), &RYU_SF6_SHOT, Lean::Shot, Level::Easy);
 const SHOT_WATCH_PLAN: GamePlan = plan(Situation::NeutralFar, 0, 0, WATCHED_SHOT_GAPS, &RYU_SF6_SHOT_WATCH, Lean::ShotWatch, Level::Normal);
-const COMMAND_THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 8, (i16::MIN, THROW_REACH), &COMMAND_THROW, Lean::WalkThrow, Level::Normal);
+const COMMAND_THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 8, ANY, &COMMAND_THROW, Lean::WalkThrow, Level::Normal);
 /// Scored with the poke and the route: lower, it was hardly ever taken
 /// (Retsu, whose only grab plan this is, never in 12,000 frames).
-const COMMAND_THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 62, 4, (i16::MIN, THROW_REACH), &COMMAND_THROW, Lean::None, Level::Hard);
-const TELEPORT_PLAN: GamePlan = plan(Situation::NeutralFar, 56, -6, TELEPORT_GAPS, &TELEPORT, Lean::None, Level::Normal);
+const COMMAND_THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 62, 4, ANY, &COMMAND_THROW, Lean::None, Level::Hard);
+const TELEPORT_PLAN: GamePlan = plan(Situation::NeutralFar, 56, -6, TELEPORT_GAPS, &TELEPORT_ALONE, Lean::None, Level::Normal);
 const CHARGE_PLAN: GamePlan = plan(Situation::NeutralFar, 58, 0, CHARGE_GAPS, &CHARGE, Lean::None, Level::Easy);
 /// Lee's Firewater only from beyond a jump-in's range: charged nearer, it
 /// lost him matches to the old CPU and left him standing at the wall.
@@ -215,7 +163,7 @@ const SAGAT: &[GamePlan] = shared!(&POKE_ST_MP, &MEATY_ST_MP, walk_down(&POKE_ST
 /// range). His Izuna Shoulder Throw grabs up close, scored as the others'
 /// grab, where he hardly ever takes it: scored to be taken (64 and up), or
 /// after a guarded attack, it lost him matches to the old CPU at Very
-/// Difficult (SC16 lists him for this).
+/// Difficult (George, 2026-11-22: his grab is follow-up #272).
 const RETSU: &[GamePlan] = shared!(&POKE_ST_MP, &MEATY_ST_MP, COMMAND_THROW_CLOSE);
 /// Geki: Execution Drop grabs, Utsusemi teleports.
 const GEKI: &[GamePlan] = shared!(&POKE_ST_MP, &MEATY_ST_MP, walk_down(&POKE_ST_MP), COMMAND_THROW_BLOCKED, COMMAND_THROW_CLOSE, TELEPORT_PLAN);
@@ -262,15 +210,17 @@ pub(in crate::fair_cpu) fn custom_combo_pads(forward: u16) -> Vec<u16> {
 }
 
 /// `frames` of a chain played in Custom Combo: walking in, a new attack
-/// every few frames, light to heavy, punches and kicks in turn, standing
-/// and crouching.
+/// every few frames, light to heavy, punches and kicks in turn, each
+/// pressed with the stick let go. (A stick going forward, down and forward
+/// again under the buttons is a Shoryuken's motion: Ryu's chain came out as
+/// whiffing Shoryukens.)
 pub(in crate::fair_cpu) fn chain_pads(forward: u16, frames: usize) -> Vec<u16> {
-    const ORDER: [(bool, usize); 6] = [(false, 0), (true, 3), (false, 1), (true, 4), (false, 2), (true, 5)];
+    const ORDER: [usize; 6] = [0, 3, 1, 4, 2, 5];
     (0..frames)
-        .map(|frame| {
-            let (crouch, press) = ORDER[(frame / 4) % ORDER.len()];
-            let stick = if crouch { DOWN } else { forward };
-            if frame % 4 == 1 { stick | button(press) } else { stick }
+        .map(|frame| match frame % 4 {
+            1 => button(ORDER[(frame / 4) % ORDER.len()]),
+            2 => 0,
+            _ => forward,
         })
         .collect()
 }
@@ -310,9 +260,9 @@ mod tests {
         use TournamentFighter::*;
         for fighter in TournamentFighter::ALL {
             let throw = matches!(fighter, Retsu | Geki | Birdie);
-            assert_eq!(uses(fighter, Act::Signature(Signature::CommandThrow)), throw, "{fighter:?} command throw");
-            assert_eq!(uses(fighter, Act::Signature(Signature::Teleport)), fighter == Geki, "{fighter:?} teleport");
-            assert_eq!(uses(fighter, Act::Signature(Signature::Charge)), matches!(fighter, Birdie | Lee | Gen), "{fighter:?} charge");
+            assert_eq!(uses(fighter, Act::Tool(Tool::CommandThrow)), throw, "{fighter:?} command throw");
+            assert_eq!(uses(fighter, Act::Tool(Tool::Teleport)), fighter == Geki, "{fighter:?} teleport");
+            assert_eq!(uses(fighter, Act::Tool(Tool::Charge)), matches!(fighter, Birdie | Lee | Gen), "{fighter:?} charge");
             assert_eq!(uses(fighter, Act::Era(EraAct::Stance)), fighter == Gen, "{fighter:?} stance");
             assert!(uses(fighter, Act::Era(EraAct::CustomCombo)), "{fighter:?} Custom Combo");
             assert_eq!(uses(fighter, Act::Shot), matches!(fighter, Ryu | Ken | Sagat), "{fighter:?} projectile");
@@ -328,5 +278,8 @@ mod tests {
         assert!(presses.len() >= 6);
         assert!(presses.windows(2).all(|w| w[0] != w[1]), "each attack a new button: {presses:x?}");
         assert!(pads[12..].iter().all(|pad| pad & (LEFT | UP) == 0), "never back or up");
+        // No press with the stick held: a stick going forward, down and
+        // forward under the buttons made Shoryukens of the chain.
+        assert!(pads[12..].iter().all(|pad| pad & 0x3f0 == 0 || pad & 0xf == 0), "{pads:x?}");
     }
 }
