@@ -58,6 +58,9 @@ const THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 8, ANY, &COMMA
 const THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 62, 4, ANY, &COMMAND_THROW, Lean::None, Level::Hard);
 const TELEPORT_FAR: GamePlan = plan(Situation::NeutralFar, 56, -6, (130, i16::MAX), &TELEPORT, Lean::None, Level::Normal);
 const CHARGE_FAR: GamePlan = plan(Situation::NeutralFar, 58, 0, (60, 170), &CHARGE, Lean::None, Level::Easy);
+// Gen's slow backward charge competes with the jump-in instead of
+// dominating far neutral, so he can close in and use his routes too.
+const GEN_CHARGE: GamePlan = GamePlan { score: 36, ..CHARGE_FAR };
 const LEE_CHARGE: GamePlan = plan(Situation::NeutralFar, 58, 0, (150, i16::MAX), &CHARGE, Lean::None, Level::Easy);
 const CRANE: GamePlan = plan(Situation::NeutralFar, 50, -10, ANY, &STANCE, Lean::None, Level::Easy);
 
@@ -70,7 +73,7 @@ const JOE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK);
 const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP));
 const LEE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK, LEE_CHARGE);
 const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP), THROW_CLOSE, THROW_BLOCKED, CHARGE_FAR);
-const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, walk_down(&POKE_HK), CRANE, CHARGE_FAR);
+const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, walk_down(&POKE_HK), CRANE, GEN_CHARGE);
 const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, walk_down(&POKE_LK));
 const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
 
