@@ -1028,12 +1028,15 @@ fn grab_range(ctx: &Context) -> i16 {
 }
 
 /// The era style's tool `act` starts is there now (SC16, `#208`): Custom
-/// Combo with the meter to start it, a change of stance from the Mantis.
+/// Combo with the meter to start it, a change of stance from the Mantis,
+/// or SF3's overhead and affordable EX move (SC17, `#209`).
 fn era_ready(act: game::EraAct, ctx: &Context) -> bool {
     ctx.era.is_some_and(|tactics| match act {
         game::EraAct::CustomCombo => tactics.custom_combo_ready(),
         game::EraAct::Stance => tactics.can_change_stance(),
         game::EraAct::CustomChain => true,
+        game::EraAct::Overhead => tactics.sf3_overhead_ready(),
+        game::EraAct::Enhanced => tactics.sf3_ex_ready(),
     })
 }
 
@@ -2473,6 +2476,8 @@ impl FairCpu {
                         game::EraAct::CustomCombo => tactics.custom_combo_ready().then(|| Plan::of(PlanKind::Act, &game::custom_combo_pads(forward))),
                         game::EraAct::CustomChain => tactics.custom_active().then(|| Plan::of(PlanKind::Act, &game::chain_pads(forward, PLAN_CAP))),
                         game::EraAct::Stance => tactics.stance_change(felt),
+                        game::EraAct::Overhead => tactics.sf3_overhead(felt),
+                        game::EraAct::Enhanced => tactics.sf3_ex(felt),
                     };
                     let Some(plan) = plan else { break };
                     run.acted = true;
@@ -3031,13 +3036,13 @@ impl FairCpu {
                 return Some(Plan::default());
             }
         }
-        // In the SF2 era style (SC15, `#207`) and the SFZ (SC16, `#208`):
+        // In SF2 (SC15, `#207`), SFZ (SC16, `#208`) and SF3 (SC17, `#209`):
         // his ground attack it has guarded, now recovering in reach, is
         // its turn. Out of its own
         // blockstun it takes a punish route, or a crouching light punch,
         // rather than guarding on while he presses again.
         if stronger
-            && matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ))
+            && matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3))
             && self.judge.recovering_after_meeting(view)
             && !ctx.own_blockstun
             && (view.me.free() || view.me.guarding())
@@ -4033,6 +4038,84 @@ mod tests {
 
     fn sfz_ctx(level: Level, loadout: crate::era::Loadout, control: EraControl) -> Context {
         sfz_ctx_for(TournamentFighter::Ryu, level, loadout, control)
+    }
+
+    fn sf3_ctx(level: Level) -> Context {
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick};
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ryu);
+        state.style = StylePick::for_revision(Revision::Sf3ThreeS, Loadout::Art2);
+        state.max_sub_hp = crate::era_fight::FULL_SUB_HP;
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.super_meter = 40;
+        let mut ctx = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, EraControl { free: true, ..EraControl::default() });
+        ctx.set_opponent(crate::era::EraFamily::Sf3, crate::era_fight::FULL_SUB_HP);
+        ctx.stronger = true;
+        ctx.for_stronger()
+    }
+
+    #[test]
+    fn sf3_high_and_low_parries_wait_for_the_focused_or_unfocused_delay() {
+        // SC17: twins with the same past see either rest or a new normal.
+        // No pad can differ before the event's applicable delay; the
+        // eventual differences must include real high and low parry taps.
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            let ctx = sf3_ctx(level);
+            for (low, direction) in [(false, RIGHT), (true, DOWN)] {
+                let mut attack = body(340);
+                attack.move_id = 0x10;
+                attack.state = if low { 0xc6 } else { 0xc2 };
+                let mut parries = 0;
+                for seed in 1..=96 {
+                    let mut a = FairCpu::seeded(seed);
+                    for f in 1..=40 {
+                        a.observe(percept(f, body(340)));
+                    }
+                    for f in 41..=80 {
+                        a.press(f, true, &ctx);
+                        a.observe(percept(f, body(340)));
+                    }
+                    let mut b = a;
+                    let shown = 81;
+                    let mut earliest = shown + level.unfocused_reaction();
+                    let mut first_diff = None;
+                    let mut parried = false;
+                    for f in shown..shown + 120 {
+                        if f >= shown + level.reaction() && f < earliest && b.attention().focus == Focus::Attack {
+                            earliest = f;
+                        }
+                        let (pa, pb) = (a.press(f, true, &ctx), b.press(f, true, &ctx));
+                        if pa != pb {
+                            first_diff.get_or_insert(f);
+                        }
+                        parried |= b.plan.answer && b.plan.pads[..usize::from(b.plan.len)] == [0, direction, 0, 0];
+                        a.observe(percept(f, body(340)));
+                        b.observe(percept(f, attack));
+                    }
+                    if let Some(f) = first_diff {
+                        assert!(f >= earliest, "{level:?}, low={low}, seed={seed}: answered {f}, earliest {earliest}");
+                        parries += usize::from(parried);
+                    }
+                }
+                assert!(parries > 0, "{level:?}, low={low}: no parry under its reaction delay");
+            }
+        }
+    }
+
+    #[test]
+    fn sf3_plan_selection_requires_the_era_tool_and_pure_footsies_suppresses_it() {
+        let ctx = sf3_ctx(Level::VeryHard);
+        let ex = game::Act::Era(game::EraAct::Enhanced);
+        assert!(plans_taken(&ctx, 270, 300, Situation::NeutralClose, 96).contains(&ex), "affordable EX gets its own step");
+        let overhead = game::Act::Era(game::EraAct::Overhead);
+        assert!(plans_taken(&ctx, 270, 300, Situation::ItWasBlocked, 96).contains(&overhead), "an overhead after a guarded attack");
+        let mut footsies = ctx;
+        footsies.pure_footsies = true;
+        let footsies = footsies.for_stronger();
+        assert!(!era_ready(game::EraAct::Enhanced, &footsies) && !era_ready(game::EraAct::Overhead, &footsies));
+        assert!(!plans_taken(&footsies, 270, 300, Situation::NeutralClose, 96).contains(&ex));
+        assert!(!plans_taken(&footsies, 270, 300, Situation::ItWasBlocked, 96).contains(&overhead));
     }
 
     #[test]

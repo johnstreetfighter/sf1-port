@@ -17,22 +17,9 @@
 use super::super::cast::Tool;
 use super::super::habit::Lean;
 use super::super::{button, Choice, Level};
-use super::{always, step, Act, GamePlan, Situation, Step, ANY, CHARGE, COMMAND_THROW, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
+use super::{always, meaty, poke, step, Act, EraAct, GamePlan, Situation, Step, ANY, CHARGE, COMMAND_THROW, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
 use super::{RYU_SF6_BAIT, RYU_SF6_FRAME_TRAP, RYU_SF6_JUMP_IN, RYU_SF6_ROUTE, RYU_SF6_SHOT, RYU_SF6_SHOT_WATCH, RYU_SF6_WALK_THROW};
 use crate::roster::TournamentFighter;
-
-/// One of the era style's own tools a game plan can step into.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EraAct {
-    /// Start Custom Combo (the SFZ3 V-ism), walk in and chain attacks.
-    CustomCombo,
-    /// Go on chaining while Custom Combo lasts.
-    CustomChain,
-    /// Change stance from Gen's Mantis to his Crane, whose Jasen is a
-    /// charge move (never back: switching back and forth at range only
-    /// stood him still).
-    Stance,
-}
 
 /// The gaps a charge move is entered from: it carries him in from the
 /// middle distance.
@@ -64,31 +51,6 @@ const CUSTOM_COMBO: [Step; 3] = [
 
 const fn plan(situation: Situation, score: i32, corner_bonus: i32, gap: (i16, i16), steps: &'static [Step], lean: Lean, from: Level) -> GamePlan {
     GamePlan { situation, score, corner_bonus, cornered_only: false, gap, steps, lean, from }
-}
-
-/// Close neutral: walk to this normal's reach and press it; then as Ryu
-/// SF6's poke ([`super::RYU_SF6_POKE`]) with this normal in place of his
-/// crouching medium kick.
-const fn poke(crouch: bool, button: usize) -> [Step; 6] {
-    [
-        step(Act::Reach { crouch, button }, always(Some(1))),
-        step(Act::Do(Choice::Normal { crouch, button }), [Some(2), Some(3), Some(4), None, None]),
-        step(Act::Meaty { crouch, button }, [None, None, None, None, Some(0)]),
-        step(Act::Do(Choice::Throw), always(None)),
-        step(Act::Do(Choice::Retreat), always(Some(5))),
-        step(Act::Do(Choice::Guard), always(None)),
-    ]
-}
-
-/// A knocked-down opponent: this normal timed to his rise, as Ryu SF6's
-/// ([`super::RYU_SF6_MEATY`]).
-const fn meaty(crouch: bool, button: usize) -> [Step; 4] {
-    [
-        step(Act::Meaty { crouch, button }, [None, Some(1), Some(2), None, None]),
-        step(Act::Do(Choice::Throw), always(None)),
-        step(Act::Do(Choice::Retreat), always(Some(3))),
-        step(Act::Do(Choice::Guard), always(None)),
-    ]
 }
 
 // Each fighter's poke, and whether he walks a cornered opponent down,

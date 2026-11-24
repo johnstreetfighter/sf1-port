@@ -364,7 +364,7 @@ impl EraFighterState {
             && matches!(self.style.revision, Revision::Sf3TwoI | Revision::Sf3ThreeS)
     }
 
-    pub(super) fn sf3_ex_cost(&self) -> u8 {
+    pub(crate) fn sf3_ex_cost(&self) -> u8 {
         if self.sf3.unified { STOCK_AT } else { EX_COST }
     }
 

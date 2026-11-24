@@ -11,7 +11,8 @@
 //! and Retsu's command throw is thrown from the middle distance. That stays
 //! as it is with the switch off. The stronger play reads them from the
 //! tables here, by fighter and by the move's name as the move list shows it,
-//! for the SF2 era style (SC15) and the SFZ era style (SC16, `#208`); a
+//! for the SF2 era style (SC15), the SFZ era style (SC16, `#208`) and the
+//! SF3 era style (SC17, `#209`); a
 //! fighter or style with no table keeps the old reading.
 //!
 //! The kit is read wherever an era style's context is built (a few name
@@ -64,7 +65,7 @@ impl Tools {
 /// How near, centre to centre, a fighter's command throw catches: the catch
 /// record the data bank writes for it (Retsu's Izuna 43, Geki's Execution
 /// Drop 48; Birdie's chain is his Alpha chain's, 54). Read for the SF2 era
-/// style (SC15); the SFZ style's what-if kits have the same moves, and
+/// style (SC15); the SFZ and SF3 styles' what-if kits have the same moves, and
 /// Birdie's chain there is the Alpha chain itself. `None` for a fighter
 /// without one.
 pub fn catch_range(fighter: TournamentFighter) -> Option<i16> {
@@ -201,11 +202,49 @@ const SFZ: &[(TournamentFighter, &[(&str, Use)])] = &[
     ),
 ];
 
+/// The SF3 era style's what-if kits (SC17, `#209`). The five fighters
+/// without later canon kits, Birdie and Adon share the SF2 style's move
+/// names. Gen keeps the Mantis/Crane tools, and Eagle and Sagat read their
+/// own what-if kits rather than treating every unfamiliar name as an
+/// advancing attack. Eagle's counter needs an incoming attack; a neutral
+/// special must not choose it blindly.
+const SF3: &[(TournamentFighter, &[(&str, Use)])] = &[
+    (TournamentFighter::Retsu, SF2[0].1),
+    (TournamentFighter::Geki, SF2[1].1),
+    (TournamentFighter::Joe, SF2[2].1),
+    (TournamentFighter::Mike, SF2[3].1),
+    (TournamentFighter::Lee, SF2[4].1),
+    (TournamentFighter::Birdie, SF2[5].1),
+    (TournamentFighter::Adon, SF2[6].1),
+    (TournamentFighter::Gen, SFZ[6].1),
+    (
+        TournamentFighter::Eagle,
+        &[
+            ("CLOBBERING", R(Role::Advance)),
+            ("MANCHESTER BLACK", R(Role::Advance)),
+            ("CANTERBURY BLUE", R(Role::Advance)),
+            ("OXFORD RED", R(Role::Advance)),
+            ("LIVERPOOL WHITE", Skip),
+            ("ST ANDREWS GREEN", Skip),
+        ],
+    ),
+    (
+        TournamentFighter::Sagat,
+        &[
+            ("TIGER SHOT", R(Role::Projectile)),
+            ("GROUND TIGER SHOT", R(Role::Projectile)),
+            ("TIGER UPPERCUT", R(Role::AntiAir)),
+            ("TIGER KNEE CRUSH", R(Role::Advance)),
+        ],
+    ),
+];
+
 /// The tables of `family`, if the stronger play has any.
 fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'static str, Use)])] {
     match family {
         EraFamily::Sf2 => SF2,
         EraFamily::SfZ => SFZ,
+        EraFamily::Sf3 => SF3,
         _ => &[],
     }
 }
@@ -270,4 +309,43 @@ pub(super) fn named(fighter: TournamentFighter, family: EraFamily) -> Vec<(&'sta
         .iter()
         .map(|(name, use_)| (*name, if let Use::Tool(tool) = use_ { Some(*tool) } else { None }))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::MatchConfig;
+    use crate::era::{GaugeMode, Loadout, Revision, StylePick};
+    use crate::era_fight::EraFighterState;
+    use crate::moves::live_move_list;
+
+    #[test]
+    fn sf3_tools_are_read_from_the_fighters_real_what_if_moves() {
+        for fighter in covered(EraFamily::Sf3) {
+            let mut state = EraFighterState::default();
+            state.fighter = Some(fighter);
+            state.style = StylePick::for_revision(Revision::Sf3ThreeS, Loadout::Art1);
+            state.max_sub_hp = 960;
+            state.set_what_if(true);
+            state.set_gauge_mode(GaugeMode::EraDefault);
+            let moves = live_move_list(fighter, MatchConfig::definitive().preset, true, &state);
+            let (kit, tools) = stronger_kit(fighter, EraFamily::Sf3, &moves).expect("SF3 has a table for every what-if fighter");
+            assert_eq!(tools.command_throw.is_some(), matches!(fighter, TournamentFighter::Retsu | TournamentFighter::Geki | TournamentFighter::Birdie), "{fighter:?} command throw");
+            assert_eq!(tools.teleport.is_some(), fighter == TournamentFighter::Geki, "{fighter:?} teleport");
+            assert_eq!(tools.charge.is_some(), matches!(fighter, TournamentFighter::Lee | TournamentFighter::Birdie), "{fighter:?} charge in its starting stance");
+            for role in [Role::Projectile, Role::AntiAir, Role::Advance] {
+                for entry in kit.by_role(role).into_iter().flatten() {
+                    assert!(moves.contains(&entry), "{fighter:?} {entry:?}");
+                    assert!(!matches!(entry.input.button, crate::moves::ButtonClass::PairPunch | crate::moves::ButtonClass::PairKick));
+                    assert_ne!(entry.name, "ST ANDREWS GREEN", "a counter is not a neutral advance");
+                }
+            }
+            if fighter == TournamentFighter::Sagat {
+                assert_eq!(kit.projectile.unwrap().name, "TIGER SHOT");
+                assert_eq!(kit.anti_air.unwrap().name, "TIGER UPPERCUT");
+            }
+        }
+        assert!(stronger_kit(TournamentFighter::Ryu, EraFamily::Sf3, &[]).is_none(), "Ryu keeps the canon reading");
+        assert!(stronger_kit(TournamentFighter::Ken, EraFamily::Sf3, &[]).is_none(), "Ken keeps the canon reading");
+    }
 }

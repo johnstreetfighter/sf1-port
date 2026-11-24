@@ -531,12 +531,11 @@ fn whiff_script(i: u32) -> PlayerInputs {
 #[test]
 fn under_pure_footsies_a_fighter_whose_book_has_plain_normal_routes_takes_only_those() {
     // SC23 (`#215`): Ryu in the SF3 New Generation style (no art pack
-    // needed; no game plans, so the whiffs he punishes are what bring his
-    // routes) has a plain-normal ground route, light punch twice, beside
+    // needed) has a plain-normal ground route, light punch twice, beside
     // routes with specials. Under the trial every route he takes is plain
     // normals, and he takes one; without it he takes routes with specials
-    // too. (SC15 `#207` moved it off CE, where Ryu's SF2 game plans now win
-    // the fight before many whiffs.)
+    // too. SC17 (`#209`) adds game plans here too, so start another match
+    // after each win instead of depending on the first opponent surviving.
     let Some(assets) = assets() else { return };
     deep(move || {
         let book = sf_engine::route_book::book(TournamentFighter::Ryu, Revision::Sf3Ng, loadouts(Revision::Sf3Ng)[0]).expect("Ryu's SF3 New Generation book");
@@ -545,8 +544,13 @@ fn under_pure_footsies_a_fighter_whose_book_has_plain_normal_routes_takes_only_t
         for mission in [None, Some(footsies)] {
             let mut fight = tour_fight(&assets, mission, Revision::Sf3Ng);
             let (mut plain, mut other, mut last) = (0, 0, None);
-            for i in 0..9_600 {
+            for i in 0..20_000 {
                 fight.step(&assets, whiff_script(i), PlayerInputs::default(), false);
+                if fight.machine().match_over() {
+                    fight = tour_fight(&assets, mission, Revision::Sf3Ng);
+                    last = None;
+                    continue;
+                }
                 let Some(cpu) = fight.machine().fair_cpu() else { continue };
                 let entered = cpu.route_index().filter(|_| cpu.route_step().is_none_or(|step| step == 0));
                 if entered.is_some() && entered != last {

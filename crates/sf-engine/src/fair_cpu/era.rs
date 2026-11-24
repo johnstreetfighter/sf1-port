@@ -33,6 +33,9 @@ pub(super) struct Tactics {
     fadc: bool,
     super_move: Option<(MoveEntry, usize)>,
     enhanced: Option<MoveEntry>,
+    /// SF3's EX move at its real cost. The old play keeps its two-stock
+    /// threshold; only the stronger play substitutes this candidate.
+    sf3_enhanced: Option<MoveEntry>,
     guard_cancel: Option<MoveEntry>,
     evade: Option<MoveEntry>,
     armor: Option<MoveEntry>,
@@ -159,18 +162,17 @@ impl Tactics {
             };
             u16::from(ex) >= 2 * u16::from(stock)
         };
-        let enhanced = (enabled && enhanced)
-            .then(|| {
-                moves.iter().copied().find(|m| {
-                    m.recognizer == Recognizer::FamilyMove
-                        && m.kind == MoveKind::Special
-                        && matches!(
-                            m.input.button,
-                            ButtonClass::PairPunch | ButtonClass::PairKick
-                        )
-                        && m.input.motion.first() != Some(&Dir::Jump)
-                })
+        let enhanced_move = || {
+            moves.iter().copied().find(|m| {
+                m.recognizer == Recognizer::FamilyMove
+                    && m.kind == MoveKind::Special
+                    && matches!(m.input.button, ButtonClass::PairPunch | ButtonClass::PairKick)
+                    && m.input.motion.first() != Some(&Dir::Jump)
             })
+        };
+        let enhanced = (enabled && enhanced).then(enhanced_move).flatten();
+        let sf3_enhanced = (enabled && family == Sf3 && ex >= era.sf3_ex_cost())
+            .then(enhanced_move)
             .flatten();
         let guard_cancel = if enabled {
             match family {
@@ -238,6 +240,7 @@ impl Tactics {
             fadc: enabled && family == Sf4 && ex >= if unified { STOCK_AT } else { 2 * STOCK_AT },
             super_move,
             enhanced,
+            sf3_enhanced,
             guard_cancel,
             evade,
             armor,
@@ -294,6 +297,9 @@ impl Tactics {
         // Nor does it switch Gen back from the Crane to the Mantis: back
         // and forth at range only stood him still (SC16, `#208`).
         self.stance = self.stance.filter(|_| self.can_change_stance());
+        if self.family == EraFamily::Sf3 {
+            self.enhanced = self.sf3_enhanced;
+        }
         if self.family == EraFamily::Sf6 {
             self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
             self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
@@ -327,6 +333,34 @@ impl Tactics {
     /// Custom Combo is running.
     pub(super) fn custom_active(self) -> bool {
         self.custom
+    }
+
+    /// SF3's universal overhead is present in this fight and can be
+    /// entered from the ground. A game plan chooses its moment; this gate
+    /// checks only the fighter's own controls and available moves.
+    pub(super) fn sf3_overhead_ready(self) -> bool {
+        self.family == EraFamily::Sf3 && self.mix_up.is_some() && self.control.free && !self.control.airborne
+    }
+
+    /// The overhead's real input (medium punch and medium kick).
+    pub(super) fn sf3_overhead(self, view: Percept) -> Option<Plan> {
+        let entry = self.mix_up.filter(|_| self.sf3_overhead_ready())?;
+        Some(self.pad(&entry, view, 1))
+    }
+
+    /// The SF3 fighter has an EX move in its live move list and enough
+    /// meter for that move's actual cost, rather than two Super Art bars.
+    /// Native New Generation lists no EX move.
+    pub(super) fn sf3_ex_ready(self) -> bool {
+        self.family == EraFamily::Sf3 && self.sf3_enhanced.is_some() && self.control.free && !self.control.airborne
+    }
+
+    /// The real motion and pair of buttons for that EX move.
+    pub(super) fn sf3_ex(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf3_enhanced.filter(|_| self.sf3_ex_ready())?;
+        // A plan feels its own facing now; the opponent's position is
+        // still delayed and can be on the other side after a cross-up.
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 1, true)))
     }
 
     /// Its fighter can change stance from the Mantis to the Crane (Gen):
@@ -812,6 +846,86 @@ mod tests {
         );
         assert_eq!(state.sf3_stock_cost(), Some(128));
         assert!(tactics.enhanced.is_none());
+    }
+
+    #[test]
+    fn the_stronger_sf3_play_spends_an_ex_moves_real_cost_in_every_super_art() {
+        use crate::era::Revision;
+        let free = EraControl { free: true, ..EraControl::default() };
+        for revision in [Revision::Sf3TwoI, Revision::Sf3ThreeS] {
+            for loadout in [Loadout::Art1, Loadout::Art2, Loadout::Art3] {
+                for mode in [GaugeMode::EraDefault, GaugeMode::Unified] {
+                    let mut cfg = MatchConfig::definitive();
+                    cfg.gauge_mode = mode;
+                    let mut state = fighter(revision, loadout, 0);
+                    state.set_gauge_mode(mode);
+                    let cost = state.sf3_ex_cost();
+                    let moves = state.sf3_active_moves();
+                    for meter in [cost - 1, cost] {
+                        state.super_meter = meter;
+                        let old = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                        assert!(old.enhanced.is_none(), "the old play keeps its two-stock gate");
+                        let new = old.spending_safely(Level::VeryHard);
+                        assert_eq!(new.sf3_ex_ready(), meter == cost, "{revision:?} {loadout:?} {mode:?} at {meter}");
+                        assert_eq!(new.enhanced.is_some(), meter == cost);
+                        assert_eq!(new.sf3_ex(Percept::default()).is_some(), meter == cost);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sf3_plan_tools_obey_the_fighters_controls_gauge_and_live_move_list() {
+        use crate::era::Revision;
+        let cfg = MatchConfig::definitive();
+        let free = EraControl { free: true, ..EraControl::default() };
+        let mut state = fighter(Revision::Sf3ThreeS, Loadout::Art2, 128);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        let moves = state.sf3_active_moves();
+        let ready = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+        let view = Percept::default();
+        let overhead = ready.sf3_overhead(view).expect("the real overhead is available");
+        assert!(overhead.pads[..usize::from(overhead.len)].contains(&(button(1) | button(4))));
+        let ex = ready.sf3_ex(view).expect("the real EX move is available");
+        assert!(ex.pads[..usize::from(ex.len)].iter().any(|pad| (pad & (button(0) | button(1) | button(2))).count_ones() >= 2));
+
+        for control in [EraControl::default(), EraControl { airborne: true, ..free }] {
+            let busy = Tactics::of(&state, &moves, cfg, Level::VeryHard, control);
+            assert!(!busy.sf3_overhead_ready() && busy.sf3_overhead(view).is_none());
+            assert!(!busy.sf3_ex_ready() && busy.sf3_ex(view).is_none());
+        }
+        let absent = Tactics::of(&state, &[], cfg, Level::VeryHard, free);
+        assert!(!absent.sf3_overhead_ready() && !absent.sf3_ex_ready());
+        state.set_gauge_mode(GaugeMode::NoGauges);
+        let mut no_gauges = cfg;
+        no_gauges.gauge_mode = GaugeMode::NoGauges;
+        let disabled = Tactics::of(&state, &state.sf3_active_moves(), no_gauges, Level::VeryHard, free);
+        assert!(!disabled.sf3_overhead_ready() && !disabled.sf3_ex_ready());
+
+        let mut ng = fighter(Revision::Sf3Ng, Loadout::Art2, 128);
+        ng.set_gauge_mode(GaugeMode::EraDefault);
+        let original = Tactics::of(&ng, &ng.sf3_active_moves(), cfg, Level::VeryHard, free);
+        assert!(original.sf3_overhead_ready(), "New Generation has the universal overhead");
+        assert!(!original.sf3_ex_ready(), "native New Generation has no EX move");
+    }
+
+    #[test]
+    fn an_sf3_ex_motion_uses_its_felt_facing_even_when_the_delayed_opponent_is_behind_it() {
+        use crate::era::Revision;
+        let mut state = fighter(Revision::Sf3ThreeS, Loadout::Art2, 40);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        let tactics = Tactics::of(&state, &state.sf3_active_moves(), MatchConfig::definitive(), Level::VeryHard, EraControl { free: true, ..EraControl::default() });
+        for (facing_left, opponent_x, forward, back) in [(false, 100, RIGHT, LEFT), (true, 300, LEFT, RIGHT)] {
+            let mut view = Percept::default();
+            view.me.x = 200;
+            view.me.facing_left = facing_left;
+            view.foe.x = opponent_x;
+            let plan = tactics.sf3_ex(view).expect("an affordable EX");
+            let pads = &plan.pads[..usize::from(plan.len)];
+            assert!(pads.iter().any(|&pad| pad & forward != 0 && pad & 0x3f0 != 0), "motion ends facing {forward:x}: {pads:x?}");
+            assert!(pads.iter().all(|&pad| pad & back == 0), "delayed opponent must not reverse the motion: {pads:x?}");
+        }
     }
 
     #[test]

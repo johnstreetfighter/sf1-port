@@ -20,9 +20,24 @@ use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
 
+mod sf3;
 mod sfz;
-pub use sfz::EraAct;
 pub(super) use sfz::{chain_pads, custom_combo_pads};
+
+/// One of an era style's own tools a game plan can step into.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EraAct {
+    /// Start Custom Combo (the SFZ3 V-ism), walk in and chain attacks.
+    CustomCombo,
+    /// Go on chaining while Custom Combo lasts.
+    CustomChain,
+    /// Change Gen's stance from the Mantis to the Crane, never back.
+    Stance,
+    /// SF3's universal overhead, to open a crouching guard.
+    Overhead,
+    /// An SF3 EX special, when this revision has one and can pay for it.
+    Enhanced,
+}
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
 /// counts as the corner. Measured by walking Ryu into each wall of
@@ -789,6 +804,28 @@ const fn always(next: Option<u8>) -> [Option<u8>; 5] {
     [next; 5]
 }
 
+/// Close neutral: reach with this normal, then branch on what it met.
+const fn poke(crouch: bool, button: usize) -> [Step; 6] {
+    [
+        step(Act::Reach { crouch, button }, always(Some(1))),
+        step(Act::Do(Choice::Normal { crouch, button }), [Some(2), Some(3), Some(4), None, None]),
+        step(Act::Meaty { crouch, button }, [None, None, None, None, Some(0)]),
+        step(Act::Do(Choice::Throw), always(None)),
+        step(Act::Do(Choice::Retreat), always(Some(5))),
+        step(Act::Do(Choice::Guard), always(None)),
+    ]
+}
+
+/// Time this normal to the opponent's rise, then keep pressure or back off.
+const fn meaty(crouch: bool, button: usize) -> [Step; 4] {
+    [
+        step(Act::Meaty { crouch, button }, [None, Some(1), Some(2), None, None]),
+        step(Act::Do(Choice::Throw), always(None)),
+        step(Act::Do(Choice::Retreat), always(Some(3))),
+        step(Act::Do(Choice::Guard), always(None)),
+    ]
+}
+
 /// Ryu in the SF6 era style, close neutral: walk to crouching medium kick
 /// range and press it. On a hit (it knocks down in this engine) follow him
 /// in and time the same kick to his rise, or, if he rises out of its reach,
@@ -1072,6 +1109,7 @@ pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily
     match (fighter, family) {
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
+        (Some(fighter), Some(EraFamily::Sf3)) => sf3::plans(fighter),
         // Gen and Eagle have none yet: the measuring run found no set of
         // these that beats the old Fair CPU with them (SC15, `#207`); a
         // follow-up builds their own game.
