@@ -16,7 +16,7 @@
 
 use super::super::cast::Tool;
 use super::super::habit::Lean;
-use super::super::{button, Choice, Level};
+use super::super::{button, Level};
 use super::{always, meaty, poke, step, Act, EraAct, GamePlan, Situation, Step, ANY, CHARGE, COMMAND_THROW, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
 use super::{RYU_SF6_BAIT, RYU_SF6_FRAME_TRAP, RYU_SF6_JUMP_IN, RYU_SF6_ROUTE, RYU_SF6_SHOT, RYU_SF6_SHOT_WATCH, RYU_SF6_WALK_THROW};
 use crate::roster::TournamentFighter;

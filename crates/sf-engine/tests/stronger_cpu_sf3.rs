@@ -51,9 +51,7 @@ const R: u8 = 1;
 const L: u8 = 2;
 const D: u8 = 4;
 const U: u8 = 8;
-const LP: u8 = 1;
 const HP: u8 = 4;
-const LK: u8 = 8;
 const HK: u8 = 32;
 const PARRY: u8 = 0x2e;
 const OVERHEAD: u8 = 0x2f;
@@ -159,13 +157,11 @@ fn pressing_pad(i: u32, v: &Percept) -> (u8, u8) {
     }
 }
 
-fn poking_pad(i: u32, v: &Percept) -> (u8, u8) {
-    match i % 90 {
-        0..=2 => (D, LP),
-        30..=33 => (0, HP),
-        60..=79 => (toward(v), 0),
-        _ => (0, 0),
-    }
+/// Leave an opening for the selected Super Art route. Ryu Art2 has one
+/// such ground route, whose opener needs a closer gap than his EX routes;
+/// repeated pokes can interrupt the walk in before that opener is tried.
+fn standing_pad(_: u32, _: &Percept) -> (u8, u8) {
+    (0, 0)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -196,7 +192,10 @@ struct Seen {
     /// Real EX starts from Enhanced steps, with meter immediately before
     /// and after its engine command is accepted.
     enhanced: Vec<(u8, u8, u8)>,
-    native_ex: u32,
+    enhanced_step_frames: u32,
+    /// A native EX slot together with the actual 40-point spend. The ROM
+    /// also uses some of these move IDs for non-EX states.
+    native_ex_spends: u32,
     super_routes: u32,
     supers_in_routes: u32,
     wrong_art: u32,
@@ -219,7 +218,6 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
             seed += 1;
             let mut entering = false;
             let mut in_super_route = false;
-            let mut since_super_route = u32::MAX;
             let mut last_step = None;
             let mut pending_grab: Option<(OwnStep, u32)> = None;
             let mut overhead_from_step = false;
@@ -231,13 +229,15 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
                 let before_era = m.era_fighters()[1];
                 let before_foe_hp = m.era_fighters()[0].sub_hp;
                 let step_before = own_step(&m, style.fighter);
-                step(&mut m, pad(i, &before));
+                let cpu_before = m.fair_cpu().unwrap();
+                let route_step_before = cpu_before.route_index().zip(cpu_before.route_step());
+                let opponent_pad = pad(i, &before);
+                step(&mut m, opponent_pad);
                 let now = seen(&m);
                 if m.match_over() { break; }
                 if !now.fighting {
                     entering = false;
                     in_super_route = false;
-                    since_super_route = u32::MAX;
                     last_step = None;
                     pending_grab = None;
                     overhead_from_step = false;
@@ -247,6 +247,7 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
                 s.plan_frames += u32::from(m.fair_cpu_following_game_plan());
                 let cpu = m.fair_cpu().unwrap();
                 let route = cpu.route_index().filter(|_| cpu.entering_route());
+                let route_step_after = cpu.route_index().zip(cpu.route_step());
                 if route.is_some() && !entering {
                     s.routes += 1;
                     s.foreign_routes += u32::from(route.is_none_or(|index| index >= route_count));
@@ -258,8 +259,16 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
                     .is_some_and(|r| r.steps.iter().any(|step| step.name.starts_with("236236+")));
                 s.super_routes += u32::from(super_route && !in_super_route);
                 in_super_route = super_route;
-                since_super_route = if super_route { 0 } else { since_super_route.saturating_add(1) };
+                // Both observations must identify the same active route
+                // and its Super Art command step. A later reactive super
+                // after a cancelled route cannot claim this attribution.
+                let entering_super_art = route_step_before == route_step_after
+                    && route_step_before.and_then(|(index, step)| routes
+                        .and_then(|b| b.routes.get(index))
+                        .and_then(|r| r.steps.get(step)))
+                        .is_some_and(|step| step.name.starts_with("236236+"));
                 let on = own_step(&m, style.fighter).or(step_before).or(last_step);
+                s.enhanced_step_frames += u32::from(on == Some(OwnStep::Era(EraAct::Enhanced)));
                 let era = m.era_fighters()[1];
                 let began = now.me.move_id != before.me.move_id;
                 if began {
@@ -272,13 +281,13 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
                     overhead_from_step = now.me.move_id == OVERHEAD && on == Some(OwnStep::Era(EraAct::Overhead));
                     s.parries += u32::from(now.me.move_id == PARRY && era.sub_hp == before_era.sub_hp);
                     let native_ex = matches!(now.me.move_id, 0x21 | 0x24..=0x26 | 0x2c) && style.fighter.is_shoto();
-                    s.native_ex += u32::from(native_ex);
+                    s.native_ex_spends += u32::from(native_ex && before_era.super_meter.saturating_sub(era.super_meter) >= 40);
                     if native_ex && on == Some(OwnStep::Era(EraAct::Enhanced)) && before_era.super_meter > era.super_meter {
                         s.enhanced.push((now.me.move_id, before_era.super_meter, era.super_meter));
                     }
                     if (0x29..=0x2b).contains(&now.me.move_id) {
                         s.wrong_art += u32::from(now.me.move_id != art_slot);
-                        s.supers_in_routes += u32::from(now.me.move_id == art_slot && since_super_route <= 20);
+                        s.supers_in_routes += u32::from(now.me.move_id == art_slot && entering_super_art && before_era.super_meter > era.super_meter);
                     }
                 }
                 if let Some((on, from)) = pending_grab {
@@ -289,7 +298,12 @@ fn watch(style: Style, stronger: bool, frames: u32, meter: Option<u8>, pad: fn(u
                         pending_grab = None;
                     }
                 }
-                if overhead_from_step && now.me.move_id == OVERHEAD && m.era_fighters()[0].sub_hp < before_foe_hp && now.foe.reacting() && !now.foe.guarding() {
+                // The overhead bypasses low guard without first putting
+                // him in the guarding animation. Check the actual held
+                // down-back pad and his pre-impact crouch instead: damage
+                // while this partner is still walking in does not count.
+                let crouch_guard = opponent_pad == (D | away(&before), 0) && before.foe.crouching();
+                if overhead_from_step && now.me.move_id == OVERHEAD && crouch_guard && m.era_fighters()[0].sub_hp < before_foe_hp && now.foe.reacting() && !now.foe.guarding() {
                     s.overhead_hits += 1;
                 }
                 if before.fighting && era.in_crane() != before_era.in_crane() {
@@ -378,8 +392,10 @@ fn the_sf3_overhead_hits_crouch_guard_and_an_art2_ex_spends_only_forty_points() 
     eprintln!("overhead hits {}, EX starts {}", s.overhead_hits, s.enhanced.len());
     assert!(s.began_on_step.contains(&(OVERHEAD, OwnStep::Era(EraAct::Overhead))), "the overhead comes from its plan step");
     assert!(s.overhead_hits >= 1, "the overhead hits a crouching guard");
-    assert!(!s.enhanced.is_empty(), "an EX starts from its plan step with only 40 points, below Art2's 128-point Super Art stock");
-    assert!(s.enhanced.iter().all(|&(_, before, after)| before == 40 && after == 0), "native EX spends exactly 40: {:?}", s.enhanced);
+    let Some(ex) = watch(style, true, 30_000, Some(40), sparring_pad) else { return };
+    eprintln!("EX starts with a varied partner {}", ex.enhanced.len());
+    assert!(!ex.enhanced.is_empty(), "an EX starts from its plan step with only 40 points, below Art2's 128-point Super Art stock");
+    assert!(ex.enhanced.iter().all(|&(_, before, after)| before == 40 && after == 0), "native EX spends exactly 40: {:?}", ex.enhanced);
 }
 
 #[test]
@@ -387,8 +403,8 @@ fn new_generation_does_not_attempt_the_later_revisions_ex_moves() {
     for fighter in [TournamentFighter::Ryu, TournamentFighter::Ken] {
         let style = Style { fighter, revision: Revision::Sf3Ng, art: Loadout::Art2 };
         let Some(s) = watch(style, true, 8_000, Some(40), sparring_pad) else { return };
-        assert_eq!(s.native_ex, 0, "{style:?}: New Generation has no EX commands");
-        assert!(!s.began_on_step.iter().any(|&(_, on)| on == OwnStep::Era(EraAct::Enhanced)), "{style:?}: no unavailable Enhanced step");
+        assert_eq!(s.native_ex_spends, 0, "{style:?}: New Generation has no EX commands");
+        assert_eq!(s.enhanced_step_frames, 0, "{style:?}: no unavailable Enhanced step is attempted, even if it produces no move");
     }
 }
 
@@ -398,7 +414,7 @@ fn selected_super_arts_are_spent_inside_real_routes() {
         let style = Style::third_strike(fighter, art);
         let b = book(fighter, style.revision, art).expect("a checked-in SF3 route book");
         assert!(b.routes.iter().any(|r| r.steps.iter().any(|s| s.name.starts_with("236236+"))), "{style:?} has a proven Super Art route");
-        let Some(s) = watch(style, true, 30_000, Some(u8::MAX), poking_pad) else { return };
+        let Some(s) = watch(style, true, 30_000, Some(u8::MAX), standing_pad) else { return };
         eprintln!("{style:?}: {} Super Art routes, {} Super Art starts in them", s.super_routes, s.supers_in_routes);
         assert!(s.super_routes >= 1 && s.supers_in_routes >= 1, "{style:?} actually starts its selected Super Art while entering a route: {s:?}");
         assert_eq!(s.wrong_art, 0, "{style:?}: never uses an unselected Super Art");
