@@ -2486,6 +2486,12 @@ impl Bus<'_> {
     /// above the centre) overlap, push `me` horizontally out of the other's
     /// body (+0x18 / +0x19 half-widths, by facing).
     fn push_apart(&mut self, me: u16, other: u16) {
+        if [me, other].into_iter().any(|entity| self.jaguar_tooth_seeking_wall(entity)) {
+            // An opponent behind Adon must not undo each backward step and
+            // keep Tooth seeking the wall forever. Only its wall approach
+            // crosses bodies; the rebound, strike and landing separate normally.
+            return;
+        }
         if self.dramatic_rules().is_some() {
             let owner = self.el(me, 0x38);
             let target = self.el(other, 0x38);
@@ -2620,6 +2626,23 @@ impl Bus<'_> {
             r
         };
         self.shift_grid_x(me, push);
+    }
+
+    fn jaguar_tooth_seeking_wall(&self, entity: u16) -> bool {
+        if !self.era_state(self.el(entity, 0x38))
+            .is_some_and(|state| state.fighter == Some(crate::roster::TournamentFighter::Adon))
+        {
+            return false;
+        }
+        // Read the native phase rather than a style's aliased move number.
+        // Gen's finite Ouga seeks use the same routine but keep body collision.
+        let stream = self.el(entity, 0x2c);
+        if !crate::data_bank::in_bank(stream) || self.rb(stream) != 0xff {
+            return false;
+        }
+        let routine = self.rl(stream + 2);
+        crate::data_bank::in_bank(routine)
+            && self.rb(routine) == crate::data_bank::ROUTINE_ALPHA_WALL_REBOUND
     }
 
     /// 0x43c18: vertical screen clamp, only for the hit-stun states 0x89 /

@@ -3,7 +3,7 @@
 - **Stronger Fair CPU status (2026-11-25):** behind the developer-only `--stronger-cpu` switch, off by default. Measuring misses remain; this is not approval to enable it.
   - **Done:** SC1-SC18 and SC22-SC23 implementations (SC18 delivery code 2c19f81, version 1.5.29; measured gameplay source 944e92a). SC12 #204, the maintainer's play-through of Ryu SF6 at all four levels, is closed with his yes to rolling it out to the cast.
   - **Done in the rollout:** the SF2 (#207), SFZ (#208), SF3 (#209) and [SF4 (#210)](https://github.com/johnstreetfighter/sf1-port/issues/210) era styles, using the shared fighter tools (`fair_cpu/cast.rs`, `Act::Tool`).
-  - **Next:** SC19-SC21 await the maintainer's word. [SC24 #216](https://github.com/johnstreetfighter/sf1-port/issues/216), switching the stronger CPU on, remains his decision after the readiness work and play-through.
+  - **Next:** the maintainer authorized the native Adon fix, then SC19 ([SF5 #211](https://github.com/johnstreetfighter/sf1-port/issues/211)). SC20-SC21 await his word. [SC24 #216](https://github.com/johnstreetfighter/sf1-port/issues/216), switching the stronger CPU on, remains his decision after the readiness work and play-through.
   - **Follow-ups:**
     - #267: buffer the anti-air into the projectile's recovery
     - #268: builds made without git get the commit's identity
@@ -12,7 +12,7 @@
     - #271: netplay rollback redraws re-run frames and runs over budget
     - #272: the SF2 and SFZ near-misses, Gen and Eagle's fighter-specific play, Retsu's SFZ grab and the low SFZ catch rates
     - #273: Joe's SF3 Difficult-over-Normal mirror misses in all three Super Arts, on both sides; all his primary new-versus-old win/activity bars pass
-    - [GitHub #274](https://github.com/johnstreetfighter/sf1-port/issues/274): Adon's native Jaguar Tooth can leave Victory waiting after time expires; the final SC18 unfinished row was reproduced byte for byte, with old P1 stuck in the native busy state
+    - [GitHub #274](https://github.com/johnstreetfighter/sf1-port/issues/274): fixed in version 1.5.30. An opponent behind Adon could undo every backward Tooth step through body separation; the native wall-seeking phase now crosses bodies, preserving the rebound, attack and landing. The exact failing replay and four mirrored Alpha/SF4 pad cases pass. All 72 focused checks pass; independent Standards/Spec reviews have zero findings. [Diagnosis and validation](planning/adon-jaguar-tooth-fix.md).
     - [GitHub #275](https://github.com/johnstreetfighter/sf1-port/issues/275): the SF4 measuring gates still miss in 98 primary cells and two Geki adjacent cells; all exact rows/reasons and eight additional overall pessimistic misses are recorded
   - **How the maintainer plays it:** Arcade as Retsu in the chosen style, where Ryu is the first opponent.
   - **Process:** independent review and focused validation continue. The maintainer's current instruction is **"continue with SC without running the full suite"**. SC18 used focused checks and a complete measuring run; neither full-suite pass was invoked. Preserve this explicit waiver when continuing SC work instead of blocking on other projects' suites.
