@@ -564,5 +564,3 @@ fn every_sf4_fighters_real_pad_waits_for_its_reaction_delay() {
         assert!(parted >= 3 && changed >= 1, "{fighter:?}: the delay comparison exercises a real response");
     }
 }
-
-
