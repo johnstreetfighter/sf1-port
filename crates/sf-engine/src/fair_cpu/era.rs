@@ -1469,4 +1469,30 @@ mod tests {
             .react(&mut Rng(0), Level::Easy, confirmed, before, confirmed, false, true)
             .is_none());
     }
+
+    #[test]
+    fn retsus_real_meterless_sf4_route_passes_the_live_move_gate_without_resources() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::Retsu;
+
+        let book = crate::route_book::book(Retsu, Revision::Usf4, Loadout::Ultra1).unwrap();
+        let route = book.routes.iter().find(|route| route.name() == "LK, 236+LP").unwrap();
+        assert_eq!((route.super_spent, route.drive_spent), (0, 0));
+
+        for mode in [GaugeMode::EraDefault, GaugeMode::NoGauges] {
+            let mut config = MatchConfig::definitive();
+            config.gauge_mode = mode;
+            let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 0);
+            state.fighter = Some(Retsu);
+            state.set_gauge_mode(mode);
+            state.set_sf4_practice_revenge(Some(0));
+            assert_eq!(state.super_meter, 0);
+            assert!(!state.sf4_ultra_ready());
+            let moves = crate::moves::live_move_list(Retsu, config.preset, true, &state);
+            for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                let tactics = Tactics::of(&state, &moves, config, level, EraControl::default());
+                assert!(tactics.sf4_route_ready(route, level, 0), "{mode:?} {level:?}: the single quarter circle is not a Super or Ultra");
+            }
+        }
+    }
 }

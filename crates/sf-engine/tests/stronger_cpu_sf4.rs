@@ -147,6 +147,15 @@ fn guarding_pad(_: u32, v: &Percept) -> (u8, u8) {
     if (v.me.x - v.foe.x).abs() > 38 { (toward(v), 0) } else { (D | away(v), 0) }
 }
 
+/// Offer a standing, settled opponent at the route plan's proven spacing.
+/// Some fighters have only one meterless route and it needs this stance;
+/// the moving/crouching sparring partner need not offer that opening.
+fn route_partner(_: u32, v: &Percept) -> (u8, u8) {
+    if v.gap() > 60 { (toward(v), 0) }
+    else if v.gap() < 52 { (away(v), 0) }
+    else { (0, 0) }
+}
+
 /// Block the normal that offers the ItWasBlocked Focus plan, then let go
 /// while the CPU charges and releases it so its level-two hit can land.
 fn focus_partner(i: u32, v: &Percept) -> (u8, u8) {
@@ -428,7 +437,7 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
     for fighter in TournamentFighter::ALL {
         for loadout in ULTRAS {
             let style = Style::ultra(fighter, loadout);
-            let Some(s) = watch(style, true, 12_000, None, false, sparring_pad) else { return };
+            let Some(s) = watch(style, true, 12_000, None, false, route_partner) else { return };
             eprintln!("{style:?}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
             assert!(s.plan_frames * 10 >= s.frames && s.routes >= 1, "{style:?}: plans and routes are used: {s:?}");
             assert_eq!(s.foreign_routes, 0, "{style:?}: its routes belong to this fighter and style");
