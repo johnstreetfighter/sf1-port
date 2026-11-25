@@ -2420,7 +2420,7 @@ impl FairCpu {
                 (Act::Reach { crouch, button }, acted) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
                     let gap = self.felt(step, view).gap();
-                    if gap > reach && !(acted && step > run.pressed + game::EDGE_FRAMES) {
+                    if gap > reach && !(acted && (step > run.pressed + game::EDGE_FRAMES || self.sf4_walk_stalled(step, run.pressed, ctx))) {
                         // A few frames at a time, looking again after each:
                         // the walk is reckoned at two pixels a frame, and a
                         // fighter's can cover more (Ryu's SF6 one about 2.7),
@@ -2767,6 +2767,23 @@ impl FairCpu {
         }
     }
 
+    /// The SF4 fighter feels a walk step fail to move him for six frames.
+    /// End the reach step as its normal timeout would, instead of
+    /// pushing against a body or wall for ninety frames. Only its own
+    /// observed position is used; a locked guard is left to recover.
+    fn sf4_walk_stalled(&self, step: u32, since: u32, ctx: &Context) -> bool {
+        const FRAMES: u32 = 6;
+        if !self.stronger(ctx) || ctx.family != Some(crate::era::EraFamily::Sf4)
+            || ctx.own_blockstun || self.plan.kind != PlanKind::Walk
+            || step <= FRAMES || step.saturating_sub(since) < FRAMES {
+            return false;
+        }
+        let Some(now) = self.seen(step - 1) else { return false };
+        (1..=FRAMES).all(|age| self.seen(step - age).is_some_and(|was| {
+            was.me.present && was.me.free() && !was.me.jumping() && was.me.x == now.me.x
+        }))
+    }
+
     /// It has seen its last action begin: in `view`, or for the stronger
     /// play, which feels its own fighter, on the last frame.
     fn settled(&self, step: u32, view: Percept, stronger: bool) -> bool {
@@ -2878,7 +2895,14 @@ impl FairCpu {
                 && !view.shot_coming()
                 && !self.judge.coming(view);
             let threat = if recovering { None } else { view.threat() };
-            let throw_threat = ctx.throws
+            // Keep the initial throw-tech window, but do not spend two
+            // seconds guarding only because a quiet opponent stays close.
+            // The opponent is still read through the reaction delay; a
+            // moving foe, live attack, locked guard or held bait keeps it.
+            let quiet_sf4 = self.stronger(ctx) && ctx.family == Some(crate::era::EraFamily::Sf4)
+                && !ctx.own_blockstun && step >= self.bait_until && held >= 8
+                && view.foe.free() && !view.foe.jumping() && self.foe_settled(view);
+            let throw_threat = ctx.throws && !quiet_sf4
                 && !view.foe.reacting()
                 && (view.dist() <= 48
                     || (view.foe.move_id == 2
@@ -4141,6 +4165,92 @@ mod tests {
         assert!(!era_ready(game::EraAct::Enhanced, &footsies) && !era_ready(game::EraAct::Overhead, &footsies));
         assert!(!plans_taken(&footsies, 270, 300, Situation::NeutralClose, 96).contains(&ex));
         assert!(!plans_taken(&footsies, 270, 300, Situation::ItWasBlocked, 96).contains(&overhead));
+    }
+
+    fn sf4_ctx(level: Level, control: EraControl) -> Context {
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick};
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ryu);
+        state.style = StylePick::for_revision(Revision::Usf4, Loadout::Ultra1);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.super_meter = 96;
+        let mut ctx = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
+        ctx.stronger = true;
+        ctx.for_stronger()
+    }
+
+    #[test]
+    fn sf4_a_reach_that_cannot_move_goes_on_to_its_poke_without_waiting_ninety_frames() {
+        let ctx = sf4_ctx(Level::VeryHard, EraControl { free: true, ..EraControl::default() });
+        let plan = game::plans(ctx.kit.fighter, ctx.family).iter().position(|plan| {
+            plan.situation == Situation::NeutralFar && matches!(plan.steps[0].act, game::Act::Reach { .. })
+        }).unwrap();
+        for moving in [false, true] {
+            let mut cpu = FairCpu::seeded(1);
+            for f in 1..100 {
+                let mut v = percept(f, body(340));
+                v.me.move_id = 2;
+                v.me.state = 0x92;
+                if moving && f >= 94 { v.me.x = 300 - (99 - f) as i16 * 2; }
+                cpu.observe(v);
+            }
+            cpu.plan = Plan::of(PlanKind::Walk, &[RIGHT; 8]);
+            cpu.plan.at = cpu.plan.len;
+            cpu.reach[0][5] = 8;
+            cpu.judged.situation = Situation::NeutralFar;
+            cpu.game = Some(game::Running { plan: plan as u8, step: 0, acted: true, pressed: 90, began: 80, hit: false });
+            assert_eq!(cpu.sf4_walk_stalled(100, 90, &ctx), !moving);
+            assert!(!cpu.sf4_walk_stalled(100, 96, &ctx), "the initial walking frames are kept");
+            let mut locked = ctx;
+            locked.own_blockstun = true;
+            assert!(!cpu.sf4_walk_stalled(100, 90, &locked), "locked guard is not a failed movement decision");
+            let mut old = ctx;
+            old.stronger = false;
+            assert!(!cpu.sf4_walk_stalled(100, 90, &old));
+            assert!(!cpu.sf4_walk_stalled(100, 90, &sf3_ctx(Level::VeryHard)), "previous rollouts keep their behavior");
+            let next = cpu.follow_game_plan(100, percept(100, body(340)), &ctx).unwrap();
+            assert_eq!(next.kind == PlanKind::Walk, moving);
+            if !moving {
+                assert!(next.pads[..usize::from(next.len)].iter().any(|pad| pad & BUTTONS != 0), "the stalled reach actually goes on to press its normal");
+            }
+        }
+    }
+
+    #[test]
+    fn sf4_releases_a_quiet_close_guard_but_keeps_a_threat_locked_guard_and_bait() {
+        let free = EraControl { free: true, ..EraControl::default() };
+        let ctx = sf4_ctx(Level::VeryHard, free);
+        assert!(ctx.throws);
+        for what in ["quiet", "attack", "blockstun", "bait", "old", "sf3"] {
+            let mut ctx = if what == "sf3" { sf3_ctx(Level::VeryHard) } else { ctx };
+            if what == "old" { ctx.stronger = false; }
+            if what == "blockstun" { ctx.own_blockstun = true; }
+            let mut cpu = FairCpu::seeded(1);
+            for f in 1..41 { cpu.observe(percept(f, body(340))); }
+            cpu.plan = Plan::guard(true, 0);
+            if what == "bait" { cpu.bait_until = 100; }
+            let mut ended = None;
+            for f in 41..65 {
+                let mut foe = body(340);
+                if what == "attack" {
+                    foe.move_id = 0x10;
+                    foe.state = 0xc2;
+                    foe.active = true;
+                    foe.front = 300;
+                }
+                let v = percept(f, foe);
+                if what == "attack" { assert!(v.threat().is_some()); }
+                cpu.next_pad(f, v, &ctx);
+                cpu.observe(v);
+                if !matches!(cpu.plan.kind, PlanKind::Guard { .. }) { ended = Some(f - 40); break; }
+            }
+            if what == "quiet" {
+                assert!(ended.is_some_and(|held| (8..=15).contains(&held)), "keep the initial throw-tech window, then act: {ended:?}");
+            } else {
+                assert_eq!(ended, None, "{what}: preserve its guard");
+            }
+        }
     }
 
     #[test]

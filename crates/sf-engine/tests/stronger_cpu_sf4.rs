@@ -147,14 +147,27 @@ fn guarding_pad(_: u32, v: &Percept) -> (u8, u8) {
     if (v.me.x - v.foe.x).abs() > 38 { (toward(v), 0) } else { (D | away(v), 0) }
 }
 
-/// Offer a standing, settled opponent at the route plan's proven spacing.
+/// Offer a standing opponent at the route plan's proven spacing, with an
+/// occasional heavy-punch whiff that creates a genuine response opening.
 /// Some fighters have only one meterless route and it needs this stance;
 /// the moving/crouching sparring partner need not offer that opening.
-fn route_partner(_: u32, v: &Percept) -> (u8, u8) {
+fn route_partner(i: u32, v: &Percept) -> (u8, u8) {
     let gap = if v.me.x < v.foe.x { v.foe.hurt.0 - v.me.x } else { v.me.x - v.foe.hurt.1 };
     if gap > 60 { (toward(v), 0) }
     else if gap < 52 { (away(v), 0) }
+    else if i % 80 < 3 { (0, HP) }
     else { (0, 0) }
+}
+
+/// Lee's far charge needs both distance and room behind him. One back
+/// jump, followed by a distant whiff, offers that situation without
+/// holding jump through repeated leaps or altering the CPU's own pad.
+fn far_charge_partner(i: u32, v: &Percept) -> (u8, u8) {
+    match i % 300 {
+        0..=2 => (U | away(v), 0),
+        50..=52 => (0, HP),
+        _ => (0, 0),
+    }
 }
 
 /// Block the normal that offers the ItWasBlocked Focus plan, then let go
@@ -487,7 +500,8 @@ fn sf4_fighters_use_real_command_throws_teleports_charges_and_stances() {
         (Gen, &[(0x1f, OwnStep::Era(EraAct::Stance)), (0x20, charge)]),
     ];
     for (fighter, tools) in cases {
-        let Some(s) = watch(Style::ultra(fighter, Loadout::Ultra1), true, 30_000, None, false, sparring_pad) else { return };
+        let partner: fn(u32, &Percept) -> (u8, u8) = if fighter == Lee { far_charge_partner } else { sparring_pad };
+        let Some(s) = watch(Style::ultra(fighter, Loadout::Ultra1), true, 30_000, None, false, partner) else { return };
         for &(id, on) in tools {
             let starts = s.began_on_step.iter().filter(|&&(move_id, step)| move_id == id && step == on).count();
             eprintln!("{fighter:?} {on:?}: {starts} move starts");
