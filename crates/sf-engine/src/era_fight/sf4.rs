@@ -435,7 +435,7 @@ impl EraFighterState {
             && self.alpha_move_active(slot) && self.sf4.active_ex == Some(slot)
     }
 
-    pub(super) fn sf4_super_cost(&self) -> u8 {
+    pub(crate) fn sf4_super_cost(&self) -> u8 {
         if self.unified_gauge { 3 * STOCK_AT } else { 4 * STOCK_AT }
     }
 
@@ -445,7 +445,7 @@ impl EraFighterState {
         })
     }
 
-    pub(super) fn sf4_focus_cancel_cost(&self) -> u8 {
+    pub(crate) fn sf4_focus_cancel_cost(&self) -> u8 {
         if self.unified_gauge { STOCK_AT } else { 2 * STOCK_AT }
     }
 
@@ -498,7 +498,7 @@ impl EraFighterState {
         }
     }
 
-    pub(super) fn sf4_ultra_ready(&self) -> bool {
+    pub(crate) fn sf4_ultra_ready(&self) -> bool {
         self.sf4.revenge >= self.sf4_ultra_cost()
     }
 

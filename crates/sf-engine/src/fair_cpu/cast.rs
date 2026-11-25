@@ -12,7 +12,7 @@
 //! as it is with the switch off. The stronger play reads them from the
 //! tables here, by fighter and by the move's name as the move list shows it,
 //! for the SF2 era style (SC15), the SFZ era style (SC16, `#208`) and the
-//! SF3 era style (SC17, `#209`); a
+//! SF3 era style (SC17, `#209`) and SF4 era style (SC18, `#210`); a
 //! fighter or style with no table keeps the old reading.
 //!
 //! The kit is read wherever an era style's context is built (a few name
@@ -239,12 +239,48 @@ const SF3: &[(TournamentFighter, &[(&str, Use)])] = &[
     ),
 ];
 
+/// The SF4 style's kits (SC18, `#210`). The what-if fighters keep the
+/// same tools as in SF3; the native Gen kit spells its names differently,
+/// and Sagat's low shot is `LOW TIGER SHOT`. His Angry Scar and Eagle's
+/// counter need their own setup, so neither is a blind advancing attack.
+const SF4: &[(TournamentFighter, &[(&str, Use)])] = &[
+    (TournamentFighter::Retsu, SF2[0].1),
+    (TournamentFighter::Geki, SF2[1].1),
+    (TournamentFighter::Joe, SF2[2].1),
+    (TournamentFighter::Mike, SF2[3].1),
+    (TournamentFighter::Lee, SF2[4].1),
+    (TournamentFighter::Birdie, SF2[5].1),
+    (TournamentFighter::Adon, SF2[6].1),
+    (TournamentFighter::Eagle, SF3[8].1),
+    (
+        TournamentFighter::Gen,
+        &[
+            ("GEKIRO", R(Role::AntiAir)),
+            ("HYAKURENKO", R(Role::Advance)),
+            ("JASEN", R(Role::Advance)),
+            ("OGA", R(Role::Advance)),
+            ("JASEN", T(Tool::Charge)),
+        ],
+    ),
+    (
+        TournamentFighter::Sagat,
+        &[
+            ("TIGER SHOT", R(Role::Projectile)),
+            ("LOW TIGER SHOT", R(Role::Projectile)),
+            ("TIGER UPPERCUT", R(Role::AntiAir)),
+            ("TIGER KNEE CRUSH", R(Role::Advance)),
+            ("ANGRY SCAR", Skip),
+        ],
+    ),
+];
+
 /// The tables of `family`, if the stronger play has any.
 fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'static str, Use)])] {
     match family {
         EraFamily::Sf2 => SF2,
         EraFamily::SfZ => SFZ,
         EraFamily::Sf3 => SF3,
+        EraFamily::Sf4 => SF4,
         _ => &[],
     }
 }
@@ -347,5 +383,35 @@ mod tests {
         }
         assert!(stronger_kit(TournamentFighter::Ryu, EraFamily::Sf3, &[]).is_none(), "Ryu keeps the canon reading");
         assert!(stronger_kit(TournamentFighter::Ken, EraFamily::Sf3, &[]).is_none(), "Ken keeps the canon reading");
+    }
+
+    #[test]
+    fn sf4_tools_and_roles_use_the_native_or_what_if_kit_names() {
+        for fighter in covered(EraFamily::Sf4) {
+            let mut state = EraFighterState::default();
+            state.fighter = Some(fighter);
+            state.style = StylePick::for_revision(Revision::Usf4, Loadout::Ultra1);
+            state.max_sub_hp = 960;
+            state.set_what_if(!crate::era::families(fighter).contains(&EraFamily::Sf4));
+            state.set_gauge_mode(GaugeMode::EraDefault);
+            let moves = live_move_list(fighter, MatchConfig::definitive().preset, true, &state);
+            let (kit, tools) = stronger_kit(fighter, EraFamily::Sf4, &moves).expect("SF4 has a kit table");
+            assert_eq!(tools.command_throw.is_some(), matches!(fighter, TournamentFighter::Retsu | TournamentFighter::Geki | TournamentFighter::Birdie), "{fighter:?} command throw");
+            assert_eq!(tools.teleport.is_some(), fighter == TournamentFighter::Geki, "{fighter:?} teleport");
+            assert_eq!(tools.charge.is_some(), matches!(fighter, TournamentFighter::Lee | TournamentFighter::Birdie), "{fighter:?} charge in its starting stance");
+            for role in [Role::Projectile, Role::AntiAir, Role::Advance] {
+                for entry in kit.by_role(role).into_iter().flatten() {
+                    assert!(moves.contains(&entry), "{fighter:?} {entry:?}");
+                    assert!(!matches!(entry.name, "ANGRY SCAR" | "ST ANDREWS GREEN"), "no setup move as a blind advance");
+                }
+            }
+            if fighter == TournamentFighter::Sagat {
+                assert_eq!(kit.projectile_alt.unwrap().name, "LOW TIGER SHOT");
+            }
+            if fighter == TournamentFighter::Gen {
+                assert_eq!(kit.anti_air.unwrap().name, "GEKIRO");
+                assert_eq!(kit.advance.unwrap().name, "HYAKURENKO");
+            }
+        }
     }
 }

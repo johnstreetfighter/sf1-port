@@ -13,6 +13,53 @@ const RUSH_COST: u8 = STOCK_AT + 2;
 /// as far as one carries him in (SC8, `#200`).
 const SHOT_ANSWERED: i16 = 120;
 const RUSH_ANSWERED: i16 = 160;
+/// One Super and the two selectable Ultras in a live SF4 kit. An expanded
+/// kit that exceeds this bound leaves finisher routes out conservatively.
+const SF4_ROUTE_FINISHERS: usize = 3;
+
+/// A route step's actual directions up to a button edge, with held frames
+/// collapsed. Route pads are already relative to a fighter facing right.
+fn sf4_route_directions(step: &crate::route_book::Step, at: usize) -> Option<([u8; 12], usize)> {
+    let mut directions = [0; 12];
+    let mut len = 0;
+    for &(direction, _) in step.pads.get(..=at)? {
+        if len != 0 && directions[len - 1] == direction {
+            continue;
+        }
+        if len == directions.len() {
+            return None;
+        }
+        directions[len] = direction;
+        len += 1;
+    }
+    Some((directions, len))
+}
+
+/// Match the written pad motion, not its descriptive step name. Charged
+/// or airborne finishers need context this bounded check cannot prove and
+/// are left out. A previous button in the same step is ambiguous too.
+fn sf4_route_input(step: &crate::route_book::Step, at: usize, entry: MoveEntry, directions: &[u8]) -> bool {
+    let buttons = step.pads[at].1;
+    if !entry.input.button.held(buttons) {
+        return false;
+    }
+    if entry.input.motion.is_empty() {
+        return at == 0;
+    }
+    if step.pads[..at].iter().any(|&(_, held)| held != 0)
+        || entry.input.motion.iter().any(|direction| direction.is_charge() || matches!(*direction, Dir::Jump | Dir::Up | Dir::UpForward | Dir::UpBack))
+        || directions.len() != entry.input.motion.len()
+    {
+        return false;
+    }
+    let ultra = matches!(entry.input.button, ButtonClass::TriplePunch | ButtonClass::TripleKick);
+    // SF4's ordinary Super does not read a triple chord as a punch/kick:
+    // that chord belongs to its Ultra, even though Punch::held accepts it.
+    if !ultra && (if entry.input.button.kick() { ButtonClass::TripleKick } else { ButtonClass::TriplePunch }).held(buttons) {
+        return false;
+    }
+    entry.input.motion.iter().zip(directions).all(|(expected, actual)| expected.bits() == *actual)
+}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct EraControl {
@@ -36,6 +83,21 @@ pub(super) struct Tactics {
     /// SF3's EX move at its real cost. The old play keeps its two-stock
     /// threshold; only the stronger play substitutes this candidate.
     sf3_enhanced: Option<MoveEntry>,
+    /// The stronger SF4 play spends one EX stock, and keeps Super and
+    /// Ultra as separate choices rather than whichever appears last.
+    sf4_enhanced: Option<MoveEntry>,
+    sf4_super: Option<MoveEntry>,
+    sf4_ultra: Option<MoveEntry>,
+    /// Live inputs are retained even when their gauges are empty, so a
+    /// route cannot disguise an unavailable Ultra as a zero-cost recipe.
+    sf4_route_finishers: [Option<MoveEntry>; SF4_ROUTE_FINISHERS],
+    sf4_route_finishers_complete: bool,
+    sf4_route_stance: Option<MoveEntry>,
+    sf4_route_gauges: bool,
+    sf4_route_super_cost: u16,
+    /// Native SF4 Gen's stance name differs from his what-if kits. The
+    /// old play's `stance` stays unchanged until `spending_safely`.
+    sf4_stance: Option<MoveEntry>,
     guard_cancel: Option<MoveEntry>,
     evade: Option<MoveEntry>,
     armor: Option<MoveEntry>,
@@ -174,6 +236,28 @@ impl Tactics {
         let sf3_enhanced = (enabled && family == Sf3 && ex >= era.sf3_ex_cost())
             .then(enhanced_move)
             .flatten();
+        let sf4_enhanced = (enabled && family == Sf4 && ex >= STOCK_AT)
+            .then(enhanced_move)
+            .flatten();
+        let sf4_finish = |ultra: bool| {
+            (enabled && family == Sf4 && level.spends_meter())
+                .then(|| {
+                    moves.iter().copied().find(|m| {
+                        let chord = matches!(m.input.button, ButtonClass::TriplePunch | ButtonClass::TripleKick);
+                        let affordable = if ultra {
+                            if unified { ex >= 3 * STOCK_AT } else { era.sf4_ultra_ready() }
+                        } else {
+                            ex >= era.sf4_super_cost()
+                        };
+                        m.kind == MoveKind::Super
+                            && m.recognizer == Recognizer::FamilyMove
+                            && m.input.motion.first() != Some(&Dir::Jump)
+                            && chord == ultra
+                            && affordable
+                    })
+                })
+                .flatten()
+        };
         let guard_cancel = if enabled {
             match family {
                 SfZ if era.alpha_counter_enabled() && ex >= STOCK_AT => moves
@@ -229,6 +313,17 @@ impl Tactics {
         } else {
             None
         };
+        let mut sf4_route_finishers = [None; SF4_ROUTE_FINISHERS];
+        let mut sf4_route_finishers_complete = true;
+        if family == Sf4 {
+            for (index, entry) in moves.iter().copied().filter(|entry| entry.kind == MoveKind::Super && entry.recognizer == Recognizer::FamilyMove).enumerate() {
+                if let Some(slot) = sf4_route_finishers.get_mut(index) {
+                    *slot = Some(entry);
+                } else {
+                    sf4_route_finishers_complete = false;
+                }
+            }
+        }
         Self {
             family,
             control,
@@ -241,6 +336,19 @@ impl Tactics {
             super_move,
             enhanced,
             sf3_enhanced,
+            sf4_enhanced,
+            sf4_super: sf4_finish(false),
+            sf4_ultra: sf4_finish(true),
+            sf4_route_finishers,
+            sf4_route_finishers_complete,
+            sf4_route_stance: (family == Sf4).then(|| moves.iter().copied().find(|entry| {
+                entry.kind == MoveKind::System && entry.recognizer == Recognizer::FamilyMove
+                    && entry.input.motion.is_empty()
+                    && matches!(entry.input.button, ButtonClass::TriplePunch | ButtonClass::TripleKick)
+            })).flatten(),
+            sf4_route_gauges: enabled,
+            sf4_route_super_cost: if family == Sf4 { u16::from(era.sf4_super_cost()) } else { 0 },
+            sf4_stance: (family == Sf4).then(|| named("CRANE STANCE")).flatten(),
             guard_cancel,
             evade,
             armor,
@@ -294,6 +402,10 @@ impl Tactics {
         // The stronger play keeps the level's own share of the gauge
         // (SC11, `#203`).
         self.reserve = level.drive_kept();
+        if self.family == EraFamily::Sf4 {
+            self.stance = self.sf4_stance;
+            self.enhanced = self.sf4_enhanced;
+        }
         // Nor does it switch Gen back from the Crane to the Mantis: back
         // and forth at range only stood him still (SC16, `#208`).
         self.stance = self.stance.filter(|_| self.can_change_stance());
@@ -363,15 +475,144 @@ impl Tactics {
         Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 1, true)))
     }
 
+    /// A free grounded SF4 fighter can start its ordinary Focus Attack.
+    pub(super) fn sf4_focus_ready(self) -> bool {
+        self.family == EraFamily::Sf4 && self.armor.is_some() && self.control.free && !self.control.airborne
+    }
+
+    /// Hold the real medium-pair chord long enough for level two, then
+    /// release. The game plan chooses the spacing and delayed event.
+    pub(super) fn sf4_focus(self, _view: Percept) -> Option<Plan> {
+        if !self.sf4_focus_ready() { return None }
+        let pair = button(1) | button(4);
+        let mut pads = vec![0];
+        pads.extend([pair; 22]);
+        pads.push(0);
+        Some(Plan::of(PlanKind::Act, &pads))
+    }
+
+    /// FADC spends from the fighter's own meter during its own special.
+    /// The caller decides from a delayed hit or guard whether to go in
+    /// for a follow-up or out to make the special safer.
+    pub(super) fn sf4_fadc_ready(self) -> bool {
+        self.family == EraFamily::Sf4 && self.fadc && self.armor.is_some() && self.control.special && !self.control.airborne
+    }
+
+    pub(super) fn sf4_fadc(self, view: Percept, forward: bool) -> Option<Plan> {
+        if !self.sf4_fadc_ready() { return None }
+        let toward = if view.me.facing_left { LEFT } else { RIGHT };
+        let direction = if forward { toward } else { LEFT + RIGHT - toward };
+        let focus = button(1) | button(4);
+        Some(Plan::of(PlanKind::Act, &[0, focus, focus | direction, focus, focus | direction, direction, 0]))
+    }
+
+    pub(super) fn sf4_ex_ready(self) -> bool {
+        self.family == EraFamily::Sf4 && self.sf4_enhanced.is_some() && self.control.free && !self.control.airborne
+    }
+
+    pub(super) fn sf4_ex(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf4_enhanced.filter(|_| self.sf4_ex_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 1, true)))
+    }
+
+    pub(super) fn sf4_super_ready(self) -> bool {
+        self.family == EraFamily::Sf4 && self.sf4_super.is_some() && (self.control.free || self.control.cancel) && !self.control.airborne
+    }
+
+    pub(super) fn sf4_super(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf4_super.filter(|_| self.sf4_super_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 2, true)))
+    }
+
+    pub(super) fn sf4_ultra_ready(self) -> bool {
+        self.family == EraFamily::Sf4 && self.sf4_ultra.is_some() && (self.control.free || self.control.cancel) && !self.control.airborne
+    }
+
+    pub(super) fn sf4_ultra(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf4_ultra.filter(|_| self.sf4_ultra_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 2, true)))
+    }
+
+    /// Eligibility of SF4 finisher recipes for the stronger play only.
+    /// Route books measure Super/Drive, not Revenge: an Ultra can report
+    /// zero in both columns. Match real pad commands against the live kit
+    /// before trusting that metadata. No other era is changed here.
+    pub(super) fn sf4_route_ready(self, route: &crate::route_book::Route, level: Level, super_meter: u16) -> bool {
+        if self.family != EraFamily::Sf4 {
+            return true;
+        }
+        if (route.super_spent != 0 || route.drive_spent != 0) && (!level.spends_meter() || !self.sf4_route_gauges) {
+            return false;
+        }
+        let mut supers = 0u16;
+        let mut ultras = 0u16;
+        let mut changed_stance = false;
+        for step in &route.steps {
+            let mut previous = 0;
+            for (at, &(_, buttons)) in step.pads.iter().enumerate() {
+                let fresh = buttons & !previous;
+                previous = buttons;
+                if fresh == 0 {
+                    continue;
+                }
+                let Some((directions, len)) = sf4_route_directions(step, at) else { return false };
+                let directions = &directions[..len];
+                if self.sf4_route_stance.is_some_and(|entry| sf4_route_input(step, at, entry, directions)) {
+                    changed_stance = true;
+                }
+                let mut matching = self.sf4_route_finishers.iter().flatten().copied().filter(|&entry| sf4_route_input(step, at, entry, directions));
+                let matched = matching.next();
+                // Double quarter/half circles, or the back-forward-back-
+                // forward charge recipe, must not turn into an unpriced
+                // finisher merely because that input is absent in this
+                // stance/loadout. Other ambiguous long motions stay out.
+                let charge_super = step.hold & crate::route_book::LEFT != 0
+                    && directions == [crate::route_book::RIGHT, crate::route_book::LEFT, crate::route_book::RIGHT];
+                let finisher = matched.is_some() || len >= 6 || charge_super;
+                if !finisher {
+                    continue;
+                }
+                if !level.spends_meter() || !self.sf4_route_gauges || !self.sf4_route_finishers_complete || matching.next().is_some() {
+                    return false;
+                }
+                let Some(entry) = matched else { return false };
+                if matches!(entry.input.button, ButtonClass::TriplePunch | ButtonClass::TripleKick) {
+                    if self.sf4_ultra.is_none() { return false }
+                    let Some(next) = ultras.checked_add(1) else { return false };
+                    ultras = next;
+                    if !self.unified && ultras > 1 { return false }
+                } else {
+                    if self.sf4_super.is_none() { return false }
+                    let Some(next) = supers.checked_add(1) else { return false };
+                    supers = next;
+                }
+            }
+        }
+        // The current kit describes one stance. Do not guess what a
+        // later finisher means after a stance command inside the recipe.
+        if changed_stance && (supers != 0 || ultras != 0) {
+            return false;
+        }
+        let Some(super_cost) = supers.checked_mul(self.sf4_route_super_cost) else { return false };
+        if route.super_spent < super_cost {
+            return false;
+        }
+        // Native Revenge is separate; Unified pays each Ultra from the
+        // same gauge as any EX/Super consumption recorded in the book.
+        let extra = if self.unified { ultras.checked_mul(u16::from(3 * STOCK_AT)) } else { Some(0) };
+        extra.and_then(|cost| route.super_spent.checked_add(cost)).is_some_and(|cost| cost <= super_meter)
+    }
+
     /// Its fighter can change stance from the Mantis to the Crane (Gen):
     /// the stronger play's game plans never switch him back (SC16, `#208`).
     pub(super) fn can_change_stance(self) -> bool {
-        self.stance.is_some_and(|entry| entry.name == "SWITCH TO CRANE")
+        self.stance.is_some_and(|entry| matches!(entry.name, "SWITCH TO CRANE" | "CRANE STANCE"))
+            || self.sf4_stance.is_some()
     }
 
     /// The pads of a change of stance, when its fighter is free to make one.
     pub(super) fn stance_change(self, view: Percept) -> Option<Plan> {
-        let entry = self.stance.filter(|_| self.control.free && self.can_change_stance())?;
+        let entry = self.stance.or(self.sf4_stance).filter(|_| self.control.free && self.can_change_stance())?;
         Some(self.pad(&entry, view, 1))
     }
 
@@ -432,6 +673,7 @@ impl Tactics {
         level: Level,
         view: Percept,
         before: Percept,
+        felt: Percept,
         stronger: bool,
         spend_super: bool,
     ) -> Option<Plan> {
@@ -471,11 +713,24 @@ impl Tactics {
             && (self.control.free || self.control.cancel)
             && rng.chance(level.quality())
         {
-            if let Some((entry, strength)) = self.super_move {
+            if stronger && self.family == EraFamily::Sf4 {
+                // Ultra spends Revenge independently of Super. A seen
+                // hit can earn either finisher; a wake-up keeps the Ultra
+                // for a confirm instead of throwing it into a guard.
+                if let Some(plan) = hit_confirm.then(|| self.sf4_ultra(felt)).flatten().or_else(|| self.sf4_super(felt)) {
+                    return Some(plan);
+                }
+            } else if let Some((entry, strength)) = self.super_move {
                 return Some(self.pad(&entry, view, strength));
             }
         }
-        if self.fadc
+        let guarded = view.foe.guarding() && !before.foe.guarding();
+        if stronger && self.sf4_fadc_ready() && level.spends_meter() && (hit_confirm || guarded || threatened) && rng.chance(level.guard() / 2) {
+            if let Some(plan) = self.sf4_fadc(felt, hit_confirm) {
+                return Some(plan);
+            }
+        }
+        if !stronger && self.fadc
             && self.control.special
             && (hit_confirm || threatened)
             && rng.chance(level.guard() / 2)
@@ -594,6 +849,21 @@ mod tests {
         state
     }
 
+    /// Real search pad scripts, deliberately carrying misleading labels:
+    /// route eligibility must inspect their commands rather than names.
+    fn sf4_recipe(actions: &[&str], super_spent: u16) -> crate::route_book::Route {
+        use crate::era::Revision;
+        let mut route = crate::route_book::book(Ryu, Revision::Usf4, Loadout::Ultra1).unwrap().routes[0].clone();
+        let available = crate::route_book::ground_actions();
+        route.steps = actions.iter().map(|name| {
+            let action = available.iter().find(|action| action.name == *name).unwrap();
+            crate::route_book::Step { name: "meterless normal".into(), wait: 0, window: (0, 0), hold: action.hold, pads: action.pads.clone() }
+        }).collect();
+        route.super_spent = super_spent;
+        route.drive_spent = 0;
+        route
+    }
+
     #[test]
     fn low_difficulty_keeps_a_drive_reserve_and_obeys_raw_rush_setting() {
         use crate::era::Revision;
@@ -662,7 +932,7 @@ mod tests {
     /// Every answer the stronger play gives over a spread of random seeds.
     fn stronger_answers(tactics: Tactics, view: Percept, before: Percept) -> Vec<Vec<u16>> {
         (0..64u64)
-            .filter_map(|seed| tactics.react(&mut Rng(seed * 2 + 1), Level::VeryHard, view, before, true, true))
+            .filter_map(|seed| tactics.react(&mut Rng(seed * 2 + 1), Level::VeryHard, view, before, view, true, true))
             .map(|plan| plan.pads[..usize::from(plan.len)].to_vec())
             .collect()
     }
@@ -929,6 +1199,222 @@ mod tests {
     }
 
     #[test]
+    fn sf4_plans_keep_super_and_ultra_separate_and_use_their_own_resources() {
+        use crate::era::{loadouts, Revision};
+        let free = EraControl { free: true, ..EraControl::default() };
+        for revision in [Revision::Sf4, Revision::Ssf4, Revision::Ae2012, Revision::Usf4] {
+            for loadout in loadouts(revision) {
+                for mode in [GaugeMode::EraDefault, GaugeMode::Unified] {
+                    let mut cfg = MatchConfig::definitive();
+                    cfg.gauge_mode = mode;
+                    let mut state = fighter(revision, loadout, 0);
+                    state.set_gauge_mode(mode);
+                    let moves = state.sf4_active_moves();
+                    let super_cost = state.sf4_super_cost();
+                    for meter in [super_cost - 1, super_cost] {
+                        state.super_meter = meter;
+                        let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                        assert_eq!(tactics.sf4_super_ready(), meter == super_cost, "{revision:?} {loadout:?} {mode:?}");
+                        assert_eq!(tactics.sf4_super(Percept::default()).is_some(), meter == super_cost);
+                        assert_eq!(tactics.sf4_ultra_ready(), mode == GaugeMode::Unified && meter == super_cost, "native Super meter cannot buy Revenge");
+                    }
+                    if mode == GaugeMode::EraDefault {
+                        state.super_meter = 0;
+                        for revenge in [sf4::REVENGE_MAX / 2 - 1, sf4::REVENGE_MAX / 2] {
+                            state.set_sf4_practice_revenge(Some(revenge));
+                            let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                            assert!(!tactics.sf4_super_ready(), "Revenge cannot buy a Super");
+                            assert_eq!(tactics.sf4_ultra_ready(), revenge == sf4::REVENGE_MAX / 2);
+                            assert_eq!(tactics.sf4_ultra(Percept::default()).is_some(), revenge == sf4::REVENGE_MAX / 2);
+                        }
+                    }
+                    let easy = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+                    assert!(!easy.sf4_super_ready() && !easy.sf4_ultra_ready(), "Easy keeps its meter");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sf4_focus_and_fadc_obey_the_controls_cost_and_felt_facing() {
+        use crate::era::Revision;
+        let free = EraControl { free: true, ..EraControl::default() };
+        let special = EraControl { special: true, ..EraControl::default() };
+        for mode in [GaugeMode::EraDefault, GaugeMode::Unified] {
+            let mut cfg = MatchConfig::definitive();
+            cfg.gauge_mode = mode;
+            let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 0);
+            state.set_gauge_mode(mode);
+            let moves = state.sf4_active_moves();
+            let cost = state.sf4_focus_cancel_cost();
+            for meter in [cost - 1, cost] {
+                state.super_meter = meter;
+                let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, special);
+                assert_eq!(tactics.sf4_fadc_ready(), meter == cost);
+                for facing_left in [false, true] {
+                    let mut view = Percept::default();
+                    view.me.facing_left = facing_left;
+                    view.me.x = 200;
+                    view.foe.x = if facing_left { 250 } else { 150 };
+                    let toward = if facing_left { LEFT } else { RIGHT };
+                    for forward in [false, true] {
+                        let plan = tactics.sf4_fadc(view, forward);
+                        assert_eq!(plan.is_some(), meter == cost);
+                        if let Some(plan) = plan {
+                            let pads = &plan.pads[..usize::from(plan.len)];
+                            let direction = if forward { toward } else { RIGHT + LEFT - toward };
+                            assert_eq!(pads[2] & 0xf, direction);
+                            assert_eq!(pads[3] & 0xf, 0);
+                            assert_eq!(pads[4] & 0xf, direction);
+                            assert!(pads[1..=4].iter().all(|pad| pad & (button(1) | button(4)) == button(1) | button(4)));
+                        }
+                    }
+                }
+            }
+            let ready = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+            assert!(!ready.sf4_fadc_ready(), "a free fighter cannot FADC nothing");
+            let plan = ready.sf4_focus(Percept::default()).expect("a free fighter can Focus without a meter cost");
+            let pads = &plan.pads[..usize::from(plan.len)];
+            assert_eq!(pads[0], 0);
+            assert_eq!(pads.last(), Some(&0));
+            assert_eq!(pads.iter().filter(|&&pad| pad == button(1) | button(4)).count(), 22, "charge past level two before releasing");
+            for control in [EraControl::default(), EraControl { airborne: true, ..free }] {
+                let busy = Tactics::of(&state, &moves, cfg, Level::VeryHard, control);
+                assert!(!busy.sf4_focus_ready() && busy.sf4_focus(Percept::default()).is_none());
+            }
+            let airborne = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl { airborne: true, ..special });
+            assert!(!airborne.sf4_fadc_ready(), "no airborne FADC");
+        }
+    }
+
+    #[test]
+    fn sf4_stronger_ex_cost_stance_and_no_gauge_gates_preserve_the_old_play() {
+        use crate::era::Revision;
+        let mut cfg = MatchConfig::definitive();
+        let free = EraControl { free: true, ..EraControl::default() };
+        let mut state = fighter(Revision::Usf4, Loadout::Ultra1, STOCK_AT);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        let moves = state.sf4_active_moves();
+        let old = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+        assert!(old.enhanced.is_none(), "old EX choices keep their two-stock gate");
+        assert!(old.spending_safely(Level::VeryHard).enhanced.is_some(), "the stronger play can spend one EX stock");
+        assert!(old.sf4_ex_ready() && old.sf4_ex(Percept::default()).is_some());
+        state.super_meter -= 1;
+        let short = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+        assert!(short.spending_safely(Level::VeryHard).enhanced.is_none());
+        assert!(!short.sf4_ex_ready() && short.sf4_ex(Percept::default()).is_none());
+
+        state.fighter = Some(crate::roster::TournamentFighter::Gen);
+        let gen = Tactics::of(&state, &state.sf4_active_moves(), cfg, Level::VeryHard, free);
+        assert!(gen.stance.is_none(), "native Gen's old reading is unchanged");
+        assert!(gen.can_change_stance());
+        assert_eq!(gen.spending_safely(Level::VeryHard).stance.unwrap().name, "CRANE STANCE");
+        let change = gen.stance_change(Percept::default()).expect("a plan can enter the Crane");
+        assert!(change.pads[..usize::from(change.len)].contains(&(button(3) | button(4) | button(5))));
+
+        state.set_gauge_mode(GaugeMode::NoGauges);
+        cfg.gauge_mode = GaugeMode::NoGauges;
+        let disabled = Tactics::of(&state, &state.sf4_active_moves(), cfg, Level::VeryHard, free);
+        assert!(!disabled.sf4_focus_ready() && !disabled.sf4_fadc_ready());
+        assert!(!disabled.sf4_super_ready() && !disabled.sf4_ultra_ready());
+        assert!(!disabled.sf4_ex_ready());
+        assert!(disabled.spending_safely(Level::VeryHard).enhanced.is_none());
+    }
+
+    #[test]
+    fn sf4_zero_meter_route_metadata_cannot_bypass_revenge_or_easys_meter_rule() {
+        use crate::era::Revision;
+        let cfg = MatchConfig::definitive();
+        let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 0);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        let recipe = sf4_recipe(&["MP", "236236+PPP"], 0);
+        let moves = state.sf4_active_moves();
+        let empty = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(!empty.sf4_route_ready(&recipe, Level::VeryHard, 0), "zero recorded Super/Drive does not make an Ultra free");
+        state.set_sf4_practice_revenge(Some(sf4::REVENGE_MAX / 2));
+        let ready = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(ready.sf4_route_ready(&recipe, Level::VeryHard, 0), "a later route step need not be executable on this frame");
+        assert!(!ready.sf4_route_ready(&recipe, Level::Easy, 0), "Easy must not spend unrecorded Revenge");
+        assert!(!ready.sf4_route_ready(&sf4_recipe(&["236236+PPP", "236236+PPP"], 0), Level::VeryHard, 0), "native Revenge buys at most one Ultra");
+
+        let mut no_gauges = cfg;
+        no_gauges.gauge_mode = GaugeMode::NoGauges;
+        state.set_gauge_mode(GaugeMode::NoGauges);
+        let disabled = Tactics::of(&state, &state.sf4_active_moves(), no_gauges, Level::VeryHard, EraControl::default());
+        assert!(!disabled.sf4_route_ready(&recipe, Level::VeryHard, 0));
+        assert!(disabled.sf4_route_ready(&sf4_recipe(&["MP", "LK"], 0), Level::Easy, 0), "plain routes remain available");
+
+        let other = Tactics::of(&fighter(Revision::Sf6, Loadout::Standard, 0), &[], cfg, Level::Easy, EraControl::default());
+        assert!(other.sf4_route_ready(&recipe, Level::Easy, 0), "other families are outside this gate");
+    }
+
+    #[test]
+    fn sf4_route_gate_adds_unified_ultra_cost_to_the_recorded_ex_spending() {
+        use crate::era::Revision;
+        let mut cfg = MatchConfig::definitive();
+        cfg.gauge_mode = GaugeMode::Unified;
+        let recipe = sf4_recipe(&["236+PP", "236236+PPP"], u16::from(STOCK_AT));
+        let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 3 * STOCK_AT);
+        state.set_gauge_mode(GaugeMode::Unified);
+        state.super_meter = 3 * STOCK_AT;
+        let moves = state.sf4_active_moves();
+        let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(tactics.sf4_ultra.is_some(), "an Ultra alone is affordable");
+        assert!(!tactics.sf4_route_ready(&recipe, Level::VeryHard, u16::from(3 * STOCK_AT)), "EX first would leave too little for the Ultra");
+        assert!(!tactics.sf4_route_ready(&recipe, Level::VeryHard, u16::from(4 * STOCK_AT) - 1));
+        assert!(tactics.sf4_route_ready(&recipe, Level::VeryHard, u16::from(4 * STOCK_AT)), "the budget includes both costs");
+        assert!(!tactics.sf4_route_ready(&recipe, Level::Easy, u16::from(4 * STOCK_AT)));
+    }
+
+    #[test]
+    fn sf4_route_finishers_match_the_live_gen_stance_and_leave_naked_stance_inputs_free() {
+        use crate::era::Revision;
+        let cfg = MatchConfig::definitive();
+        let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 0);
+        state.fighter = Some(crate::roster::TournamentFighter::Gen);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.set_sf4_practice_revenge(Some(sf4::REVENGE_MAX / 2));
+        let mantis_moves = state.sf4_active_moves();
+        let mantis = Tactics::of(&state, &mantis_moves, cfg, Level::VeryHard, EraControl::default());
+        let mantis_ultra = sf4_recipe(&["236236+PPP"], 0);
+        let crane_ultra = sf4_recipe(&["236236+KKK"], 0);
+        assert!(mantis.sf4_route_ready(&mantis_ultra, Level::VeryHard, 0));
+        assert!(!mantis.sf4_route_ready(&crane_ultra, Level::VeryHard, 0), "the Mantis cannot borrow the Crane's command");
+
+        // The helper consumes the current move-list boundary; use the
+        // Crane's actual inputs to prove that boundary independently.
+        let crane_moves = [
+            entry("RYUKOHA", 0x2d, MoveKind::Super, crate::era_fight::DOUBLE_QUARTER_CIRCLE, ButtonClass::TripleKick),
+            entry("MANTIS STANCE", 0x1f, MoveKind::System, &[], ButtonClass::TriplePunch),
+        ];
+        let crane = Tactics::of(&state, &crane_moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(crane.sf4_route_ready(&crane_ultra, Level::VeryHard, 0));
+        assert!(!crane.sf4_route_ready(&mantis_ultra, Level::VeryHard, 0), "the Crane cannot borrow the Mantis's command");
+
+        let mut stance = sf4_recipe(&["MP"], 0);
+        stance.steps[0].pads = vec![(0, 0b111_000), (0, 0b111_000), (0, 0)];
+        assert!(mantis.sf4_route_ready(&stance, Level::Easy, 0), "Gen's naked stance chord spends no gauge");
+        stance.steps.extend(mantis_ultra.steps.clone());
+        assert!(!mantis.sf4_route_ready(&stance, Level::VeryHard, 0), "a recipe that changes stance before its finisher is ambiguous");
+    }
+
+    #[test]
+    fn sf4_route_gate_requires_the_live_super_and_cannot_underprice_it() {
+        use crate::era::Revision;
+        let cfg = MatchConfig::definitive();
+        let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 4 * STOCK_AT);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.super_meter = 4 * STOCK_AT;
+        let moves = state.sf4_active_moves();
+        let ready = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(!ready.sf4_route_ready(&sf4_recipe(&["236236+HP"], 0), Level::VeryHard, u16::from(4 * STOCK_AT)), "the real Super cannot masquerade as meterless");
+        let paid = sf4_recipe(&["236236+HP"], u16::from(4 * STOCK_AT));
+        assert!(ready.sf4_route_ready(&paid, Level::VeryHard, u16::from(4 * STOCK_AT)));
+        let absent = Tactics::of(&state, &[], cfg, Level::VeryHard, EraControl::default());
+        assert!(!absent.sf4_route_ready(&paid, Level::VeryHard, u16::from(4 * STOCK_AT)), "a long motion without a live command is not a finisher route");
+    }
+
+    #[test]
     fn cpu_sends_a_real_super_motion_after_a_visible_hit_confirm() {
         use crate::era::Revision;
         let state = fighter(Revision::Sf5Ce, Loadout::Skill1Trigger1, 3 * STOCK_AT);
@@ -963,16 +1449,16 @@ mod tests {
         let config = MatchConfig::definitive();
         let hard = Tactics::of(&state, &moves, config, Level::Hard, control);
         assert!(hard
-            .react(&mut Rng(0), Level::Hard, before, before, false, true)
+            .react(&mut Rng(0), Level::Hard, before, before, before, false, true)
             .is_none());
         let plan = hard
-            .react(&mut Rng(0), Level::Hard, confirmed, before, false, true)
+            .react(&mut Rng(0), Level::Hard, confirmed, before, confirmed, false, true)
             .expect("hit confirm plans CA");
         assert_eq!(plan.pads[..3], [DOWN; 3]);
         assert!(plan.pads[..usize::from(plan.len)].contains(&(RIGHT | button(2))));
         let easy = Tactics::of(&state, &moves, config, Level::Easy, control);
         assert!(easy
-            .react(&mut Rng(0), Level::Easy, confirmed, before, false, true)
+            .react(&mut Rng(0), Level::Easy, confirmed, before, confirmed, false, true)
             .is_none());
     }
 }

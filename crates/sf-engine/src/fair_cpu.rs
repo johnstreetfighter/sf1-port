@@ -1036,7 +1036,10 @@ fn era_ready(act: game::EraAct, ctx: &Context) -> bool {
         game::EraAct::Stance => tactics.can_change_stance(),
         game::EraAct::CustomChain => true,
         game::EraAct::Overhead => tactics.sf3_overhead_ready(),
-        game::EraAct::Enhanced => tactics.sf3_ex_ready(),
+        game::EraAct::Enhanced => tactics.sf3_ex_ready() || tactics.sf4_ex_ready(),
+        game::EraAct::Focus => tactics.sf4_focus_ready(),
+        game::EraAct::Super => tactics.sf4_super_ready() && ctx.level.spends_meter(),
+        game::EraAct::Ultra => tactics.sf4_ultra_ready() && ctx.level.spends_meter(),
     })
 }
 
@@ -1501,6 +1504,11 @@ impl FairCpu {
         self.game.is_some()
     }
 
+    /// Whether the current input sequence answers an event it has seen.
+    pub fn answering(&self) -> bool {
+        self.plan.answer
+    }
+
     /// The game plan it is following, as its place in its fighter's table,
     /// and the step it is on (SC15, `#207`).
     pub fn game_plan(&self) -> Option<(usize, usize)> {
@@ -1903,8 +1911,9 @@ impl FairCpu {
             let spend_super = self.spends_super(ctx, view);
             // Nor does the era kit answer anything while a bait's guard is
             // held (its hit confirm would give up the bait it chose).
+            let felt = self.felt(step, view);
             let era_response = ctx.era.filter(|tactics| !foe_down && !baiting && !holding_bait && (interruptible || tactics.can_interrupt()))
-                .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before, stronger, spend_super));
+                .and_then(|tactics| tactics.react(&mut self.rng, ctx.level, view, before, felt, stronger, spend_super));
             let mut answered = false;
             if let Some(mut plan) = era_response {
                 if stronger {
@@ -2061,7 +2070,11 @@ impl FairCpu {
         // (SC11, `#203`).
         let stronger = self.stronger(ctx);
         let within_level = |route: &crate::route_book::Route| {
-            !stronger || (route.hits <= ctx.level.route_hits() && (ctx.level.spends_meter() || route.super_spent + route.drive_spent == 0))
+            !stronger || (route.hits <= ctx.level.route_hits()
+                && (ctx.level.spends_meter() || route.super_spent + route.drive_spent == 0)
+                // Native SF4 books do not record Revenge, and Gen's
+                // stance can change which finisher a motion produces.
+                && ctx.era.is_none_or(|tactics| tactics.sf4_route_ready(route, ctx.level, ctx.meters[0])))
         };
         for (index, route) in book.routes.iter().enumerate() {
             let drops = self.route_drops.get(index).copied().unwrap_or(0);
@@ -2313,7 +2326,15 @@ impl FairCpu {
             // has seen start: the plan ends, and its answer takes over.
             // (A reach is walked a few frames at a time: each walk is one.)
             let commits = (!run.acted || matches!(at.act, Act::Reach { .. })) && at.act.commits();
-            if commits && (view.foe.attacking() || view.shot_coming()) {
+            // A whiffed attack still has its attack pose during recovery.
+            // SF4's dedicated finisher punish may meet that seen recovery;
+            // an active attack or a projectile still ends the plan.
+            let finisher_punish = stronger && ctx.family == Some(crate::era::EraFamily::Sf4)
+                && self.judged.situation == Situation::OpponentWhiffed
+                && table[usize::from(run.plan)].situation == Situation::OpponentWhiffed
+                && matches!(at.act, Act::Era(game::EraAct::Super | game::EraAct::Ultra))
+                && !view.foe.active;
+            if commits && ((view.foe.attacking() && !finisher_punish) || view.shot_coming()) {
                 break;
             }
             // An attack thrown at a knocked-down opponent is wasted: a plan
@@ -2477,7 +2498,10 @@ impl FairCpu {
                         game::EraAct::CustomChain => tactics.custom_active().then(|| Plan::of(PlanKind::Act, &game::chain_pads(forward, PLAN_CAP))),
                         game::EraAct::Stance => tactics.stance_change(felt),
                         game::EraAct::Overhead => tactics.sf3_overhead(felt),
-                        game::EraAct::Enhanced => tactics.sf3_ex(felt),
+                        game::EraAct::Enhanced => tactics.sf3_ex(felt).or_else(|| tactics.sf4_ex(felt)),
+                        game::EraAct::Focus => tactics.sf4_focus(felt),
+                        game::EraAct::Super => tactics.sf4_super(felt),
+                        game::EraAct::Ultra => tactics.sf4_ultra(felt),
                     };
                     let Some(plan) = plan else { break };
                     run.acted = true;
@@ -4116,6 +4140,109 @@ mod tests {
         assert!(!era_ready(game::EraAct::Enhanced, &footsies) && !era_ready(game::EraAct::Overhead, &footsies));
         assert!(!plans_taken(&footsies, 270, 300, Situation::NeutralClose, 96).contains(&ex));
         assert!(!plans_taken(&footsies, 270, 300, Situation::ItWasBlocked, 96).contains(&overhead));
+    }
+
+    #[test]
+    fn sf4_focus_and_paid_fadc_wait_for_the_applicable_reaction_delay() {
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick};
+        let pair = button(1) | button(4);
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            for cancelling in [false, true] {
+                let config = crate::config::MatchConfig::definitive();
+                let mut state = EraFighterState::default();
+                state.fighter = Some(TournamentFighter::Ryu);
+                state.style = StylePick::for_revision(Revision::Usf4, Loadout::Ultra1);
+                state.set_gauge_mode(GaugeMode::EraDefault);
+                state.super_meter = 96;
+                let control = EraControl { free: !cancelling, special: cancelling, ..EraControl::default() };
+                let mut ctx = Context::with_era(level, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, control);
+                ctx.stronger = true;
+                let ctx = ctx.for_stronger();
+                let observation = |frame, foe| {
+                    let mut v = percept(frame, foe);
+                    if cancelling {
+                        v.me.move_id = 0x19;
+                        v.me.state = 0xc2;
+                    }
+                    v
+                };
+                let mut attack = body(340);
+                attack.move_id = 0x10;
+                attack.state = 0xc2;
+                let mut answers = 0;
+                for seed in 1..=96 {
+                    let mut a = FairCpu::seeded(seed);
+                    for f in 1..=40 {
+                        a.observe(observation(f, body(340)));
+                    }
+                    for f in 41..=80 {
+                        a.press(f, true, &ctx);
+                        a.observe(observation(f, body(340)));
+                    }
+                    let mut b = a;
+                    let shown = 81;
+                    let mut earliest = shown + level.unfocused_reaction();
+                    let mut answered = false;
+                    for f in shown..shown + 120 {
+                        if f >= shown + level.reaction() && f < earliest && b.attention().focus == Focus::Attack {
+                            earliest = f;
+                        }
+                        let (pa, pb) = (a.press(f, true, &ctx), b.press(f, true, &ctx));
+                        assert!(pa == pb || f >= earliest, "{level:?}, cancel={cancelling}, seed={seed}: answered {f}, earliest {earliest}");
+                        let pads = &b.plan.pads[..usize::from(b.plan.len)];
+                        let focus = pads.iter().any(|p| p & BUTTONS == pair);
+                        let back_dash = pads.windows(3).any(|p| p == [pair | LEFT, pair, pair | LEFT]);
+                        answered |= b.plan.answer && focus && (!cancelling || back_dash);
+                        a.observe(observation(f, body(340)));
+                        b.observe(observation(f, attack));
+                    }
+                    answers += usize::from(answered);
+                }
+                if cancelling && !level.spends_meter() {
+                    assert_eq!(answers, 0, "Easy keeps its meter");
+                } else {
+                    assert!(answers > 0, "{level:?}, cancel={cancelling}: no actual Focus/FADC answer");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sf4_finisher_plans_punish_seen_recovery_but_stop_for_a_live_attack() {
+        use crate::era::{GaugeMode, Loadout, Revision, StylePick};
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ryu);
+        state.style = StylePick::for_revision(Revision::Usf4, Loadout::Ultra1);
+        state.set_gauge_mode(GaugeMode::EraDefault);
+        state.super_meter = 192;
+        state.set_sf4_practice_revenge(Some(640));
+        let mut ctx = Context::with_era(Level::VeryHard, TournamentFighter::Ryu, Some(RYU_SLOTS), config, &state, EraControl { free: true, ..EraControl::default() });
+        ctx.stronger = true;
+        let ctx = ctx.for_stronger();
+        for act in [game::EraAct::Super, game::EraAct::Ultra] {
+            let index = game::plans(ctx.kit.fighter, ctx.family).iter().position(|plan| {
+                plan.situation == Situation::OpponentWhiffed && plan.steps[0].act == game::Act::Era(act)
+            }).expect("a dedicated finisher punish plan");
+            for (situation, active, allowed) in [(Situation::OpponentWhiffed, false, true), (Situation::OpponentWhiffed, true, false), (Situation::Defending, false, false)] {
+                let mut cpu = FairCpu::seeded(1);
+                for f in 1..100 {
+                    cpu.observe(percept(f, body(340)));
+                }
+                cpu.judged.situation = situation;
+                cpu.game = Some(game::Running { plan: index as u8, step: 0, acted: false, pressed: 0, began: 100, hit: false });
+                let mut foe = body(340);
+                foe.move_id = 0x10;
+                foe.state = 0xc2;
+                foe.active = active;
+                let entered = cpu.follow_game_plan(100, percept(100, foe), &ctx);
+                let motion = entered.is_some_and(|plan| {
+                    let pads = &plan.pads[..usize::from(plan.len)];
+                    pads.iter().any(|p| p & DOWN != 0) && pads.iter().any(|p| p & BUTTONS != 0)
+                });
+                assert_eq!(motion, allowed, "{act:?}, {situation:?}, active={active}: a real finisher motion only for the recovery");
+            }
+        }
     }
 
     #[test]

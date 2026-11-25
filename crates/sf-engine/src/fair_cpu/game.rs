@@ -21,6 +21,7 @@ use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
 
 mod sf3;
+mod sf4;
 mod sfz;
 pub(super) use sfz::{chain_pads, custom_combo_pads};
 
@@ -35,8 +36,14 @@ pub enum EraAct {
     Stance,
     /// SF3's universal overhead, to open a crouching guard.
     Overhead,
-    /// An SF3 EX special, when this revision has one and can pay for it.
+    /// An EX special, when this revision has one and can pay for it.
     Enhanced,
+    /// Charge and release an SF4 level-two Focus Attack.
+    Focus,
+    /// Spend SF4 Super meter on a grounded finisher.
+    Super,
+    /// Spend SF4 Revenge on the selected Ultra.
+    Ultra,
 }
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
@@ -1110,6 +1117,7 @@ pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
         (Some(fighter), Some(EraFamily::Sf3)) => sf3::plans(fighter),
+        (Some(fighter), Some(EraFamily::Sf4)) => sf4::plans(fighter),
         // Gen and Eagle have none yet: the measuring run found no set of
         // these that beats the old Fair CPU with them (SC15, `#207`); a
         // follow-up builds their own game.
