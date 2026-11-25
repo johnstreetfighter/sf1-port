@@ -536,15 +536,15 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
             // permits spending against this partner, who never puts the
             // CPU behind on health. Zero-metadata Ultras still need Revenge.
             let meter = (fighter == TournamentFighter::Mike).then_some(4 * STOCK_AT);
-            // Four fixed seeds retain the 12,000-frame budget. Two
-            // stationary scenes offer a settled neutral route opening;
-            // two keep the walking and whiffing partner's opportunities.
+            // Twelve fixed starts retain the 12,000-frame budget while
+            // offering more independent neutral choices before a winning
+            // throw or projectile plan takes over a passive opponent.
             let (mut plan_frames, mut frames, mut routes) = (0u32, 0u32, 0u32);
-            for seed in 1..=4 {
-                let scene = if seed <= 2 {
-                    watch_from_seed_with_setup(seed, style, true, 3_000, meter, false, standing_pad, Some(centered_route_scene))
+            for seed in 1..=12 {
+                let scene = if seed <= 6 {
+                    watch_from_seed_with_setup(seed, style, true, 1_000, meter, false, standing_pad, Some(centered_route_scene))
                 } else {
-                    watch_from_seed(seed, style, true, 3_000, meter, false, route_partner)
+                    watch_from_seed(seed, style, true, 1_000, meter, false, route_partner)
                 };
                 let Some(s) = scene else { return };
                 eprintln!("{style:?} seed{seed}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
@@ -553,7 +553,7 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
                 frames += s.frames;
                 routes += s.routes;
             }
-            assert!(plan_frames * 10 >= frames && routes >= 1, "{style:?}: plans and routes are used across the four scenes: {plan_frames}/{frames} plan frames, {routes} routes");
+            assert!(plan_frames * 10 >= frames && routes >= 1, "{style:?}: plans and routes are used across the twelve scenes: {plan_frames}/{frames} plan frames, {routes} routes");
         }
     }
 }
@@ -600,6 +600,10 @@ fn sf4_fighters_use_real_command_throws_teleports_charges_and_stances() {
             // Seed4 takes the charge from this actual, uncornered scene;
             // the bounded diagnostic proves its normal input starts0x20.
             watch_from_seed_with_setup(4, style, true, 30_000, None, false, standing_pad, Some(uncornered_charge_scene))
+        } else if fighter == Retsu {
+            // A close, guarding opponent offers the command throw after
+            // advancing through the far projectile game.
+            watch_from_seed_with_setup(1, style, true, 30_000, None, false, guarding_pad, Some(centered_route_scene))
         } else if fighter == Birdie {
             // A grounded opponent who closes and guards offers a real
             // command-throw catch rather than walking out of its motion.

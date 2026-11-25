@@ -85,8 +85,7 @@ const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
 // Their live projectiles offer another way in while retaining both
 // fighter tools within the sixteen remembered plan slots.
 const RETSU: &[GamePlan] = shared!(62, SHOT; &POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
-// Mix Shuriken with closing in and teleporting at long range.
-const GEKI: &[GamePlan] = shared!(62, GamePlan { score: 46, ..SHOT }; &POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
+const GEKI: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
 // Joe's MK continues into a straight. His single low kick keeps the
 // pressure shorter, and Shockwave gives him a purpose at long range.
 const JOE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, SHOT, SHOT_WATCH);
