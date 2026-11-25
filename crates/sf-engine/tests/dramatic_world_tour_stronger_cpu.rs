@@ -372,7 +372,11 @@ fn the_new_sf6_cast_uses_its_own_dramatic_plans_and_routes_through_rollback() {
             book
         });
         let (mut plans, mut routes, mut pressed, mut rollbacks) = ([false; 2], [0u32; 2], [false; 2], 0);
-        for seed in [3, 7] {
+        // Three active fighters do not guarantee a settled close opening in
+        // every fight. Keep a fixed corpus and allow the native fight to run
+        // longer, including Gen's short meterless routes, with no retries.
+        for seed in 1..=8 {
+            let before = routes;
             let spec = DramaticSpec { fighters: [Ryu, Ken, Gen], styles: [Revision::Sf6; 3], difficulty: [4; 3], seed, stronger: [true; 3] };
             let mut m = dramatic_machine(&assets.maincpu, Some(bank.clone()), &spec).expect("the cast's Dramatic fight starts");
             let mut live = 0;
@@ -384,7 +388,7 @@ fn the_new_sf6_cast_uses_its_own_dramatic_plans_and_routes_through_rollback() {
             assert_eq!(live, 60, "seed {seed}: the round starts");
             let mut reference = m.clone();
             let mut ring: VecDeque<_> = VecDeque::new();
-            for frame in 0..1_800 {
+            for frame in 0..4_800 {
                 ring.push_back(m.save_snapshot());
                 if ring.len() > MAX_ROLLBACK + 1 { ring.pop_front(); }
                 step(&mut reference);
@@ -420,6 +424,7 @@ fn the_new_sf6_cast_uses_its_own_dramatic_plans_and_routes_through_rollback() {
                 }
                 if m.match_over() { break }
             }
+            eprintln!("seed {seed}: native Ken/Gen route frames {:?}", [routes[0] - before[0], routes[1] - before[1]]);
         }
         assert_eq!(plans, [true; 2], "both new cast CPUs followed their game plans");
         assert_eq!(pressed, [true; 2], "both CPUs pressed their own pads");
