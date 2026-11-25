@@ -508,7 +508,9 @@ fn sf4_reactive_fadc_pays_two_stocks_and_dashes_to_continue_or_recover_safely() 
 #[test]
 fn sf4_super_is_deliberately_started_from_its_plan_or_actual_route_command() {
     let style = Style::ultra(TournamentFighter::Ryu, Loadout::Ultra1);
-    let Some(s) = watch(style, true, 30_000, Some(4 * STOCK_AT), false, standing_pad) else { return };
+    // A charged Focus crumple offers enough seen hitstun for a deliberate
+    // Super. Ryu's checked-in book has Ultra routes but no Super recipe.
+    let Some(s) = watch(style, true, 30_000, Some(4 * STOCK_AT), false, focus_partner) else { return };
     eprintln!("192-point Supers: {} from Super steps, {} inside their route command, {} on a delayed hit confirm", s.supers_on_step, s.supers_in_routes, s.reactive_supers);
     assert!(s.supers_on_step + s.supers_in_routes + s.reactive_supers >= 1, "a real native Super spends all four stocks from an attributed plan, route, or delayed hit confirm");
 }
