@@ -181,11 +181,10 @@ fn standing_pad(_: u32, _: &Percept) -> (u8, u8) {
     (0, 0)
 }
 
-/// Initialize a real standing fight with an uncornered opponent, enough
-/// distance for Lee's charge plan, and room behind Lee. Preserve the fresh
-/// seeded CPU while neutral human controls finish the native round intro;
-/// after relocation it receives only observations made by normal stepping.
-fn uncornered_charge_scene(m: &mut PowerOnMachine) {
+/// Finish the native intro with neutral human controls, preserving the
+/// fresh seeded CPU. Relocate the actual standing entities, then restore
+/// normal CPU decisions before any observation history is collected.
+fn standing_scene(m: &mut PowerOnMachine, positions: fn(&Percept) -> (i16, i16)) -> Percept {
     let fresh = m.fair_cpu().cloned().expect("the fresh seeded CPU");
     assert_eq!(fresh.last_view().frame, 0, "set up the scene before CPU decisions");
     let original = *m.match_config();
@@ -207,10 +206,11 @@ fn uncornered_charge_scene(m: &mut PowerOnMachine) {
     assert!(ready, "the native standing fight scene is reached");
     m.set_match_config(original);
     let v = seen(m);
+    let (foe_x, own_x) = positions(&v);
     let telemetry = m.diagnostic_telemetry();
     let mut snapshot = m.save_snapshot();
     snapshot.fair_cpu = Some(fresh);
-    for (entity, current, target) in [(telemetry.p1.entity_offset, v.foe.x, 156i16), (telemetry.p2.entity_offset, v.me.x, 328i16)] {
+    for (entity, current, target) in [(telemetry.p1.entity_offset, v.foe.x, foe_x), (telemetry.p2.entity_offset, v.me.x, own_x)] {
         // Entity +6 is the sprite-grid x word. Shift its real center by
         // the difference, keeping its pose, facing and all other state.
         let at = usize::from(entity) + 6;
@@ -220,12 +220,31 @@ fn uncornered_charge_scene(m: &mut PowerOnMachine) {
     }
     m.restore_snapshot(&snapshot);
     let v = seen(m);
+    assert_eq!((v.foe.x, v.me.x), (foe_x, own_x));
+    assert_eq!((v.foe.move_id, v.me.move_id), (1, 1), "both fighters still stand naturally");
+    assert!(v.foe.x < v.me.x, "the native facing and fighter order are preserved");
+    assert_eq!(m.fair_cpu().unwrap().last_view().frame, 0, "no fabricated observation history");
+    assert!(m.match_config().p2_fair_cpu, "normal CPU controls resume before measurement");
+    v
+}
+
+/// Keep the charge scene's verified spacing and room behind Lee.
+fn uncornered_charge_scene(m: &mut PowerOnMachine) {
+    let v = standing_scene(m, |_| (156, 328));
     assert_eq!((v.foe.x, v.me.x), (156, 328));
     assert!(v.foe.x > 154 && v.foe.x < 360, "Ryu is outside both corner regions");
     assert_eq!(400 - v.me.x, 72, "Lee has room behind him");
     assert!(v.me.x - v.foe.hurt.1 >= 150, "the actual standing hurtbox offers the charge plan's gap");
-    assert_eq!(m.fair_cpu().unwrap().last_view().frame, 0, "no fabricated observation history");
-    assert!(m.match_config().p2_fair_cpu, "normal CPU controls resume before measurement");
+}
+
+/// Offer a stationary neutral opponent at the route plan's spacing.
+/// Derive the CPU center from Ryu's actual near hurt edge, so different
+/// sprite origins do not change the fifty-pixel opportunity.
+fn centered_route_scene(m: &mut PowerOnMachine) {
+    let v = standing_scene(m, |v| (220, 220 + v.foe.hurt.1 - v.foe.x + 50));
+    assert_eq!(v.foe.x, 220);
+    assert_eq!(v.me.x - v.foe.hurt.1, 50, "the route scene has the actual fifty-pixel approach gap");
+    assert!([v.foe.x, v.me.x].into_iter().all(|x| x > 154 && x < 360), "both fighters start outside the corner regions");
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -517,11 +536,17 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
             // permits spending against this partner, who never puts the
             // CPU behind on health. Zero-metadata Ultras still need Revenge.
             let meter = (fighter == TournamentFighter::Mike).then_some(4 * STOCK_AT);
-            // Four separately seeded scenes retain the 12,000-frame
-            // budget while offering more than one long-match opening.
+            // Four fixed seeds retain the 12,000-frame budget. Two
+            // stationary scenes offer a settled neutral route opening;
+            // two keep the walking and whiffing partner's opportunities.
             let (mut plan_frames, mut frames, mut routes) = (0u32, 0u32, 0u32);
             for seed in 1..=4 {
-                let Some(s) = watch_from_seed(seed, style, true, 3_000, meter, false, route_partner) else { return };
+                let scene = if seed <= 2 {
+                    watch_from_seed_with_setup(seed, style, true, 3_000, meter, false, standing_pad, Some(centered_route_scene))
+                } else {
+                    watch_from_seed(seed, style, true, 3_000, meter, false, route_partner)
+                };
+                let Some(s) = scene else { return };
                 eprintln!("{style:?} seed{seed}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
                 assert_eq!(s.foreign_routes, 0, "{style:?} seed{seed}: every route belongs to this fighter and style");
                 plan_frames += s.plan_frames;
@@ -575,6 +600,10 @@ fn sf4_fighters_use_real_command_throws_teleports_charges_and_stances() {
             // Seed4 takes the charge from this actual, uncornered scene;
             // the bounded diagnostic proves its normal input starts0x20.
             watch_from_seed_with_setup(4, style, true, 30_000, None, false, standing_pad, Some(uncornered_charge_scene))
+        } else if fighter == Birdie {
+            // A grounded opponent who closes and guards offers a real
+            // command-throw catch rather than walking out of its motion.
+            watch(style, true, 30_000, None, false, guarding_pad)
         } else {
             watch(style, true, 30_000, None, false, sparring_pad)
         };

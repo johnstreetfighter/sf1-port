@@ -9,7 +9,7 @@
 
 use super::super::cast::Tool;
 use super::super::habit::Lean;
-use super::super::Level;
+use super::super::{Choice, Level, Role};
 use super::{always, meaty, plan, poke, step, Act, EraAct, GamePlan, Situation, Step, ANY, CHARGE, COMMAND_THROW, JUMP_IN_GAP, SHOT_GAP, WATCHED_SHOT_GAPS};
 use super::{RYU_SF6_BAIT, RYU_SF6_FRAME_TRAP, RYU_SF6_JUMP_IN, RYU_SF6_ROUTE, RYU_SF6_SHOT, RYU_SF6_SHOT_WATCH, RYU_SF6_WALK_THROW};
 use crate::roster::TournamentFighter;
@@ -20,11 +20,10 @@ const SUPER: [Step; 1] = [step(Act::Era(EraAct::Super), always(None))];
 const ULTRA: [Step; 1] = [step(Act::Era(EraAct::Ultra), always(None))];
 const STANCE: [Step; 1] = [step(Act::Era(EraAct::Stance), always(None))];
 const TELEPORT: [Step; 1] = [step(Act::Tool(Tool::Teleport), always(None))];
+const ADVANCE: [Step; 1] = [step(Act::Do(Choice::Special(Role::Advance)), always(None))];
 
 const POKE_HK: [Step; 6] = poke(false, 5);
 const MEATY_HK: [Step; 4] = meaty(false, 5);
-const POKE_LP: [Step; 6] = poke(false, 0);
-const MEATY_LP: [Step; 4] = meaty(false, 0);
 const POKE_MP: [Step; 6] = poke(false, 1);
 const MEATY_MP: [Step; 4] = meaty(false, 1);
 const POKE_LK: [Step; 6] = poke(false, 3);
@@ -43,9 +42,12 @@ const ULTRA_PUNISH: GamePlan = plan(Situation::OpponentWhiffed, 88, 0, (i16::MIN
 // leave a fighter with nothing to do.
 macro_rules! shared {
     ($poke:expr, $meaty:expr $(, $more:expr)* $(,)?) => {
+        shared!(62, JUMP_FAR; $poke, $meaty $(, $more)*)
+    };
+    ($route_score:expr, $far:expr; $poke:expr, $meaty:expr $(, $more:expr)* $(,)?) => {
         &[
             plan(Situation::NeutralClose, 60, 0, ANY, $poke, Lean::None, Level::Easy),
-            plan(Situation::NeutralClose, 62, 6, ANY, &RYU_SF6_ROUTE, Lean::None, Level::Easy),
+            plan(Situation::NeutralClose, $route_score, 6, ANY, &RYU_SF6_ROUTE, Lean::None, Level::Easy),
             plan(Situation::ItWasBlocked, 60, 4, ANY, &RYU_SF6_FRAME_TRAP, Lean::FrameTrap, Level::Normal),
             plan(Situation::ItWasBlocked, 56, 12, ANY, &RYU_SF6_WALK_THROW, Lean::WalkThrow, Level::Easy),
             plan(Situation::ItWasBlocked, 64, 4, (i16::MIN, 48), &FOCUS, Lean::None, Level::Normal),
@@ -53,7 +55,7 @@ macro_rules! shared {
             plan(Situation::OpponentKnockedDown, 62, 8, ANY, $meaty, Lean::Meaty, Level::Normal),
             plan(Situation::OpponentKnockedDown, 52, -10, ANY, &RYU_SF6_BAIT, Lean::Bait, Level::VeryHard),
             plan(Situation::NeutralFar, 50, 10, ANY, $poke, Lean::None, Level::Easy),
-            JUMP_FAR,
+            $far,
             SUPER_HIT,
             ULTRA_HIT,
             SUPER_PUNISH,
@@ -66,6 +68,7 @@ macro_rules! shared {
 const SHOT: GamePlan = plan(Situation::NeutralFar, 70, 0, (SHOT_GAP, i16::MAX), &RYU_SF6_SHOT, Lean::Shot, Level::Easy);
 const SHOT_WATCH: GamePlan = plan(Situation::NeutralFar, 0, 0, WATCHED_SHOT_GAPS, &RYU_SF6_SHOT_WATCH, Lean::ShotWatch, Level::Normal);
 const JUMP_FAR: GamePlan = plan(Situation::NeutralFar, 46, 0, JUMP_IN_GAP, &RYU_SF6_JUMP_IN, Lean::JumpIn, Level::Easy);
+const ADVANCE_FAR: GamePlan = plan(Situation::NeutralFar, 54, 0, (120, i16::MAX), &ADVANCE, Lean::None, Level::Easy);
 const THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 8, ANY, &COMMAND_THROW, Lean::WalkThrow, Level::Normal);
 const THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 62, 4, ANY, &COMMAND_THROW, Lean::None, Level::Hard);
 const TELEPORT_FAR: GamePlan = plan(Situation::NeutralFar, 48, -6, (130, i16::MAX), &TELEPORT, Lean::None, Level::Normal);
@@ -78,18 +81,20 @@ const GEN_CHARGE: GamePlan = GamePlan { score: 48, ..CHARGE_FAR };
 
 const RYU: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
 const KEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
-const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
-const RETSU: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
-const GEKI: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
+const SAGAT: &[GamePlan] = shared!(66, JUMP_FAR; &POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
+// Their live projectiles offer another way in while retaining both
+// fighter tools within the sixteen remembered plan slots.
+const RETSU: &[GamePlan] = shared!(62, SHOT; &POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
+const GEKI: &[GamePlan] = shared!(62, SHOT; &POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
 // Joe's MK continues into a straight. His single low kick keeps the
 // pressure shorter, and Shockwave gives him a purpose at long range.
 const JOE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, SHOT, SHOT_WATCH);
-const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
-const LEE: &[GamePlan] = shared!(&POKE_LP, &MEATY_LP, LEE_CHARGE);
+const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, ADVANCE_FAR);
+const LEE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, LEE_CHARGE, ADVANCE_FAR);
 const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, CHARGE_FAR);
-const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, CRANE, GEN_CHARGE);
-const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK);
-const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
+const GEN: &[GamePlan] = shared!(62, GamePlan { score: 54, ..JUMP_FAR }; &POKE_HK, &MEATY_HK, CRANE, GEN_CHARGE);
+const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, ADVANCE_FAR);
+const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, ADVANCE_FAR);
 
 pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
     use TournamentFighter::*;
