@@ -236,7 +236,7 @@ impl Tactics {
         let sf3_enhanced = (enabled && family == Sf3 && ex >= era.sf3_ex_cost())
             .then(enhanced_move)
             .flatten();
-        let sf4_enhanced = (enabled && family == Sf4 && ex >= STOCK_AT)
+        let sf4_enhanced = (enabled && family == Sf4 && level.spends_meter() && ex >= STOCK_AT)
             .then(enhanced_move)
             .flatten();
         let sf4_finish = |ultra: bool| {
@@ -404,7 +404,7 @@ impl Tactics {
         self.reserve = level.drive_kept();
         if self.family == EraFamily::Sf4 {
             self.stance = self.sf4_stance;
-            self.enhanced = self.sf4_enhanced;
+            self.enhanced = self.sf4_enhanced.filter(|_| level.spends_meter());
         }
         // Nor does it switch Gen back from the Crane to the Mantis: back
         // and forth at range only stood him still (SC16, `#208`).
@@ -1299,6 +1299,14 @@ mod tests {
         assert!(old.enhanced.is_none(), "old EX choices keep their two-stock gate");
         assert!(old.spending_safely(Level::VeryHard).enhanced.is_some(), "the stronger play can spend one EX stock");
         assert!(old.sf4_ex_ready() && old.sf4_ex(Percept::default()).is_some());
+        assert!(old.spending_safely(Level::Easy).enhanced.is_none(), "Easy's neutral fallback keeps its meter too");
+        let easy = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+        assert!(!easy.sf4_ex_ready() && easy.spending_safely(Level::Easy).enhanced.is_none());
+        state.super_meter = 2 * STOCK_AT;
+        let legacy_easy = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+        assert!(legacy_easy.enhanced.is_some(), "the old play retains its existing EX option");
+        assert!(legacy_easy.spending_safely(Level::Easy).enhanced.is_none());
+        state.super_meter = STOCK_AT;
         state.super_meter -= 1;
         let short = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
         assert!(short.spending_safely(Level::VeryHard).enhanced.is_none());
