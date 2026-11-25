@@ -22,6 +22,7 @@ use crate::route_book::{Reach, Route, Stance};
 
 mod sf3;
 mod sf4;
+mod sf5;
 mod sfz;
 pub(super) use sfz::{chain_pads, custom_combo_pads};
 
@@ -40,10 +41,14 @@ pub enum EraAct {
     Enhanced,
     /// Charge and release an SF4 level-two Focus Attack.
     Focus,
-    /// Spend SF4 Super meter on a grounded finisher.
+    /// Spend Super meter on an SF4 finisher or an SF5 Critical Art.
     Super,
     /// Spend SF4 Revenge on the selected Ultra.
     Ultra,
+    /// Use the selected SF5 V-Skill where its fighter's plan calls for it.
+    VSkill,
+    /// Activate SF5 V-Trigger or use an offensive move it unlocks.
+    VTrigger,
 }
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
@@ -1118,6 +1123,7 @@ pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
         (Some(fighter), Some(EraFamily::Sf3)) => sf3::plans(fighter),
         (Some(fighter), Some(EraFamily::Sf4)) => sf4::plans(fighter),
+        (Some(fighter), Some(EraFamily::Sf5)) => sf5::plans(fighter),
         // Gen and Eagle have none yet: the measuring run found no set of
         // these that beats the old Fair CPU with them (SC15, `#207`); a
         // follow-up builds their own game.

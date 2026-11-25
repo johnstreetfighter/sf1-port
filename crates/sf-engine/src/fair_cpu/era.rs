@@ -3,7 +3,7 @@ use super::{alpha_motion, button, Level, Percept, Plan, PlanKind, Rng, DOWN, LEF
 use crate::config::MatchConfig;
 use crate::era::{EraFamily, GaugeMode, Loadout, STOCK_AT};
 use crate::era_fight::{sf3, sf4, sf5, sf6, EraFighterState};
-use crate::moves::{ButtonClass, Dir, MoveEntry, MoveKind, Recognizer};
+use crate::moves::{ButtonClass, Dir, MoveEntry, MoveInput, MoveKind, Recognizer};
 
 /// What a raw Drive Rush costs, as the kit's gate has it (a stock and a
 /// little more).
@@ -19,7 +19,7 @@ const SF4_ROUTE_FINISHERS: usize = 3;
 
 /// A route step's actual directions up to a button edge, with held frames
 /// collapsed. Route pads are already relative to a fighter facing right.
-fn sf4_route_directions(step: &crate::route_book::Step, at: usize) -> Option<([u8; 12], usize)> {
+fn route_directions(step: &crate::route_book::Step, at: usize) -> Option<([u8; 12], usize)> {
     let mut directions = [0; 12];
     let mut len = 0;
     for &(direction, _) in step.pads.get(..=at)? {
@@ -68,7 +68,116 @@ pub(crate) struct EraControl {
     pub airborne: bool,
     pub cancel: bool,
     pub special: bool,
+    /// SF5's own native grounded-special cancel gate, including EX slots.
+    pub sf5_special_cancel: bool,
     pub waking: bool,
+}
+
+/// The stronger SF5 play's reading of its live kit and its own resources.
+/// Keeping it separate leaves the old choices and their RNG calls unchanged.
+#[derive(Clone, Copy, Debug)]
+struct Sf5Tactics {
+    gauges: bool,
+    skill: Option<MoveEntry>,
+    counter: Option<MoveEntry>,
+    trigger: Option<MoveEntry>,
+    followups: [Option<MoveEntry>; 2],
+    enhanced: Option<MoveEntry>,
+    critical: Option<MoveEntry>,
+    reversal: Option<MoveEntry>,
+    shift: Option<MoveEntry>,
+    skill_live: bool,
+    enhanced_live: bool,
+    critical_input: Option<MoveInput>,
+    keep_meter_directions: u16,
+    previous_buttons: u8,
+    stance_inputs: [Option<MoveInput>; 2],
+    warm: bool,
+    trigger_cost: u16,
+    ex_cost: u16,
+    critical_cost: u16,
+}
+
+impl Sf5Tactics {
+    fn of(era: &EraFighterState, moves: &[MoveEntry], mode: GaugeMode, level: Level) -> Self {
+        use crate::roster::TournamentFighter::Ryu;
+
+        let v = era.sf5_practice_points();
+        let gauges = mode != GaugeMode::NoGauges && v.is_some();
+        let warm = v.is_some_and(|(_, timer, _)| timer != 0);
+        let points = if mode == GaugeMode::Unified { era.super_meter } else { v.map_or(0, |(points, _, _)| points) };
+        let trigger_cost = era.meter_cost(era.v_trigger_cost(mode));
+        let spends = gauges && level.spends_meter();
+        let entry = |slot, forward| moves.iter().copied().find(|entry| {
+            entry.recognizer == Recognizer::FamilyMove && entry.kind == MoveKind::System
+                && entry.produces == slot
+                && if forward { entry.input.motion == [Dir::Forward] } else { entry.input.motion.is_empty() }
+        });
+        let skill = moves.iter().copied().find(|entry| {
+            entry.recognizer == Recognizer::FamilyMove && entry.kind == MoveKind::System
+                && matches!(entry.produces, sf5::SKILL_ONE | sf5::SKILL_TWO)
+                && entry.input.button == ButtonClass::MediumPair
+        });
+        let enhanced = moves.iter().copied().find(|entry| {
+            entry.recognizer == Recognizer::FamilyMove && entry.kind == MoveKind::Special
+                && matches!(entry.input.button, ButtonClass::PairPunch | ButtonClass::PairKick)
+                && entry.input.motion.first() != Some(&Dir::Jump)
+        });
+        let critical = moves.iter().copied().find(|entry| {
+            entry.recognizer == Recognizer::FamilyMove && entry.kind == MoveKind::Super
+                && entry.input.motion.first() != Some(&Dir::Jump)
+        });
+        let mut stance_inputs = [None; 2];
+        for (slot, input) in stance_inputs.iter_mut().zip(moves.iter().filter(|entry| {
+            entry.recognizer == Recognizer::FamilyMove && entry.kind == MoveKind::System
+                && entry.input.motion.is_empty()
+                && matches!(entry.input.button, ButtonClass::TriplePunch | ButtonClass::TripleKick)
+        }).map(|entry| entry.input)) {
+            *slot = Some(input);
+        }
+        let trigger = era.fighter.and_then(|fighter| entry(sf5::trigger_slot(fighter, era.style.loadout), false));
+        let followup = |forward| era.fighter
+            .and_then(|fighter| sf5::trigger_follow_up(fighter, era.style.loadout, forward))
+            .and_then(|(slot, _)| entry(slot, slot == sf5::TRIGGER_FORWARD));
+        let ryu = era.fighter == Some(Ryu) && !era.is_kage();
+        let mut followups = [None; 2];
+        if spends && warm && !ryu {
+            followups[0] = followup(false);
+            followups[1] = followup(true).filter(|entry| Some(entry.produces) != followups[0].map(|entry| entry.produces));
+        }
+        let counter = gauges.then(|| {
+            // Isshin is a counter, never the offensive follow-up of a hit.
+            (spends && warm && ryu).then(|| followup(false)).flatten().or_else(|| ryu.then_some(skill).flatten())
+        }).flatten();
+        let ex_cost = era.meter_cost(STOCK_AT);
+        let critical_cost = era.meter_cost(3 * STOCK_AT);
+        let can_v = spends && !warm && points >= era.meter_cost(STOCK_AT);
+        Self {
+            gauges,
+            skill: skill.filter(|_| gauges && !ryu && !era.sf5_skill_charged()),
+            counter,
+            trigger: trigger.filter(|_| spends && !warm && points >= trigger_cost),
+            followups,
+            enhanced: enhanced.filter(|_| spends && era.super_meter >= ex_cost),
+            critical: critical.filter(|_| spends && era.super_meter >= critical_cost),
+            reversal: entry(sf5::REVERSAL, true).filter(|_| can_v),
+            shift: entry(sf5::SHIFT, false).filter(|_| can_v),
+            skill_live: gauges && skill.is_some(),
+            enhanced_live: enhanced.is_some(),
+            critical_input: critical.map(|entry| entry.input),
+            keep_meter_directions: if gauges && !level.spends_meter() && era.super_meter >= critical_cost {
+                era.sf5_critical_directions()
+            } else {
+                0
+            },
+            previous_buttons: era.held_buttons(),
+            stance_inputs,
+            warm,
+            trigger_cost: u16::from(trigger_cost),
+            ex_cost: u16::from(ex_cost),
+            critical_cost: u16::from(critical_cost),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -98,6 +207,7 @@ pub(super) struct Tactics {
     /// Native SF4 Gen's stance name differs from his what-if kits. The
     /// old play's `stance` stays unchanged until `spending_safely`.
     sf4_stance: Option<MoveEntry>,
+    sf5: Option<Sf5Tactics>,
     guard_cancel: Option<MoveEntry>,
     evade: Option<MoveEntry>,
     armor: Option<MoveEntry>,
@@ -349,6 +459,7 @@ impl Tactics {
             sf4_route_gauges: enabled,
             sf4_route_super_cost: if family == Sf4 { u16::from(era.sf4_super_cost()) } else { 0 },
             sf4_stance: (family == Sf4).then(|| named("CRANE STANCE")).flatten(),
+            sf5: (family == Sf5 && !era.is_kage()).then(|| Sf5Tactics::of(era, moves, mode, level)),
             guard_cancel,
             evade,
             armor,
@@ -411,6 +522,16 @@ impl Tactics {
         self.stance = self.stance.filter(|_| self.can_change_stance());
         if self.family == EraFamily::Sf3 {
             self.enhanced = self.sf3_enhanced;
+        }
+        if let Some(sf5) = self.sf5 {
+            self.enhanced = sf5.enhanced.filter(|_| level.spends_meter());
+            self.super_move = sf5.critical.filter(|_| level.spends_meter()).map(|entry| (entry, 2));
+            self.guard_cancel = sf5.reversal.filter(|_| level.spends_meter());
+            self.evade = sf5.counter.or(sf5.shift.filter(|_| level.spends_meter()));
+            // Trigger activations/follow-ups belong to explicit seen-hit
+            // and whiff plans, never the quiet neutral fallback.
+            self.install = None;
+            self.skill = sf5.skill;
         }
         if self.family == EraFamily::Sf6 {
             self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
@@ -555,7 +676,7 @@ impl Tactics {
                 if fresh == 0 {
                     continue;
                 }
-                let Some((directions, len)) = sf4_route_directions(step, at) else { return false };
+                let Some((directions, len)) = route_directions(step, at) else { return false };
                 let directions = &directions[..len];
                 if self.sf4_route_stance.is_some_and(|entry| sf4_route_input(step, at, entry, directions)) {
                     changed_stance = true;
@@ -601,6 +722,164 @@ impl Tactics {
         // same gauge as any EX/Super consumption recorded in the book.
         let extra = if self.unified { ultras.checked_mul(u16::from(3 * STOCK_AT)) } else { Some(0) };
         extra.and_then(|cost| route.super_spent.checked_add(cost)).is_some_and(|cost| cost <= super_meter)
+    }
+
+    fn sf5_pad(entry: MoveEntry, view: Percept, strength: usize) -> Plan {
+        Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, strength, true))
+    }
+
+    pub(super) fn sf5_skill_ready(self) -> bool {
+        self.sf5.is_some_and(|sf5| sf5.skill.is_some()) && self.control.free && !self.control.airborne
+    }
+
+    pub(super) fn sf5_skill(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf5?.skill.filter(|_| self.sf5_skill_ready())?;
+        Some(Self::sf5_pad(entry, view, 1))
+    }
+
+    /// An inactive Trigger may be installed; an active one may offer an
+    /// offensive follow-up. Ryu's Isshin instead answers a delayed threat.
+    pub(super) fn sf5_trigger_ready(self) -> bool {
+        self.sf5.is_some_and(|sf5| sf5.trigger.is_some() || sf5.followups.iter().any(Option::is_some))
+            && (self.control.free || self.control.cancel) && !self.control.airborne
+    }
+
+    pub(super) fn sf5_trigger(self, view: Percept, rng: &mut Rng) -> Option<Plan> {
+        if !self.sf5_trigger_ready() { return None }
+        let sf5 = self.sf5?;
+        let entry = sf5.trigger.or_else(|| match sf5.followups {
+            [Some(first), Some(second)] => Some(if rng.below(2) == 0 { first } else { second }),
+            [first, second] => first.or(second),
+        })?;
+        Some(Self::sf5_pad(entry, view, 2))
+    }
+
+    pub(super) fn sf5_ex_ready(self) -> bool {
+        self.sf5.is_some_and(|sf5| sf5.enhanced.is_some()) && self.control.free && !self.control.airborne
+    }
+
+    pub(super) fn sf5_ex(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf5?.enhanced.filter(|_| self.sf5_ex_ready())?;
+        Some(Self::sf5_pad(entry, view, 1))
+    }
+
+    pub(super) fn sf5_super_ready(self) -> bool {
+        self.sf5.is_some_and(|sf5| sf5.critical.is_some())
+            && (self.control.free || self.control.cancel) && !self.control.airborne
+    }
+
+    pub(super) fn sf5_super(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf5?.critical.filter(|_| self.sf5_super_ready())?;
+        Some(Self::sf5_pad(entry, view, 2))
+    }
+
+    /// Easy may repeat an ordinary quarter circle while the first one is
+    /// still in its own CA recognizer. Keep its meter by withholding only
+    /// the CA's button family on a direction that would fire that command.
+    /// This uses its own input bookkeeping, never the opponent's input.
+    pub(super) fn sf5_keep_meter(self, pad: u16, facing_left: bool) -> u16 {
+        if self.control.airborne || self.control.blockstun
+            || !(self.control.free || self.control.cancel || self.control.special || self.control.sf5_special_cancel)
+        {
+            return pad;
+        }
+        let Some(sf5) = self.sf5 else { return pad };
+        let Some(input) = sf5.critical_input else { return pad };
+        let mut relative = pad & 0xf;
+        if facing_left {
+            relative = (relative & !3) | ((relative & 1) << 1) | ((relative & 2) >> 1);
+        }
+        if sf5.keep_meter_directions & (1 << relative) == 0 { return pad }
+        let buttons = (pad >> 4) as u8;
+        // Native free/cancel-ground V-Skill recognition takes priority
+        // over CA only on a fresh MP/MK edge. A pair held from an earlier
+        // input must not hide a newly pressed CA-family attack button.
+        if sf5.skill_live && (self.control.free || self.control.cancel)
+            && ButtonClass::MediumPair.held(buttons)
+            && buttons & !sf5.previous_buttons & 0b010_010 != 0
+        {
+            return pad;
+        }
+        let family = if input.button.kick() {
+            button(3) | button(4) | button(5)
+        } else {
+            button(0) | button(1) | button(2)
+        };
+        pad & !family
+    }
+
+    /// SF5 route metadata omits V meter. Inspect actual button edges so a
+    /// zero-Super recipe cannot borrow a Trigger, even if its name changes.
+    /// A route's later commands are checked for availability, not whether
+    /// the fighter could execute that later step on this very frame.
+    pub(super) fn sf5_route_ready(self, route: &crate::route_book::Route, level: Level, super_meter: u16) -> bool {
+        let Some(sf5) = self.sf5 else { return true };
+        if (route.super_spent != 0 || route.drive_spent != 0) && (!sf5.gauges || !level.spends_meter()) {
+            return false;
+        }
+        let mut triggers = 0u16;
+        let mut enhanced = 0u16;
+        let mut critical = 0u16;
+        for step in &route.steps {
+            let mut previous = 0;
+            for (at, &(direction, buttons)) in step.pads.iter().enumerate() {
+                let fresh = buttons & !previous;
+                previous = buttons;
+                if fresh == 0 { continue }
+                if ButtonClass::HeavyPair.held(buttons) {
+                    // Native recognition gives this chord priority over
+                    // Skill or CA, and only exact Forward selects the
+                    // forward follow-up. Do not guess a second activation
+                    // after the first has spent its V/timer budget.
+                    triggers += 1;
+                    let followup = if direction == crate::route_book::RIGHT {
+                        sf5.followups[1].or(sf5.followups[0].filter(|entry| entry.input.motion.is_empty()))
+                    } else {
+                        sf5.followups[0]
+                    };
+                    if !sf5.gauges || !level.spends_meter() || triggers > 1
+                        || if sf5.warm { followup.is_none() } else { sf5.trigger.is_none() }
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+                if ButtonClass::ShiftPair.held(buttons) && direction & !3 == 0 {
+                    // Shift/Break are defensive answers with their own V
+                    // cost or evade window, never an unpriced attack route.
+                    return false;
+                }
+                if ButtonClass::MediumPair.held(buttons) {
+                    if !sf5.skill_live { return false }
+                    continue;
+                }
+                let Some((directions, len)) = route_directions(step, at) else { return false };
+                let directions = &directions[..len];
+                let ca = sf5.critical_input.is_some_and(|input| {
+                    input.button.held(buttons)
+                        && input.motion.len() == len
+                        && input.motion.iter().zip(directions).all(|(expected, actual)| expected.bits() == *actual)
+                });
+                if ca {
+                    critical += 1;
+                } else if len >= 6 {
+                    return false;
+                } else if at == 0 && sf5.stance_inputs.iter().flatten().any(|input| input.button.held(buttons)) {
+                    // A naked live Gen stance chord spends no gauge. It
+                    // must not be mistaken for an EX pair inside a route.
+                    continue;
+                } else if ButtonClass::PairPunch.held(buttons) || ButtonClass::PairKick.held(buttons) {
+                    if !sf5.enhanced_live { return false }
+                    enhanced += 1;
+                }
+            }
+        }
+        if (enhanced != 0 || critical != 0) && (!sf5.gauges || !level.spends_meter()) { return false }
+        let Some(actual_cost) = enhanced.checked_mul(sf5.ex_cost)
+            .and_then(|ex| critical.checked_mul(sf5.critical_cost).and_then(|ca| ex.checked_add(ca))) else { return false };
+        if route.super_spent < actual_cost { return false }
+        let trigger_cost = if self.unified && triggers != 0 && !sf5.warm { sf5.trigger_cost } else { 0 };
+        route.super_spent.checked_add(trigger_cost).is_some_and(|cost| cost <= super_meter)
     }
 
     /// Its fighter can change stance from the Mantis to the Crane (Gen):
@@ -700,8 +979,9 @@ impl Tactics {
         }
         if self.control.blockstun && (view.me.guarding() || threatened) {
             let affordable = !stronger || self.keeps_drive(2 * STOCK_AT);
-            if let Some(entry) = self.guard_cancel.filter(|_| affordable && rng.chance(level.guard() / 2)) {
-                return Some(self.pad(&entry, view, 2));
+            let guard_cancel = if stronger { self.sf5.map_or(self.guard_cancel, |sf5| sf5.reversal) } else { self.guard_cancel };
+            if let Some(entry) = guard_cancel.filter(|_| affordable && rng.chance(level.guard() / 2)) {
+                return Some(if stronger && self.sf5.is_some() { Self::sf5_pad(entry, felt, 2) } else { self.pad(&entry, view, 2) });
             }
             return None;
         }
@@ -720,6 +1000,8 @@ impl Tactics {
                 if let Some(plan) = hit_confirm.then(|| self.sf4_ultra(felt)).flatten().or_else(|| self.sf4_super(felt)) {
                     return Some(plan);
                 }
+            } else if stronger && self.sf5.is_some() {
+                if let Some(plan) = self.sf5_super(felt) { return Some(plan) }
             } else if let Some((entry, strength)) = self.super_move {
                 return Some(self.pad(&entry, view, strength));
             }
@@ -764,6 +1046,12 @@ impl Tactics {
                 (evade, armor) => evade.or(armor)?,
             };
             return Some(self.pad(&choice, view, 1));
+        }
+        if stronger {
+            if let Some(sf5) = self.sf5 {
+                let entry = sf5.counter.or(sf5.shift)?;
+                return (!self.control.airborne).then(|| Self::sf5_pad(entry, felt, 1));
+            }
         }
         if self.can_parry {
             let direction = if view.foe.low_attack() && !self.control.airborne {
@@ -942,7 +1230,7 @@ mod tests {
         // SC8 (`#200`): the Drive rule is SF6's; an Alpha Counter or a
         // V-Reversal pays from its own meter.
         use crate::era::Revision;
-        let mut config = MatchConfig::definitive();
+        let config = MatchConfig::definitive();
         let guarding = |view: &mut Percept| view.me.move_id = 4;
         let (mut view, mut before) = seen_begin(240, 0x10);
         guarding(&mut view);
@@ -958,10 +1246,9 @@ mod tests {
         assert!(sfz.keeps_drive(2 * STOCK_AT), "no Drive gauge to keep outside SF6");
         assert!(!stronger_answers(sfz, view, before).is_empty(), "an Alpha Counter out of a guard");
         // SF5: a V-Reversal, its V-Gauge here the unified meter.
-        config.gauge_mode = GaugeMode::Unified;
-        let v = fighter(Revision::Sf5Ce, Loadout::Skill1Trigger1, 2 * STOCK_AT);
-        let reversal = entry("V-REVERSAL", sf5::REVERSAL, MoveKind::System, &[Dir::Forward], ButtonClass::PairPunch);
-        let sf5 = Tactics::of(&v, &[reversal], config, Level::VeryHard, blockstun);
+        let (mut v, config) = sf5_fighter(Ryu, Revision::Sf5Ce, Loadout::Skill1Trigger1, GaugeMode::Unified);
+        v.super_meter = 2 * STOCK_AT;
+        let sf5 = Tactics::of(&v, &sf5_moves(&v, config), config, Level::VeryHard, blockstun);
         assert!(!stronger_answers(sf5, view, before).is_empty(), "a V-Reversal out of a guard");
     }
 
@@ -985,10 +1272,11 @@ mod tests {
         // SF5: the V-Shift.
         let mut unified = config;
         unified.gauge_mode = GaugeMode::Unified;
-        let shift = entry("V-SHIFT", sf5::SHIFT, MoveKind::System, &[], ButtonClass::HeavyPair);
-        let sf5 = Tactics::of(&fighter(Revision::Sf5Ce, Loadout::Skill1Trigger1, 2 * STOCK_AT), &[shift], unified, Level::VeryHard, free);
-        let heavy_pair = button(2) | button(5);
-        assert!(stronger_answers(sf5, view, before).iter().any(|pads| pads.iter().any(|&p| p & heavy_pair == heavy_pair)), "SF5 shifts");
+        let (mut v, _) = sf5_fighter(crate::roster::TournamentFighter::Ken, Revision::Sf5Ce, Loadout::Skill1Trigger1, GaugeMode::Unified);
+        v.super_meter = 2 * STOCK_AT;
+        let sf5 = Tactics::of(&v, &sf5_moves(&v, unified), unified, Level::VeryHard, free);
+        let shift_pair = button(2) | button(4);
+        assert!(stronger_answers(sf5, view, before).iter().any(|pads| pads.iter().any(|&p| p & shift_pair == shift_pair)), "SF5 shifts with its native HP+MK chord");
     }
 
     #[test]
@@ -1495,6 +1783,317 @@ mod tests {
                 let tactics = Tactics::of(&state, &moves, config, level, EraControl::default());
                 assert!(tactics.sf4_route_ready(route, level, 0), "{mode:?} {level:?}: the single quarter circle is not a Super or Ultra");
             }
+        }
+    }
+
+    fn sf5_fighter(fighter_id: crate::roster::TournamentFighter, revision: crate::era::Revision, loadout: Loadout, mode: GaugeMode) -> (EraFighterState, MatchConfig) {
+        let mut state = fighter(revision, loadout, 0);
+        state.fighter = Some(fighter_id);
+        state.set_what_if(!matches!(fighter_id, crate::roster::TournamentFighter::Ryu | crate::roster::TournamentFighter::Ken | crate::roster::TournamentFighter::Birdie | crate::roster::TournamentFighter::Sagat));
+        state.set_gauge_mode(mode);
+        let mut cfg = MatchConfig::definitive();
+        cfg.gauge_mode = mode;
+        (state, cfg)
+    }
+
+    fn sf5_moves(state: &EraFighterState, cfg: MatchConfig) -> Vec<MoveEntry> {
+        crate::moves::live_move_list(state.fighter.unwrap(), cfg.preset, true, state)
+    }
+
+    #[test]
+    fn sf5_live_costs_controls_and_easy_policy_keep_legacy_choices_separate() {
+        use crate::era::Revision;
+        let free = EraControl { free: true, ..EraControl::default() };
+        for fighter_id in crate::roster::TournamentFighter::ALL {
+            let (mut state, mut cfg) = sf5_fighter(fighter_id, Revision::Sf5Ce, Loadout::Skill1Trigger1, GaugeMode::EraDefault);
+            let moves = sf5_moves(&state, cfg);
+            for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                for meter in [STOCK_AT - 1, STOCK_AT, 3 * STOCK_AT - 1, 3 * STOCK_AT] {
+                    state.super_meter = meter;
+                    let tactics = Tactics::of(&state, &moves, cfg, level, free);
+                    assert_eq!(tactics.sf5_ex_ready(), level.spends_meter() && meter >= STOCK_AT, "{fighter_id:?} {level:?} EX {meter}");
+                    assert_eq!(tactics.sf5_super_ready(), level.spends_meter() && meter >= 3 * STOCK_AT, "{fighter_id:?} {level:?} CA {meter}");
+                }
+            }
+            state.super_meter = 2 * STOCK_AT;
+            let old = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+            assert!(old.enhanced.is_some(), "{fighter_id:?}: old Easy retains its existing two-stock EX choice");
+            assert!(old.spending_safely(Level::Easy).enhanced.is_none());
+            state.super_meter = 3 * STOCK_AT;
+            for control in [EraControl::default(), EraControl { airborne: true, ..free }] {
+                let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, control);
+                assert!(!tactics.sf5_ex_ready() && !tactics.sf5_super_ready() && !tactics.sf5_skill_ready());
+            }
+            state.set_gauge_mode(GaugeMode::NoGauges);
+            cfg.gauge_mode = GaugeMode::NoGauges;
+            let disabled = Tactics::of(&state, &sf5_moves(&state, cfg), cfg, Level::VeryHard, free);
+            assert!(!disabled.sf5_ex_ready() && !disabled.sf5_super_ready() && !disabled.sf5_skill_ready() && !disabled.sf5_trigger_ready());
+        }
+    }
+
+    #[test]
+    fn every_sf5_pair_uses_its_native_trigger_gate_and_followup_table() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter;
+        let free = EraControl { free: true, ..EraControl::default() };
+        let mut checked = 0;
+        for fighter_id in TournamentFighter::ALL {
+            for revision in [Revision::Sf5, Revision::Sf5Ae, Revision::Sf5Ce] {
+                for loadout in crate::era::loadouts(revision) {
+                    if !sf5::available(StylePick::for_revision(revision, loadout), Some(fighter_id)) { continue }
+                    checked += 1;
+                    for mode in [GaugeMode::EraDefault, GaugeMode::Unified] {
+                        let (mut state, cfg) = sf5_fighter(fighter_id, revision, loadout, mode);
+                        let cost = state.meter_cost(state.v_trigger_cost(mode));
+                        let moves = sf5_moves(&state, cfg);
+                        for points in [cost - 1, cost] {
+                            state.super_meter = if mode == GaugeMode::Unified { points } else { 0 };
+                            state.set_sf5_practice_points((points, 0, 0));
+                            let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                            assert_eq!(tactics.sf5_trigger_ready(), points == cost, "{fighter_id:?}/{revision:?}/{loadout:?} {mode:?}");
+                        }
+                        state.super_meter = 0;
+                        state.set_sf5_practice_points((0, 1, 1500));
+                        let active = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                        let offensive = fighter_id != Ryu && sf5::trigger_follow_up(fighter_id, loadout, false).is_some();
+                        assert_eq!(active.sf5_trigger_ready(), offensive, "{fighter_id:?}/{revision:?}/{loadout:?}: positive native timer is enough for one follow-up");
+                        let easy = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+                        assert!(!easy.sf5_trigger_ready());
+                        if fighter_id == Ryu {
+                            assert!(easy.sf5.unwrap().counter.is_some_and(|entry| matches!(entry.produces, sf5::SKILL_ONE | sf5::SKILL_TWO)), "Easy may use a free Skill counter, not spend Isshin's timer");
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(checked, 59);
+    }
+
+    #[test]
+    fn sf5_offensive_followups_include_forward_tools_and_use_felt_facing() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::{Birdie, Sagat};
+        let free = EraControl { free: true, ..EraControl::default() };
+        for fighter_id in [Birdie, Sagat] {
+            let (mut state, cfg) = sf5_fighter(fighter_id, Revision::Sf5Ce, Loadout::Skill1Trigger2, GaugeMode::EraDefault);
+            state.set_sf5_practice_points((0, 1, 2400));
+            let tactics = Tactics::of(&state, &sf5_moves(&state, cfg), cfg, Level::VeryHard, free);
+            for facing_left in [false, true] {
+                let mut view = Percept::default();
+                view.me.facing_left = facing_left;
+                view.me.x = 200;
+                view.foe.x = if facing_left { 250 } else { 150 };
+                let mut neutral = false;
+                let mut forward = false;
+                for seed in 0..64 {
+                    let plan = tactics.sf5_trigger(view, &mut Rng(seed)).unwrap();
+                    let pads = &plan.pads[..usize::from(plan.len)];
+                    let chord = button(2) | button(5);
+                    neutral |= pads.contains(&chord);
+                    forward |= pads.contains(&(chord | if facing_left { LEFT } else { RIGHT }));
+                }
+                assert!(neutral && forward, "{fighter_id:?}: both native trigger follow-ups remain choices in either facing");
+            }
+        }
+    }
+
+    #[test]
+    fn sf5_zero_metadata_trigger_route_cannot_borrow_v_or_bypass_easy() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::Ken;
+        let (mut state, cfg) = sf5_fighter(Ken, Revision::Sf5Ae, Loadout::Skill1Trigger2, GaugeMode::EraDefault);
+        let book = crate::route_book::book(Ken, Revision::Sf5Ae, Loadout::Skill1Trigger2).unwrap();
+        let mut route = book.routes.iter().find(|route| route.name() == "cr.MP, 236+LP, HP+HK").unwrap().clone();
+        assert_eq!((route.super_spent, route.drive_spent), (0, 0));
+        for step in &mut route.steps { step.name = "meterless normal".into() }
+        let moves = sf5_moves(&state, cfg);
+        let at = |state: &EraFighterState| Tactics::of(state, &moves, cfg, Level::VeryHard, EraControl::default());
+        assert!(!at(&state).sf5_route_ready(&route, Level::VeryHard, 0));
+        let cost = state.v_trigger_cost(GaugeMode::EraDefault);
+        state.set_sf5_practice_points((cost - 1, 0, 0));
+        assert!(!at(&state).sf5_route_ready(&route, Level::VeryHard, 0));
+        state.set_sf5_practice_points((cost, 0, 0));
+        assert!(at(&state).sf5_route_ready(&route, Level::VeryHard, 0), "a later step need not be executable in the current local controls");
+        assert!(!at(&state).sf5_route_ready(&route, Level::Easy, 0));
+        state.set_sf5_practice_points((0, 1, 3000));
+        assert!(at(&state).sf5_route_ready(&route, Level::VeryHard, 0), "a native active follow-up can spend the remaining timer");
+        route.steps.push(route.steps.last().unwrap().clone());
+        assert!(!at(&state).sf5_route_ready(&route, Level::VeryHard, 0), "do not assume a second trigger use is available");
+    }
+
+    #[test]
+    fn sf5_route_gate_prices_actual_chords_and_motions_and_keeps_plain_routes() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::Ken;
+        let (mut state, mut cfg) = sf5_fighter(Ken, Revision::Sf5Ce, Loadout::Skill1Trigger2, GaugeMode::Unified);
+        state.super_meter = 3 * STOCK_AT;
+        let moves = sf5_moves(&state, cfg);
+        let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl::default());
+        let combined = sf4_recipe(&["236+PP", "HP+HK"], u16::from(STOCK_AT));
+        assert!(!tactics.sf5_route_ready(&combined, Level::VeryHard, u16::from(3 * STOCK_AT) - 1));
+        assert!(tactics.sf5_route_ready(&combined, Level::VeryHard, u16::from(3 * STOCK_AT)), "Unified must pay EX and then V activation from the same gauge");
+        assert!(!tactics.sf5_route_ready(&sf4_recipe(&["236+PP"], 0), Level::VeryHard, u16::from(3 * STOCK_AT)), "real EX is not meterless");
+        assert!(!tactics.sf5_route_ready(&sf4_recipe(&["236236+HK"], 0), Level::VeryHard, u16::from(3 * STOCK_AT)), "real CA is not meterless");
+        assert!(tactics.sf5_route_ready(&sf4_recipe(&["236236+HK"], u16::from(3 * STOCK_AT)), Level::VeryHard, u16::from(3 * STOCK_AT)));
+        let mut skill = sf4_recipe(&["MP"], 0);
+        skill.steps[0].pads = vec![(0, 0b010_010), (0, 0b010_010), (0, 0)];
+        assert!(tactics.sf5_route_ready(&skill, Level::Easy, u16::from(3 * STOCK_AT)), "V-Skill spends no meter");
+        state.set_gauge_mode(GaugeMode::NoGauges);
+        cfg.gauge_mode = GaugeMode::NoGauges;
+        let disabled = Tactics::of(&state, &sf5_moves(&state, cfg), cfg, Level::VeryHard, EraControl::default());
+        assert!(!disabled.sf5_route_ready(&skill, Level::VeryHard, 0));
+        assert!(!disabled.sf5_route_ready(&combined, Level::VeryHard, u16::from(3 * STOCK_AT)));
+        assert!(disabled.sf5_route_ready(&sf4_recipe(&["MP", "LK"], 0), Level::Easy, 0));
+    }
+
+    #[test]
+    fn sf5_quiet_neutral_cannot_start_a_trigger_or_ryus_counter() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::{Birdie, Ken, Sagat};
+        let free = EraControl { free: true, ..EraControl::default() };
+        let (view, _) = seen_begin(254, 1);
+        for fighter_id in [Ryu, Ken, Birdie, Sagat] {
+            for loadout in [Loadout::Skill1Trigger1, Loadout::Skill1Trigger2] {
+                let (mut state, cfg) = sf5_fighter(fighter_id, Revision::Sf5Ce, loadout, GaugeMode::EraDefault);
+                let cost = state.v_trigger_cost(GaugeMode::EraDefault);
+                for timer in [0, 1500] {
+                    state.set_sf5_practice_points((cost, timer, timer));
+                    let old = Tactics::of(&state, &sf5_moves(&state, cfg), cfg, Level::VeryHard, free);
+                    if timer == 0 { assert!(old.install.is_some(), "the legacy neutral activation remains unchanged") }
+                    let stronger = old.spending_safely(Level::VeryHard);
+                    assert!(stronger.install.is_none());
+                    if fighter_id == Ryu { assert!(stronger.skill.is_none()) }
+                    for seed in 0..64 {
+                        if let Some(plan) = stronger.neutral(&mut Rng(seed), Level::VeryHard, view) {
+                            assert!(!plan.pads[..usize::from(plan.len)].iter().any(|pad| pad & (button(2) | button(5)) == button(2) | button(5)), "{fighter_id:?}: quiet neutral does not borrow a Trigger chord");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sf5_route_gate_keeps_native_stance_chords_free_and_rejects_defensive_chords() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::{Gen, Ken};
+        let (state, cfg) = sf5_fighter(Gen, Revision::Sf5Ce, Loadout::Skill1Trigger1, GaugeMode::EraDefault);
+        let moves = sf5_moves(&state, cfg);
+        assert!(moves.iter().any(|entry| entry.name == "SWITCH TO CRANE" && entry.input.button == ButtonClass::TripleKick));
+        let tactics = Tactics::of(&state, &moves, cfg, Level::Easy, EraControl::default());
+        let mut route = sf4_recipe(&["MP"], 0);
+        route.steps[0].name = "ordinary normal".into();
+        route.steps[0].pads = vec![(0, 0b111_000), (0, 0b111_000), (0, 0)];
+        assert!(tactics.sf5_route_ready(&route, Level::Easy, 0), "the actual free Crane input is not EX");
+        route.steps[0].pads = vec![(0, 0b000_111), (0, 0)];
+        assert!(!tactics.sf5_route_ready(&route, Level::Easy, 0), "the current Mantis cannot borrow an absent stance command");
+        route.steps[0].pads = vec![(0, 0b010_100), (0, 0b010_100), (0, 0)];
+        for mode in [GaugeMode::EraDefault, GaugeMode::NoGauges] {
+            let (mut state, cfg) = sf5_fighter(Ken, Revision::Sf5Ce, Loadout::Skill1Trigger1, mode);
+            state.set_sf5_practice_points((STOCK_AT, 0, 0));
+            let moves = sf5_moves(&state, cfg);
+            for level in [Level::Easy, Level::VeryHard] {
+                let tactics = Tactics::of(&state, &moves, cfg, level, EraControl::default());
+                assert!(!tactics.sf5_route_ready(&route, level, 0), "{mode:?} {level:?}: Shift is not an unpriced attack recipe");
+            }
+        }
+    }
+
+    #[test]
+    fn sf5_reactive_counters_and_v_defence_require_a_new_delayed_threat() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::Ken;
+        let free = EraControl { free: true, ..EraControl::default() };
+        let (view, before) = seen_begin(254, 0x11);
+        let (mut ryu, cfg) = sf5_fighter(Ryu, Revision::Sf5Ce, Loadout::Skill2Trigger2, GaugeMode::EraDefault);
+        ryu.set_sf5_practice_points((0, 1, 1500));
+        let tactics = Tactics::of(&ryu, &sf5_moves(&ryu, cfg), cfg, Level::VeryHard, free);
+        assert!(!tactics.sf5_skill_ready() && !tactics.sf5_trigger_ready(), "Ryu's counter is not a blind offensive plan");
+        assert_eq!(tactics.sf5.unwrap().counter.unwrap().produces, sf5::TRIGGER_ATTACK);
+        let answers = stronger_answers(tactics, view, before);
+        assert!(!answers.is_empty());
+        assert!(answers.iter().all(|pads| pads.contains(&(button(2) | button(5)))));
+        assert!(stronger_answers(tactics, before, before).is_empty());
+        assert!(stronger_answers(tactics, view, view).is_empty(), "a continuing attack is not a new event");
+        for (revision, shift) in [(Revision::Sf5Ae, false), (Revision::Sf5Ce, true)] {
+            let (mut state, cfg) = sf5_fighter(Ken, revision, Loadout::Skill1Trigger1, GaugeMode::EraDefault);
+            let moves = sf5_moves(&state, cfg);
+            for points in [STOCK_AT - 1, STOCK_AT] {
+                state.set_sf5_practice_points((points, 0, 0));
+                let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                assert_eq!(tactics.sf5.unwrap().shift.is_some(), shift && points == STOCK_AT);
+                assert_eq!(tactics.sf5.unwrap().reversal.is_some(), points == STOCK_AT);
+            }
+            state.set_sf5_practice_points((STOCK_AT, 1, 1200));
+            let active = Tactics::of(&state, &moves, cfg, Level::VeryHard, free).sf5.unwrap();
+            assert!(active.shift.is_none() && active.reversal.is_none());
+        }
+    }
+
+    #[test]
+    fn sf5_easy_keeps_meter_when_separate_commands_complete_its_own_ca_motion() {
+        use crate::era::Revision;
+        use crate::roster::TournamentFighter::Ken;
+        let free = EraControl { free: true, ..EraControl::default() };
+        for fighter_id in [Ryu, Ken] {
+            let (mut state, cfg) = sf5_fighter(fighter_id, Revision::Sf5Ce, Loadout::Skill1Trigger1, GaugeMode::EraDefault);
+            state.super_meter = 3 * STOCK_AT;
+            let moves = sf5_moves(&state, cfg);
+            let easy = Tactics::of(&state, &moves, cfg, Level::Easy, free);
+            assert_eq!(easy.sf5.unwrap().keep_meter_directions, 0, "a fresh native recognizer is unprimed");
+            let kick = easy.sf5.unwrap().critical_input.unwrap().button.kick();
+            let attack = button(if kick { 3 } else { 0 });
+            let other = button(if kick { 2 } else { 5 });
+            let motion = entry("ordinary quarter circle", 0x19, MoveKind::Special, QCF, if kick { ButtonClass::Kick } else { ButtonClass::Punch });
+            for facing_left in [false, true] {
+                let forward = if facing_left { LEFT } else { RIGHT };
+                let first = alpha_motion(&motion, !facing_left, 0, true);
+                assert!(first.iter().any(|pad| pad & attack != 0));
+                assert!(first.iter().all(|&pad| easy.sf5_keep_meter(pad, facing_left) == pad), "the first standalone quarter circle stays valid");
+
+                // The native helper tests replay the tracker itself. Supply
+                // its boundary result after an earlier quarter circle and
+                // this command's Down/DownForward: Forward would finish CA.
+                let mut primed = easy;
+                primed.sf5.as_mut().unwrap().keep_meter_directions = 1 << Dir::Forward.bits();
+                assert_eq!(primed.sf5_keep_meter(forward | attack, facing_left), forward, "a second independently planned motion cannot spend Easy's meter");
+                assert_eq!(primed.sf5_keep_meter(forward | attack | other, facing_left), forward | other, "only the CA button family is withheld");
+                assert_eq!(primed.sf5_keep_meter(DOWN | attack, facing_left), DOWN | attack, "directions outside the native risk mask stay unchanged");
+                assert_eq!(primed.sf5_keep_meter(forward | other, facing_left), forward | other, "the other family's normal stays playable");
+                let skill = forward | button(1) | button(4);
+                assert_eq!(primed.sf5_keep_meter(skill, facing_left), skill, "the free native V-Skill chord has priority over CA");
+                let mut held_skill = primed;
+                held_skill.sf5.as_mut().unwrap().previous_buttons = 0b010_010;
+                assert_eq!(held_skill.sf5_keep_meter(skill | attack, facing_left), forward | button(if kick { 1 } else { 4 }), "an old held MediumPair does not exempt a fresh CA-family button");
+                held_skill.sf5.as_mut().unwrap().previous_buttons = 0b000_010;
+                assert_eq!(held_skill.sf5_keep_meter(skill | attack, facing_left), skill | attack, "one fresh MK edge is enough for native Skill priority");
+                for control in [
+                    EraControl { airborne: true, ..free },
+                    EraControl { blockstun: true, ..free },
+                    EraControl::default(),
+                    EraControl { waking: true, ..EraControl::default() },
+                ] {
+                    let locked = Tactics { control, ..primed };
+                    assert_eq!(locked.sf5_keep_meter(forward | attack, facing_left), forward | attack, "an unspendable state keeps its jump/recovery buttons");
+                }
+                for control in [
+                    EraControl { cancel: true, ..EraControl::default() },
+                    EraControl { special: true, ..EraControl::default() },
+                    EraControl { sf5_special_cancel: true, ..EraControl::default() },
+                ] {
+                    let cancelling = Tactics { control, ..primed };
+                    assert_eq!(cancelling.sf5_keep_meter(forward | attack, facing_left), forward, "a grounded cancel can still spend CA and needs protection");
+                }
+            }
+            let normal = Tactics::of(&state, &moves, cfg, Level::Normal, free);
+            assert_eq!(normal.sf5.unwrap().keep_meter_directions, 0, "other levels keep their deliberate spending policy");
+            for pad in [0, RIGHT | attack, LEFT | attack, DOWN | attack, attack | other] {
+                assert_eq!(normal.sf5_keep_meter(pad, false), pad);
+            }
+        }
+        let other = Tactics::of(&fighter(Revision::Usf4, Loadout::Ultra1, 192), &[], MatchConfig::definitive(), Level::Easy, free);
+        for pad in 0..1024 {
+            assert_eq!(other.sf5_keep_meter(pad, false), pad, "other eras do not use this guard");
         }
     }
 }

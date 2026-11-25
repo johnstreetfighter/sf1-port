@@ -430,7 +430,7 @@ fn trigger(fighter: TournamentFighter, style: StylePick) -> (&'static str, u16) 
     }
 }
 
-fn trigger_follow_up(
+pub(crate) fn trigger_follow_up(
     fighter: TournamentFighter,
     loadout: Loadout,
     forward: bool,
@@ -447,7 +447,7 @@ fn trigger_follow_up(
     }
 }
 
-fn trigger_slot(fighter: TournamentFighter, loadout: Loadout) -> u8 {
+pub(crate) fn trigger_slot(fighter: TournamentFighter, loadout: Loadout) -> u8 {
     if fighter == Ken && second_trigger(loadout) {
         TRIGGER_ATTACK
     } else {
@@ -616,6 +616,27 @@ impl EraFighterState {
                 && self.fighter != Some(Sagat))
     }
 
+    /// Sagat's selected V-Skill has already prepared its next powered move.
+    pub(crate) fn sf5_skill_charged(&self) -> bool {
+        self.fighter == Some(Sagat)
+            && self.sf5.skill_charge == if second_skill(self.style.loadout) { 0x19 } else { UPPERCUT }
+    }
+
+    /// Our own grounded special may cancel into Trigger or Critical Art.
+    /// Shared with the native recognizer so input planning uses its gate.
+    pub(crate) fn sf5_special_cancel(&self, move_id: u8, posture: u8, vertical_step: u8) -> bool {
+        if self.style.family != EraFamily::Sf5 { return false }
+        if self.sf5_kage_rikudo() {
+            posture & 0x80 != 0 && self.sf5_rikudo_confirmed(move_id)
+        } else {
+            posture & 0xc1 == 0xc0 && vertical_step == 0
+                && (matches!(move_id, 0x19..=0x1b)
+                    || (self.alpha_move_active(move_id)
+                        && (matches!(move_id, UPPERCUT | EX_FORWARD..=EX_LOW_SHOT)
+                            || self.is_kage() && move_id == KAGE_RYUSOKYAKU)))
+        }
+    }
+
     pub(crate) fn sf5_active_moves(&self) -> Vec<MoveEntry> {
         if !available(self.style, self.fighter) {
             return Vec::new();
@@ -762,6 +783,24 @@ impl EraFighterState {
             return (0, 0);
         };
         (tracker.position, tracker.remaining)
+    }
+
+    /// Relative stick directions that would complete our own pending CA
+    /// command on this input tick. This copies only the input recognizer;
+    /// it neither advances the fight nor reads anything about the opponent.
+    pub(crate) fn sf5_critical_directions(&self) -> u16 {
+        if self.sf5.capacity == 0 {
+            return 0;
+        }
+        if self.what_if_active() {
+            return self.what_if_critical_directions();
+        }
+        self.sf5.critical.completing_directions(DOUBLE_QUARTER_CIRCLE)
+    }
+
+    /// The last buttons actually received by our native input path.
+    pub(crate) fn held_buttons(&self) -> u8 {
+        self.alpha_buttons
     }
 
     pub(crate) fn sf5_practice_points(&self) -> Option<(u8, u16, u16)> {
@@ -920,16 +959,7 @@ impl Bus<'_> {
         let (held, pressed) = self.era_buttons(ps);
         let move_id = self.eb(entity, 0xa);
         let posture = self.eb(entity, 9);
-        let special_cancel = if state.sf5_kage_rikudo() {
-            posture & 0x80 != 0 && state.sf5_rikudo_confirmed(move_id)
-        } else {
-            posture & 0xc1 == 0xc0
-                && self.eb(entity, 0x14) == 0
-                && (matches!(move_id, 0x19..=0x1b)
-                    || (state.alpha_move_active(move_id)
-                        && (matches!(move_id, UPPERCUT | EX_FORWARD..=EX_LOW_SHOT)
-                            || state.is_kage() && move_id == KAGE_RYUSOKYAKU)))
-        };
+        let special_cancel = state.sf5_special_cancel(move_id, posture, self.eb(entity, 0x14));
         let mode = self.era_gauge_mode(side);
         let state = &mut self.toggle_state.era.fighters[side];
         state.sf5.step(relative);
@@ -1436,5 +1466,85 @@ impl Bus<'_> {
             self.era_share_gauge(side);
         }
         self.era_damage(def_ps, amount, true);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sf5_native_special_cancel_covers_grounded_uppercut_and_ex_streams() {
+        let mut fighter = EraFighterState {
+            style: crate::era::StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+            fighter: Some(Sagat),
+            ..EraFighterState::default()
+        };
+        fighter.set_gauge_mode(GaugeMode::EraDefault);
+        for slot in [UPPERCUT, EX_FORWARD, EX_KICK, EX_RISE, EX_LOW_SHOT] {
+            fighter.active_alpha_slot = slot;
+            assert!(fighter.sf5_special_cancel(slot, 0xc0, 0), "{slot:x}: native special cancel");
+            assert!(!fighter.sf5_special_cancel(slot, 0xc1, 0), "airborne is not a ground cancel");
+            assert!(!fighter.sf5_special_cancel(slot, 0xc0, 1), "vertical travel is not grounded");
+            fighter.active_alpha_slot = 0;
+            assert!(!fighter.sf5_special_cancel(slot, 0xc0, 0), "the authored stream must be active");
+        }
+        assert!(fighter.sf5_special_cancel(0x19, 0xc0, 0), "the ordinary player-table special stays supported");
+        assert!(!fighter.sf5_special_cancel(0x0d, 0xc0, 0), "ordinary normals keep their own cancel windows");
+    }
+
+    #[test]
+    fn sf5_sagat_skill_reads_the_pending_buff_not_the_current_powered_move() {
+        for (loadout, target, other) in [
+            (Loadout::Skill1Trigger1, UPPERCUT, 0x19),
+            (Loadout::Skill1Trigger2, UPPERCUT, 0x19),
+            (Loadout::Skill2Trigger1, 0x19, UPPERCUT),
+            (Loadout::Skill2Trigger2, 0x19, UPPERCUT),
+        ] {
+            let mut fighter = EraFighterState {
+                style: crate::era::StylePick::for_revision(Revision::Sf5Ce, loadout),
+                fighter: Some(Sagat),
+                ..EraFighterState::default()
+            };
+            fighter.set_gauge_mode(GaugeMode::EraDefault);
+            assert!(!fighter.sf5_skill_charged());
+            fighter.sf5.skill_charge = target;
+            assert!(fighter.sf5_skill_charged(), "{loadout:?}: preserve the pending charge");
+            fighter.sf5.skill_charge = other;
+            assert!(!fighter.sf5_skill_charged(), "{loadout:?}: the other Skill does not supply this buff");
+            fighter.sf5.skill_charge = 0;
+            fighter.sf5.charged_move = target;
+            assert!(!fighter.sf5_skill_charged(), "the powered attack already consumed its pending charge");
+        }
+    }
+
+    #[test]
+    fn sf5_critical_input_risk_keeps_the_first_quarter_circle_and_expires_natively() {
+        let mut fighter = EraFighterState {
+            style: crate::era::StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+            fighter: Some(Ryu),
+            ..EraFighterState::default()
+        };
+        fighter.set_gauge_mode(GaugeMode::EraDefault);
+        let forward = 1 << Dir::Forward.bits();
+        for direction in [Dir::Down, Dir::DownForward, Dir::Forward] {
+            assert_eq!(fighter.sf5_critical_directions(), 0, "one special is not a CA");
+            fighter.sf5.critical.step(direction.bits(), DOUBLE_QUARTER_CIRCLE);
+        }
+        assert_eq!(fighter.sf5_critical_directions(), 0);
+        for direction in [Dir::Down, Dir::DownForward] {
+            fighter.sf5.critical.step(direction.bits(), DOUBLE_QUARTER_CIRCLE);
+        }
+        let saved = fighter.sf5.critical;
+        assert_eq!(fighter.sf5_critical_directions(), forward, "the next Forward completes the second motion");
+        assert_eq!(fighter.sf5.critical, saved, "checking our own input does not advance it");
+        fighter.sf5.critical.step(Dir::Forward.bits(), DOUBLE_QUARTER_CIRCLE);
+        assert_eq!(fighter.sf5_critical_directions(), forward);
+        for _ in 0..32 {
+            fighter.sf5.critical.step(Dir::Neutral.bits(), DOUBLE_QUARTER_CIRCLE);
+        }
+        assert_eq!(fighter.sf5_critical_directions(), 0, "the native command window expires");
+        fighter.set_gauge_mode(GaugeMode::NoGauges);
+        assert_eq!(fighter.sf5_critical_directions(), 0);
     }
 }

@@ -12,7 +12,8 @@
 //! as it is with the switch off. The stronger play reads them from the
 //! tables here, by fighter and by the move's name as the move list shows it,
 //! for the SF2 era style (SC15), the SFZ era style (SC16, `#208`) and the
-//! SF3 era style (SC17, `#209`) and SF4 era style (SC18, `#210`); a
+//! SF3 era style (SC17, `#209`), SF4 era style (SC18, `#210`) and
+//! SF5 era style (SC19, `#211`); a
 //! fighter or style with no table keeps the old reading.
 //!
 //! The kit is read wherever an era style's context is built (a few name
@@ -284,6 +285,52 @@ const SF4: &[(TournamentFighter, &[(&str, Use)])] = &[
     ),
 ];
 
+/// SF5's native Birdie has quarter-circle Bull Head and Bull Horn, rather
+/// than the what-if charge/chain kit. Sagat keeps his live player-table
+/// names. The other fighters' what-if tools use their own kit names.
+const SF5_SHOTO: &[(&str, Use)] = &[
+    ("HADOKEN", R(Role::Projectile)),
+    ("SHORYUKEN", R(Role::AntiAir)),
+    ("TATSUMAKI", R(Role::Advance)),
+];
+
+const SF5: &[(TournamentFighter, &[(&str, Use)])] = &[
+    (TournamentFighter::Ryu, SF5_SHOTO),
+    (TournamentFighter::Ken, SF5_SHOTO),
+    (TournamentFighter::Retsu, SF2[0].1),
+    (TournamentFighter::Geki, SF2[1].1),
+    (TournamentFighter::Joe, SF2[2].1),
+    (
+        TournamentFighter::Mike,
+        &[
+            ("WEAVING UPPER", R(Role::AntiAir)),
+            ("MURDER STRAIGHT", R(Role::Advance)),
+            ("ROLLING BLOW", R(Role::Advance)),
+            ("DUCKING SWAY", Skip),
+        ],
+    ),
+    (TournamentFighter::Lee, SF4[4].1),
+    (TournamentFighter::Gen, SFZ[6].1),
+    (
+        TournamentFighter::Birdie,
+        &[
+            ("BULL HEAD", R(Role::Advance)),
+            ("BULL HORN", R(Role::Advance)),
+        ],
+    ),
+    (TournamentFighter::Eagle, SF3[8].1),
+    (TournamentFighter::Adon, SF2[6].1),
+    (
+        TournamentFighter::Sagat,
+        &[
+            ("HIGH TIGER SHOT", R(Role::Projectile)),
+            ("LOW TIGER SHOT", R(Role::Projectile)),
+            ("TIGER UPPERCUT", R(Role::AntiAir)),
+            ("TIGER KNEE", R(Role::Advance)),
+        ],
+    ),
+];
+
 /// The tables of `family`, if the stronger play has any.
 fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'static str, Use)])] {
     match family {
@@ -291,6 +338,7 @@ fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'stati
         EraFamily::SfZ => SFZ,
         EraFamily::Sf3 => SF3,
         EraFamily::Sf4 => SF4,
+        EraFamily::Sf5 => SF5,
         _ => &[],
     }
 }
@@ -423,5 +471,56 @@ mod tests {
                 assert_eq!(kit.advance.unwrap().name, "HYAKURENKO");
             }
         }
+    }
+
+    #[test]
+    fn sf5_roles_and_tools_match_every_selectable_live_kit() {
+        use TournamentFighter::*;
+        let mut pairs = 0;
+        for fighter in TournamentFighter::ALL {
+            for revision in crate::era::listed_revisions(fighter, EraFamily::Sf5, true) {
+                for loadout in crate::era::loadouts(revision) {
+                    pairs += 1;
+                    let mut state = EraFighterState::default();
+                    state.fighter = Some(fighter);
+                    state.style = StylePick::for_revision(revision, loadout);
+                    state.max_sub_hp = 960;
+                    state.set_what_if(!crate::era::families(fighter).contains(&EraFamily::Sf5));
+                    state.set_gauge_mode(GaugeMode::EraDefault);
+                    let moves = live_move_list(fighter, MatchConfig::definitive().preset, true, &state);
+                    let (kit, tools) = stronger_kit(fighter, EraFamily::Sf5, &moves).expect("every SF5 fighter has a table");
+                    let label = format!("{fighter:?} {revision:?}/{loadout:?}");
+                    assert_eq!(tools.command_throw.is_some(), matches!(fighter, Retsu | Geki), "{label}: ordinary command throw");
+                    assert_eq!(tools.teleport.is_some(), fighter == Geki, "{label}: teleport");
+                    assert_eq!(tools.charge.is_some(), fighter == Lee, "{label}: starting-stance charge");
+                    for role in [Role::Projectile, Role::AntiAir, Role::Advance] {
+                        for entry in kit.by_role(role).into_iter().flatten() {
+                            assert!(moves.contains(&entry), "{label}: {entry:?}");
+                            assert!(!matches!(entry.input.button, crate::moves::ButtonClass::PairPunch | crate::moves::ButtonClass::PairKick), "{label}: ordinary role");
+                            assert!(!matches!(entry.name, "ST ANDREWS GREEN" | "DUCKING SWAY"), "{label}: no blind counter or sway");
+                        }
+                    }
+                    if matches!(fighter, Ryu | Ken | Retsu | Geki | Joe | Sagat) {
+                        assert!(kit.projectile.is_some(), "{label}: projectile");
+                    }
+                    if fighter != Birdie {
+                        assert!(kit.anti_air.is_some() || fighter == Eagle, "{label}: anti-air");
+                    }
+                    if fighter == Birdie {
+                        assert_eq!(kit.advance.unwrap().input.motion, &[crate::moves::Dir::Down, crate::moves::Dir::DownForward, crate::moves::Dir::Forward]);
+                        assert_eq!(kit.advance_alt.unwrap().name, "BULL HORN");
+                    }
+                    if fighter == Sagat {
+                        assert_eq!(kit.projectile.unwrap().name, "HIGH TIGER SHOT");
+                        assert_eq!(kit.projectile_alt.unwrap().name, "LOW TIGER SHOT");
+                        assert_eq!(kit.advance.unwrap().name, "TIGER KNEE");
+                    }
+                    if fighter == Mike {
+                        assert_eq!(kit.advance.unwrap().name, "MURDER STRAIGHT");
+                    }
+                }
+            }
+        }
+        assert_eq!(pairs, 59, "all supported fighter/revision/loadout pairs");
     }
 }

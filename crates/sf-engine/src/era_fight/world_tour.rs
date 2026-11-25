@@ -37,7 +37,7 @@ impl EraFighterState {
         self.tour.perk == Some(perk)
     }
 
-    pub(super) fn meter_cost(&self, cost: u8) -> u8 {
+    pub(crate) fn meter_cost(&self, cost: u8) -> u8 {
         if self.world_tour_perk(Perk::IsmPlus) {
             cost - cost / 4
         } else {

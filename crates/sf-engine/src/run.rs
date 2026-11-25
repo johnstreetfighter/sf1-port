@@ -1871,6 +1871,7 @@ impl PowerOnMachine {
                     cancel: !airborne && cancel.window[slot] != 0 && cancel.move_id[slot] == move_id,
                     special: posture & 0xc0 == 0xc0
                         && (matches!(move_id, 0x19..=0x1b) || era.sf4_special_active(move_id)),
+                    sf5_special_cancel: era.sf5_special_cancel(move_id, posture, obj[0x14]),
                     waking: matches!(move_id, 0x28 | 0x35..=0x3f),
                 }
             }).unwrap_or_default();

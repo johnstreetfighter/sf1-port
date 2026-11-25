@@ -286,6 +286,19 @@ impl MotionTracker {
                 || pattern.last().map(|dir| dir.bits()) == Some(self.previous))
     }
 
+    /// Candidate own stick symbols that complete this command without
+    /// advancing the recognizer that the real input path will consume.
+    fn completing_directions(self, pattern: &[Dir]) -> u16 {
+        if usize::from(self.position) + 1 < pattern.len() {
+            return 0;
+        }
+        (0..16).fold(0, |mask, direction| {
+            let mut tracker = self;
+            tracker.step(direction, pattern);
+            mask | if tracker.ready(pattern) { 1 << direction } else { 0 }
+        })
+    }
+
     fn shortcut(pattern: &[Dir]) -> Self {
         Self {
             position: pattern.len() as u8,

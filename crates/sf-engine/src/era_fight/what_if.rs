@@ -396,6 +396,14 @@ impl EraFighterState {
             })
     }
 
+    /// The SF5 what-if CA has its own recognizer, cleared by its ordinary
+    /// specials independently of the native V-system's motion history.
+    pub(super) fn what_if_critical_directions(&self) -> u16 {
+        let Some(kit) = self.what_if_kit() else { return 0 };
+        let Some(finisher) = self.what_if_finisher(kit, 0, 1) else { return 0 };
+        self.what_if_kit.supers[0].completing_directions(finisher.input.motion)
+    }
+
     pub(super) fn modern_what_if(&mut self, entry: MoveEntry, motion: MotionTracker) -> bool {
         let Some(kit) = self.what_if_kit() else { return false };
         let normal = self.what_if_command_slot(entry.produces);
@@ -747,5 +755,55 @@ impl Bus<'_> {
         self.set_eb(entity, 0x34, strength);
         self.era_share_gauge(side);
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sf5_what_if_ca_risk_uses_its_own_command_history() {
+        let prime = |pattern: &[Dir]| {
+            let mut tracker = MotionTracker::default();
+            for direction in pattern { tracker.step(direction.bits(), pattern); }
+            tracker
+        };
+        let make = |fighter| {
+            let mut state = EraFighterState {
+                fighter: Some(fighter),
+                style: crate::era::StylePick::for_revision(Revision::Sf5Ce, Loadout::Skill1Trigger1),
+                ..EraFighterState::default()
+            };
+            state.set_what_if(!matches!(fighter, TournamentFighter::Ryu | TournamentFighter::Ken
+                | TournamentFighter::Birdie | TournamentFighter::Sagat));
+            state.set_gauge_mode(crate::era::GaugeMode::EraDefault);
+            state
+        };
+        let native_ca = make(TournamentFighter::Ryu).sf5_active_moves().into_iter()
+            .find(|entry| entry.kind == MoveKind::Super).unwrap();
+        for fighter in [Retsu, Geki, Joe, Mike, Lee, TournamentFighter::Gen,
+            TournamentFighter::Eagle, TournamentFighter::Adon]
+        {
+            let mut state = make(fighter);
+            state.set_what_if(true);
+            let ca = state.what_if_moves().into_iter()
+                .find(|entry| entry.kind == MoveKind::Super).unwrap();
+            // A successful what-if special clears its own Super history;
+            // an unrelated native V-system prefix must not block it.
+            assert!(state.modern_sf5(native_ca, prime(native_ca.input.motion)));
+            assert_ne!(state.sf5_progress(0x29).0, 0);
+            assert_eq!(state.sf5_critical_directions(), 0, "{fighter:?}: actual CA history is empty");
+
+            // Conversely, a native system action can clear only the V-system
+            // history while the what-if CA prefix remains live.
+            assert!(state.modern_sf5(native_ca, MotionTracker::default()));
+            state.what_if_kit.supers[0] = prime(ca.input.motion);
+            let saved = state.what_if_kit;
+            let finishing = ca.input.motion.last().unwrap().bits();
+            assert_eq!(state.sf5_progress(0x29), (0, 0));
+            assert_eq!(state.sf5_critical_directions(), 1 << finishing, "{fighter:?}: actual CA history wins");
+            assert_eq!(state.what_if_kit, saved, "the query preserves native state");
+        }
     }
 }
