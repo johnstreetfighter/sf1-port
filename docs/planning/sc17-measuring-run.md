@@ -2,7 +2,7 @@
 
 2026-11-24. Version `1.5.28`. Ticket [#209](https://github.com/johnstreetfighter/sf1-port/issues/209).
 
-All 384 new-versus-old cells meet both win and idle bars. This remains true for every primary win bar when every engine-stopped match is counted as a loss. The six secondary misses are Joe's Difficult-over-Normal mirrors; their cause has not been isolated. The stronger play remains behind `--stronger-cpu`.
+All 384 new-versus-old cells meet both win and idle bars. This remains true for every primary win bar when every engine-stopped match is counted as a loss. The six secondary misses are Joe's Difficult-over-Normal mirrors, tracked in [#273](https://github.com/johnstreetfighter/sf1-port/issues/273); their cause has not been isolated. The stronger play remains behind `--stronger-cpu`.
 
 ## Source and method
 
