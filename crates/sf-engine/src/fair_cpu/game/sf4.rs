@@ -81,11 +81,12 @@ const GEN_CHARGE: GamePlan = GamePlan { score: 48, ..CHARGE_FAR };
 
 const RYU: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
 const KEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
-const SAGAT: &[GamePlan] = shared!(66, JUMP_FAR; &POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
+const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
 // Their live projectiles offer another way in while retaining both
 // fighter tools within the sixteen remembered plan slots.
 const RETSU: &[GamePlan] = shared!(62, SHOT; &POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
-const GEKI: &[GamePlan] = shared!(62, SHOT; &POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
+// Mix Shuriken with closing in and teleporting at long range.
+const GEKI: &[GamePlan] = shared!(62, GamePlan { score: 46, ..SHOT }; &POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
 // Joe's MK continues into a straight. His single low kick keeps the
 // pressure shorter, and Shockwave gives him a purpose at long range.
 const JOE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, SHOT, SHOT_WATCH);
@@ -94,7 +95,7 @@ const LEE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, LEE_CHARGE, ADVANCE_FAR);
 const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, CHARGE_FAR);
 const GEN: &[GamePlan] = shared!(62, GamePlan { score: 54, ..JUMP_FAR }; &POKE_HK, &MEATY_HK, CRANE, GEN_CHARGE);
 const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, ADVANCE_FAR);
-const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, ADVANCE_FAR);
+const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
 
 pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
     use TournamentFighter::*;

@@ -2926,12 +2926,12 @@ impl FairCpu {
                 clear.saturating_add(1)
             };
             let held = held + 1;
-            // Once an SF4 guard has really seen the threat clear, its
+            // Once an SF4 guard has seen three clear delayed frames, its
             // initial eight-frame hold is enough. Actual blockstun and a
             // chosen reset bait still keep their recovery/hold time.
             let sf4_clear = self.stronger(ctx) && ctx.family == Some(crate::era::EraFamily::Sf4)
                 && !ctx.own_blockstun && step >= self.bait_until && held >= 8;
-            if (clear >= 5 && (held >= min || sf4_clear)) || held > 120 {
+            if (clear >= 5 && held >= min) || (sf4_clear && clear >= 3) || held > 120 {
                 self.plan = Plan::default();
                 return 0;
             }
@@ -4299,7 +4299,7 @@ mod tests {
             } else if what == "far clear" {
                 assert_eq!(ended, Some(8), "a clear threat does not waive the initial hold");
             } else if what == "recent threat" {
-                assert_eq!(ended, Some(12), "five genuinely clear frames are needed after the last threat");
+                assert_eq!(ended, Some(10), "three genuinely clear frames are needed after the last threat");
             } else {
                 assert_eq!(ended, None, "{what}: preserve its guard");
             }
