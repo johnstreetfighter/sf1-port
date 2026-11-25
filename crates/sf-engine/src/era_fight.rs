@@ -548,6 +548,12 @@ crate::canonical::canonical_struct!(EraFighterState, "EraFighterState.v14", {
 });
 
 impl EraFighterState {
+    /// A native command catch has reserved its slam damage. Ordinary
+    /// throws leave this false; the slam consumes the reserved damage.
+    pub fn command_throw_pending(&self) -> bool {
+        self.command_throw_damage != 0
+    }
+
     /// The style the style card picked. It differs from `style` only for
     /// `SF KESSEN`, whose moves are the fighter's Super Turbo ones.
     pub fn pick(&self) -> StylePick {

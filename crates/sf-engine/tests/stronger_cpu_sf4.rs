@@ -351,6 +351,12 @@ fn watch_from_seed_with_setup(
     Some(deep(move || {
         let mut s = Seen::default();
         let b = book(style.fighter, style.revision, style.loadout);
+        let native_grab_id = match style.fighter {
+            TournamentFighter::Retsu => Some(0x21),
+            TournamentFighter::Geki => Some(0x20),
+            TournamentFighter::Birdie => Some(0x1b),
+            _ => None,
+        };
         let mut seed = first_seed;
         while s.frames < frames {
             let mut m = fight(style, stronger, 4, seed).unwrap();
@@ -364,7 +370,7 @@ fn watch_from_seed_with_setup(
             }
             let mut entering = false;
             let mut previous_step = None;
-            let mut pending_grab: Option<(OwnStep, u32)> = None;
+            let mut pending_grab: Option<OwnStep> = None;
             let mut held_focus = 0u32;
             let mut focus_from_plan = false;
             let mut released_focus: Option<(u32, bool)> = None;
@@ -419,7 +425,10 @@ fn watch_from_seed_with_setup(
                     (step.name.starts_with("236236+") || step.name.starts_with("214214+"))
                         && (step.name.ends_with("PPP") || step.name.ends_with("KKK"))
                 });
-                let on = own_step(&m, style.fighter).or(step_before).or(previous_step);
+                let step_after = own_step(&m, style.fighter);
+                let native_grab_owner = [step_before, step_after].contains(&Some(OwnStep::Tool(Tool::CommandThrow)))
+                    .then_some(OwnStep::Tool(Tool::CommandThrow));
+                let on = step_after.or(step_before).or(previous_step);
                 let confirmed_answer = (answering_before || cpu.answering())
                     && last_hit.is_some_and(|from| i >= from + Level::VeryHard.reaction() && i <= from + 120);
                 let era = m.era_fighters()[1];
@@ -429,8 +438,10 @@ fn watch_from_seed_with_setup(
                 if began {
                     if let Some(on) = on {
                         s.began_on_step.push((now.me.move_id, on));
-                        if on == OwnStep::Tool(Tool::CommandThrow) && now.me.attacking() {
-                            pending_grab = Some((on, i));
+                        if let Some(owner) = native_grab_owner.filter(|_| Some(now.me.move_id) == native_grab_id) {
+                            // Keep ownership through this native command's
+                            // windup, even after its input step has ended.
+                            pending_grab = Some(owner);
                         }
                     }
                     if now.me.move_id == FOCUS_CHARGE && cpu_buttons(&m) & 0x12 == 0x12 {
@@ -491,12 +502,16 @@ fn watch_from_seed_with_setup(
                         crumple_from = None;
                     }
                 }
-                if let Some((on, from)) = pending_grab {
-                    if now.foe.move_id == THROWN {
-                        s.caught_on_step.push(on);
-                        pending_grab = None;
-                    } else if i > from + 90 { pending_grab = None; }
+                // A successful native command catch can enter the common
+                // throw animation directly. Its reserved damage uniquely
+                // distinguishes it from an ordinary proximity throw.
+                let native_caught = !before_era.command_throw_pending() && era.command_throw_pending()
+                    && now.foe.move_id == THROWN;
+                if native_caught {
+                    let owner = native_grab_owner.or(pending_grab.filter(|_| Some(before.me.move_id) == native_grab_id));
+                    if let Some(on) = owner { s.caught_on_step.push(on); }
                 }
+                if Some(now.me.move_id) != native_grab_id { pending_grab = None; }
                 if let Some((fadc, from, x, hp)) = pending_fadc.as_mut() {
                     // The supplied FADC input has seven frames. Credit
                     // only the direct charge→dash transition inside it,
@@ -536,24 +551,26 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
             // permits spending against this partner, who never puts the
             // CPU behind on health. Zero-metadata Ultras still need Revenge.
             let meter = (fighter == TournamentFighter::Mike).then_some(4 * STOCK_AT);
-            // Twelve fixed starts retain the 12,000-frame budget while
-            // offering more independent neutral choices before a winning
-            // throw or projectile plan takes over a passive opponent.
+            // Cross the same twelve seeds with both scenes, retaining the
+            // 12,000-frame budget without coupling a seed's first choice
+            // to only one kind of opponent opportunity.
             let (mut plan_frames, mut frames, mut routes) = (0u32, 0u32, 0u32);
             for seed in 1..=12 {
-                let scene = if seed <= 6 {
-                    watch_from_seed_with_setup(seed, style, true, 1_000, meter, false, standing_pad, Some(centered_route_scene))
-                } else {
-                    watch_from_seed(seed, style, true, 1_000, meter, false, route_partner)
-                };
-                let Some(s) = scene else { return };
-                eprintln!("{style:?} seed{seed}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
-                assert_eq!(s.foreign_routes, 0, "{style:?} seed{seed}: every route belongs to this fighter and style");
-                plan_frames += s.plan_frames;
-                frames += s.frames;
-                routes += s.routes;
+                for centered in [true, false] {
+                    let scene = if centered {
+                        watch_from_seed_with_setup(seed, style, true, 500, meter, false, standing_pad, Some(centered_route_scene))
+                    } else {
+                        watch_from_seed(seed, style, true, 500, meter, false, route_partner)
+                    };
+                    let Some(s) = scene else { return };
+                    eprintln!("{style:?} seed{seed} centered={centered}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
+                    assert_eq!(s.foreign_routes, 0, "{style:?} seed{seed}, centered={centered}: every route belongs to this fighter and style");
+                    plan_frames += s.plan_frames;
+                    frames += s.frames;
+                    routes += s.routes;
+                }
             }
-            assert!(plan_frames * 10 >= frames && routes >= 1, "{style:?}: plans and routes are used across the twelve scenes: {plan_frames}/{frames} plan frames, {routes} routes");
+            assert!(plan_frames * 10 >= frames && routes >= 1, "{style:?}: plans and routes are used across the paired scenes: {plan_frames}/{frames} plan frames, {routes} routes");
         }
     }
 }
@@ -614,10 +631,13 @@ fn sf4_fighters_use_real_command_throws_teleports_charges_and_stances() {
         let Some(s) = observed else { return };
         for &(id, on) in tools {
             let starts = s.began_on_step.iter().filter(|&&(move_id, step)| move_id == id && step == on).count();
-            eprintln!("{fighter:?} {on:?}: {starts} move starts");
-            assert!(starts >= 1, "{fighter:?}: move {id:x} starts from its own {on:?} step");
+            let catches = s.caught_on_step.iter().filter(|&&step| step == on).count();
+            eprintln!("{fighter:?} {on:?}: {starts} move starts, {catches} native catches");
             if on == grab {
-                assert!(s.caught_on_step.contains(&grab), "{fighter:?}: the command throw actually catches him");
+                assert!(starts >= 1 || catches >= 1, "{fighter:?}: native command {id:x} starts or catches directly from its own {on:?} step");
+                assert!(catches >= 1, "{fighter:?}: a native command catch reserves its damage and puts the victim in THROWN");
+            } else {
+                assert!(starts >= 1, "{fighter:?}: move {id:x} starts from its own {on:?} step");
             }
         }
         if fighter == Gen { assert!(s.to_crane >= 1 && s.to_mantis == 0, "Gen keeps the Crane stance after changing to it"); }
