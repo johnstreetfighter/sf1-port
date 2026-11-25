@@ -2780,7 +2780,7 @@ impl FairCpu {
         }
         let Some(now) = self.seen(step - 1) else { return false };
         (1..=FRAMES).all(|age| self.seen(step - age).is_some_and(|was| {
-            was.me.present && was.me.free() && !was.me.jumping() && was.me.x == now.me.x
+            was.me.present && was.me.free() && !was.me.guarding() && !was.me.jumping() && was.me.x == now.me.x
         }))
     }
 
@@ -4183,6 +4183,16 @@ mod tests {
     #[test]
     fn sf4_a_reach_that_cannot_move_goes_on_to_its_poke_without_waiting_ninety_frames() {
         let ctx = sf4_ctx(Level::VeryHard, EraControl { free: true, ..EraControl::default() });
+        let mut just_guarded = FairCpu::seeded(1);
+        for f in 1..100 {
+            let mut v = percept(f, body(340));
+            v.me.move_id = 4;
+            assert!(v.me.guarding());
+            just_guarded.observe(v);
+        }
+        just_guarded.plan = Plan::of(PlanKind::Walk, &[RIGHT; 8]);
+        just_guarded.plan.at = just_guarded.plan.len;
+        assert!(!just_guarded.sf4_walk_stalled(100, 90, &ctx), "past guard frames are not walking, even after the current blockstun ends");
         let plan = game::plans(ctx.kit.fighter, ctx.family).iter().position(|plan| {
             plan.situation == Situation::NeutralFar && matches!(plan.steps[0].act, game::Act::Reach { .. })
         }).unwrap();
