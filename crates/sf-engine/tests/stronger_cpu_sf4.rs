@@ -151,8 +151,9 @@ fn guarding_pad(_: u32, v: &Percept) -> (u8, u8) {
 /// Some fighters have only one meterless route and it needs this stance;
 /// the moving/crouching sparring partner need not offer that opening.
 fn route_partner(_: u32, v: &Percept) -> (u8, u8) {
-    if v.gap() > 60 { (toward(v), 0) }
-    else if v.gap() < 52 { (away(v), 0) }
+    let gap = if v.me.x < v.foe.x { v.foe.hurt.0 - v.me.x } else { v.me.x - v.foe.hurt.1 };
+    if gap > 60 { (toward(v), 0) }
+    else if gap < 52 { (away(v), 0) }
     else { (0, 0) }
 }
 
