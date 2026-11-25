@@ -1484,11 +1484,13 @@ mod tests {
             config.gauge_mode = mode;
             let mut state = fighter(Revision::Usf4, Loadout::Ultra1, 0);
             state.fighter = Some(Retsu);
+            state.set_what_if(true);
             state.set_gauge_mode(mode);
             state.set_sf4_practice_revenge(Some(0));
             assert_eq!(state.super_meter, 0);
             assert!(!state.sf4_ultra_ready());
             let moves = crate::moves::live_move_list(Retsu, config.preset, true, &state);
+            assert!(moves.iter().any(|entry| entry.name == "KIAI SHOT" && entry.recognizer == Recognizer::FamilyMove), "Retsu's actual SF4 what-if kit is in force");
             for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
                 let tactics = Tactics::of(&state, &moves, config, level, EraControl::default());
                 assert!(tactics.sf4_route_ready(route, level, 0), "{mode:?} {level:?}: the single quarter circle is not a Super or Ultra");
