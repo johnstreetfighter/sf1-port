@@ -907,6 +907,13 @@ impl Context {
         context
     }
 
+    /// SC20 extends the SF6 cast after Ryu's separately proven first pair.
+    /// New plan gates must not change his choices or random-number stream.
+    fn sf6_cast(&self) -> bool {
+        self.family == Some(crate::era::EraFamily::Sf6)
+            && self.kit.fighter.is_some_and(|fighter| fighter != TournamentFighter::Ryu)
+    }
+
     pub(crate) fn with_era(
         level: Level,
         fighter: TournamentFighter,
@@ -1036,12 +1043,13 @@ fn era_ready(act: game::EraAct, ctx: &Context) -> bool {
         game::EraAct::Stance => tactics.can_change_stance(),
         game::EraAct::CustomChain => true,
         game::EraAct::Overhead => tactics.sf3_overhead_ready(),
-        game::EraAct::Enhanced => tactics.sf3_ex_ready() || tactics.sf4_ex_ready() || tactics.sf5_ex_ready(),
+        game::EraAct::Enhanced => tactics.sf3_ex_ready() || tactics.sf4_ex_ready() || tactics.sf5_ex_ready() || tactics.sf6_ex_ready(),
         game::EraAct::Focus => tactics.sf4_focus_ready(),
-        game::EraAct::Super => (tactics.sf4_super_ready() || tactics.sf5_super_ready()) && ctx.level.spends_meter(),
+        game::EraAct::Super => (tactics.sf4_super_ready() || tactics.sf5_super_ready() || tactics.sf6_super_ready()) && ctx.level.spends_meter(),
         game::EraAct::Ultra => tactics.sf4_ultra_ready() && ctx.level.spends_meter(),
         game::EraAct::VSkill => tactics.sf5_skill_ready(),
         game::EraAct::VTrigger => tactics.sf5_trigger_ready(),
+        game::EraAct::DriveImpact => tactics.sf6_impact_ready(),
     })
 }
 
@@ -1717,7 +1725,7 @@ impl FairCpu {
         // meter are left intact and the offending button is released.
         let pad = if stronger && !ctx.level.spends_meter() {
             let facing_left = self.seen(step.saturating_sub(1)).is_some_and(|view| view.me.facing_left);
-            ctx.era.map_or(pad, |tactics| tactics.sf5_keep_meter(pad, facing_left))
+            ctx.era.map_or(pad, |tactics| tactics.sf6_keep_meter(tactics.sf5_keep_meter(pad, facing_left), facing_left))
         } else {
             pad
         };
@@ -2258,6 +2266,12 @@ impl FairCpu {
                 && (plan.gap.0..=plan.gap.1).contains(&gap)
                 && plan.for_level(ctx.level)
                 && !(plan.pressure() && pressed_enough)
+                // A cast plan cannot loop on a rush it has no Drive to
+                // execute. Ryu keeps his established selection unchanged.
+                && !(ctx.sf6_cast() && plan.steps.iter().any(|step| step.act == game::Act::Rush)
+                    && !ctx.era.is_some_and(|tactics| tactics.spending_safely(ctx.level).sf6_rush_ready()))
+                && !(ctx.sf6_cast() && plan.steps.iter().any(|step| step.act == game::Act::Era(game::EraAct::Super))
+                    && !self.spends_super(ctx, view))
                 // Under a mission that allows only normals and throws, no
                 // plan that needs a special or an era command, or a route
                 // its book has none of plain normals for (SC23, `#215`).
@@ -2350,7 +2364,7 @@ impl FairCpu {
             // A whiffed attack still has its attack pose during recovery.
             // A dedicated SF4/SF5 finisher punish may meet that seen recovery;
             // an active attack or a projectile still ends the plan.
-            let finisher_punish = stronger && matches!(ctx.family, Some(crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5))
+            let finisher_punish = stronger && (matches!(ctx.family, Some(crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)) || ctx.sf6_cast())
                 && self.judged.situation == Situation::OpponentWhiffed
                 && table[usize::from(run.plan)].situation == Situation::OpponentWhiffed
                 && matches!(at.act, Act::Era(game::EraAct::Super | game::EraAct::Ultra | game::EraAct::VTrigger))
@@ -2511,6 +2525,7 @@ impl FairCpu {
                         return Some(wait);
                     }
                     let Some(tactics) = ctx.era else { break };
+                    if ctx.sf6_cast() && act == game::EraAct::Super && !self.spends_super(ctx, view) { break }
                     // Its own place and facing as it feels them now.
                     let felt = self.felt(step, view);
                     let forward = if felt.me.facing_left { LEFT } else { RIGHT };
@@ -2519,12 +2534,13 @@ impl FairCpu {
                         game::EraAct::CustomChain => tactics.custom_active().then(|| Plan::of(PlanKind::Act, &game::chain_pads(forward, PLAN_CAP))),
                         game::EraAct::Stance => tactics.stance_change(felt),
                         game::EraAct::Overhead => tactics.sf3_overhead(felt),
-                        game::EraAct::Enhanced => tactics.sf3_ex(felt).or_else(|| tactics.sf4_ex(felt)).or_else(|| tactics.sf5_ex(felt)),
+                        game::EraAct::Enhanced => tactics.sf3_ex(felt).or_else(|| tactics.sf4_ex(felt)).or_else(|| tactics.sf5_ex(felt)).or_else(|| tactics.sf6_ex(felt)),
                         game::EraAct::Focus => tactics.sf4_focus(felt),
-                        game::EraAct::Super => tactics.sf4_super(felt).or_else(|| tactics.sf5_super(felt)),
+                        game::EraAct::Super => tactics.sf4_super(felt).or_else(|| tactics.sf5_super(felt)).or_else(|| tactics.sf6_super(felt)),
                         game::EraAct::Ultra => tactics.sf4_ultra(felt),
                         game::EraAct::VSkill => tactics.sf5_skill(felt),
                         game::EraAct::VTrigger => tactics.sf5_trigger(felt, &mut self.rng),
+                        game::EraAct::DriveImpact => tactics.sf6_impact(felt),
                     };
                     let Some(plan) = plan else { break };
                     run.acted = true;
@@ -3119,13 +3135,14 @@ impl FairCpu {
             }
         }
         // In SF2 (SC15, `#207`), SFZ (SC16, `#208`), SF3 (SC17, `#209`)
-        // SF4 (SC18, `#210`) and SF5 (SC19, `#211`):
+        // SF4 (SC18, `#210`), SF5 (SC19, `#211`) and the new SF6 cast
+        // (SC20, `#212`; Ryu keeps its established decisions):
         // his ground attack it has guarded, now recovering in reach, is
         // its turn. Out of its own
         // blockstun it takes a punish route, or a crouching light punch,
         // rather than guarding on while he presses again.
         if stronger
-            && matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5))
+            && (matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)) || ctx.sf6_cast())
             && self.judge.recovering_after_meeting(view)
             && !ctx.own_blockstun
             && (view.me.free() || view.me.guarding())

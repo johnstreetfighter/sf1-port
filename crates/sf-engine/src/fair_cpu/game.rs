@@ -23,6 +23,7 @@ use crate::route_book::{Reach, Route, Stance};
 mod sf3;
 mod sf4;
 mod sf5;
+mod sf6;
 mod sfz;
 pub(super) use sfz::{chain_pads, custom_combo_pads};
 
@@ -37,11 +38,11 @@ pub enum EraAct {
     Stance,
     /// SF3's universal overhead, to open a crouching guard.
     Overhead,
-    /// An EX special, when this revision has one and can pay for it.
+    /// An EX or SF6 OD special, when the live kit and gauges allow it.
     Enhanced,
     /// Charge and release an SF4 level-two Focus Attack.
     Focus,
-    /// Spend Super meter on an SF4 finisher or an SF5 Critical Art.
+    /// Spend Super meter on an SF4 finisher, SF5 Critical Art or SF6 Super Art.
     Super,
     /// Spend SF4 Revenge on the selected Ultra.
     Ultra,
@@ -49,6 +50,8 @@ pub enum EraAct {
     VSkill,
     /// Activate SF5 V-Trigger or use an offensive move it unlocks.
     VTrigger,
+    /// Spend SF6 Drive on Impact as part of close pressure.
+    DriveImpact,
 }
 
 /// The playfield's walls as a fighter's centre meets them, and how near one
@@ -1120,6 +1123,7 @@ pub(super) fn repeat_score(level: Level, worked: u8, last: bool) -> i32 {
 pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily>) -> &'static [GamePlan] {
     match (fighter, family) {
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
+        (Some(fighter), Some(EraFamily::Sf6)) => sf6::plans(fighter),
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),
         (Some(fighter), Some(EraFamily::Sf3)) => sf3::plans(fighter),
         (Some(fighter), Some(EraFamily::Sf4)) => sf4::plans(fighter),
@@ -1533,7 +1537,7 @@ mod tests {
         // specials keep the old reading, and Gen and Eagle wait for their
         // own game.
         assert_eq!(super::super::cast::covered(EraFamily::Sf2).len(), 7);
-        assert!(super::super::cast::covered(EraFamily::Sf6).is_empty());
+        assert_eq!(super::super::cast::covered(EraFamily::Sf6).len(), 11, "SC20 covers the rest of SF6");
     }
 
     #[test]

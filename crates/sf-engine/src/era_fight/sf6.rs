@@ -268,6 +268,14 @@ impl EraFighterState {
         self.is_sf6().then_some(self.sf6.points)
     }
 
+    /// A new relative Forward would finish our own pending dash input.
+    /// This reads only local input history, without advancing a recognizer
+    /// or examining the opponent. Ordinary motions can otherwise turn into
+    /// a paid cancel Rush when they end during a normal's cancel window.
+    pub(crate) fn sf6_dash_pending(&self) -> bool {
+        self.is_sf6() && self.sf6.forward_window != 0 && self.sf6.previous_direction != Forward.bits()
+    }
+
     pub(super) fn sf6_can_pay_drive(&self, cost: u8) -> bool {
         self.sf6.enabled && !self.sf6.burnout && self.sf6.points >= u16::from(self.meter_cost(cost))
     }

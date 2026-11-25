@@ -29,6 +29,8 @@ use sf_engine::measure::{dramatic_machine, DramaticSpec};
 use sf_engine::roster::{PlayMode, TournamentFighter};
 use sf_engine::run::PowerOnMachine;
 use sf_engine::world_tour::native::{MissionKind, RuleModifier};
+use sf_video::art::{load_art_from, ArtSources};
+use sf_video::art_pack::ArtPack;
 use sf_video::romset::{load_assets, Assets};
 
 const ROMS: &str = "../../tools/reference/local/roms/sf";
@@ -344,6 +346,88 @@ fn three_fair_cpus_at_once_rerun_under_rollback_to_the_same_fight() {
     });
 }
 
+#[test]
+fn the_new_sf6_cast_uses_its_own_dramatic_plans_and_routes_through_rollback() {
+    // SC20 (#212): a native Ken boss and a what-if Gen ally both need the
+    // new cast's context, not Ryu's table. Gen's actual player table needs
+    // his catalogue; Ken and Player 1's Ryu keep their native ROM records.
+    let Some(assets) = assets() else { return };
+    let pack_path = Path::new("../../assets/sf1-port-art");
+    if !pack_path.is_dir() {
+        eprintln!("skipping: local art pack not present");
+        return;
+    }
+    deep(move || {
+        use TournamentFighter::{Gen, Ken, Ryu};
+        let pack = ArtPack::open(pack_path).expect("the art pack opens");
+        let recipes = [include_str!("../../../art/recipes/gen.json")];
+        let reviews = [include_str!("../../../art/review/gen.json")];
+        let art = load_art_from(&assets, &ArtSources { recipes: &recipes, reviews: Some(&reviews), pack: Ok(&pack) }).expect("Gen's art loads");
+        let bank = Arc::new(DataBank::build(&assets.maincpu, &art.catalogues));
+        assert!(bank.table(Gen).is_some(), "Gen has his native player table");
+        let books = [Ken, Gen].map(|fighter| {
+            let book = sf_engine::route_book::book(fighter, Revision::Sf6, loadouts(Revision::Sf6)[0]).expect("the fighter's SF6 book");
+            assert_eq!(book.fighter, fighter);
+            assert!(!book.routes.is_empty());
+            book
+        });
+        let (mut plans, mut routes, mut pressed, mut rollbacks) = ([false; 2], [0u32; 2], [false; 2], 0);
+        for seed in [3, 7] {
+            let spec = DramaticSpec { fighters: [Ryu, Ken, Gen], styles: [Revision::Sf6; 3], difficulty: [4; 3], seed, stronger: [true; 3] };
+            let mut m = dramatic_machine(&assets.maincpu, Some(bank.clone()), &spec).expect("the cast's Dramatic fight starts");
+            let mut live = 0;
+            for _ in 0..3_000 {
+                step(&mut m);
+                live += u32::from(flow_position(&m) == FIGHT_LOOP);
+                if live == 60 { break }
+            }
+            assert_eq!(live, 60, "seed {seed}: the round starts");
+            let mut reference = m.clone();
+            let mut ring: VecDeque<_> = VecDeque::new();
+            for frame in 0..1_800 {
+                ring.push_back(m.save_snapshot());
+                if ring.len() > MAX_ROLLBACK + 1 { ring.pop_front(); }
+                step(&mut reference);
+                if frame % 25 == 24 && ring.len() == MAX_ROLLBACK + 1 {
+                    m.restore_snapshot(&ring[0]);
+                    for _ in 0..=MAX_ROLLBACK { step(&mut m); }
+                    rollbacks += 1;
+                } else {
+                    step(&mut m);
+                }
+                assert_eq!(m.gameplay_hash(), reference.gameplay_hash(), "seed {seed}, frame {frame}: cast CPU snapshots replay");
+                assert!(m.unrecovered().is_empty(), "seed {seed}, frame {frame}: native branches {:x?}", m.unrecovered());
+                let cpus = m.dramatic_fair_cpus().expect("the boss and ally Fair CPUs");
+                for (k, fighter) in [Ken, Gen].into_iter().enumerate() {
+                    let state = &m.toggle_state().era.fighters[k + 1];
+                    assert_eq!(state.fighter, Some(fighter), "CPU {k} owns {fighter:?}'s kit");
+                    assert_eq!(state.style.revision, Revision::Sf6);
+                    plans[k] |= cpus[k].following_game_plan();
+                    assert_eq!(cpus[k].following_game_plan(), cpus[k].game_plan_situation(fighter, sf_engine::era::EraFamily::Sf6).is_some(), "{fighter:?}: the running plan belongs to its table");
+                    pressed[k] |= cpus[k].pad() != 0;
+                    if let Some(index) = cpus[k].route_index() {
+                        assert!(books[k].routes.get(index).is_some(), "{fighter:?}: a route from its own book");
+                        routes[k] += 1;
+                    }
+                    assert_eq!(m.toggle_state().utility[k + 1].macro_remaining(), 0, "{fighter:?}: no Utility AI beside the stronger play");
+                }
+                let [_, boss_hp, ally_hp] = m.toggle_state().dramatic.health;
+                if boss_hp > 0 {
+                    assert_eq!(inputs(cpus[0].pad()), m.toggle_state().dramatic.boss_pad, "Ken's pad reaches the boss");
+                }
+                if boss_hp > 0 && ally_hp > 0 {
+                    assert_eq!(inputs(cpus[1].pad()), m.applied_p2_pad(), "Gen's pad reaches the ally");
+                }
+                if m.match_over() { break }
+            }
+        }
+        assert_eq!(plans, [true; 2], "both new cast CPUs followed their game plans");
+        assert_eq!(pressed, [true; 2], "both CPUs pressed their own pads");
+        assert!(routes.iter().all(|&frames| frames > 0), "both entered their own route book: {routes:?}");
+        assert!(rollbacks >= 20, "{rollbacks} native eight-frame rollbacks");
+    });
+}
+
 /// A solo Dramatic `Fight` (drawn as the front end draws it) with the
 /// measuring run's three Fair CPUs on Ryu in the SF6 era style, a second
 /// into the first round.
@@ -422,11 +506,16 @@ fn a_worst_rollback_with_three_stronger_fair_cpus_costs_little_more_than_with_th
 /// A World Tour fight of Ryu against the Fair CPU's Ryu, both in `style`,
 /// at Very Difficult with the switch on, under `mission` (or none).
 fn tour_fight(assets: &Assets, mission: Option<MissionKind>, style: Revision) -> Fight {
+    tour_fight_as(assets, mission, style, TournamentFighter::Ryu)
+}
+
+/// Native Ryu and Ken need no external player catalogue for this setup.
+fn tour_fight_as(assets: &Assets, mission: Option<MissionKind>, style: Revision, fighter: TournamentFighter) -> Fight {
     let data = Arc::new(DataBank::build(&assets.maincpu, &[]));
     let mut config = MatchConfig::from_preset(RulesetPreset::DefinitiveOverhaul);
     config.roster.mode = PlayMode::Versus;
     config.roster.p1 = TournamentFighter::Ryu;
-    config.roster.p2 = TournamentFighter::Ryu;
+    config.roster.p2 = fighter;
     config.roster.what_if_styles = true;
     config.p2_fair_cpu = true;
     config.difficulty = 4;
@@ -457,8 +546,12 @@ struct Specials {
     chords: u32,
     /// Frames it entered a route from its book.
     routes: u32,
+    /// Route frames whose recipe needs more than plain normals/throws.
+    special_routes: u32,
     /// Frames its pad pressed a button at all.
     buttons: u32,
+    /// The first native branch-stop addresses, if the fight reached any.
+    unrecovered: Vec<u32>,
 }
 
 fn specials(assets: &Assets, fight: &mut Fight, frames: u32) -> Specials {
@@ -466,6 +559,9 @@ fn specials(assets: &Assets, fight: &mut Fight, frames: u32) -> Specials {
     let mut recent: VecDeque<u16> = VecDeque::new();
     for i in 0..frames {
         fight.step(assets, p1_script(i), PlayerInputs::default(), false);
+        if found.unrecovered.is_empty() {
+            found.unrecovered = fight.machine().unrecovered();
+        }
         let Some(cpu) = fight.machine().fair_cpu() else { continue };
         let pad = cpu.pad();
         let forward = if cpu.last_view().me.facing_left { LEFT } else { RIGHT };
@@ -478,7 +574,13 @@ fn specials(assets: &Assets, fight: &mut Fight, frames: u32) -> Specials {
         if pad & (MP | MK) == MP | MK || pad & (HP | HK) == HP | HK {
             found.chords += 1;
         }
-        found.routes += u32::from(cpu.route_index().is_some());
+        if let Some(index) = cpu.route_index() {
+            found.routes += 1;
+            let state = &fight.machine().toggle_state().era.fighters[1];
+            let book = sf_engine::route_book::book(state.fighter.expect("the CPU fighter"), state.style.revision, state.style.loadout).expect("the CPU's route book");
+            let route = book.routes.get(index).expect("the current route belongs to that book");
+            found.special_routes += u32::from(!route.normals_only());
+        }
         recent.push_back(pad);
         if recent.len() > 6 {
             recent.pop_front();
@@ -505,6 +607,23 @@ fn a_world_tour_mission_of_normals_and_throws_is_kept_to_by_the_stronger_play() 
             assert_eq!((kept.motions, kept.chords, kept.routes), (0, 0, 0), "{style:?}: under the mission: {kept:?}");
             assert!(kept.buttons > 60, "{style:?}: it still attacks: {kept:?}");
         }
+    });
+}
+
+#[test]
+fn the_new_sf6_cast_keeps_world_tours_normals_and_throws_mission() {
+    // SC20 (#212): Ken now has cast game plans containing OD, Impact and
+    // Super steps. The mission must filter those plans and special routes
+    // at the CPU, rather than relying on the engine refusing their inputs.
+    let Some(assets) = assets() else { return };
+    deep(move || {
+        let footsies = MissionKind::RuleModifierTrial(RuleModifier::PureFootsies);
+        let open = specials(&assets, &mut tour_fight_as(&assets, None, Revision::Sf6, TournamentFighter::Ken), 4_800);
+        let kept = specials(&assets, &mut tour_fight_as(&assets, Some(footsies), Revision::Sf6, TournamentFighter::Ken), 4_800);
+        assert!(open.unrecovered.is_empty() && kept.unrecovered.is_empty(), "Ken's native World Tour branches: open {:x?}, mission {:x?}", open.unrecovered, kept.unrecovered);
+        assert!(open.motions + open.chords + open.special_routes > 0, "without the mission Ken uses his SF6 tools: {open:?}");
+        assert_eq!((kept.motions, kept.chords, kept.special_routes), (0, 0, 0), "the mission filters special and era inputs: {kept:?}");
+        assert!(kept.buttons > 60, "Ken still attacks under the mission: {kept:?}");
     });
 }
 

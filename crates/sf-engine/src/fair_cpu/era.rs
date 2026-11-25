@@ -73,6 +73,50 @@ pub(crate) struct EraControl {
     pub waking: bool,
 }
 
+/// The SF6 cast's deliberate paid commands. Ryu keeps the kit and choices
+/// already proven for him; reading these entries changes no legacy fields
+/// or random choices. PairKick alone is not OD: Ken's Quick Dash is free.
+#[derive(Clone, Copy, Debug)]
+struct Sf6Tactics {
+    impact: Option<MoveEntry>,
+    enhanced: Option<MoveEntry>,
+    super_move: Option<(MoveEntry, usize)>,
+    keep_cancel_rush: bool,
+    dash_pending: bool,
+}
+
+impl Sf6Tactics {
+    fn of(era: &EraFighterState, moves: &[MoveEntry], mode: GaugeMode, level: Level) -> Self {
+        let enabled = mode != GaugeMode::NoGauges && level.spends_meter();
+        let unified = mode == GaugeMode::Unified;
+        let drive = if unified { u16::from(era.super_meter) } else { era.sf6_drive_points().unwrap_or(0) };
+        let can_drive = |cost| {
+            let cost = u16::from(era.meter_cost(if unified { STOCK_AT } else { cost }));
+            enabled && !era.sf6_burnout() && drive > cost && drive >= cost.saturating_add(level.drive_kept())
+        };
+        let family = |entry: &&MoveEntry| entry.recognizer == Recognizer::FamilyMove;
+        let impact = can_drive(STOCK_AT).then(|| moves.iter().filter(family).copied().find(|entry| {
+            entry.kind == MoveKind::System && entry.produces == sf6::IMPACT
+        })).flatten();
+        let enhanced = can_drive(2 * STOCK_AT).then(|| moves.iter().filter(family).copied().find(|entry| {
+            entry.kind == MoveKind::Special && entry.name.starts_with("OD ")
+                && matches!(entry.input.button, ButtonClass::PairPunch | ButtonClass::PairKick)
+                && entry.input.motion.first() != Some(&Dir::Jump)
+        })).flatten();
+        let super_move = enabled.then(|| moves.iter().filter(family).copied().filter(|entry| {
+            entry.kind == MoveKind::Super && entry.input.motion.first() != Some(&Dir::Jump)
+                && entry.produces.checked_sub(0x29).filter(|index| *index < 3).is_some_and(|index| {
+                    era.super_meter >= era.meter_cost((index + 1) * STOCK_AT)
+                })
+        }).max_by_key(|entry| entry.produces).map(|entry| (entry, 2))).flatten();
+        let cancel_cost = u16::from(era.meter_cost(if unified { STOCK_AT } else { 3 * STOCK_AT }));
+        Self { impact, enhanced, super_move,
+            keep_cancel_rush: level == Level::Easy && mode != GaugeMode::NoGauges && !era.sf6_burnout() && drive >= cancel_cost,
+            dash_pending: era.sf6_dash_pending(),
+        }
+    }
+}
+
 /// The stronger SF5 play's reading of its live kit and its own resources.
 /// Keeping it separate leaves the old choices and their RNG calls unchanged.
 #[derive(Clone, Copy, Debug)]
@@ -208,6 +252,7 @@ pub(super) struct Tactics {
     /// old play's `stance` stays unchanged until `spending_safely`.
     sf4_stance: Option<MoveEntry>,
     sf5: Option<Sf5Tactics>,
+    sf6: Option<Sf6Tactics>,
     guard_cancel: Option<MoveEntry>,
     evade: Option<MoveEntry>,
     armor: Option<MoveEntry>,
@@ -460,6 +505,8 @@ impl Tactics {
             sf4_route_super_cost: if family == Sf4 { u16::from(era.sf4_super_cost()) } else { 0 },
             sf4_stance: (family == Sf4).then(|| named("CRANE STANCE")).flatten(),
             sf5: (family == Sf5 && !era.is_kage()).then(|| Sf5Tactics::of(era, moves, mode, level)),
+            sf6: (family == Sf6 && era.fighter.is_some_and(|fighter| fighter != crate::roster::TournamentFighter::Ryu))
+                .then(|| Sf6Tactics::of(era, moves, mode, level)),
             guard_cancel,
             evade,
             armor,
@@ -535,8 +582,14 @@ impl Tactics {
         }
         if self.family == EraFamily::Sf6 {
             self.rush = self.rush.filter(|_| self.keeps_drive(RUSH_COST));
-            self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
-            self.enhanced = self.enhanced.filter(|_| self.keeps_drive(2 * STOCK_AT));
+            if let Some(sf6) = self.sf6 {
+                self.armor = sf6.impact;
+                self.enhanced = sf6.enhanced;
+                self.super_move = sf6.super_move;
+            } else {
+                self.armor = self.armor.filter(|_| self.keeps_drive(STOCK_AT));
+                self.enhanced = self.enhanced.filter(|_| self.keeps_drive(2 * STOCK_AT));
+            }
         }
         self
     }
@@ -548,6 +601,54 @@ impl Tactics {
         let mut plan = self.pad(&entry, view, 1);
         plan.end_at_last_press();
         Some(plan)
+    }
+
+    /// New cast plans must not repeatedly select an unaffordable rush.
+    /// The caller applies the proactive reserve; Ryu's selection is intact.
+    pub(super) fn sf6_rush_ready(self) -> bool {
+        self.family == EraFamily::Sf6 && self.control.free && !self.control.airborne
+            && self.rush.is_some() && self.keeps_drive(RUSH_COST)
+    }
+
+    pub(super) fn sf6_impact_ready(self) -> bool {
+        self.sf6.is_some_and(|kit| kit.impact.is_some()) && self.control.free && !self.control.airborne
+    }
+
+    pub(super) fn sf6_impact(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf6?.impact.filter(|_| self.sf6_impact_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 2, true)))
+    }
+
+    pub(super) fn sf6_ex_ready(self) -> bool {
+        self.sf6.is_some_and(|kit| kit.enhanced.is_some()) && self.control.free && !self.control.airborne
+    }
+
+    pub(super) fn sf6_ex(self, view: Percept) -> Option<Plan> {
+        let entry = self.sf6?.enhanced.filter(|_| self.sf6_ex_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, 1, true)))
+    }
+
+    pub(super) fn sf6_super_ready(self) -> bool {
+        self.sf6.is_some_and(|kit| kit.super_move.is_some())
+            && (self.control.free || self.control.cancel) && !self.control.airborne
+    }
+
+    pub(super) fn sf6_super(self, view: Percept) -> Option<Plan> {
+        let (entry, strength) = self.sf6?.super_move.filter(|_| self.sf6_super_ready())?;
+        Some(Plan::of(PlanKind::Act, &alpha_motion(&entry, !view.me.facing_left, strength, true)))
+    }
+
+    /// Easy's ordinary motions must not become a paid cancel Rush. Native
+    /// SF6 accepts a double Forward or fresh MP/MK during a normal cancel;
+    /// release that input only while it could spend our own Drive. Other
+    /// levels, Ryu and human pads keep their native commands unchanged.
+    pub(super) fn sf6_keep_meter(self, mut pad: u16, facing_left: bool) -> u16 {
+        let Some(sf6) = self.sf6.filter(|kit| kit.keep_cancel_rush) else { return pad };
+        if !self.control.cancel || self.control.airborne || self.control.blockstun { return pad }
+        let forward = if facing_left { LEFT } else { RIGHT };
+        if sf6.dash_pending && pad & 15 == forward { pad &= !forward; }
+        if ButtonClass::MediumPair.held((pad >> 4) as u8) { pad &= !button(4); }
+        pad
     }
 
     /// The stronger play may hold a parry in place of a guard (SC8, `#200`).
@@ -1002,6 +1103,8 @@ impl Tactics {
                 }
             } else if stronger && self.sf5.is_some() {
                 if let Some(plan) = self.sf5_super(felt) { return Some(plan) }
+            } else if stronger && self.sf6.is_some() {
+                if let Some(plan) = self.sf6_super(felt) { return Some(plan) }
             } else if let Some((entry, strength)) = self.super_move {
                 return Some(self.pad(&entry, view, strength));
             }
@@ -2094,6 +2197,119 @@ mod tests {
         let other = Tactics::of(&fighter(Revision::Usf4, Loadout::Ultra1, 192), &[], MatchConfig::definitive(), Level::Easy, free);
         for pad in 0..1024 {
             assert_eq!(other.sf5_keep_meter(pad, false), pad, "other eras do not use this guard");
+        }
+    }
+
+    fn sc20_fighter(fighter: crate::roster::TournamentFighter, mode: GaugeMode, drive: u16, meter: u8) -> (EraFighterState, MatchConfig, Vec<MoveEntry>) {
+        let mut state = EraFighterState::default();
+        state.fighter = Some(fighter);
+        state.style = StylePick::for_revision(crate::era::Revision::Sf6, Loadout::Standard);
+        state.max_sub_hp = 960;
+        state.set_what_if(!crate::era::families(fighter).contains(&EraFamily::Sf6));
+        state.set_gauge_mode(mode);
+        state.set_sf6_practice_drive(Some(drive));
+        state.super_meter = meter;
+        let cfg = MatchConfig { gauge_mode: mode, ..MatchConfig::definitive() };
+        let moves = crate::moves::live_move_list(fighter, cfg.preset, true, &state);
+        (state, cfg, moves)
+    }
+
+    #[test]
+    fn sf6_cast_paid_commands_use_live_entries_and_keep_each_levels_drive() {
+        let free = EraControl { free: true, ..EraControl::default() };
+        for fighter in crate::roster::TournamentFighter::ALL.into_iter().filter(|fighter| *fighter != Ryu) {
+            for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                for (cost, impact) in [(STOCK_AT, true), (2 * STOCK_AT, false)] {
+                    let enough = u16::from(cost).saturating_add(level.drive_kept()).max(u16::from(cost) + 1);
+                    for drive in [enough.saturating_sub(1).min(288), enough.min(288)] {
+                        let (state, cfg, moves) = sc20_fighter(fighter, GaugeMode::EraDefault, drive, 144);
+                        let tactics = Tactics::of(&state, &moves, cfg, level, free);
+                        let ready = if impact { tactics.sf6_impact_ready() } else { tactics.sf6_ex_ready() };
+                        assert_eq!(ready, level.spends_meter() && drive >= enough, "{fighter:?} {level:?}: cost{cost} at{drive}");
+                        if ready {
+                            let entry = if impact { tactics.sf6.unwrap().impact.unwrap() } else { tactics.sf6.unwrap().enhanced.unwrap() };
+                            assert!(moves.contains(&entry));
+                            assert_eq!(entry.recognizer, Recognizer::FamilyMove);
+                            if !impact { assert!(entry.name.starts_with("OD ")); }
+                        }
+                    }
+                }
+            }
+        }
+        let (state, cfg, moves) = sc20_fighter(crate::roster::TournamentFighter::Ken, GaugeMode::EraDefault, 288, 144);
+        assert!(moves.iter().any(|entry| entry.name == "QUICK DASH" && entry.input.button == ButtonClass::PairKick));
+        let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free).spending_safely(Level::VeryHard);
+        assert!(tactics.enhanced.unwrap().name.starts_with("OD "), "a free pair-kick dash is not OD");
+    }
+
+    #[test]
+    fn sf6_cast_uses_the_affordable_super_level_and_actual_own_facing() {
+        let free = EraControl { free: true, ..EraControl::default() };
+        for fighter in crate::roster::TournamentFighter::ALL.into_iter().filter(|fighter| *fighter != Ryu) {
+            for meter in [47, 48, 95, 96, 143, 144] {
+                let (state, cfg, moves) = sc20_fighter(fighter, GaugeMode::EraDefault, 288, meter);
+                let tactics = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+                assert_eq!(tactics.sf6.unwrap().super_move.map(|(entry, _)| entry.produces),
+                    (meter >= STOCK_AT).then(|| 0x28 + meter / STOCK_AT), "{fighter:?} at{meter}");
+                for facing_left in [false, true] {
+                    let view = Percept { me: super::super::Body { x: 200, facing_left, ..Default::default() },
+                        foe: super::super::Body { x: if facing_left { 300 } else { 100 }, ..Default::default() }, ..Default::default() };
+                    let Some(plan) = tactics.sf6_super(view) else { assert!(meter < STOCK_AT); continue };
+                    let (entry, strength) = tactics.sf6.unwrap().super_move.unwrap();
+                    let expected = alpha_motion(&entry, !facing_left, strength, true);
+                    assert_eq!(&plan.pads[..usize::from(plan.len)], &expected[..plan.len as usize]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sf6_cast_obeys_unified_disabled_burnout_and_control_gates_without_changing_ryu() {
+        use crate::roster::TournamentFighter::Ken;
+        let free = EraControl { free: true, ..EraControl::default() };
+        for mode in [GaugeMode::Unified, GaugeMode::NoGauges] {
+            for meter in [48, 49, 119, 120] {
+                let (state, cfg, moves) = sc20_fighter(Ken, mode, 288, meter);
+                let tactics = Tactics::of(&state, &moves, cfg, Level::Normal, free);
+                assert_eq!(tactics.sf6_impact_ready(), mode == GaugeMode::Unified && meter >= 120);
+                assert_eq!(tactics.sf6_ex_ready(), mode == GaugeMode::Unified && meter >= 120);
+                assert_eq!(tactics.sf6_super_ready(), mode == GaugeMode::Unified);
+            }
+        }
+        let (mut state, cfg, moves) = sc20_fighter(Ken, GaugeMode::EraDefault, 288, 144);
+        for control in [EraControl::default(), EraControl { airborne: true, ..free }] {
+            let locked = Tactics::of(&state, &moves, cfg, Level::VeryHard, control);
+            assert!(!locked.sf6_impact_ready() && !locked.sf6_ex_ready() && !locked.sf6_super_ready());
+        }
+        let cancel = Tactics::of(&state, &moves, cfg, Level::VeryHard, EraControl { cancel: true, ..Default::default() });
+        assert!(cancel.sf6_super_ready() && !cancel.sf6_impact_ready() && !cancel.sf6_ex_ready());
+        state.restore_sf6_practice_drive(120, true);
+        let burnout = Tactics::of(&state, &moves, cfg, Level::VeryHard, free);
+        assert!(!burnout.sf6_impact_ready() && !burnout.sf6_ex_ready());
+        assert!(burnout.sf6_super_ready(), "burnout does not remove Super meter");
+        let (ryu, cfg, moves) = sc20_fighter(Ryu, GaugeMode::EraDefault, 288, 144);
+        let tactics = Tactics::of(&ryu, &moves, cfg, Level::VeryHard, free);
+        assert!(tactics.sf6.is_none() && !tactics.sf6_super_ready(), "Ryu keeps his existing choices");
+    }
+
+    #[test]
+    fn easy_sf6_cast_keeps_ordinary_inputs_from_becoming_cancel_rushes() {
+        use crate::roster::TournamentFighter::Lee;
+        let (state, cfg, moves) = sc20_fighter(Lee, GaugeMode::EraDefault, 288, 144);
+        let cancel = EraControl { cancel: true, ..Default::default() };
+        let mut tactics = Tactics::of(&state, &moves, cfg, Level::Easy, cancel);
+        tactics.sf6.as_mut().unwrap().dash_pending = true;
+        for facing_left in [false, true] {
+            let forward = if facing_left { LEFT } else { RIGHT };
+            assert_eq!(tactics.sf6_keep_meter(forward, facing_left), 0);
+            assert_eq!(tactics.sf6_keep_meter(forward | button(0), facing_left), button(0));
+            assert_eq!(tactics.sf6_keep_meter(DOWN | forward | button(0), facing_left), DOWN | forward | button(0));
+            assert_eq!(tactics.sf6_keep_meter(button(1) | button(4), facing_left), button(1));
+            let free = Tactics { control: EraControl { free: true, ..Default::default() }, ..tactics };
+            assert_eq!(free.sf6_keep_meter(forward, facing_left), forward);
+            let mut normal = Tactics::of(&state, &moves, cfg, Level::Normal, cancel);
+            normal.sf6.as_mut().unwrap().dash_pending = true;
+            assert_eq!(normal.sf6_keep_meter(forward | button(1) | button(4), facing_left), forward | button(1) | button(4));
         }
     }
 }

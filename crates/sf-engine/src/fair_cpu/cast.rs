@@ -13,7 +13,7 @@
 //! tables here, by fighter and by the move's name as the move list shows it,
 //! for the SF2 era style (SC15), the SFZ era style (SC16, `#208`) and the
 //! SF3 era style (SC17, `#209`), SF4 era style (SC18, `#210`) and
-//! SF5 era style (SC19, `#211`); a
+//! SF5 era style (SC19, `#211`) and the rest of SF6 (SC20, `#212`); a
 //! fighter or style with no table keeps the old reading.
 //!
 //! The kit is read wherever an era style's context is built (a few name
@@ -331,6 +331,41 @@ const SF5: &[(TournamentFighter, &[(&str, Use)])] = &[
     ),
 ];
 
+/// The remaining SF6 cast (SC20, `#212`). Ryu keeps the proven reading.
+/// Native Retsu has Kiai Shot and Tobigeri, not his earlier what-if catch.
+/// Birdie instead uses the what-if charge/chain kit, unlike native SF5.
+/// Setup-only moves remain with their native rules and proven routes.
+const SF6: &[(TournamentFighter, &[(&str, Use)])] = &[
+    (
+        TournamentFighter::Ken,
+        &[
+            ("HADOKEN", R(Role::Projectile)),
+            ("SHORYUKEN", R(Role::AntiAir)),
+            ("TATSUMAKI", R(Role::Advance)),
+            ("DRAGONLASH KICK", R(Role::Advance)),
+            ("JINRAI KICK", Skip),
+            ("QUICK DASH", Skip),
+        ],
+    ),
+    (
+        TournamentFighter::Retsu,
+        &[
+            ("KIAI SHOT", R(Role::Projectile)),
+            ("TOBIGERI", R(Role::Advance)),
+            ("RENKIKO", Skip),
+        ],
+    ),
+    (TournamentFighter::Geki, SF2[1].1),
+    (TournamentFighter::Joe, SF2[2].1),
+    (TournamentFighter::Mike, SF5[5].1),
+    (TournamentFighter::Lee, SF4[4].1),
+    (TournamentFighter::Gen, SFZ[6].1),
+    (TournamentFighter::Birdie, SF2[5].1),
+    (TournamentFighter::Eagle, SF3[8].1),
+    (TournamentFighter::Adon, SF2[6].1),
+    (TournamentFighter::Sagat, SF3[9].1),
+];
+
 /// The tables of `family`, if the stronger play has any.
 fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'static str, Use)])] {
     match family {
@@ -339,6 +374,7 @@ fn tables(family: EraFamily) -> &'static [(TournamentFighter, &'static [(&'stati
         EraFamily::Sf3 => SF3,
         EraFamily::Sf4 => SF4,
         EraFamily::Sf5 => SF5,
+        EraFamily::Sf6 => SF6,
         _ => &[],
     }
 }
@@ -522,5 +558,54 @@ mod tests {
             }
         }
         assert_eq!(pairs, 59, "all supported fighter/revision/loadout pairs");
+    }
+
+    #[test]
+    fn sf6_cast_roles_and_tools_match_the_actual_native_and_what_if_kits() {
+        use TournamentFighter::*;
+        let covered = covered(EraFamily::Sf6);
+        assert_eq!(covered.len(), 11);
+        assert!(!covered.contains(&Ryu), "Ryu keeps his proven kit reading");
+        for fighter in covered {
+            let mut state = EraFighterState::default();
+            state.fighter = Some(fighter);
+            state.style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+            state.max_sub_hp = 960;
+            state.set_what_if(!crate::era::families(fighter).contains(&EraFamily::Sf6));
+            state.set_gauge_mode(GaugeMode::EraDefault);
+            let moves = live_move_list(fighter, MatchConfig::definitive().preset, true, &state);
+            let (kit, tools) = stronger_kit(fighter, EraFamily::Sf6, &moves).expect("every remaining SF6 fighter has a table");
+            assert_eq!(tools.command_throw.is_some(), matches!(fighter, Geki | Birdie), "{fighter:?}: command catch");
+            assert_eq!(tools.teleport.is_some(), fighter == Geki, "{fighter:?}: teleport");
+            assert_eq!(tools.charge.is_some(), matches!(fighter, Lee | Birdie), "{fighter:?}: charge before Gen changes stance");
+            for role in [Role::Projectile, Role::AntiAir, Role::Advance] {
+                for entry in kit.by_role(role).into_iter().flatten() {
+                    assert!(moves.contains(&entry), "{fighter:?}: {entry:?}");
+                    assert!(!matches!(entry.input.button, crate::moves::ButtonClass::PairPunch | crate::moves::ButtonClass::PairKick), "{fighter:?}: ordinary special");
+                    assert!(!matches!(entry.name, "ST ANDREWS GREEN" | "DUCKING SWAY" | "RENKIKO" | "TIGER NEXUS"), "{fighter:?}: no blind counter or setup move");
+                }
+            }
+            assert_eq!(kit.projectile.is_some(), matches!(fighter, Ken | Retsu | Geki | Joe | Sagat), "{fighter:?}: projectile role");
+            if fighter == Retsu {
+                assert_eq!(kit.projectile.unwrap().name, "KIAI SHOT");
+                assert_eq!(kit.advance.unwrap().name, "TOBIGERI");
+                assert!(kit.anti_air.is_none(), "native SF6 Retsu has no what-if Shoryuken");
+                assert!(!moves.iter().any(|entry| entry.name == "IZUNA SHOULDER THROW"));
+            }
+            if fighter == Ken {
+                assert_eq!(kit.advance_alt.unwrap().name, "DRAGONLASH KICK");
+            }
+            if fighter == Birdie {
+                assert_eq!(tools.charge.unwrap().name, "BULL HEAD");
+                assert_eq!(tools.charge.unwrap().input.motion, &[crate::moves::Dir::ChargeBack, crate::moves::Dir::Forward]);
+                assert_eq!(tools.command_throw.unwrap().name, "MURDERER CHAIN");
+            }
+            if fighter == Sagat {
+                assert_eq!(kit.projectile.unwrap().name, "TIGER SHOT");
+                assert_eq!(kit.projectile_alt.unwrap().name, "GROUND TIGER SHOT");
+                assert_eq!(kit.advance.unwrap().name, "TIGER KNEE CRUSH");
+            }
+        }
+        assert!(stronger_kit(Ryu, EraFamily::Sf6, &[]).is_none());
     }
 }
