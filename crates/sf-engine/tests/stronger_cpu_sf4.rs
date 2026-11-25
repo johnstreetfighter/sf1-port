@@ -438,9 +438,10 @@ fn every_usf4_fighter_and_loadout_uses_game_plans_and_its_own_routes() {
     for fighter in TournamentFighter::ALL {
         for loadout in ULTRAS {
             let style = Style::ultra(fighter, loadout);
-            // Mike's cheapest Ground recipe costs one EX stock; his
-            // zero-Super/Drive recipe is an Ultra and still needs Revenge.
-            let meter = (fighter == TournamentFighter::Mike).then_some(STOCK_AT);
+            // Mike's Ground recipes spend meter. A full Super gauge also
+            // permits spending against this partner, who never puts the
+            // CPU behind on health. Zero-metadata Ultras still need Revenge.
+            let meter = (fighter == TournamentFighter::Mike).then_some(4 * STOCK_AT);
             let Some(s) = watch(style, true, 12_000, meter, false, route_partner) else { return };
             eprintln!("{style:?}: {} of {} plan frames, {} routes", s.plan_frames, s.frames, s.routes);
             assert!(s.plan_frames * 10 >= s.frames && s.routes >= 1, "{style:?}: plans and routes are used: {s:?}");

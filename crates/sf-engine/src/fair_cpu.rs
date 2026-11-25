@@ -3060,13 +3060,14 @@ impl FairCpu {
                 return Some(Plan::default());
             }
         }
-        // In SF2 (SC15, `#207`), SFZ (SC16, `#208`) and SF3 (SC17, `#209`):
+        // In SF2 (SC15, `#207`), SFZ (SC16, `#208`), SF3 (SC17, `#209`)
+        // and SF4 (SC18, `#210`):
         // his ground attack it has guarded, now recovering in reach, is
         // its turn. Out of its own
         // blockstun it takes a punish route, or a crouching light punch,
         // rather than guarding on while he presses again.
         if stronger
-            && matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3))
+            && matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4))
             && self.judge.recovering_after_meeting(view)
             && !ctx.own_blockstun
             && (view.me.free() || view.me.guarding())

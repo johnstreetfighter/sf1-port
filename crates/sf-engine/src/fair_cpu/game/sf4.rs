@@ -52,7 +52,8 @@ macro_rules! shared {
             plan(Situation::NeutralClose, 64, 0, (i16::MIN, 80), &EX, Lean::None, Level::Normal),
             plan(Situation::OpponentKnockedDown, 62, 8, ANY, $meaty, Lean::Meaty, Level::Normal),
             plan(Situation::OpponentKnockedDown, 52, -10, ANY, &RYU_SF6_BAIT, Lean::Bait, Level::VeryHard),
-            plan(Situation::NeutralFar, 40, 0, JUMP_IN_GAP, &RYU_SF6_JUMP_IN, Lean::JumpIn, Level::Easy),
+            plan(Situation::NeutralFar, 50, 10, ANY, $poke, Lean::None, Level::Easy),
+            JUMP_FAR,
             SUPER_HIT,
             ULTRA_HIT,
             SUPER_PUNISH,
@@ -62,33 +63,30 @@ macro_rules! shared {
     };
 }
 
-const fn walk_down(poke: &'static [Step]) -> GamePlan {
-    GamePlan { cornered_only: true, ..plan(Situation::NeutralFar, 60, 0, ANY, poke, Lean::None, Level::Normal) }
-}
-
 const SHOT: GamePlan = plan(Situation::NeutralFar, 70, 0, (SHOT_GAP, i16::MAX), &RYU_SF6_SHOT, Lean::Shot, Level::Easy);
 const SHOT_WATCH: GamePlan = plan(Situation::NeutralFar, 0, 0, WATCHED_SHOT_GAPS, &RYU_SF6_SHOT_WATCH, Lean::ShotWatch, Level::Normal);
+const JUMP_FAR: GamePlan = plan(Situation::NeutralFar, 46, 0, JUMP_IN_GAP, &RYU_SF6_JUMP_IN, Lean::JumpIn, Level::Easy);
 const THROW_BLOCKED: GamePlan = plan(Situation::ItWasBlocked, 58, 8, ANY, &COMMAND_THROW, Lean::WalkThrow, Level::Normal);
 const THROW_CLOSE: GamePlan = plan(Situation::NeutralClose, 62, 4, ANY, &COMMAND_THROW, Lean::None, Level::Hard);
-const TELEPORT_FAR: GamePlan = plan(Situation::NeutralFar, 56, -6, (130, i16::MAX), &TELEPORT, Lean::None, Level::Normal);
-const CHARGE_FAR: GamePlan = plan(Situation::NeutralFar, 58, 0, (60, 170), &CHARGE, Lean::None, Level::Easy);
-const LEE_CHARGE: GamePlan = plan(Situation::NeutralFar, 58, 0, (150, i16::MAX), &CHARGE, Lean::None, Level::Easy);
+const TELEPORT_FAR: GamePlan = plan(Situation::NeutralFar, 48, -6, (130, i16::MAX), &TELEPORT, Lean::None, Level::Normal);
+const CHARGE_FAR: GamePlan = plan(Situation::NeutralFar, 50, 0, (60, 170), &CHARGE, Lean::None, Level::Easy);
+const LEE_CHARGE: GamePlan = plan(Situation::NeutralFar, 50, 0, (150, i16::MAX), &CHARGE, Lean::None, Level::Easy);
 const CRANE: GamePlan = plan(Situation::NeutralFar, 50, -10, ANY, &STANCE, Lean::None, Level::Easy);
-// Let Gen's slow backward charge compete with a jump-in rather than
+// Let Gen's slow backward charge compete with walking in rather than
 // taking every uncornered far-neutral decision after changing stance.
-const GEN_CHARGE: GamePlan = GamePlan { score: 44, ..CHARGE_FAR };
+const GEN_CHARGE: GamePlan = GamePlan { score: 48, ..CHARGE_FAR };
 
-const RYU: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, walk_down(&POKE_HK), SHOT, SHOT_WATCH);
-const KEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, walk_down(&POKE_HK), SHOT, SHOT_WATCH);
-const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP), SHOT, SHOT_WATCH);
+const RYU: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
+const KEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
+const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
 const RETSU: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
-const GEKI: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP), THROW_BLOCKED, TELEPORT_FAR);
+const GEKI: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
 const JOE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK);
-const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP));
+const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
 const LEE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK, LEE_CHARGE);
-const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, walk_down(&POKE_MP), THROW_BLOCKED, CHARGE_FAR);
-const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, walk_down(&POKE_HK), CRANE, GEN_CHARGE);
-const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, walk_down(&POKE_LK));
+const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, CHARGE_FAR);
+const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, CRANE, GEN_CHARGE);
+const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK);
 const ADON: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
 
 pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
@@ -122,6 +120,11 @@ mod tests {
             for situation in [Situation::NeutralClose, Situation::NeutralFar, Situation::ItWasBlocked, Situation::OpponentKnockedDown] {
                 assert!(plans.iter().any(|p| p.situation == situation), "{fighter:?}: {situation:?}");
             }
+            assert!(plans.iter().any(|p| {
+                p.situation == Situation::NeutralFar && p.gap == ANY && !p.cornered_only
+                    && p.for_level(Level::Easy) && !p.needs_specials()
+                    && matches!(p.steps.first().map(|s| s.act), Some(Act::Reach { .. }))
+            }), "{fighter:?}: an approach remains playable without a route or meter");
             let uses = |act| plans.iter().any(|p| p.steps.iter().any(|s| s.act == act));
             assert!(uses(Act::Route(crate::route_book::Reach::Ground)), "{fighter:?}: own route book");
             assert!(uses(Act::Era(EraAct::Focus)) && uses(Act::Era(EraAct::Enhanced)), "{fighter:?}: SF4 tools");
