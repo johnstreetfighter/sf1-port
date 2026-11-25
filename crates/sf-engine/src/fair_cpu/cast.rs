@@ -248,7 +248,17 @@ const SF4: &[(TournamentFighter, &[(&str, Use)])] = &[
     (TournamentFighter::Geki, SF2[1].1),
     (TournamentFighter::Joe, SF2[2].1),
     (TournamentFighter::Mike, SF2[3].1),
-    (TournamentFighter::Lee, SF2[4].1),
+    (
+        TournamentFighter::Lee,
+        &[
+            ("UPWARD LANCE", R(Role::AntiAir)),
+            ("OPEN CANVAS PUNCH", R(Role::Advance)),
+            ("OPEN CANVAS KICK", R(Role::Advance)),
+            ("FIREWATER", T(Tool::Charge)),
+            ("HURRICANE KICK", Skip),
+            ("STAB KICK", Skip),
+        ],
+    ),
     (TournamentFighter::Birdie, SF2[5].1),
     (TournamentFighter::Adon, SF2[6].1),
     (TournamentFighter::Eagle, SF3[8].1),

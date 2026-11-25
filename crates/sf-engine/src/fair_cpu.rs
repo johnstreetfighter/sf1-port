@@ -1891,7 +1891,7 @@ impl FairCpu {
         }
         if self.route.is_some() {
             // A route is entered to its end, or to where it is cut.
-            return self.next_route_pad(step, view, stronger);
+            return self.next_route_pad(step, view, ctx);
         }
         if let Some(before) = before {
             // A combo reset's bait (SC10, `#202`) holds its guard for its
@@ -1949,14 +1949,14 @@ impl FairCpu {
         }
         if self.route.is_some() {
             // An answer that is a route: a punish.
-            return self.next_route_pad(step, view, stronger);
+            return self.next_route_pad(step, view, ctx);
         }
         if self.plan.done() {
             if let Some(plan) = self.follow_game_plan(step, view, ctx) {
                 self.plan = plan;
                 if self.route.is_some() {
                     // A step that is a route: its first pad is this frame's.
-                    return self.next_route_pad(step, view, stronger);
+                    return self.next_route_pad(step, view, ctx);
                 }
                 return self.next_pad(step, view, ctx);
             }
@@ -1985,7 +1985,7 @@ impl FairCpu {
         }
         if self.route.is_some() {
             // A game plan's step that is a route.
-            return self.next_route_pad(step, view, stronger);
+            return self.next_route_pad(step, view, ctx);
         }
         self.next_pad(step, view, ctx)
     }
@@ -1993,7 +1993,8 @@ impl FairCpu {
     /// The next pad of the route being entered, turned to face the
     /// opponent as it faced him when the route began. What came of it is
     /// kept for the game plan that chose it.
-    fn next_route_pad(&mut self, step: u32, view: Percept, stronger: bool) -> u16 {
+    fn next_route_pad(&mut self, step: u32, view: Percept, ctx: &Context) -> u16 {
+        let stronger = self.stronger(ctx);
         let Some(mut run) = self.route else { return 0 };
         if stronger && run.walking() && self.judge.coming(view) {
             // Its walk in, before the route's first press, stops for an
@@ -2016,7 +2017,13 @@ impl FairCpu {
                 // A combo entered in full is watched to its end: whether he
                 // is still reeling once its last hit has had time to land.
                 if run.combo_in_full() {
-                    self.route_check = Some(RouteCheck { index: run.index, at: step + game::ROUTE_WATCH, hit: false });
+                    self.route_check = Some(RouteCheck {
+                        index: run.index,
+                        at: step + game::ROUTE_WATCH,
+                        // A hit seen earlier in an SF4 route still counts
+                        // when its late continuation whiffs or is guarded.
+                        hit: stronger && run.outcome() == game::Outcome::Hit && ctx.family == Some(crate::era::EraFamily::Sf4),
+                    });
                 }
                 // Cut on purpose: its fighter waits out its own recovery
                 // (a bait guarding through it) and then goes on with the
@@ -2767,21 +2774,27 @@ impl FairCpu {
         }
     }
 
-    /// The SF4 fighter feels a walk step fail to move him for six frames.
+    /// The SF4 fighter feels a walk cycle fail to advance him.
     /// End the reach step as its normal timeout would, instead of
     /// pushing against a body or wall for ninety frames. Only its own
     /// observed position is used; a locked guard is left to recover.
     fn sf4_walk_stalled(&self, step: u32, since: u32, ctx: &Context) -> bool {
-        const FRAMES: u32 = 6;
+        const FRAMES: u32 = 16;
         if !self.stronger(ctx) || ctx.family != Some(crate::era::EraFamily::Sf4)
             || ctx.own_blockstun || self.plan.kind != PlanKind::Walk
             || step <= FRAMES || step.saturating_sub(since) < FRAMES {
             return false;
         }
-        let Some(now) = self.seen(step - 1) else { return false };
-        (1..=FRAMES).all(|age| self.seen(step - age).is_some_and(|was| {
-            was.me.present && was.me.free() && !was.me.guarding() && !was.me.jumping() && was.me.x == now.me.x
-        }))
+        let (Some(now), Some(from)) = (self.seen(step - 1), self.seen(step - FRAMES)) else { return false };
+        let toward = if now.me.facing_left { -1 } else { 1 };
+        // Native walking can move in small steps or rock back and forth
+        // over its animation. Keep genuine forward progress, including
+        // Retsu's slow steps; a complete cycle with none ends the reach.
+        (now.me.x - from.me.x) * toward <= 0
+            && (1..=FRAMES).all(|age| self.seen(step - age).is_some_and(|was| {
+                was.me.present && was.me.free() && !was.me.guarding() && !was.me.jumping()
+                    && was.me.facing_left == now.me.facing_left
+            }))
     }
 
     /// It has seen its last action begin: in `view`, or for the stronger
@@ -2913,7 +2926,12 @@ impl FairCpu {
                 clear.saturating_add(1)
             };
             let held = held + 1;
-            if (clear >= 5 && held >= min) || held > 120 {
+            // Once an SF4 guard has really seen the threat clear, its
+            // initial eight-frame hold is enough. Actual blockstun and a
+            // chosen reset bait still keep their recovery/hold time.
+            let sf4_clear = self.stronger(ctx) && ctx.family == Some(crate::era::EraFamily::Sf4)
+                && !ctx.own_blockstun && step >= self.bait_until && held >= 8;
+            if (clear >= 5 && (held >= min || sf4_clear)) || held > 120 {
                 self.plan = Plan::default();
                 return 0;
             }
@@ -4192,37 +4210,55 @@ mod tests {
         }
         just_guarded.plan = Plan::of(PlanKind::Walk, &[RIGHT; 8]);
         just_guarded.plan.at = just_guarded.plan.len;
-        assert!(!just_guarded.sf4_walk_stalled(100, 90, &ctx), "past guard frames are not walking, even after the current blockstun ends");
+        assert!(!just_guarded.sf4_walk_stalled(100, 80, &ctx), "past guard frames are not walking, even after the current blockstun ends");
         let plan = game::plans(ctx.kit.fighter, ctx.family).iter().position(|plan| {
             plan.situation == Situation::NeutralFar && matches!(plan.steps[0].act, game::Act::Reach { .. })
         }).unwrap();
-        for moving in [false, true] {
-            let mut cpu = FairCpu::seeded(1);
-            for f in 1..100 {
-                let mut v = percept(f, body(340));
-                v.me.move_id = 2;
-                v.me.state = 0x92;
-                if moving && f >= 94 { v.me.x = 300 - (99 - f) as i16 * 2; }
-                cpu.observe(v);
-            }
-            cpu.plan = Plan::of(PlanKind::Walk, &[RIGHT; 8]);
-            cpu.plan.at = cpu.plan.len;
-            cpu.reach[0][5] = 8;
-            cpu.judged.situation = Situation::NeutralFar;
-            cpu.game = Some(game::Running { plan: plan as u8, step: 0, acted: true, pressed: 90, began: 80, hit: false });
-            assert_eq!(cpu.sf4_walk_stalled(100, 90, &ctx), !moving);
-            assert!(!cpu.sf4_walk_stalled(100, 96, &ctx), "the initial walking frames are kept");
-            let mut locked = ctx;
-            locked.own_blockstun = true;
-            assert!(!cpu.sf4_walk_stalled(100, 90, &locked), "locked guard is not a failed movement decision");
-            let mut old = ctx;
-            old.stronger = false;
-            assert!(!cpu.sf4_walk_stalled(100, 90, &old));
-            assert!(!cpu.sf4_walk_stalled(100, 90, &sf3_ctx(Level::VeryHard)), "previous rollouts keep their behavior");
-            let next = cpu.follow_game_plan(100, percept(100, body(340)), &ctx).unwrap();
-            assert_eq!(next.kind == PlanKind::Walk, moving);
-            if !moving {
-                assert!(next.pads[..usize::from(next.len)].iter().any(|pad| pad & BUTTONS != 0), "the stalled reach actually goes on to press its normal");
+        // Eagle's observed native walk rocks eight pixels out and back;
+        // Retsu's makes small intermittent steps. Only the latter closes.
+        for facing_left in [false, true] {
+            for movement in ["still", "rocking", "slow forward", "forward", "backward"] {
+                let stalled = matches!(movement, "still" | "rocking" | "backward");
+                let toward = if facing_left { -1 } else { 1 };
+                let foe = body(if facing_left { 240 } else { 360 });
+                let mut cpu = FairCpu::seeded(1);
+                for f in 1..100 {
+                    let mut v = percept(f, foe);
+                    v.me.move_id = 2;
+                    v.me.state = 0x92;
+                    v.me.facing_left = facing_left;
+                    if f >= 84 {
+                        let age = (f - 84) as i16;
+                        let advance = match movement {
+                            "rocking" => [0, 8, 8, 8, 8, 0, 0, 0][age as usize % 8],
+                            "slow forward" => 2 * (age / 8),
+                            "forward" => 2 * age,
+                            "backward" => -2 * age,
+                            _ => 0,
+                        };
+                        v.me.x += toward * advance;
+                    }
+                    cpu.observe(v);
+                }
+                cpu.plan = Plan::of(PlanKind::Walk, &[if facing_left { LEFT } else { RIGHT }; 8]);
+                cpu.plan.at = cpu.plan.len;
+                cpu.reach = [[8; 6]; 2];
+                cpu.judged.situation = Situation::NeutralFar;
+                cpu.game = Some(game::Running { plan: plan as u8, step: 0, acted: true, pressed: 84, began: 80, hit: false });
+                assert_eq!(cpu.sf4_walk_stalled(100, 84, &ctx), stalled, "{movement}, facing_left={facing_left}");
+                assert!(!cpu.sf4_walk_stalled(100, 85, &ctx), "a partial walking cycle is kept");
+                let mut locked = ctx;
+                locked.own_blockstun = true;
+                assert!(!cpu.sf4_walk_stalled(100, 84, &locked), "locked guard is not a failed movement decision");
+                let mut old = ctx;
+                old.stronger = false;
+                assert!(!cpu.sf4_walk_stalled(100, 84, &old));
+                assert!(!cpu.sf4_walk_stalled(100, 84, &sf3_ctx(Level::VeryHard)), "previous rollouts keep their behavior");
+                let next = cpu.follow_game_plan(100, percept(100, foe), &ctx).unwrap();
+                assert_eq!(next.kind == PlanKind::Walk, !stalled, "{movement}, facing_left={facing_left}");
+                if stalled {
+                    assert!(next.pads[..usize::from(next.len)].iter().any(|pad| pad & BUTTONS != 0), "the stalled reach actually goes on to press its normal");
+                }
             }
         }
     }
@@ -4232,33 +4268,73 @@ mod tests {
         let free = EraControl { free: true, ..EraControl::default() };
         let ctx = sf4_ctx(Level::VeryHard, free);
         assert!(ctx.throws);
-        for what in ["quiet", "attack", "blockstun", "bait", "old", "sf3"] {
+        for what in ["quiet", "far clear", "recent threat", "attack", "blockstun", "bait", "old", "sf3"] {
             let mut ctx = if what == "sf3" { sf3_ctx(Level::VeryHard) } else { ctx };
             if what == "old" { ctx.stronger = false; }
             if what == "blockstun" { ctx.own_blockstun = true; }
             let mut cpu = FairCpu::seeded(1);
             for f in 1..41 { cpu.observe(percept(f, body(340))); }
-            cpu.plan = Plan::guard(true, 0);
+            // The SF4 release must bypass a still-pending minimum once
+            // its initial hold and the observed threat-clear window pass.
+            cpu.plan = Plan::guard(true, 60);
             if what == "bait" { cpu.bait_until = 100; }
             let mut ended = None;
             for f in 41..65 {
-                let mut foe = body(340);
-                if what == "attack" {
+                let mut foe = body(if matches!(what, "far clear" | "recent threat") { 420 } else { 340 });
+                let attacking = what == "attack" || (what == "recent threat" && f < 48);
+                if attacking {
                     foe.move_id = 0x10;
                     foe.state = 0xc2;
                     foe.active = true;
                     foe.front = 300;
                 }
                 let v = percept(f, foe);
-                if what == "attack" { assert!(v.threat().is_some()); }
+                if attacking { assert!(v.threat().is_some()); }
                 cpu.next_pad(f, v, &ctx);
                 cpu.observe(v);
                 if !matches!(cpu.plan.kind, PlanKind::Guard { .. }) { ended = Some(f - 40); break; }
             }
             if what == "quiet" {
                 assert!(ended.is_some_and(|held| (8..=15).contains(&held)), "keep the initial throw-tech window, then act: {ended:?}");
+            } else if what == "far clear" {
+                assert_eq!(ended, Some(8), "a clear threat does not waive the initial hold");
+            } else if what == "recent threat" {
+                assert_eq!(ended, Some(12), "five genuinely clear frames are needed after the last threat");
             } else {
                 assert_eq!(ended, None, "{what}: preserve its guard");
+            }
+        }
+    }
+
+    #[test]
+    fn sf4_remembers_an_early_route_hit_when_its_late_continuation_whiffs() {
+        let free = EraControl { free: true, ..EraControl::default() };
+        for (era, ctx) in [("sf4", sf4_ctx(Level::VeryHard, free)), ("sf3", sf3_ctx(Level::VeryHard))] {
+            let (revision, loadout) = ctx.style.unwrap();
+            let book = crate::route_book::book(TournamentFighter::Ryu, revision, loadout).unwrap();
+            let (index, route) = book.routes.iter().enumerate().find(|(_, route)| route.steps.len() >= 2).unwrap();
+            for early_hit in [false, true] {
+                let mut cpu = FairCpu::seeded(1);
+                cpu.route = Some(game::RouteRun::new(TournamentFighter::Ryu, revision, loadout, index as u8, 0, route.len() as u16, true));
+                // Replay the real book script. Its opener is seen to hit,
+                // but the opponent is free before the last inputs finish.
+                for frame in 1..=route.len() as u32 + 1 {
+                    let mut foe = body(340);
+                    if early_hit && frame == 2 { foe.move_id = 0x30; }
+                    cpu.next_route_pad(frame, percept(frame, foe), &ctx);
+                }
+                assert!(cpu.route.is_none(), "the complete route was entered");
+                assert_eq!(cpu.route_outcome, Some(if early_hit { game::Outcome::Hit } else { game::Outcome::Whiff }));
+                let watch = cpu.route_check.expect("a multistep route watches its ending");
+                // Keep a neutral action in progress so nothing else is
+                // chosen while the normal decision path observes the end.
+                cpu.plan = Plan::of(PlanKind::Act, &[0; PLAN_CAP]);
+                for frame in watch.at - game::ROUTE_WATCH + 1..=watch.at {
+                    cpu.decide(frame, percept(frame, body(340)), None, &ctx);
+                    if frame < watch.at { assert_eq!(cpu.route_drops[index], 0, "do not judge the continuation before its watch expires"); }
+                }
+                assert!(cpu.route_check.is_none(), "the ending was observed");
+                assert_eq!(cpu.route_drops[index], u8::from(era == "sf4" && early_hit), "{era}, early_hit={early_hit}: a route that hit and then lost its combo is learned as a drop only in the SF4 rollout");
             }
         }
     }

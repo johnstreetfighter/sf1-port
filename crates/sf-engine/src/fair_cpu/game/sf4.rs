@@ -23,8 +23,8 @@ const TELEPORT: [Step; 1] = [step(Act::Tool(Tool::Teleport), always(None))];
 
 const POKE_HK: [Step; 6] = poke(false, 5);
 const MEATY_HK: [Step; 4] = meaty(false, 5);
-const POKE_MK: [Step; 6] = poke(false, 4);
-const MEATY_MK: [Step; 4] = meaty(false, 4);
+const POKE_LP: [Step; 6] = poke(false, 0);
+const MEATY_LP: [Step; 4] = meaty(false, 0);
 const POKE_MP: [Step; 6] = poke(false, 1);
 const MEATY_MP: [Step; 4] = meaty(false, 1);
 const POKE_LK: [Step; 6] = poke(false, 3);
@@ -81,9 +81,11 @@ const KEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, SHOT, SHOT_WATCH);
 const SAGAT: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, SHOT, SHOT_WATCH);
 const RETSU: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_CLOSE, THROW_BLOCKED);
 const GEKI: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, TELEPORT_FAR);
-const JOE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK);
+// Joe's MK continues into a straight. His single low kick keeps the
+// pressure shorter, and Shockwave gives him a purpose at long range.
+const JOE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK, SHOT, SHOT_WATCH);
 const MIKE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
-const LEE: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK, LEE_CHARGE);
+const LEE: &[GamePlan] = shared!(&POKE_LP, &MEATY_LP, LEE_CHARGE);
 const BIRDIE: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP, THROW_BLOCKED, CHARGE_FAR);
 const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, CRANE, GEN_CHARGE);
 const EAGLE: &[GamePlan] = shared!(&POKE_LK, &MEATY_LK);
