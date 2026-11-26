@@ -214,7 +214,17 @@ macro_rules! shared {
 }
 
 const MEDIUM: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
-const MIKE: &[GamePlan] = shared!(@close &MIKE_CLOSE_POKE, &POKE_MP, &MEATY_MP);
+// Preserve the shared plan order while giving far jump-ins more weight.
+const MIKE: &[GamePlan] = &{
+    let mut plans = *shared!(@close &MIKE_CLOSE_POKE, &POKE_MP, &MEATY_MP);
+    plans[9].score = 54;
+    plans
+};
+const ADON: &[GamePlan] = &{
+    let mut plans = *shared!(&POKE_MP, &MEATY_MP);
+    plans[9].score = 54;
+    plans
+};
 const HEAVY_PUNCH: &[GamePlan] = shared!(&POKE_HP, &MEATY_HP);
 const MEDIUM_KICK: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK);
 const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, ADVANCE_CLOSE, SPACED_ADVANCE_FAR);
@@ -240,7 +250,8 @@ pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
         Joe => MEDIUM_KICK,
         Eagle => HEAVY_PUNCH,
         Mike => MIKE,
-        Retsu | Adon => MEDIUM,
+        Retsu => MEDIUM,
+        Adon => ADON,
     }
 }
 
