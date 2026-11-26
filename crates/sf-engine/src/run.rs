@@ -1855,11 +1855,15 @@ impl PowerOnMachine {
     /// Mode 4 leaves the first cabinet pad free for the stronger baseline
     /// CPU. The human's second pad and its command trackers stay separate.
     pub(crate) fn stronger_arcade_cpu_uses_p1(&self) -> bool {
+        let Some(opponent) = self.arcade_opponent() else { return false };
+        let config = self.program.match_config;
         let mode = self.program.work[0x4002];
-        let [slot, _] = cpu_era_slots(mode);
+        let family = crate::config::arcade_cpu_family(
+            config.roster, crate::era_fight::EraRules::from(config).enabled,
+            self.program.toggle_state.era.selections, opponent, self.arcade_ladder_step(),
+        );
         crate::config::stronger_arcade_cpu_uses_p1(
-            self.program.match_config.stronger_arcade_cpu(), mode,
-            self.program.toggle_state.era.fighters[slot].style.family,
+            config.stronger_arcade_cpu(), mode, family,
         )
     }
 
@@ -3109,15 +3113,79 @@ mod tests {
         assert_eq!(cpu_era_slots(1), [1, 0]);
     }
 
+    /// A selected Arcade opponent before the round has bound its era state.
+    /// Only its native move pointer is needed for the pad ownership policy.
+    fn mode_four_arcade_machine(config: crate::config::MatchConfig, opponent: crate::roster::TournamentFighter) -> PowerOnMachine {
+        let mut rom = vec![0; 0x104];
+        rom[0x100..0x104].copy_from_slice(&opponent.move_table().to_be_bytes());
+        let mut machine = PowerOnMachine::new(rom);
+        machine.set_match_config(config);
+        machine.program.work[0x0003] = 1;
+        machine.program.work[0x4002] = 4;
+        machine.program.work[0x401c..0x4020].copy_from_slice(&0x100u32.to_be_bytes());
+        machine
+    }
+
     #[test]
-    fn the_stronger_mode_four_baseline_pad_keeps_all_human_second_pad_inputs() {
-        use crate::front::PlayerInputs;
-        let mut machine = PowerOnMachine::new(Vec::new());
+    fn mode_four_pad_ownership_uses_the_selected_arcade_style_before_binding() {
+        use crate::era::{Loadout, Revision, StylePick};
+        use crate::roster::TournamentFighter::Ken;
         let mut config = crate::config::MatchConfig::definitive();
         config.stronger_cpu = true;
         config.p2_fair_cpu = true;
+        let mut machine = mode_four_arcade_machine(config, Ken);
+        machine.program.toggle_state.era.selections[0] = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        for stale in [StylePick::default(), StylePick::for_revision(Revision::Arcade1987, Loadout::Standard)] {
+            machine.program.toggle_state.era.fighters[0].style = stale;
+            assert!(!machine.stronger_arcade_cpu_uses_p1(), "selected SF6 keeps its existing port despite stale {stale:?}");
+        }
+        machine.program.toggle_state.era.fighters[0].style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        for selected in [Revision::Arcade1987, Revision::Sf1Plus] {
+            machine.program.toggle_state.era.selections[0] = StylePick::for_revision(selected, Loadout::Standard);
+            assert!(machine.stronger_arcade_cpu_uses_p1(), "selected {selected:?} borrows P1 despite stale SF6");
+        }
+    }
+
+    #[test]
+    fn mode_four_pad_ownership_obeys_classic_rules_and_unsupported_style_fallbacks() {
+        use crate::era::{Loadout, Revision, StylePick};
+        use crate::roster::TournamentFighter::Retsu;
+        let mut config = crate::config::MatchConfig::from_preset(crate::config::RulesetPreset::ClassicCompetitive);
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        let mut classic = mode_four_arcade_machine(config, Retsu);
+        classic.program.toggle_state.era.selections[0] = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        classic.program.toggle_state.era.fighters[0] = Default::default();
+        assert!(classic.stronger_arcade_cpu_uses_p1(), "classic rules have no active era and use the baseline port");
+
+        config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        config.roster.what_if_styles = false;
+        let mut fallback = mode_four_arcade_machine(config, Retsu);
+        fallback.program.toggle_state.era.selections[0] = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        fallback.program.toggle_state.era.fighters[0].style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
+        assert!(fallback.stronger_arcade_cpu_uses_p1(), "unavailable SF6 Retsu falls back to SF1+");
+    }
+
+    #[test]
+    fn mode_four_pad_ownership_waits_until_the_arcade_opponent_is_known() {
+        let mut config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        let mut machine = PowerOnMachine::new(Vec::new());
         machine.set_match_config(config);
         machine.program.work[0x4002] = 4;
+        assert!(!machine.stronger_arcade_cpu_uses_p1(), "no ladder pointer means no CPU pad to replace");
+    }
+
+    #[test]
+    fn the_stronger_mode_four_baseline_pad_keeps_all_human_second_pad_inputs() {
+        use crate::front::PlayerInputs;
+        let mut config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        let mut machine = mode_four_arcade_machine(config, crate::roster::TournamentFighter::Ken);
         machine.program.toggle_state.era.fighters[0].style = crate::era::StylePick::default();
         let human = PlayerInputs { directions: [false, false, true, false], buttons: [false, false, false, false, false, true] };
         machine.set_p2_direction(false, false, true, false);
@@ -3129,7 +3197,8 @@ mod tests {
         // The old game and later-era styles keep their existing P2 route.
         for later_era in [false, true] {
             machine.program.match_config.stronger_cpu = later_era;
-            machine.program.toggle_state.era.fighters[0].style.family = if later_era { crate::era::EraFamily::Sf6 } else { crate::era::EraFamily::Sf1Plus };
+            let revision = if later_era { crate::era::Revision::Sf6 } else { crate::era::Revision::Sf1Plus };
+            machine.program.toggle_state.era.selections[0] = crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard);
             machine.apply_cpu_pad(PlayerInputs::default());
             assert_eq!(machine.applied_p1_pad(), cpu);
             assert_eq!(machine.applied_p2_pad(), PlayerInputs::default());
@@ -3142,13 +3211,11 @@ mod tests {
         use crate::fighter::{CPU_STRUCT, P1_STRUCT, WORK_BASE};
         use crate::front::PlayerInputs;
         use crate::session_io::ControlScheme;
-        let mut machine = PowerOnMachine::new(Vec::new());
         let mut config = crate::config::MatchConfig::definitive();
         config.stronger_cpu = true;
         config.p2_fair_cpu = true;
         config.p1_scheme = ControlScheme::Modern;
-        machine.set_match_config(config);
-        machine.program.work[0x4002] = 4;
+        let mut machine = mode_four_arcade_machine(config, crate::roster::TournamentFighter::Ken);
         machine.program.toggle_state.era.fighters[0].style = crate::era::StylePick::default();
         for (player, entity, facing) in [(CPU_STRUCT, 0x100u16, 4), (P1_STRUCT, 0x200, 0)] {
             let at = (player + 0x10 - WORK_BASE) as usize;

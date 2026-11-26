@@ -598,7 +598,7 @@ impl ReplayPlayback {
                 }
                 let result =
                     self.fight
-                        .step_with_pad_override(assets, pads, start, bypass, override_p2, override_p1);
+                        .step_with_pad_override(assets, pads, start, bypass, [override_p1, override_p2]);
                 // It watches every frame from the takeover on, the
                 // recording's included, as its own reaction delay shows them.
                 if let Some(cpu) = self.fair_cpu.as_deref_mut() {

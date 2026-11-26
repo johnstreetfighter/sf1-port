@@ -273,13 +273,20 @@ fn start(config: MatchConfig, kind: FightKind, players: Players, rom: &[u8]) -> 
 /// Ryu/Ken replace one pointer in a fixture-owned ROM copy; no installed
 /// asset is changed, no CPU move or command is started by this fixture.
 fn arcade(fighter: TournamentFighter, stronger: bool, level: u8, mode: u8) -> PowerOnMachine {
-    arcade_fight(fighter, stronger, level, mode)
+    arcade_fight(fighter, Revision::Arcade1987, stronger, level, mode)
         .machine()
         .clone()
 }
 
-fn arcade_fight(fighter: TournamentFighter, stronger: bool, level: u8, mode: u8) -> Fight {
+fn arcade_fight(
+    fighter: TournamentFighter,
+    revision: Revision,
+    stronger: bool,
+    level: u8,
+    mode: u8,
+) -> Fight {
     assert!(matches!(mode, 2 | 4));
+    assert!(REVISIONS.contains(&revision));
     let d = data().unwrap();
     let mut config = MatchConfig::definitive();
     config.roster.mode = PlayMode::Arcade;
@@ -321,14 +328,9 @@ fn arcade_fight(fighter: TournamentFighter, stronger: bool, level: u8, mode: u8)
         .zip(&d.assets.maincpu)
         .enumerate()
         .all(|(i, (a, b))| a == b || (at..at + 4).contains(&i)));
-    eprintln!("SC21 Arcade fixture {fighter:?} mode{mode}: native pointer {at:#x} {original:#x}->{:#x}, ladder index{index}, authoredAI{}", fighter.move_table(), native_index.is_some());
+    eprintln!("SC21 Arcade fixture {fighter:?} {revision:?} mode{mode}: native pointer {at:#x} {original:#x}->{:#x}, ladder index{index}, nativeAIIndex{}", fighter.move_table(), native_index.is_some());
     let mut fight = start(config, FightKind::Arcade, Players::One, &rom);
-    fight.set_selected_styles(
-        [Some(StylePick::for_revision(
-            Revision::Arcade1987,
-            Loadout::Standard,
-        )); 2],
-    );
+    fight.set_selected_styles([Some(StylePick::for_revision(revision, Loadout::Standard)); 2]);
     let mut machine = fight.machine().clone();
     let mut snapshot = machine.save_snapshot();
     snapshot.work[0x4003] = (index / 2) as u8;
@@ -406,6 +408,7 @@ struct Limits {
 #[derive(Debug, Default)]
 struct Observed {
     frames: u32,
+    matches_completed: u32,
     plans: u32,
     pad_frames: u32,
     attacks: u32,
@@ -426,6 +429,7 @@ struct Observed {
 impl Observed {
     fn add(&mut self, other: Self) {
         self.frames += other.frames;
+        self.matches_completed += other.matches_completed;
         self.plans += other.plans;
         self.pad_frames += other.pad_frames;
         self.attacks += other.attacks;
@@ -571,6 +575,16 @@ fn watch(
             }
             if matches!(mode, 2 | 4) && m.fair_cpu().is_some() {
                 assert_eq!(
+                    m.era_fighters()[own_slot].style.revision,
+                    revision,
+                    "mode{mode}: the CPU actually plays the selected baseline revision"
+                );
+                assert_eq!(
+                    m.era_fighters()[own_slot].fighter,
+                    Some(fighter),
+                    "mode{mode}: the era slot belongs to the selected native CPU fighter"
+                );
+                assert_eq!(
                     TournamentFighter::from_move_table(long(&m, CPU_STRUCT + 0x12)),
                     Some(fighter),
                     "native CPU_STRUCT table has the intended fighter"
@@ -620,7 +634,9 @@ fn watch(
         } else {
             entering = false;
         }
-        if out.frames >= frames || m.match_over() {
+        let completed = m.match_over();
+        if out.frames >= frames || completed {
+            out.matches_completed += u32::from(completed);
             return out;
         }
     }
@@ -794,6 +810,35 @@ fn native_arcade_modes_two_and_four_consume_stronger_pads_for_every_fighter_and_
                     );
                     assert_eq!(out.own_routes, 0);
                 }
+            }
+        }
+    });
+}
+
+#[test]
+fn native_sf1plus_arcade_modes_two_and_four_consume_every_fighters_stronger_pad() {
+    if data().is_none() {
+        return;
+    }
+    deep(|| {
+        for fighter in TournamentFighter::ALL {
+            for mode in [2, 4] {
+                let fight = arcade_fight(fighter, Revision::Sf1Plus, true, 4, mode);
+                let out = watch(
+                    fight.machine().clone(),
+                    fighter,
+                    Revision::Sf1Plus,
+                    2_400,
+                    modern(),
+                    sparring,
+                );
+                eprintln!("SC21 SF1+ Arcade {fighter:?} mode{mode} level4: {out:?}");
+                assert!(out.frames >= 600 && out.cpu_table_frames > 0 && out.pad_frames > 0 && out.pad_started_attacks > 0,
+                    "SF1+ native CPU_STRUCT consumes its pad into real attacks: {fighter:?} mode{mode}: {out:?}");
+                assert!(
+                    out.human_attacks > 0 && out.human_moves > 0,
+                    "SF1+ mode{mode} independently consumes the scripted human pad: {out:?}"
+                );
             }
         }
     });
@@ -1112,9 +1157,12 @@ fn arcade_capcom_and_stronger_activity_diagnostic() {
         return;
     }
     deep(|| {
-        eprintln!("SC21_ARCADE_ACTIVITY\tfighter\tmode\tlevel\tstronger\tlive_frames\tattacks\tidle_frames\tplan_attacks\thuman_attacks\thuman_moves");
+        eprintln!("SC21_ARCADE_ACTIVITY\tfighter\tmode\tlevel\tstronger\tlive_frames\tattacks\tidle_frames\tplan_attacks\thuman_attacks\thuman_moves\tmatches_completed");
         // Ten authored Capcom opponents only. The native shoto fixtures above
         // prove stronger control, and deliberately make no Capcom-AI claim.
+        // Each observation lasts up to 6,000 live frames or the first actual
+        // native match end. A legitimately shorter completed match is retained;
+        // live duration and completion count accompany the raw activity counts.
         for fighter in TournamentFighter::ALL.into_iter().filter(|f| !f.is_shoto()) {
             for mode in [2, 4] {
                 for stronger in [false, true] {
@@ -1126,7 +1174,7 @@ fn arcade_capcom_and_stronger_activity_diagnostic() {
                         original(),
                         sparring,
                     );
-                    assert!(out.frames >= 600 && out.attacks > 0 && out.human_attacks > 0 && out.human_moves > 0, "bounded native activity is observed: {fighter:?} mode{mode} stronger{stronger}: {out:?}");
+                    assert!(out.frames > 0 && (out.frames >= 600 || out.matches_completed > 0) && out.attacks > 0 && out.human_attacks > 0 && out.human_moves > 0, "bounded native activity is observed: {fighter:?} mode{mode} stronger{stronger}: {out:?}");
                     if stronger {
                         assert!(out.cpu_table_frames > 0 && out.plan_attacks > 0);
                     } else {
@@ -1141,7 +1189,7 @@ fn arcade_capcom_and_stronger_activity_diagnostic() {
                             "the old Arcade run is Capcom, not a forced old Fair CPU"
                         );
                     }
-                    eprintln!("SC21_ARCADE_ACTIVITY\t{fighter:?}\t{mode}\t4\t{stronger}\t{}\t{}\t{}\t{}\t{}\t{}", out.frames, out.attacks, out.idle_frames, out.plan_attacks, out.human_attacks, out.human_moves);
+                    eprintln!("SC21_ARCADE_ACTIVITY\t{fighter:?}\t{mode}\t4\t{stronger}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", out.frames, out.attacks, out.idle_frames, out.plan_attacks, out.human_attacks, out.human_moves, out.matches_completed);
                 }
             }
         }
@@ -1151,9 +1199,9 @@ fn arcade_capcom_and_stronger_activity_diagnostic() {
 /// The real Fight wrapper and ReplayPlayback path, starting at a native
 /// mode4 standing fight. Its single recorded frame intentionally exhausts
 /// before frame2 so both takeover seats exercise their fallback opponent.
-fn mode_four_playback() -> ReplayPlayback {
+fn mode_four_playback(revision: Revision) -> ReplayPlayback {
     let d = data().unwrap();
-    let mut fight = arcade_fight(TournamentFighter::Retsu, true, 4, 4);
+    let mut fight = arcade_fight(TournamentFighter::Retsu, revision, true, 4, 4);
     let mut ready = false;
     for _ in 0..3_000 {
         let frame = fight.step(
@@ -1183,6 +1231,11 @@ fn mode_four_playback() -> ReplayPlayback {
         "the mode4 native replay fixture reaches a standing fight"
     );
     assert_eq!(
+        fight.machine().era_fighters()[0].style.revision,
+        revision,
+        "the native mode4 replay CPU actually plays the requested revision"
+    );
+    assert_eq!(
         TournamentFighter::from_move_table(long(fight.machine(), P2_STRUCT + 0x12)),
         Some(TournamentFighter::Ryu)
     );
@@ -1190,10 +1243,10 @@ fn mode_four_playback() -> ReplayPlayback {
         TournamentFighter::from_move_table(long(fight.machine(), CPU_STRUCT + 0x12)),
         Some(TournamentFighter::Retsu)
     );
-    let style = StylePick::for_revision(Revision::Arcade1987, Loadout::Standard);
+    let style = StylePick::for_revision(revision, Loadout::Standard);
     let replay = MatchReplay {
         id: 213,
-        title: "SC21 synthetic mode4 ladder fixture".into(),
+        title: format!("SC21 synthetic mode4 {revision:?} ladder fixture"),
         kind: FightKind::Arcade,
         online: false,
         config: fight.setup().config,
@@ -1324,21 +1377,23 @@ fn mode_four_replay_takeovers_preserve_both_ports_and_rewind_deterministically()
         return;
     }
     deep(|| {
-        for side in [TakeoverPlayer::P1, TakeoverPlayer::P2] {
-            let mut playback = mode_four_playback();
-            let before = playback.fight().state_checksum();
-            let first = replay_mode_four_branch(&mut playback, side);
-            assert!(playback.rewind());
-            assert_eq!(
-                playback.fight().state_checksum(),
-                before,
-                "rewind restores both port owners and their native state"
-            );
-            assert_eq!(
+        for revision in REVISIONS {
+            for side in [TakeoverPlayer::P1, TakeoverPlayer::P2] {
+                let mut playback = mode_four_playback(revision);
+                let before = playback.fight().state_checksum();
+                let first = replay_mode_four_branch(&mut playback, side);
+                assert!(playback.rewind());
+                assert_eq!(
+                    playback.fight().state_checksum(),
+                    before,
+                    "rewind restores both port owners and their native state"
+                );
+                assert_eq!(
                 replay_mode_four_branch(&mut playback, side),
                 first,
-                "{side:?}: takeover pads and whole-fight canonical hashes repeat after rewind"
+                "{revision:?} {side:?}: takeover pads and whole-fight canonical hashes repeat after rewind"
             );
+            }
         }
     });
 }

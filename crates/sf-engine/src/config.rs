@@ -696,6 +696,25 @@ pub fn default_match_config_path() -> PathBuf {
     crate::user_folder::app_dir().join("match_config.toml")
 }
 
+/// The selected native Arcade opponent's effective family, available before
+/// the round binds its era state. Both pad writers and input handlers use it.
+pub(crate) fn arcade_cpu_family(
+    roster: crate::roster::RosterSettings,
+    era_enabled: bool,
+    selections: [crate::era::StylePick; 2],
+    opponent: crate::roster::TournamentFighter,
+    step: usize,
+) -> crate::era::EraFamily {
+    if !roster.full_cast || !era_enabled {
+        return crate::era::EraFamily::Sf1987;
+    }
+    if roster.mode == crate::roster::PlayMode::Arcade {
+        selections[0].arcade_opponent(opponent, roster.what_if_styles, step).family
+    } else {
+        selections[1].family
+    }
+}
+
 /// A baseline Arcade CPU can borrow the unused first cabinet pad in
 /// mode 4, where the human plays the second pad. Later eras keep their
 /// established routing; the old game and Faithful 1987 never borrow it.

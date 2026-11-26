@@ -2288,7 +2288,7 @@ impl Fight {
     /// is over (Local, Training) or the run has returned to the attract
     /// (Arcade).
     pub fn step(&mut self, assets: &Assets, p1: PlayerInputs, p2: PlayerInputs, start: bool) -> FightFrame {
-        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], false, false)
+        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], [false; 2])
     }
 
     pub(crate) fn step_with_pad_override(
@@ -2297,9 +2297,9 @@ impl Fight {
         [p1, p2]: [PlayerInputs; 2],
         start: bool,
         bypass: [bool; 2],
-        override_p2: bool,
-        override_p1: bool,
+        override_pads: [bool; 2],
     ) -> FightFrame {
+        let [override_p1, override_p2] = override_pads;
         if self.black > 0 {
             self.black -= 1;
             return FightFrame {

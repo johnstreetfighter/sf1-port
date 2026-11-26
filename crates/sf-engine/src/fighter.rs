@@ -6244,16 +6244,8 @@ impl Bus<'_> {
     }
 
     fn arcade_cpu_family(&self, fighter: crate::roster::TournamentFighter) -> crate::era::EraFamily {
-        if !self.roster.full_cast || !self.era_rules.enabled {
-            return crate::era::EraFamily::Sf1987;
-        }
-        let picks = self.toggle_state.era.selections;
-        if self.roster.mode == crate::roster::PlayMode::Arcade {
-            let step = usize::from(self.rb(0xffc003)) * 2 + usize::from(self.rb(0xffc004));
-            picks[0].arcade_opponent(fighter, self.roster.what_if_styles, step).family
-        } else {
-            picks[1].family
-        }
+        let step = usize::from(self.rb(0xffc003)) * 2 + usize::from(self.rb(0xffc004));
+        crate::config::arcade_cpu_family(self.roster, self.era_rules.enabled, self.toggle_state.era.selections, fighter, step)
     }
 
     /// The stronger baseline CPU takes the free first cabinet pad when
