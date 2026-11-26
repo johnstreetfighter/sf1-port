@@ -1187,3 +1187,58 @@ fn being_hit_closes_the_cancel_window() {
         "being hit closes the cancel window at once"
     );
 }
+
+
+#[test]
+fn geki_cancels_crouching_light_kick_into_shuriken() {
+    let Some(mut base) = boss(TournamentFighter::Geki) else {
+        return;
+    };
+    close_in(&mut base, 0x28);
+    let attempt = qcf_from((&[DOWN], LK));
+    for (label, guard) in [("neutral", &[][..]), ("crouch-back", CROUCH_GUARD)] {
+        // The defender labels describe supplied pads, not a separate guard
+        // classification. Compare real native runs from the same fixture.
+        let mut normal = base.clone();
+        let alone = run_on(&mut normal, attempt, None, guard, 70);
+        assert!(
+            normal.fight_machine().unwrap().unrecovered().is_empty(),
+            "normal-only native control stops invalidate this case"
+        );
+        assert_eq!(
+            alone[0].p1.move_id, 0x17,
+            "the actual normal is Geki's crouching light kick"
+        );
+        let contact = alone
+            .iter()
+            .position(|frame| frame.window > 0)
+            .expect("the actual normal opens its native cancel window");
+        let end = alone
+            .iter()
+            .position(|frame| frame.p1.move_id != 0x17)
+            .expect("the normal-only native control ends within the existing70-frame bound");
+        // The legal player-test clock follows real contact and the complete
+        // QCF prefix; it does not prescribe an AI hit confirmation.
+        let press = (contact + 2).max(attempt.motion.len() + 1);
+        let mut cancelled = base.clone();
+        let frames = run_on(&mut cancelled, attempt, Some(press), guard, 70);
+        assert!(
+            cancelled.fight_machine().unwrap().unrecovered().is_empty(),
+            "native cancel attempt stops invalidate this case"
+        );
+        assert_eq!(frames[0].p1.move_id, 0x17);
+        let actual = Outcome {
+            contact: frames.iter().position(|frame| frame.window > 0),
+            special: frames.iter().position(|frame| frame.p1.move_id == HADOKEN),
+            end,
+        };
+        assert!(
+            actual.cancelled(),
+            "Geki's actual0x17 must enter Shuriken0x1a after contact and before normal-only recovery: defender_pads={label} {actual:?}"
+        );
+        assert_eq!(frames[actual.special.unwrap()].p1.move_id, 0x1a);
+        eprintln!(
+            "Geki cLK -> Shuriken: defender_pads={label} normal=0x17 special=0x1a press={press} native_stops=0 {actual:?}"
+        );
+    }
+}
