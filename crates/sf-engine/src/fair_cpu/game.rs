@@ -1177,10 +1177,17 @@ impl Running {
     /// What has come of the pressed normal `(crouch, button)` as far as
     /// `view` shows, once it shows anything: `reach` is that normal's.
     pub(super) fn outcome(&self, view: Percept, reach: i16) -> Option<Outcome> {
+        self.outcome_with_hit(view, reach, true)
+    }
+
+    /// Whether this attack has evidence for the reaction it now sees.
+    /// Callers with older hit history can withhold a stale hit credit while
+    /// retaining the same guard, whiff and timeout classification.
+    pub(super) fn outcome_with_hit(&self, view: Percept, reach: i16, hit_seen: bool) -> Option<Outcome> {
         if view.frame <= self.pressed {
             return None;
         }
-        if view.foe.reacting() {
+        if hit_seen && view.foe.reacting() {
             Some(Outcome::Hit)
         } else if view.me.attacking() && view.foe.guarding() && view.gap() <= reach + 8 && reached(view) {
             // Guarded: his guard pose alone is drawn as soon as an attack

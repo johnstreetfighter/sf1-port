@@ -6268,6 +6268,54 @@ impl Bus<'_> {
         IN1_COPY + u32::from(self.arcade_cpu_uses_p1_pad())
     }
 
+    /// Hand the branch's native CPU seat to its separately owned pad.
+    /// Its current animation continues. A recorded pad copies its former
+    /// P2 recognizer history, leaving the human's source workspace intact;
+    /// a new controller instead starts with the unused P1 workspace clear.
+    pub(crate) fn prepare_replay_baseline_cpu_pad(&mut self, pad: crate::run::ReplayCpuPad) {
+        if !self.arcade_cpu_uses_p1_pad() { return }
+        let Some(opponent) = self.banked_cpu_opponent() else { return };
+        self.wl(CPU_STRUCT + 0x12, self.player_table(opponent));
+        self.wl(CPU_STRUCT + 2, self.arcade_cpu_input_copy());
+        // The actor keeps its current move when its physical input slot
+        // changes. These flags belong to that move, even for a fresh pad.
+        self.toggle_state.dp_connected[0] = self.toggle_state.dp_connected[1];
+        self.toggle_state.human_attack_frames[0] = self.toggle_state.human_attack_frames[1];
+        self.toggle_state.air_adj_frames_1[0] = self.toggle_state.air_adj_frames_1[1];
+        self.toggle_state.air_adj_rem_1[0] = self.toggle_state.air_adj_rem_1[1];
+        self.toggle_state.air_adj_frames_2[0] = self.toggle_state.air_adj_frames_2[1];
+        self.toggle_state.air_adj_rem_2[0] = self.toggle_state.air_adj_rem_2[1];
+        match pad {
+            crate::run::ReplayCpuPad::Recorded => {
+                // Three command trackers: stage, timer, done at +16/+19/+1c.
+                for offset in 0..9u32 {
+                    self.wb(P1_STRUCT + 0x16 + offset, self.rb(P2_STRUCT + 0x16 + offset));
+                }
+                // Two eight-byte positive/negative-edge button latch groups.
+                for offset in 0..0x10u32 {
+                    self.wb(0xff8690 + offset, self.rb(0xff86a0 + offset));
+                }
+                self.toggle_state.neg_edge_latch[0] = self.toggle_state.neg_edge_latch[2];
+                self.toggle_state.neg_edge_latch[1] = self.toggle_state.neg_edge_latch[3];
+                self.toggle_state.recovery_buffer[0] = self.toggle_state.recovery_buffer[1];
+                self.toggle_state.tracker_release_age[0] = self.toggle_state.tracker_release_age[1];
+                self.toggle_state.schemes[0] = self.toggle_state.schemes[1];
+                // CPU_STRUCT's pending punch/kick word belongs to this same
+                // recorded command stream and is deliberately retained.
+            }
+            crate::run::ReplayCpuPad::Fresh => {
+                self.ww(CPU_STRUCT, 0);
+                self.clear_all_trackers(CPU_STRUCT);
+                self.clear_neg_edge_latches_for_player(CPU_STRUCT);
+                for at in 0xff8690..0xff86a0 { self.wb(at, 0); }
+                self.toggle_state.recovery_buffer[0] = None;
+                self.toggle_state.tracker_release_age[0] = [0; 3];
+                self.toggle_state.schemes[0] = Default::default();
+                self.toggle_state.schemes[0].scaled_move = self.toggle_state.schemes[1].scaled_move;
+            }
+        }
+    }
+
     /// Whether `ps` is driven by the 1987 player handler (`P1_STRUCT`,
     /// `P2_STRUCT`, or `CPU_STRUCT` when the Arcade opponent plays on a
     /// 1987 player table).
@@ -8845,8 +8893,12 @@ impl Bus<'_> {
     // ---- Tier 1 command tracker, walk, and jump overhaul helpers (#95, O4) --
 
     fn tracker_slot(&self, t: u32) -> Option<(usize, usize)> {
-        let count = if self.dramatic_rules().is_some() { 3 } else { 2 };
-        let bases = [P1_STRUCT, self.tracker_base(CPU_STRUCT), P2_STRUCT];
+        let dramatic = self.dramatic_rules().is_some();
+        let count = if dramatic { 3 } else { 2 };
+        // A mode4 baseline CPU's physical P1 trackers must not hide the
+        // human's physical P2 trackers behind a duplicate P1 base.
+        let second = if !dramatic && self.arcade_cpu_uses_p1_pad() { P2_STRUCT } else { self.tracker_base(CPU_STRUCT) };
+        let bases = [P1_STRUCT, second, P2_STRUCT];
         for (p_idx, base) in bases.into_iter().take(count).enumerate() {
             if t == base + 0x16 {
                 return Some((p_idx, 0));
@@ -10792,6 +10844,332 @@ mod tests {
             }
         }
     }
+
+    /// The old mode4 CPU and human both used the P2 command workspace.
+    /// Its new separate P1 workspace must not remove the human's slot.
+    fn sc21_tracker_policy_ram() -> Ram {
+        let mut ram = Ram::new();
+        ram.rom[0x100..0x104].copy_from_slice(&crate::roster::TournamentFighter::Ryu.move_table().to_be_bytes());
+        ram.rom[0x403ba..0x403bd].copy_from_slice(&[5, 6, 2]);
+        ram.rom[0x403a2..0x403a5].copy_from_slice(&[2, 5, 6]);
+        ram
+    }
+
+    fn sc21_enable_mode_four_baseline(bus: &mut Bus<'_>, revision: crate::era::Revision) {
+        let mut config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        bus.preset = config.preset;
+        bus.roster = config.roster;
+        bus.era_rules = config.into();
+        bus.toggles = config.toggles;
+        bus.stronger_arcade_cpu = true;
+        bus.wb(MODE_DEMO, 1);
+        bus.wb(GAME_MODE, 4);
+        bus.wb(SCENE_MODE, 0x80);
+        bus.wl(0xffc01c, 0x100);
+        bus.toggle_state.era.selections = [crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard); 2];
+    }
+
+    #[test]
+    fn sc21_mode_four_human_command_trackers_keep_physical_slots_and_release_grace() {
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+        assert!(bus.arcade_cpu_uses_p1_pad());
+        for (tracker, offset) in [0x16u32, 0x19, 0x1c].into_iter().enumerate() {
+            assert_eq!(bus.tracker_slot(P1_STRUCT + offset), Some((0, tracker)), "CPU's physical P1 tracker");
+            assert_eq!(bus.tracker_slot(P2_STRUCT + offset), Some((1, tracker)), "human's physical P2 tracker");
+        }
+        bus.toggles.lenient_command_trackers = true;
+        bus.toggles.command_tracker_window = 30;
+        bus.toggles.command_release_grace = 3;
+        let tracker = P2_STRUCT + 0x1c;
+        bus.wb(tracker, 3);
+        bus.wb(tracker + 1, 1);
+        bus.wb(tracker + 2, 0xff);
+        bus.toggle_state.tracker_release_age[0] = [7, 8, 9];
+        for age in 1..=3u8 {
+            bus.track_command_lenient(tracker, 0x403ba, 0);
+            assert_eq!(bus.rb(tracker + 2), 0xff, "P2 keeps completed QCF throughout release grace {age}");
+            assert_eq!(bus.toggle_state.tracker_release_age[1][2], age);
+            assert_eq!(bus.toggle_state.tracker_release_age[0], [7, 8, 9], "P2 release never touches CPU ages");
+        }
+        bus.track_command_lenient(tracker, 0x403ba, 0);
+        assert_eq!((bus.rb(tracker), bus.rb(tracker + 1), bus.rb(tracker + 2)), (0, 0, 0));
+        assert_eq!(bus.toggle_state.tracker_release_age[1][2], 0);
+    }
+
+    #[test]
+    fn sc21_mode_four_human_dp_shortcut_respects_its_concurrent_qcf_tracker() {
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+        bus.toggles.lenient_command_trackers = true;
+        bus.toggles.command_tracker_window = 30;
+        let dp = P2_STRUCT + 0x19;
+        let qcf = P2_STRUCT + 0x1c;
+        bus.wb(dp, 2);
+        bus.wb(dp + 1, 1);
+        bus.wb(qcf, 2);
+        bus.track_command_lenient(dp, 0x403a2, 2);
+        assert_eq!(bus.rb(dp), 2, "D/DF/F remains the human's QCF, not a spurious DP shortcut");
+        assert_eq!(bus.rb(dp + 2), 0);
+        bus.wb(qcf, 0);
+        bus.track_command_lenient(dp, 0x403a2, 2);
+        assert_eq!((bus.rb(dp), bus.rb(dp + 2)), (3, 0xff), "without QCF conflict the human's lenient DP still completes");
+    }
+
+    #[test]
+    fn sc21_tracker_slot_switch_off_and_dramatic_order_stay_unchanged() {
+        use crate::dramatic::{DramaticRules, LifebarMode};
+        use crate::roster::TournamentFighter::{Retsu, Ryu};
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+        bus.stronger_arcade_cpu = false;
+        for (tracker, offset) in [0x16u32, 0x19, 0x1c].into_iter().enumerate() {
+            assert_eq!(bus.tracker_slot(P1_STRUCT + offset), Some((0, tracker)));
+            assert_eq!(bus.tracker_slot(P2_STRUCT + offset), Some((1, tracker)));
+        }
+        bus.dramatic = Some(DramaticRules {
+            co_op: true, ally2: Ryu, stage: Retsu, lifebar: LifebarMode::Shared,
+            friendly_fire: false, styles: [crate::era::Revision::Sf1Plus; 3],
+            rivalry: None,
+        });
+        bus.wb(GAME_MODE, 2);
+        assert!(bus.dramatic_rules().is_some(), "the control really exercises Dramatic tracker ordering");
+        for (tracker, offset) in [0x16u32, 0x19, 0x1c].into_iter().enumerate() {
+            assert_eq!(bus.tracker_slot(P1_STRUCT + offset), Some((0, tracker)), "Ally 1");
+            assert_eq!(bus.tracker_slot(BOSS_TRACKERS - 0x16 + offset), Some((1, tracker)), "boss");
+            assert_eq!(bus.tracker_slot(P2_STRUCT + offset), Some((2, tracker)), "Ally 2");
+        }
+    }
+
+    /// Distinct non-default history, including private scheme gesture state
+    /// obtained through its public translator rather than fabricated fields.
+    fn sc21_seed_old_second_pad_history(bus: &mut Bus<'_>) {
+        bus.ww(CPU_STRUCT, 0x40e0);
+        bus.wl(CPU_STRUCT + 2, IN1_COPY);
+        bus.wl(CPU_STRUCT + 0x12, crate::roster::TournamentFighter::Ryu.move_table());
+        for (i, byte) in [1u8, 4, 0, 2, 5, 0, 3, 6, 0xff].into_iter().enumerate() {
+            bus.wb(P2_STRUCT + 0x16 + i as u32, byte);
+        }
+        for i in 0..0x10u32 {
+            bus.wb(0xff86a0 + i, 0x20 + i as u8);
+            bus.wb(0xff8690 + i, 0x80 + i as u8);
+        }
+        bus.toggle_state.neg_edge_latch[2] = true;
+        bus.toggle_state.neg_edge_latch[3] = false;
+        bus.toggle_state.tracker_release_age[1] = [1, 2, 3];
+        bus.toggle_state.recovery_buffer[1] = Some(crate::config::RecoveryBufferSlot {
+            punch: 0xe0, kick: 0x40, d0: 1, hadoken_done: true,
+            shoryuken_done: false, tatsumaki_done: true, age: 2,
+            special_press: Some(crate::config::SpecialPress { d0: 5, done: [true, false, true] }),
+        });
+        let held = crate::front::PlayerInputs { buttons: [true, false, false, false, false, false], ..Default::default() };
+        for _ in 0..3 {
+            bus.toggle_state.schemes[1].translate(crate::session_io::ControlScheme::Pneumatic, held, true, None, false, false);
+        }
+        bus.toggle_state.schemes[1].scaled_move = true;
+    }
+
+    #[test]
+    fn sc21_recorded_sf1plus_handoff_keeps_cpu_input_history_and_leaves_human_p2_intact() {
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+        // This is the old pad-driven player-table state before P2 -> P1 claim.
+        sc21_seed_old_second_pad_history(&mut bus);
+        let pending = bus.rw(CPU_STRUCT);
+        let trackers: Vec<_> = (0..9u32).map(|i| bus.rb(P2_STRUCT + 0x16 + i)).collect();
+        let latches: Vec<_> = (0..0x10u32).map(|i| bus.rb(0xff86a0 + i)).collect();
+        let ages = bus.toggle_state.tracker_release_age[1];
+        let buffered = bus.toggle_state.recovery_buffer[1];
+        let edges = [bus.toggle_state.neg_edge_latch[2], bus.toggle_state.neg_edge_latch[3]];
+        let scheme = bus.toggle_state.schemes[1];
+        let human_words: Vec<_> = (0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect();
+        bus.prepare_replay_baseline_cpu_pad(crate::run::ReplayCpuPad::Recorded);
+        assert_eq!(bus.rw(CPU_STRUCT), pending, "Recorded handoff retains the CPU's pending punch/kick");
+        assert_eq!(bus.rl(CPU_STRUCT + 2), IN1_COPY + 1);
+        assert_eq!((0..9u32).map(|i| bus.rb(P1_STRUCT + 0x16 + i)).collect::<Vec<_>>(), trackers, "all command stages/timers/done flags move with the recorded pad");
+        assert_eq!((0..0x10u32).map(|i| bus.rb(0xff8690 + i)).collect::<Vec<_>>(), latches, "held/release latch history follows the pad");
+        assert_eq!(bus.toggle_state.tracker_release_age[0], ages);
+        assert_eq!(bus.toggle_state.recovery_buffer[0], buffered);
+        assert_eq!([bus.toggle_state.neg_edge_latch[0], bus.toggle_state.neg_edge_latch[1]], edges);
+        assert_eq!(bus.toggle_state.schemes[0], scheme, "private gesture history is preserved too");
+        assert_eq!((0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect::<Vec<_>>(), human_words);
+        assert_eq!((0..0x10u32).map(|i| bus.rb(0xff86a0 + i)).collect::<Vec<_>>(), latches);
+        assert_eq!(bus.toggle_state.tracker_release_age[1], ages);
+        assert_eq!(bus.toggle_state.recovery_buffer[1], buffered);
+        assert_eq!([bus.toggle_state.neg_edge_latch[2], bus.toggle_state.neg_edge_latch[3]], edges);
+        assert_eq!(bus.toggle_state.schemes[1], scheme, "the human's source state is copied, not moved out");
+    }
+
+    #[test]
+    fn sc21_fresh_native_handoff_still_clears_the_new_first_pad_workspace() {
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Arcade1987);
+        sc21_seed_old_second_pad_history(&mut bus);
+        // Native Capcom has no preexisting player-pad command stream to carry.
+        bus.wl(CPU_STRUCT + 2, 0);
+        for i in 0..9u32 { bus.wb(P1_STRUCT + 0x16 + i, 0xaa); }
+        bus.toggle_state.neg_edge_latch[0] = true;
+        bus.toggle_state.neg_edge_latch[1] = true;
+        bus.toggle_state.tracker_release_age[0] = [8; 3];
+        bus.toggle_state.recovery_buffer[0] = bus.toggle_state.recovery_buffer[1];
+        bus.toggle_state.schemes[0] = bus.toggle_state.schemes[1];
+        let old_second_state = (bus.toggle_state.tracker_release_age[1], bus.toggle_state.recovery_buffer[1], bus.toggle_state.schemes[1]);
+        let old_second_words: Vec<_> = (0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect();
+        bus.prepare_replay_baseline_cpu_pad(crate::run::ReplayCpuPad::Fresh);
+        assert_eq!(bus.rw(CPU_STRUCT), 0);
+        assert_eq!((0..9u32).map(|i| bus.rb(P1_STRUCT + 0x16 + i)).collect::<Vec<_>>(), vec![0; 9]);
+        assert_eq!((0..0x10u32).map(|i| bus.rb(0xff8690 + i)).collect::<Vec<_>>(), vec![0; 0x10]);
+        assert_eq!([bus.toggle_state.neg_edge_latch[0], bus.toggle_state.neg_edge_latch[1]], [false; 2]);
+        assert_eq!(bus.toggle_state.tracker_release_age[0], [0; 3]);
+        assert_eq!(bus.toggle_state.recovery_buffer[0], None);
+        let mut fresh_scheme = crate::control::SchemeState::default();
+        fresh_scheme.scaled_move = old_second_state.2.scaled_move;
+        assert_eq!(bus.toggle_state.schemes[0], fresh_scheme);
+        assert_eq!((bus.toggle_state.tracker_release_age[1], bus.toggle_state.recovery_buffer[1], bus.toggle_state.schemes[1]), old_second_state);
+        assert_eq!((0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect::<Vec<_>>(), old_second_words);
+    }
+
+
+    fn sc21_active_actor_state(bus: &Bus<'_>, slot: usize) -> (bool, u8, u8, i16, u8, i16, bool) {
+        (
+            bus.toggle_state.dp_connected[slot],
+            bus.toggle_state.human_attack_frames[slot],
+            bus.toggle_state.air_adj_frames_1[slot],
+            bus.toggle_state.air_adj_rem_1[slot],
+            bus.toggle_state.air_adj_frames_2[slot],
+            bus.toggle_state.air_adj_rem_2[slot],
+            bus.toggle_state.schemes[slot].scaled_move,
+        )
+    }
+
+    fn sc21_seed_active_second_slot_actor(bus: &mut Bus<'_>) {
+        bus.toggle_state.dp_connected = [false, true, true];
+        bus.toggle_state.human_attack_frames = [101, 23, 77];
+        bus.toggle_state.air_adj_frames_1 = [2, 7, 11];
+        bus.toggle_state.air_adj_rem_1 = [-99, 53, 41];
+        bus.toggle_state.air_adj_frames_2 = [4, 9, 13];
+        bus.toggle_state.air_adj_rem_2 = [44, -87, 33];
+        bus.toggle_state.schemes[0].scaled_move = false;
+        bus.toggle_state.schemes[1].scaled_move = true;
+        // These are already keyed by actor/era slot, not the changed physical
+        // player_slot_index. A handoff must leave their original owners alone.
+        bus.toggle_state.era.fighters[0].sub_hp = 321;
+        bus.toggle_state.era.fighters[1].sub_hp = 654;
+        bus.toggle_state.combo.hits[0] = 3;
+        bus.toggle_state.combo.hits[1] = 5;
+        bus.toggle_state.cancel.window[0] = 7;
+        bus.toggle_state.cancel.window[1] = 11;
+        bus.toggle_state.throw.tech_window[0] = 13;
+        bus.toggle_state.throw.tech_window[1] = 17;
+    }
+
+    fn sc21_check_handoff_retains_active_actor(pad: crate::run::ReplayCpuPad) {
+        let mut ram = sc21_tracker_policy_ram();
+        let mut bus = ram.bus();
+        sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+        sc21_seed_old_second_pad_history(&mut bus);
+        sc21_seed_active_second_slot_actor(&mut bus);
+        let source_actor = sc21_active_actor_state(&bus, 1);
+        let third_actor = sc21_active_actor_state(&bus, 2);
+        let source_scheme = bus.toggle_state.schemes[1];
+        let actor_ordered = (bus.toggle_state.era, bus.toggle_state.combo, bus.toggle_state.cancel, bus.toggle_state.throw);
+        let human_words: Vec<_> = (0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect();
+
+        bus.prepare_replay_baseline_cpu_pad(pad);
+
+        assert_eq!(sc21_active_actor_state(&bus, 0), source_actor,
+            "{pad:?}: changing the physical pad cannot restart the current move's hit, age, trajectory or damage policy");
+        assert_eq!(sc21_active_actor_state(&bus, 1), source_actor, "the human's aliased source state is retained");
+        assert_eq!(sc21_active_actor_state(&bus, 2), third_actor);
+        assert_eq!(bus.toggle_state.schemes[1], source_scheme);
+        assert_eq!((0..0x2au32).map(|i| bus.rb(P2_STRUCT + i)).collect::<Vec<_>>(), human_words);
+        assert_eq!((bus.toggle_state.era, bus.toggle_state.combo, bus.toggle_state.cancel, bus.toggle_state.throw), actor_ordered,
+            "actor/era slot state already belonging to the CPU is not migrated from the human");
+        let expected_scheme = match pad {
+            crate::run::ReplayCpuPad::Recorded => source_scheme,
+            crate::run::ReplayCpuPad::Fresh => {
+                let mut fresh = crate::control::SchemeState::default();
+                fresh.scaled_move = source_scheme.scaled_move;
+                fresh
+            }
+        };
+        assert_eq!(bus.toggle_state.schemes[0], expected_scheme,
+            "Fresh clears gestures while keeping the current move's damage flag; Recorded retains both");
+
+        // Exercise the existing live consumers, not just copied field values.
+        let me = 0x100u16;
+        bus.set_el(me, 0x38, CPU_STRUCT);
+        bus.set_eb(me, 0xa, 0x19);
+        bus.set_eb(me, 0xf, 0x80);
+        bus.apply_shoto_frame_symmetry(me, 0);
+        assert_eq!(bus.eb(me, 0xf) & 0x80, 0, "an already connected uppercut keeps its single-hit suppression");
+        assert!(bus.modern_scaled_move(CPU_STRUCT), "the preceding move's damage flag follows its actor");
+
+        bus.toggles.anytime_jump_attacks = true;
+        bus.set_eb(me, 0xa, 0x20);
+        bus.set_eb(me, 0xc, 0);
+        bus.set_eb(me, 0xd, 0);
+        bus.set_ew(me, 4, 300);
+        bus.step_air_attack_trajectory(me);
+        assert_eq!(bus.ew(me, 4), 307, "the next rising correction still consumes 53 / 7 pixels");
+        assert_eq!((bus.toggle_state.air_adj_frames_1[0], bus.toggle_state.air_adj_rem_1[0]), (6, 46));
+        for _ in 0..6 { bus.step_air_attack_trajectory(me); }
+        assert_eq!(bus.ew(me, 4), 353);
+        bus.step_air_attack_trajectory(me);
+        assert_eq!(bus.ew(me, 4), 344, "the descending phase still consumes -87 / 9 pixels");
+        assert_eq!((bus.toggle_state.air_adj_frames_2[0], bus.toggle_state.air_adj_rem_2[0]), (8, -78));
+        assert_eq!(sc21_active_actor_state(&bus, 1), source_actor, "CPU trajectory updates never consume human P2 state");
+    }
+
+    #[test]
+    fn sc21_recorded_handoff_retains_active_actor_state_across_the_physical_pad_change() {
+        sc21_check_handoff_retains_active_actor(crate::run::ReplayCpuPad::Recorded);
+    }
+
+    #[test]
+    fn sc21_fresh_handoff_retains_active_actor_state_across_the_physical_pad_change() {
+        sc21_check_handoff_retains_active_actor(crate::run::ReplayCpuPad::Fresh);
+    }
+
+    #[test]
+    fn sc21_actor_handoff_leaves_switch_off_and_dramatic_state_unchanged() {
+        use crate::dramatic::{DramaticRules, LifebarMode};
+        use crate::roster::TournamentFighter::{Retsu, Ryu};
+        for dramatic in [false, true] {
+            for pad in [crate::run::ReplayCpuPad::Fresh, crate::run::ReplayCpuPad::Recorded] {
+                let mut ram = sc21_tracker_policy_ram();
+                let mut bus = ram.bus();
+                sc21_enable_mode_four_baseline(&mut bus, crate::era::Revision::Sf1Plus);
+                sc21_seed_old_second_pad_history(&mut bus);
+                sc21_seed_active_second_slot_actor(&mut bus);
+                if dramatic {
+                    bus.dramatic = Some(DramaticRules {
+                        co_op: true, ally2: Ryu, stage: Retsu, lifebar: LifebarMode::Shared,
+                        friendly_fire: false, styles: [crate::era::Revision::Sf1Plus; 3],
+                        rivalry: None,
+                    });
+                    bus.wb(GAME_MODE, 2);
+                    assert!(bus.dramatic_rules().is_some());
+                } else {
+                    bus.stronger_arcade_cpu = false;
+                }
+                assert!(!bus.arcade_cpu_uses_p1_pad());
+                let before = *bus.toggle_state;
+                let native_before = bus.work.to_vec();
+                bus.prepare_replay_baseline_cpu_pad(pad);
+                assert_eq!(*bus.toggle_state, before, "{pad:?}/dramatic{dramatic}: actor and input state");
+                assert_eq!(bus.work.to_vec(), native_before, "{pad:?}/dramatic{dramatic}: all native RAM");
+            }
+        }
+    }
+
 
     #[test]
     fn the_mode_four_baseline_cpu_has_its_own_pad_latches_and_trackers() {

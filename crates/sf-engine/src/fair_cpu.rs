@@ -1873,8 +1873,8 @@ impl FairCpu {
             self.rng = Rng(seed | 1);
             self.seeded = true;
         }
-        self.learn(view, before);
         let stronger = self.stronger(ctx);
+        self.learn(view, before, stronger && ctx.baseline_rules());
         // Whether its pads come from a game plan, before being hit ends it.
         let in_plan = self.game.is_some();
         if stronger {
@@ -2305,6 +2305,8 @@ impl FairCpu {
     /// ([`Self::backs_off`]).
     fn start_game_plan(&mut self, step: u32, view: Percept, ctx: &Context) -> bool {
         let table = game::plans(ctx.kit.fighter, ctx.family);
+        let baseline = self.stronger(ctx) && ctx.baseline_rules();
+        let pressure = |plan: &game::GamePlan| plan.pressure() || (baseline && plan.situation == Situation::ItHit);
         let mut best: Option<(u8, i32)> = None;
         let gap = view.gap();
         let felt = self.felt(step, view);
@@ -2314,7 +2316,7 @@ impl FairCpu {
                 && (!plan.cornered_only || self.judged.foe_cornered)
                 && (plan.gap.0..=plan.gap.1).contains(&gap)
                 && plan.for_level(ctx.level)
-                && !(plan.pressure() && pressed_enough)
+                && !(pressure(plan) && pressed_enough)
                 // A cast plan cannot loop on a rush it has no Drive to
                 // execute. Ryu keeps his established selection unchanged.
                 && !(ctx.sf6_cast() && plan.steps.iter().any(|step| step.act == game::Act::Rush)
@@ -2335,6 +2337,7 @@ impl FairCpu {
                     game::Act::Do(Choice::Throw) => ctx.throws,
                     game::Act::Do(Choice::Combo) => ctx.true_combos,
                     game::Act::Do(Choice::Cancel { .. }) => ctx.cancels,
+                    game::Act::Do(Choice::Special(role)) => ctx.kit.by_role(role).into_iter().any(|entry| entry.is_some()),
                     game::Act::Route(reach) => baseline_route(ctx, reach),
                     _ => true,
                 }))
@@ -2368,7 +2371,7 @@ impl FairCpu {
         if rate < 100 && !self.rng.chance(rate) {
             return false;
         }
-        self.pressure_run = if table[usize::from(plan)].pressure() { self.pressure_run.saturating_add(1) } else { 0 };
+        self.pressure_run = if pressure(&table[usize::from(plan)]) { self.pressure_run.saturating_add(1) } else { 0 };
         self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step, hit: false });
         true
     }
@@ -2381,6 +2384,7 @@ impl FairCpu {
     fn backs_off(&mut self, ctx: &Context) -> bool {
         let pressing = match self.judged.situation {
             Situation::ItWasBlocked | Situation::OpponentKnockedDown => true,
+            Situation::ItHit => ctx.baseline_rules(),
             Situation::NeutralFar => self.judged.foe_cornered,
             _ => false,
         };
@@ -2396,6 +2400,18 @@ impl FairCpu {
     fn pressed_enough(&self, level: Level) -> bool {
         let cap = level.pressure_plans();
         cap != u8::MAX && self.pressure_run >= cap
+    }
+
+    /// A lingering reaction to the preceding hit is not a new attack's hit.
+    /// Baseline pressure uses only history already in its delayed view;
+    /// contact can consume the active box before that view is sampled.
+    fn attack_outcome(&self, run: game::Running, view: Percept, reach: i16, ctx: &Context) -> Option<game::Outcome> {
+        if !self.stronger(ctx) || !ctx.baseline_rules() {
+            return run.outcome(view, reach);
+        }
+        let hit_seen = self.seen(run.pressed).is_some_and(|at_press| at_press.fighting && at_press.foe.present
+            && (!at_press.foe.reacting() || view.foe.health < at_press.foe.health));
+        run.outcome_with_hit(view, reach, hit_seen)
     }
 
     /// The next pads of the game plan being followed, when its last ones
@@ -2428,7 +2444,9 @@ impl FairCpu {
                 && table[usize::from(run.plan)].situation == Situation::OpponentWhiffed
                 && matches!(at.act, Act::Era(game::EraAct::Super | game::EraAct::Ultra | game::EraAct::VTrigger))
                 && !view.foe.active;
-            if commits && ((view.foe.attacking() && !finisher_punish) || view.shot_coming()) {
+            let approaching = matches!(at.act, Act::Reach { .. } | Act::Do(Choice::Approach))
+                && self.may_approach_attack(step, view, ctx);
+            if commits && ((view.foe.attacking() && !finisher_punish && !approaching) || view.shot_coming()) {
                 break;
             }
             // An attack thrown at a knocked-down opponent is wasted: a plan
@@ -2538,8 +2556,16 @@ impl FairCpu {
                     }
                     run.acted = true;
                     run.pressed = step;
+                    let plan = self.plan_for(choice, step, view, ctx, false);
+                    if stronger && ctx.baseline_rules() && matches!(choice, Choice::Special(_)) {
+                        // The direction prefix is not the special's press.
+                        // Its delayed view must reach the generated button
+                        // before an absent attack can count as a whiff.
+                        run.pressed += plan.pads[..usize::from(plan.len)].iter()
+                            .position(|pad| pad & BUTTONS != 0).unwrap_or(0) as u32;
+                    }
                     self.game = Some(run);
-                    return Some(self.plan_for(choice, step, view, ctx, false));
+                    return Some(plan);
                 }
                 (Act::Tool(tool), false) => {
                     let Some(entry) = ctx.tools.get(tool) else { break };
@@ -2670,7 +2696,7 @@ impl FairCpu {
                     self.game = Some(run);
                     return Some(wait);
                 }
-                (Act::Meaty { crouch, button }, true) => match run.outcome(view, self.reach[usize::from(crouch)][button]) {
+                (Act::Meaty { crouch, button }, true) => match self.attack_outcome(run, view, self.reach[usize::from(crouch)][button], ctx) {
                     Some(outcome) => outcome,
                     None => return Some(wait),
                 },
@@ -2714,7 +2740,13 @@ impl FairCpu {
                     None => Outcome::Nothing,
                 },
                 (Act::Do(Choice::Normal { crouch, button }), true) => {
-                    match run.outcome(view, self.reach[usize::from(crouch)][button]) {
+                    match self.attack_outcome(run, view, self.reach[usize::from(crouch)][button], ctx) {
+                        Some(outcome) => outcome,
+                        None => return Some(wait),
+                    }
+                }
+                (Act::Do(Choice::Special(_)), true) if stronger && ctx.baseline_rules() => {
+                    match self.attack_outcome(run, view, self.longest_reach(), ctx) {
                         Some(outcome) => outcome,
                         None => return Some(wait),
                     }
@@ -2819,6 +2851,16 @@ impl FairCpu {
             && self.felt(step, view).foe_gap() > self.judge.foe_edge()
     }
 
+    /// Baseline play can approach a seen ground attack while it remains
+    /// outside the opponent's learned reach, with room for a short step.
+    /// The foe is still seen late; only its own position is felt live.
+    /// This permits the next movement pad; it does not open an attack
+    /// choice against the committed move.
+    fn may_approach_attack(&self, step: u32, view: Percept, ctx: &Context) -> bool {
+        self.stronger(ctx) && ctx.baseline_rules() && self.out_of_reach(step, view)
+            && self.felt(step, view).foe_gap() > self.judge.foe_edge() + game::EDGE_OUT
+    }
+
     /// How far the opponent has moved away from the CPU's fighter in the
     /// air, over at most the last [`DRIFT_FRAMES`] frames up to `view`
     /// (toward it, negative): his steps before leaving the ground are not
@@ -2901,7 +2943,7 @@ impl FairCpu {
     /// Learn a normal's reach from its attack box, seen live in front of the
     /// CPU's fighter after it pressed it (and its projectile's range,
     /// [`Self::learn_shot`]).
-    fn learn(&mut self, view: Percept, before: Option<Percept>) {
+    fn learn(&mut self, view: Percept, before: Option<Percept>, from_stance: bool) {
         self.learn_shot(view);
         let Some(Normal { crouch, button: b, pressed, from, best }) = self.last_normal else { return };
         if view.frame < pressed {
@@ -2923,13 +2965,16 @@ impl FairCpu {
             }
             return;
         }
-        // Where the attack started: its first frame seen, measured from
-        // there as the stance's centre (a pose's own offset and a lunge's
-        // steps come after).
-        let from = match from {
-            Some(x) => x,
-            None if before.is_some_and(|b| !b.me.attacking()) => view.me.x,
-            None => {
+        // Baseline attack poses can shift the drawn centre as they start.
+        // Measure their reach from the adjacent pre-attack pose, the same
+        // coordinate used to choose an attack. Older play keeps its first
+        // attack-pose origin. A jumped view supplies no baseline origin.
+        let from = match (from, before) {
+            (Some(x), _) => x,
+            (None, Some(b)) if !b.me.attacking() && (!from_stance || b.frame.checked_add(1) == Some(view.frame)) => {
+                if from_stance { b.me.x } else { view.me.x }
+            }
+            _ => {
                 // Started unseen (the view jumped): measure nothing.
                 self.last_normal = None;
                 return;
@@ -2960,7 +3005,9 @@ impl FairCpu {
 
     /// The next pad of the plan.
     fn next_pad(&mut self, step: u32, view: Percept, ctx: &Context) -> u16 {
-        if self.stronger(ctx) && self.judge.coming(view) && self.walking_in_next(view) {
+        if self.stronger(ctx) && self.judge.coming(view) && self.walking_in_next(view)
+            && !self.may_approach_attack(step, view, ctx)
+        {
             // It does not walk into an attack or a projectile it has seen:
             // the walk (or the walk before an attack) is dropped, and what
             // it does instead is chosen on the next frame.
@@ -3003,7 +3050,9 @@ impl FairCpu {
             // seconds guarding only because a quiet opponent stays close.
             // The opponent is still read through the reaction delay; a
             // moving foe, live attack, locked guard or held bait keeps it.
-            let quiet = self.stronger(ctx) && matches!(ctx.family, Some(crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5))
+            let short_guard = self.stronger(ctx) && (ctx.baseline_rules()
+                || matches!(ctx.family, Some(crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)));
+            let quiet = short_guard
                 && !ctx.own_blockstun && step >= self.bait_until && held >= 8
                 && view.foe.free() && !view.foe.jumping() && self.foe_settled(view);
             let throw_threat = ctx.throws && !quiet
@@ -3017,10 +3066,10 @@ impl FairCpu {
                 clear.saturating_add(1)
             };
             let held = held + 1;
-            // Once an SF4/SF5 guard has seen three clear delayed frames, its
+            // Once this guard has seen three clear delayed frames, its
             // initial eight-frame hold is enough. Actual blockstun and a
             // chosen reset bait still keep their recovery/hold time.
-            let clear_early = self.stronger(ctx) && matches!(ctx.family, Some(crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5))
+            let clear_early = short_guard
                 && !ctx.own_blockstun && step >= self.bait_until && held >= 8;
             if (clear >= 5 && held >= min) || (clear_early && clear >= 3) || held > 120 {
                 self.plan = Plan::default();
@@ -3291,7 +3340,9 @@ impl FairCpu {
         // The opponent hit (nothing to guard against), or in an attack
         // (startup, active or recovery: a whiff is punished in `react`).
         let foe_busy = view.foe.reacting();
-        let threatened = view.foe.attacking();
+        let foe_attacking = view.foe.attacking();
+        let approach_clear = self.may_approach_attack(step, view, ctx);
+        let threatened = foe_attacking && !approach_clear;
         // The CPU attacks only into an opening it can use. An attack still
         // coming is guarded, not answered with one of its own (under true
         // combos, SP17, a guard locked in blockstun holds through the string
@@ -3300,10 +3351,10 @@ impl FairCpu {
         // hittable) has mostly gone by the time an attack would land, and
         // under the classic rules the reaction cannot be hit at all. Combos
         // as tactics are SP22's.
-        let open = !threatened && !foe_busy;
+        let open = !foe_attacking && !foe_busy;
         let mut options: Vec<(Choice, i32)> = vec![(Choice::Wait, level.wait())];
         let stronger = self.stronger(ctx);
-        if stronger && self.judge.coming(view) {
+        if stronger && self.judge.coming(view) && !approach_clear {
             // The stronger play does not walk into what it sees coming.
         } else if threatened {
             options.push((Choice::Approach, 4));
@@ -3431,7 +3482,14 @@ impl FairCpu {
                 let press = stick | button(b);
                 self.last_normal = Some(Normal { crouch, button: b, pressed: step + 1, from: None, best: 0 });
                 self.settle = settle_after(3);
-                Plan::of(PlanKind::Act, &[stick, press, press, press, stick, 0])
+                // Native baseline normals begin on release. A one-frame
+                // tap produces the same move two frames before a held tap.
+                let pads: &[u16] = if self.stronger(ctx) && ctx.baseline_rules() {
+                    &[stick, press, stick, 0]
+                } else {
+                    &[stick, press, press, press, stick, 0]
+                };
+                Plan::of(PlanKind::Act, pads)
             }
             Choice::Combo => {
                 self.last_normal = None;
@@ -3537,7 +3595,14 @@ impl FairCpu {
                 let Some(entry) = self.pick_special(ctx.kit.by_role(role)) else { return Plan::default() };
                 self.last_normal = None;
                 let lead = if answer { level.special_cost() } else { 0 };
-                let frames = self.motion(&entry, !view.me.facing_left, view, ctx);
+                // Own facing is felt now; the motion's pressure and the
+                // opponent still come from the delayed view.
+                let facing_left = if self.stronger(ctx) && ctx.baseline_rules() {
+                    self.felt(step, view).me.facing_left
+                } else {
+                    view.me.facing_left
+                };
+                let frames = self.motion(&entry, !facing_left, view, ctx);
                 let mut pads = vec![0u16; lead];
                 pads.extend(frames);
                 self.settle = settle_after(lead as u32 + 9);
@@ -3644,6 +3709,1166 @@ mod tests {
 
     fn ctx(level: Level) -> Context {
         Context::new(level, Kit::of(TournamentFighter::Ryu, RulesetPreset::ClassicCompetitive, Some(RYU_SLOTS)), &CoreToggles::for_preset(RulesetPreset::ClassicCompetitive))
+    }
+
+    /// Exact baseline player-table SpecialSlot records from data_bank.rs:
+    /// Gen4318-19, Birdie4747-48, Lee3886-87. Empty slots have zero records
+    /// and no corresponding registry entry; no shoto role flags substitute.
+    fn sc21_own_advance_slots(fighter: TournamentFighter) -> [SpecialSlot; 3] {
+        let empty = SpecialSlot { tracker: 0, kick: false, melee: false, low_in_air: false, score: 0 };
+        let dp = SpecialSlot { tracker: 0x19, kick: false, melee: true, low_in_air: false, score: 0x45f52 };
+        let forward = SpecialSlot { tracker: 0x1c, kick: false, melee: true, low_in_air: false, score: 0x4345e };
+        let back_kick = SpecialSlot { tracker: 0x16, kick: true, melee: true, low_in_air: false, score: 0x46012 };
+        match fighter {
+            TournamentFighter::Gen => [dp, forward, empty],
+            TournamentFighter::Birdie => [empty, SpecialSlot { low_in_air: true, ..forward }, back_kick],
+            TournamentFighter::Lee => [empty, forward, back_kick],
+            _ => panic!("this fixture covers only the three proposed baseline variants"),
+        }
+    }
+
+    fn sc21_own_advance_context(fighter: TournamentFighter, revision: crate::era::Revision, configured: bool, bank: bool, pure_footsies: bool) -> Context {
+        let mut context = Context::new(Level::VeryHard,
+            Kit::of(fighter, RulesetPreset::DefinitiveOverhaul, bank.then(|| sc21_own_advance_slots(fighter))),
+            &CoreToggles::definitive())
+            .with_baseline(crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard), false);
+        context.stronger = configured;
+        context.pure_footsies = pure_footsies;
+        context
+    }
+
+    fn sc21_is_own_advance_plan(plan: &game::GamePlan) -> bool {
+        plan.steps.iter().any(|step| step.act == game::Act::Do(Choice::Special(Role::Advance)))
+    }
+
+    fn sc21_advance_test_gap(plan: &game::GamePlan) -> i16 {
+        assert!(plan.gap.0 <= plan.gap.1, "a declared spacing interval exists");
+        let gap = match plan.steps.first().map(|step| step.act) {
+            Some(game::Act::Space(target)) => target,
+            _ => 80i16.clamp(plan.gap.0, plan.gap.1),
+        };
+        assert!((plan.gap.0..=plan.gap.1).contains(&gap), "the Space target is also a legal selection gap");
+        gap
+    }
+
+    fn sc21_advance_view(gap: i16) -> Percept {
+        Percept { frame: 88, fighting: true, me: body(300), foe: body(310 + gap), ..Default::default() }
+    }
+
+    #[test]
+    fn sc21_baseline_advance_kit_contains_only_its_actual_native_registry_specials() {
+        use crate::moves::Dir::{Down, DownBack, DownForward, Forward};
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            let kit = Kit::of(fighter, RulesetPreset::DefinitiveOverhaul, Some(sc21_own_advance_slots(fighter)));
+            assert!(kit.projectile.is_none() && kit.projectile_alt.is_none());
+            let advance: Vec<_> = kit.by_role(Role::Advance).into_iter().flatten()
+                .map(|entry| (entry.name, entry.produces, entry.input.motion, entry.input.button)).collect();
+            match fighter {
+                TournamentFighter::Gen => {
+                    assert_eq!(advance, vec![("HYAKURENKO", 0x1a, &[Down, DownForward, Forward][..], ButtonClass::Punch)]);
+                    assert_eq!(kit.anti_air.map(|entry| (entry.name, entry.produces)), Some(("GEKIRO", 0x19)));
+                }
+                TournamentFighter::Birdie => {
+                    assert_eq!(advance, vec![("BULL HORN", 0x1b, &[Down, DownBack, crate::moves::Dir::Back][..], ButtonClass::Kick)]);
+                    assert_eq!(kit.anti_air.map(|entry| (entry.name, entry.produces)), Some(("BULL HEAD", 0x1a)), "its real low_in_air flag currently makes Bull Head AntiAir");
+                }
+                TournamentFighter::Lee => {
+                    assert_eq!(advance, vec![("ZESSHOUOHKEN", 0x1a, &[Down, DownForward, Forward][..], ButtonClass::Punch),
+                        ("DOUBLE KICK", 0x1b, &[Down, DownBack, crate::moves::Dir::Back][..], ButtonClass::Kick)]);
+                    assert!(kit.anti_air.is_none());
+                }
+                _ => unreachable!(),
+            }
+            assert!(kit.by_role(Role::Advance).into_iter().flatten().all(|entry| matches!(entry.recognizer, Recognizer::Tracker(_))), "no later-era move enters the baseline kit");
+            let missing = Kit::of(fighter, RulesetPreset::DefinitiveOverhaul, None);
+            assert!(missing.by_role(Role::Advance).into_iter().all(|entry| entry.is_none()), "a missing real player bank supplies no special");
+        }
+    }
+
+    #[test]
+    fn sc21_three_baseline_variants_have_playable_plain_advance_pressure_at_declared_ranges() {
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for (configured, forced) in [(true, false), (false, true)] {
+                    let raw = sc21_own_advance_context(fighter, revision, configured, true, false);
+                    let context = raw.for_stronger();
+                    let table = game::plans(context.kit.fighter, context.family);
+                    for situation in [Situation::NeutralClose, Situation::NeutralFar] {
+                        let (index, entry) = table.iter().enumerate().find(|(_, plan)| plan.situation == situation && sc21_is_own_advance_plan(plan))
+                            .expect("each proposed baseline variant has its own neutral Advance pressure plan");
+                        assert!(index >= 11, "existing plan records 0..10 retain their indices");
+                        let spacing = usize::from(matches!(entry.steps.first().map(|step| step.act), Some(game::Act::Space(_))));
+                        if spacing != 0 {
+                            assert!(situation == Situation::NeutralFar && matches!(fighter, TournamentFighter::Gen | TournamentFighter::Lee), "only these stationary far-special plans add purposeful spacing");
+                        }
+                        assert_eq!(entry.steps.len(), spacing + 3, "one optional Space followed by the same plain pressure sequence");
+                        let tail = &entry.steps[spacing..];
+                        assert_eq!(tail[0].act, game::Act::Do(Choice::Special(Role::Advance)));
+                        let game::Act::Reach { crouch, button } = tail[1].act else { panic!("the special follows with a plain normal's reach") };
+                        assert!(button < 6, "the follow-up uses a real normal button");
+                        assert_eq!(tail[2].act, game::Act::Do(Choice::Normal { crouch, button }), "the follow-up presses the same normal whose reach it approaches");
+                        assert!(entry.steps.iter().all(|step| !matches!(step.act, game::Act::Route(_) | game::Act::Tool(_) | game::Act::Era(_) | game::Act::Rush | game::Act::Do(Choice::Cancel { .. } | Choice::Throw))), "plain pressure adds no forbidden offense or later-era mechanic");
+                        // Already at a real Space target, follow_game_plan can
+                        // advance through spacing and emit the actual motion.
+                        let view = sc21_advance_view(sc21_advance_test_gap(entry));
+                        let mut selected = 0;
+                        let mut button_scripts = 0;
+                        for seed in 1..=96 {
+                            let mut cpu = FairCpu::seeded(seed).force_stronger(forced);
+                            cpu.judged.situation = situation;
+                            cpu.observe(view);
+                            cpu.observe(Percept { frame: 99, ..view });
+                            if cpu.start_game_plan(100, view, &context) && cpu.game.is_some_and(|run| usize::from(run.plan) == index) {
+                                selected += 1;
+                                let plan = cpu.follow_game_plan(100, view, &context).expect("the selected Advance action starts its real motion");
+                                assert_eq!(plan.kind, PlanKind::Act);
+                                assert!(plan.len > 0, "an available role yields an actual pad script");
+                                button_scripts += usize::from(plan.pads[..usize::from(plan.len)].iter().any(|pad| pad & BUTTONS != 0));
+                            }
+                        }
+                        assert!(selected > 0 && button_scripts > 0, "{fighter:?}/{revision:?}/{situation:?} configured{configured} forced{forced}: a real special pressure plan is selected and emits command buttons");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_advance_pressure_is_not_selected_without_its_bank_or_under_pure_footsies() {
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for (configured, forced) in [(true, false), (false, true)] {
+                    for (bank, pure) in [(false, false), (true, true)] {
+                        let context = sc21_own_advance_context(fighter, revision, configured, bank, pure).for_stronger();
+                        let table = game::plans(context.kit.fighter, context.family);
+                        for situation in [Situation::NeutralClose, Situation::NeutralFar] {
+                            let mut gaps = vec![80];
+                            gaps.extend(table.iter().filter(|plan| plan.situation == situation && sc21_is_own_advance_plan(plan))
+                                .map(sc21_advance_test_gap));
+                            for gap in gaps {
+                                for seed in 1..=96 {
+                                    let mut cpu = FairCpu::seeded(seed).force_stronger(forced);
+                                    cpu.judged.situation = situation;
+                                    if cpu.start_game_plan(100, sc21_advance_view(gap), &context) {
+                                        let run = cpu.game.expect("a selected plan has its real table record");
+                                        assert!(!sc21_is_own_advance_plan(&table[usize::from(run.plan)]), "{fighter:?}/{revision:?}/{situation:?} bank{bank} pure{pure}: unavailable special cannot crowd out legal plans");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_advance_variant_tables_leave_other_pairs_and_off_selection_alone() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| { let mut out = CanonicalHasher::new(); cpu.encode(&mut out); out.finish() };
+        for fighter in TournamentFighter::ALL {
+            if !matches!(fighter, TournamentFighter::Gen | TournamentFighter::Birdie | TournamentFighter::Lee) {
+                for family in [crate::era::EraFamily::Sf1987, crate::era::EraFamily::Sf1Plus] {
+                    assert!(!game::plans(Some(fighter), Some(family)).iter().any(sc21_is_own_advance_plan), "other baseline pairs do not acquire this trial plan");
+                }
+            }
+        }
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                let tagged = sc21_own_advance_context(fighter, revision, false, true, false);
+                let plain = Context { baseline: None, ..tagged };
+                for seed in 1..=32 {
+                    let mut a = FairCpu::seeded(seed);
+                    let mut b = a;
+                    a.judged.situation = Situation::NeutralClose;
+                    b.judged.situation = Situation::NeutralClose;
+                    assert_eq!(a.start_game_plan(100, sc21_advance_view(80), &plain), b.start_game_plan(100, sc21_advance_view(80), &tagged));
+                    assert_eq!(hash(&a), hash(&b), "deferred baseline identity changes no OFF controller/RNG state");
+                }
+            }
+            for family in [crate::era::EraFamily::Sf2, crate::era::EraFamily::SfZ, crate::era::EraFamily::Sf3, crate::era::EraFamily::Sf4, crate::era::EraFamily::Sf5, crate::era::EraFamily::Sf6] {
+                assert!(!game::plans(Some(fighter), Some(family)).iter().any(|plan| plan.steps.windows(3).any(|tail|
+                    tail[0].act == game::Act::Do(Choice::Special(Role::Advance))
+                    && tail[1].act == game::Act::Reach { crouch: true, button: 3 }
+                    && tail[2].act == game::Act::Do(Choice::Normal { crouch: true, button: 3 }))), "later-era tables do not acquire the baseline trial sequence");
+            }
+        }
+    }
+
+
+    /// Both views describe the same delayed decision. Frame99 deliberately
+    /// reverses pressure as well as facing, so borrowing the whole newest
+    /// Body/Percept for motion would change execution-error/RNG behavior.
+    fn sc21_special_facing_fixture(context: &Context, forced: bool, left: bool, pressure: bool, seed: u64) -> (FairCpu, Percept, Percept) {
+        let toward = if left { -1 } else { 1 };
+        let mut view = percept(88, body(300 + toward * if pressure { 40 } else { 180 }));
+        view.me.facing_left = left;
+        view.me.health = if pressure { 24 } else { 48 };
+        view.foe.facing_left = !left;
+        let mut cpu = FairCpu::seeded(seed).force_stronger(forced);
+        cpu.fighter = context.kit.fighter;
+        cpu.last_view = view;
+        cpu.last_normal = Some(Normal { crouch: false, button: 0, pressed: 80, from: Some(300), best: 50 });
+        for frame in 1..=98 {
+            cpu.observe(Percept { frame, ..view });
+        }
+        let own_x = if left { 0 } else { 600 };
+        let mut latest = percept(99, body(own_x - toward * 180));
+        latest.me = Body { facing_left: !left, health: if pressure { 48 } else { 1 }, ..body(own_x) };
+        latest.foe.health = if pressure { 1 } else { 48 };
+        latest.foe.facing_left = left;
+        latest.foe.move_id = 0x10;
+        latest.foe.state = 0xc2;
+        latest.foe.active = true;
+        latest.foe.front = own_x;
+        (cpu, view, latest)
+    }
+
+    fn sc21_special_facing_hash(cpu: &FairCpu) -> u64 {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let mut out = CanonicalHasher::new();
+        cpu.encode(&mut out);
+        out.finish()
+    }
+
+    #[test]
+    fn sc21_baseline_special_motion_feels_only_current_own_facing() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [Arcade1987, Sf1Plus] {
+                for (configured, forced) in [(true, false), (false, true)] {
+                    let mut context = sc21_own_advance_context(fighter, revision, configured, true, false).for_stronger();
+                    assert!(context.kit.by_role(Role::Advance).into_iter().any(|entry| entry.is_some()), "the real native Advance kit is present");
+                    for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                        context.level = level;
+                        for left in [false, true] {
+                            for pressure in [false, true] {
+                                for answer in [false, true] {
+                                    for seed in 1..=16 {
+                                        let (base, delayed, latest) = sc21_special_facing_fixture(&context, forced, left, pressure, seed);
+                                        let (mut actual, mut expected) = (base, base);
+                                        actual.observe(latest);
+                                        // With no frame99, the reference uses the delayed
+                                        // view verbatim, except for the known own facing.
+                                        let facing_corrected = Percept { me: Body { facing_left: latest.me.facing_left, ..delayed.me }, ..delayed };
+                                        expected.plan = expected.plan_for(Choice::Special(Role::Advance), 100, facing_corrected, &context, answer);
+                                        actual.plan = actual.plan_for(Choice::Special(Role::Advance), 100, delayed, &context, answer);
+                                        assert!(expected.plan.pads[..usize::from(expected.plan.len)].iter().any(|pad| pad & BUTTONS != 0));
+                                        assert!(expected.plan.pads[..usize::from(expected.plan.len)].iter().any(|pad| pad & (LEFT | RIGHT) != 0), "native advance motion distinguishes the two facings");
+                                        assert_eq!(actual.plan, expected.plan, "{fighter:?}/{revision:?}/{level:?} configured{configured} forced{forced} left{left} pressure{pressure} answer{answer} seed{seed}: use current own facing, with delayed positions/health/foe and the same execution error");
+                                        assert_eq!(actual.rng, expected.rng, "facing alone consumes no extra randomness");
+                                        // Normalize only fixture history before comparing all
+                                        // controller state written by the real callsite.
+                                        expected.observe(latest);
+                                        assert_eq!(sc21_special_facing_hash(&actual), sc21_special_facing_hash(&expected), "all other special-plan state remains exact");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_special_motion_keeps_off_and_later_delayed_facing_and_full_state() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        let check = |context: Context, forced: bool| {
+            assert!(context.kit.by_role(Role::Advance).into_iter().any(|entry| entry.is_some()), "a real special is needed for the facing control");
+            for left in [false, true] {
+                for pressure in [false, true] {
+                    for answer in [false, true] {
+                        for seed in 1..=16 {
+                            let (base, delayed, latest) = sc21_special_facing_fixture(&context, forced, left, pressure, seed);
+                            let (mut actual, mut expected) = (base, base);
+                            actual.observe(latest);
+                            expected.plan = expected.plan_for(Choice::Special(Role::Advance), 100, delayed, &context, answer);
+                            actual.plan = actual.plan_for(Choice::Special(Role::Advance), 100, delayed, &context, answer);
+                            assert_eq!(expected.plan.kind, PlanKind::Act);
+                            assert!(expected.plan.len > 0, "a later-era execution slip may omit the button, but it still enters the real motion");
+                            assert_eq!(actual.plan, expected.plan, "OFF/later specials keep the original delayed facing");
+                            assert_eq!(actual.rng, expected.rng);
+                            expected.observe(latest);
+                            assert_eq!(sc21_special_facing_hash(&actual), sc21_special_facing_hash(&expected), "OFF/later whole CPU state stays exact");
+                        }
+                    }
+                }
+            }
+        };
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [Arcade1987, Sf1Plus] {
+                check(sc21_own_advance_context(fighter, revision, false, true, false), false);
+            }
+        }
+        let free = EraControl { free: true, ..EraControl::default() };
+        for context in [sfz_ctx(Level::VeryHard, crate::era::Loadout::AIsm, free), sf3_ctx(Level::VeryHard), sf4_ctx(Level::VeryHard, free), sf5_ctx(Level::VeryHard, free), sf6_ctx(Level::VeryHard)] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                check(Context { stronger: configured, ..context }, forced);
+            }
+        }
+    }
+
+
+    fn sc21_begin_special_clock(context: &Context, forced: bool, seed: u64) -> (FairCpu, Plan, u8, u8) {
+        let table = game::plans(context.kit.fighter, context.family);
+        let (index, entry) = table.iter().enumerate().find(|(_, plan)| {
+            plan.situation == Situation::NeutralClose && plan.steps.iter().any(|step| step.act == game::Act::Do(Choice::Special(Role::Advance)))
+        }).expect("real native close Advance plan");
+        let at = entry.steps.iter().position(|step| step.act == game::Act::Do(Choice::Special(Role::Advance))).unwrap() as u8;
+        let mut cpu = FairCpu::seeded(seed).force_stronger(forced);
+        cpu.fighter = context.kit.fighter;
+        for frame in 1..=99 { cpu.observe(Percept { frame, ..sc21_advance_view(80) }); }
+        let mut pick = cpu;
+        let produces = pick.pick_special(context.kit.by_role(Role::Advance)).map_or(0, |entry| entry.produces);
+        cpu.game = Some(game::Running { plan: index as u8, step: at, acted: false, pressed: 0, began: 100, hit: false });
+        let motion = cpu.follow_game_plan(100, cpu.seen(88).unwrap(), context).expect("the real table step generates its native motion");
+        (cpu, motion, at, produces)
+    }
+
+    /// Reproduce the observed native boundary: motion starts at100, its
+    /// first button is107, release111 starts the special. At120 the CPU's
+    /// delayed view108 still shows the preceding non-attacking pose.
+    /// A later fresh contact has no active flag left after collision.
+    fn sc21_special_clock_observation(frame: u32, release: u32, produces: u8, connected: bool) -> Percept {
+        let mut view = Percept { frame, ..sc21_advance_view(80) };
+        if connected && frame >= release {
+            view.me.move_id = produces;
+            view.me.state = 0xc2;
+        }
+        if connected && frame >= release + 12 {
+            view.foe.move_id = 0x30;
+            view.foe.state = 0x82;
+            view.foe.health = 36;
+        }
+        view
+    }
+
+    #[test]
+    fn sc21_baseline_special_outcome_waits_for_the_generated_command_to_reach_its_delayed_view() {
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for (configured, forced) in [(true, false), (false, true)] {
+                    let context = sc21_own_advance_context(fighter, revision, configured, true, false).for_stronger();
+                    let (mut cpu, motion, special_step, produces) = sc21_begin_special_clock(&context, forced, 17);
+                    let first = motion.pads[..usize::from(motion.len)].iter().position(|pad| pad & BUTTONS != 0).expect("real native button") as u32;
+                    let last = motion.pads[..usize::from(motion.len)].iter().rposition(|pad| pad & BUTTONS != 0).unwrap() as u32;
+                    let release = 100 + last + 1;
+                    assert_eq!((first, last, motion.len), (7, 10, 20), "the clean native three-step script from the raw witness");
+                    cpu.plan = motion;
+                    for offset in 0..u32::from(motion.len) {
+                        let step = 100 + offset;
+                        assert_eq!(cpu.next_pad(step, cpu.seen(88).unwrap(), &context), motion.pads[offset as usize]);
+                        cpu.observe(sc21_special_clock_observation(step, release, produces, true));
+                    }
+                    let boundary = 100 + u32::from(motion.len);
+                    let delayed = cpu.seen(boundary - context.level.reaction()).unwrap();
+                    assert_eq!(delayed.frame, 108);
+                    assert!(!delayed.me.attacking());
+                    assert!(cpu.seen(boundary - 1).unwrap().me.attacking(), "the native move is already running while its delayed start is unseen");
+                    let pending = cpu.follow_game_plan(boundary, delayed, &context).expect("pending special outcome");
+                    assert_eq!(cpu.game.unwrap().step, special_step, "{fighter:?}/{revision:?} configured{configured} forced{forced}: pre-release delayed pose is not a whiff; do not spend the next Reach during this special");
+                    assert_eq!(cpu.game.unwrap().pressed, 100 + first, "anchor the outcome clock at the generated button, before native release/contact");
+                    cpu.plan = pending;
+                    assert_eq!(cpu.next_pad(boundary, delayed, &context), 0);
+
+                    let start_seen_at = release + context.level.reaction();
+                    for frame in boundary..start_seen_at { cpu.observe(sc21_special_clock_observation(frame, release, produces, true)); }
+                    let seen_start = cpu.seen(release).unwrap();
+                    let pending = cpu.follow_game_plan(start_seen_at, seen_start, &context).expect("seen special still awaiting its result");
+                    assert_eq!(cpu.game.unwrap().step, special_step);
+                    assert!(!cpu.game.unwrap().hit);
+                    assert_eq!(pending.pads[..usize::from(pending.len)], [0]);
+
+                    let contact = release + 12;
+                    for frame in start_seen_at..contact + context.level.reaction() { cpu.observe(sc21_special_clock_observation(frame, release, produces, true)); }
+                    let seen_contact = cpu.seen(contact).unwrap();
+                    assert!(!seen_contact.me.active && seen_contact.foe.reacting());
+                    let _ = cpu.follow_game_plan(contact + context.level.reaction(), seen_contact, &context);
+                    assert!(cpu.game.is_some_and(|run| run.hit), "fresh damage/reaction after the actual button still credits the special, even when collision consumed its active flag");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_special_outcome_still_lets_a_failed_command_finish_after_its_grace() {
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for (configured, forced) in [(true, false), (false, true)] {
+                    let context = sc21_own_advance_context(fighter, revision, configured, true, false).for_stronger();
+                    let (mut cpu, motion, special_step, produces) = sc21_begin_special_clock(&context, forced, 17);
+                    let first = motion.pads[..usize::from(motion.len)].iter().position(|pad| pad & BUTTONS != 0).unwrap() as u32;
+                    let release = 100 + motion.pads[..usize::from(motion.len)].iter().rposition(|pad| pad & BUTTONS != 0).unwrap() as u32 + 1;
+                    cpu.plan = motion;
+                    for offset in 0..u32::from(motion.len) {
+                        let step = 100 + offset;
+                        let _ = cpu.next_pad(step, cpu.seen(88).unwrap(), &context);
+                        cpu.observe(sc21_special_clock_observation(step, release, produces, false));
+                    }
+                    let boundary = 100 + u32::from(motion.len);
+                    let _ = cpu.follow_game_plan(boundary, cpu.seen(boundary - context.level.reaction()).unwrap(), &context);
+                    assert_eq!(cpu.game.unwrap().step, special_step, "a command not yet seen complete is not already a failed execution");
+                    let failure_view = 100 + first + 7;
+                    for frame in boundary..failure_view + context.level.reaction() { cpu.observe(sc21_special_clock_observation(frame, release, produces, false)); }
+                    let _ = cpu.follow_game_plan(failure_view + context.level.reaction(), cpu.seen(failure_view).unwrap(), &context);
+                    assert!(cpu.game.is_some_and(|run| run.step != special_step && !run.hit), "a genuinely absent native attack eventually takes the whiff continuation rather than waiting forever");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_special_outcome_clock_keeps_off_and_normal_action_origins() {
+        for fighter in [TournamentFighter::Gen, TournamentFighter::Birdie, TournamentFighter::Lee] {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                let off = sc21_own_advance_context(fighter, revision, false, true, false).for_stronger();
+                let (cpu, _, _, _) = sc21_begin_special_clock(&off, false, 17);
+                assert_eq!(cpu.game.unwrap().pressed, 100, "OFF preserves the original motion-start clock");
+                let mut missing = sc21_own_advance_context(fighter, revision, true, false, false).for_stronger();
+                missing.kit.advance = None;
+                missing.kit.advance_alt = None;
+                let (cpu, empty, _, _) = sc21_begin_special_clock(&missing, false, 17);
+                assert_eq!(empty.len, 0);
+                assert_eq!(cpu.game.unwrap().pressed, 100, "an absent button cannot invent a future origin");
+            }
+        }
+        let check_normal = |context: Context, forced: bool| {
+            let table = game::plans(context.kit.fighter, context.family);
+            let (index, entry) = table.iter().enumerate().find(|(_, plan)| plan.steps.iter().any(|step| matches!(step.act, game::Act::Do(Choice::Normal { .. })))).expect("existing real normal step");
+            let at = entry.steps.iter().position(|step| matches!(step.act, game::Act::Do(Choice::Normal { .. }))).unwrap() as u8;
+            let mut cpu = FairCpu::seeded(17).force_stronger(forced);
+            for frame in 1..=99 { cpu.observe(Percept { frame, ..sc21_advance_view(40) }); }
+            cpu.game = Some(game::Running { plan: index as u8, step: at, acted: false, pressed: 0, began: 100, hit: false });
+            let pads = cpu.follow_game_plan(100, cpu.seen(88).unwrap(), &context).expect("real normal inputs");
+            assert!(pads.pads[..usize::from(pads.len)].iter().any(|pad| pad & BUTTONS != 0));
+            assert_eq!(cpu.game.unwrap().pressed, 100, "normal outcome timing is unchanged");
+        };
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true), (false, false)] {
+                check_normal(sc21_own_advance_context(TournamentFighter::Gen, revision, configured, true, false).for_stronger(), forced);
+            }
+        }
+        let free = EraControl { free: true, ..EraControl::default() };
+        for context in [sfz_ctx(Level::VeryHard, crate::era::Loadout::AIsm, free), sf3_ctx(Level::VeryHard), sf4_ctx(Level::VeryHard, free), sf5_ctx(Level::VeryHard, free), sf6_ctx(Level::VeryHard)] {
+            check_normal(context, false);
+        }
+    }
+
+
+    fn sc21_hit_context(fighter: TournamentFighter, revision: crate::era::Revision, level: Level) -> Context {
+        let mut context = Context::new(level, Kit::of(fighter, RulesetPreset::DefinitiveOverhaul, None), &CoreToggles::definitive())
+            .with_baseline(crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard), false)
+            .for_stronger();
+        context.stronger = true;
+        context
+    }
+
+    #[test]
+    fn sc21_baseline_it_hit_selection_stops_at_each_limited_levels_pressure_cap() {
+        for fighter in TournamentFighter::ALL {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for level in [Level::Easy, Level::Normal, Level::Hard] {
+                    let context = sc21_hit_context(fighter, revision, level);
+                    for seed in 1..=32 {
+                        let mut cpu = FairCpu::seeded(seed);
+                        cpu.judged.situation = Situation::ItHit;
+                        cpu.pressure_run = level.pressure_plans();
+                        let rng_before = cpu.rng.0;
+                        assert!(!cpu.start_game_plan(100, percept(88, body(340)), &context), "{fighter:?}/{revision:?}/{level:?}/{seed}: post-hit pressure obeys the existing cap");
+                        assert!(cpu.game.is_none());
+                        assert_eq!(cpu.pressure_run, level.pressure_plans());
+                        assert_eq!(cpu.rng.0, rng_before, "no eligible pressure plan consumes no selection randomness");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_it_hit_selection_charges_the_existing_pressure_counter() {
+        for fighter in TournamentFighter::ALL {
+            for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+                for level in [Level::Easy, Level::Normal, Level::Hard] {
+                    let context = sc21_hit_context(fighter, revision, level);
+                    let mut selected = 0;
+                    for seed in 1..=32 {
+                        let mut cpu = FairCpu::seeded(seed);
+                        cpu.judged.situation = Situation::ItHit;
+                        cpu.pressure_run = level.pressure_plans() - 1;
+                        if cpu.start_game_plan(100, percept(88, body(340)), &context) {
+                            selected += 1;
+                            assert_eq!(cpu.pressure_run, level.pressure_plans(), "{fighter:?}/{revision:?}/{level:?}: a post-hit plan counts as pressure");
+                        }
+                    }
+                    assert!(selected > 0, "fixed samples exercise a real selected post-hit plan");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_it_hit_pressure_policy_keeps_switch_off_and_later_era_selection_unchanged() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| { let mut out = CanonicalHasher::new(); cpu.encode(&mut out); out.finish() };
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let plain = Context::new(Level::Normal, Kit::of(TournamentFighter::Eagle, RulesetPreset::DefinitiveOverhaul, None), &CoreToggles::definitive());
+            let attached = plain.with_baseline(crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard), false);
+            for seed in 1..=32 {
+                let mut a = FairCpu::seeded(seed);
+                a.judged.situation = Situation::ItHit;
+                a.pressure_run = Level::Normal.pressure_plans();
+                let mut b = a;
+                assert_eq!(a.start_game_plan(100, percept(88, body(340)), &plain), b.start_game_plan(100, percept(88, body(340)), &attached));
+                assert_eq!(hash(&a), hash(&b), "the off switch's deferred baseline identity changes no selection state");
+            }
+        }
+        // Canonical SF6 Ken has an affordable ItHit Super plan; its existing nonpressure
+        // classification remains independent of the baseline-only correction.
+        let config = crate::config::MatchConfig::definitive();
+        let mut state = EraFighterState::default();
+        state.fighter = Some(TournamentFighter::Ken);
+        state.style = crate::era::StylePick::for_revision(crate::era::Revision::Sf6, crate::era::Loadout::Standard);
+        state.max_sub_hp = crate::era_fight::FULL_SUB_HP;
+        state.set_gauge_mode(crate::era::GaugeMode::EraDefault);
+        state.super_meter = 3 * crate::era::STOCK_AT;
+        let mut context = Context::with_era(Level::Normal, TournamentFighter::Ken, Some(RYU_SLOTS), config, &state, EraControl { free: true, ..Default::default() }).for_stronger();
+        context.stronger = true;
+        assert!(era_ready(game::EraAct::Super, &context), "the canonical shoto's real live kit and three-stock meter make its existing Super eligible");
+        let mut view = percept(88, body(340));
+        view.me.health = 24;
+        let mut selected = 0;
+        for seed in 1..=32 {
+            let mut uncapped = FairCpu::seeded(seed);
+            uncapped.judged.situation = Situation::ItHit;
+            let mut capped = uncapped;
+            capped.pressure_run = Level::Normal.pressure_plans();
+            let a = uncapped.start_game_plan(100, view, &context);
+            let b = capped.start_game_plan(100, view, &context);
+            assert_eq!(a, b, "later-era ItHit selection retains its previous cap behavior");
+            assert_eq!(uncapped.rng.0, capped.rng.0);
+            assert_eq!(uncapped.game, capped.game);
+            if a { selected += 1; assert_eq!(hash(&uncapped), hash(&capped)); }
+        }
+        assert!(selected > 0, "the later-era control actually selects its existing ItHit plan");
+    }
+
+    /// Follow the real baseline ItHit table's Normal step, already pressed.
+    /// The active flag is deliberately absent: a native collision may consume
+    /// it before the percept is read. The old reaction at the press is retained
+    /// only in the controller's existing observation ring.
+    fn sc21_follow_hit_normal(context: &Context, at_press: Option<(bool, u16)>, now_reacting: bool, now_hp: u16) -> FairCpu {
+        let mut cpu = FairCpu::seeded(17);
+        let situation = if context.baseline_rules() { Situation::ItHit } else { Situation::NeutralClose };
+        let (plan, entry) = game::plans(context.kit.fighter, context.family).iter().enumerate()
+            .find(|(_, plan)| plan.situation == situation && plan.steps.iter().any(|step| matches!(step.act, game::Act::Do(Choice::Normal { .. })))).expect("real pair's plain Normal plan");
+        let step = entry.steps.iter().position(|step| matches!(step.act, game::Act::Do(Choice::Normal { .. }))).expect("plain follow-up Normal");
+        cpu.game = Some(game::Running { plan: plan as u8, step: step as u8, acted: true, pressed: 100, began: 96, hit: false });
+        let own = Body { move_id: 0x0f, state: 0xc2, active: false, ..body(300) };
+        if let Some((reacting, hp)) = at_press {
+            let foe = Body { move_id: if reacting { 0x30 } else { 1 }, state: if reacting { 0x82 } else { 0x12 }, health: hp, ..body(340) };
+            cpu.observe(Percept { me: own, ..percept(100, foe) });
+        }
+        let foe = Body { move_id: if now_reacting { 0x30 } else { 1 }, state: if now_reacting { 0x82 } else { 0x12 }, health: now_hp, ..body(340) };
+        let view = Percept { me: own, ..percept(112, foe) };
+        cpu.observe(view);
+        let _ = cpu.follow_game_plan(124, view, context);
+        cpu
+    }
+
+    fn sc21_run_was_credited(cpu: &FairCpu) -> bool {
+        cpu.game.is_some_and(|run| run.hit) || cpu.plan_worked.iter().any(|&worked| worked != 0)
+    }
+
+    #[test]
+    fn sc21_baseline_it_hit_normal_does_not_claim_an_unchanged_old_reaction_as_a_new_hit() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_hit_context(TournamentFighter::Eagle, revision, Level::VeryHard);
+            let cpu = sc21_follow_hit_normal(&context, Some((true, 48)), true, 48);
+            assert!(!sc21_run_was_credited(&cpu), "{revision:?}: old unchanged reaction cannot credit a new normal");
+            assert!(cpu.game.is_some_and(|run| run.acted), "the still-attacking normal waits for a genuine outcome");
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_it_hit_normal_accepts_new_visible_damage_or_a_fresh_reaction_without_an_active_box() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_hit_context(TournamentFighter::Eagle, revision, Level::VeryHard);
+            for (old_reaction, old_hp, new_hp) in [(true, 48, 44), (false, 48, 48)] {
+                let cpu = sc21_follow_hit_normal(&context, Some((old_reaction, old_hp)), true, new_hp);
+                assert!(sc21_run_was_credited(&cpu), "{revision:?}: new visible evidence credits the hit even if collision consumed the active flag");
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_it_hit_normal_with_missing_press_history_does_not_invent_a_hit() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_hit_context(TournamentFighter::Eagle, revision, Level::VeryHard);
+            let cpu = sc21_follow_hit_normal(&context, None, true, 44);
+            assert!(!sc21_run_was_credited(&cpu), "{revision:?}: missing history cannot establish fresh damage/reaction");
+        }
+    }
+
+    #[test]
+    fn sc21_it_hit_outcome_correction_keeps_off_and_later_existing_reaction_semantics() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let mut off = sc21_hit_context(TournamentFighter::Eagle, revision, Level::VeryHard);
+            off.stronger = false;
+            let cpu = sc21_follow_hit_normal(&off, Some((true, 48)), true, 48);
+            assert!(sc21_run_was_credited(&cpu), "the effective OFF path keeps its old private normal-outcome semantics");
+        }
+        let later = sf6_ctx(Level::VeryHard).for_stronger();
+        let cpu = sc21_follow_hit_normal(&later, Some((true, 48)), true, 48);
+        assert!(sc21_run_was_credited(&cpu), "later-era normal outcomes keep their established behavior");
+    }
+
+
+    #[derive(Clone, Copy, Debug)]
+    enum Sc21ApproachThreat {
+        Startup,
+        Active,
+        Recovery,
+        Projectile,
+        AirAttack,
+    }
+
+    fn sc21_approach_context(revision: crate::era::Revision, stronger: bool) -> Context {
+        let mut context = Context::new(
+            Level::VeryHard,
+            Kit::of(
+                TournamentFighter::Eagle,
+                RulesetPreset::DefinitiveOverhaul,
+                None,
+            ),
+            &CoreToggles::definitive(),
+        )
+        .with_baseline(
+            crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard),
+            false,
+        );
+        context.stronger = stronger;
+        context
+    }
+
+    /// Populate observations and the judge from standing, startup, active and
+    /// recovery poses. Step100 sees frame88; its own newest pose is frame99.
+    /// No proposed safety predicate is reproduced in this fixture.
+    fn sc21_approach_history(
+        context: &Context,
+        threat: Sc21ApproachThreat,
+        foe_x: i16,
+        latest_own_x: i16,
+        seed: u64,
+    ) -> (FairCpu, Percept) {
+        let mut cpu = FairCpu::seeded(seed);
+        cpu.fighter = context.kit.fighter;
+        cpu.focus = Focus::Attack;
+        let mut before = None;
+        for frame in 1..=99 {
+            let mut view = Percept {
+                frame,
+                fighting: true,
+                me: body(if frame > 88 { latest_own_x } else { 200 }),
+                foe: body(foe_x),
+                ..Percept::default()
+            };
+            view.foe.facing_left = true;
+            if frame >= 40 {
+                match threat {
+                    Sc21ApproachThreat::Projectile => {
+                        view.shot = true;
+                        view.shot_x = 250;
+                        view.shot_half = 8;
+                    }
+                    threat => {
+                        view.foe.move_id = 0x10;
+                        view.foe.state = if matches!(threat, Sc21ApproachThreat::AirAttack) {
+                            0xc3
+                        } else {
+                            0xc2
+                        };
+                        view.foe.front = foe_x - 80;
+                        view.foe.active = match threat {
+                            Sc21ApproachThreat::Startup => false,
+                            Sc21ApproachThreat::Recovery => (45..=50).contains(&frame),
+                            _ => frame >= 45,
+                        };
+                    }
+                }
+            }
+            cpu.observe(view);
+            let reach = cpu.longest_reach();
+            cpu.judged = cpu.judge.judge(view, before, reach);
+            before = Some(view);
+        }
+        let view = cpu.seen(88).unwrap();
+        (cpu, view)
+    }
+
+    /// Install an actual table step by its action, not its score or index.
+    /// Running/Plan are the existing private snapshot state used by decide.
+    fn sc21_install_approach_step(
+        cpu: &mut FairCpu,
+        context: &Context,
+        matches: impl Fn(game::Act) -> bool,
+    ) {
+        let (plan, step) = game::plans(context.kit.fighter, context.family)
+            .iter()
+            .enumerate()
+            .find_map(|(plan, entry)| {
+                entry
+                    .steps
+                    .iter()
+                    .position(|step| matches(step.act))
+                    .map(|step| (plan, step))
+            })
+            .expect("the real pair's table contains the requested step");
+        cpu.game = Some(game::Running {
+            plan: plan as u8,
+            step: step as u8,
+            acted: false,
+            pressed: 0,
+            began: 96,
+            hit: false,
+        });
+        cpu.plan = Plan::default();
+        cpu.settle = 0;
+    }
+
+    #[test]
+    fn baseline_reach_and_pending_walk_keep_advancing_past_far_ground_attack_poses() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let raw = sc21_approach_context(revision, true);
+            let context = raw.for_stronger();
+            for threat in [
+                Sc21ApproachThreat::Startup,
+                Sc21ApproachThreat::Active,
+                Sc21ApproachThreat::Recovery,
+            ] {
+                let (mut cpu, view) = sc21_approach_history(&context, threat, 500, 200, 17);
+                sc21_install_approach_step(&mut cpu, &context, |act| {
+                    matches!(act, game::Act::Reach { .. })
+                });
+                let reach = cpu.game_plan();
+                let mut pending = cpu;
+                // This is decide's actual follow-then-emit chain: both gates
+                // must permit the next forward frame, not just one helper.
+                cpu.plan = cpu
+                    .follow_game_plan(100, view, &context)
+                    .expect("a far ground attack does not discard baseline Reach");
+                assert_eq!(cpu.plan.kind, PlanKind::Walk, "{revision:?} {threat:?}");
+                assert_eq!(
+                    cpu.next_pad(100, view, &context),
+                    RIGHT,
+                    "{revision:?} {threat:?}: the returned walk is actually emitted"
+                );
+                assert_eq!(cpu.game_plan(), reach, "the same Reach remains active");
+
+                // A multi-frame walk already in progress reaches next_pad
+                // through press/decide, without following a new table step.
+                pending.plan = Plan::of(PlanKind::Walk, &[RIGHT; 4]);
+                assert_eq!(
+                    pending.press(100, true, &raw),
+                    RIGHT,
+                    "{revision:?} {threat:?}: pending walk survives the real decision path"
+                );
+                assert_eq!(
+                    pending.press(101, true, &raw),
+                    RIGHT,
+                    "{revision:?} {threat:?}: continuation is not one accidental frame"
+                );
+                assert_eq!(pending.game_plan(), reach);
+            }
+        }
+    }
+
+    #[test]
+    fn baseline_approach_still_stops_for_near_attacks_projectiles_and_air_attacks() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let raw = sc21_approach_context(revision, true);
+            let context = raw.for_stronger();
+            for (threat, foe_x) in [
+                (Sc21ApproachThreat::Active, 270),
+                (Sc21ApproachThreat::Projectile, 500),
+                (Sc21ApproachThreat::AirAttack, 500),
+            ] {
+                let (mut cpu, view) = sc21_approach_history(&context, threat, foe_x, 200, 17);
+                sc21_install_approach_step(&mut cpu, &context, |act| {
+                    matches!(act, game::Act::Reach { .. })
+                });
+                let mut pending = cpu;
+                assert!(
+                    cpu.follow_game_plan(100, view, &context).is_none(),
+                    "{revision:?} {threat:?}: the committed Reach ends"
+                );
+                assert!(cpu.game.is_none());
+                pending.plan = Plan::of(PlanKind::Walk, &[RIGHT; 4]);
+                assert_eq!(
+                    pending.press(100, true, &raw),
+                    0,
+                    "{revision:?} {threat:?}: the pending walk is not emitted into danger"
+                );
+                assert!(pending.plan.done());
+            }
+        }
+    }
+
+    #[test]
+    fn baseline_approach_uses_latest_own_position_and_a_margin_beyond_learned_reach() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let raw = sc21_approach_context(revision, true);
+            let context = raw.for_stronger();
+            // The delayed own pose is far away. The latest own hurtbox is
+            // 81px from the opponent, whose actual observed attack reached80.
+            let (mut cpu, view) =
+                sc21_approach_history(&context, Sc21ApproachThreat::Active, 500, 409, 17);
+            assert_eq!(view.me.x, 200);
+            assert_eq!(cpu.seen(99).unwrap().me.x, 409);
+            assert_eq!(
+                cpu.judge.foe_edge(),
+                80,
+                "the judge learned a real shown box"
+            );
+            sc21_install_approach_step(&mut cpu, &context, |act| {
+                matches!(act, game::Act::Reach { .. })
+            });
+            let mut pending = cpu;
+            assert!(
+                cpu.follow_game_plan(100, view, &context).is_none(),
+                "a delayed far pose does not license walking through the safety margin"
+            );
+            assert!(cpu.game.is_none());
+            pending.plan = Plan::of(PlanKind::Walk, &[RIGHT; 4]);
+            assert_eq!(
+                pending.press(100, true, &raw),
+                0,
+                "pending walk also uses felt own spacing"
+            );
+        }
+    }
+
+    #[test]
+    fn baseline_without_a_game_plan_can_approach_a_far_ground_attack_without_starting_an_attack() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let context = sc21_approach_context(revision, true).for_stronger();
+            for threat in [Sc21ApproachThreat::Startup, Sc21ApproachThreat::Active] {
+                let mut advanced = false;
+                for seed in 1..=64 {
+                    let (mut cpu, view) = sc21_approach_history(&context, threat, 500, 200, seed);
+                    assert!(cpu.game.is_none());
+                    cpu.plan = cpu.choose(100, view, &context);
+                    assert!(cpu.plan.pads[..usize::from(cpu.plan.len)].iter().all(|pad| pad & BUTTONS == 0), "{revision:?} {threat:?}: safety is movement, not attacking into an active foe");
+                    if cpu.plan.kind == PlanKind::Walk && cpu.plan.pads[0] == RIGHT {
+                        assert_eq!(
+                            cpu.next_pad(100, view, &context),
+                            RIGHT,
+                            "the scored approach actually reaches the pad"
+                        );
+                        advanced = true;
+                    }
+                }
+                assert!(advanced, "{revision:?} {threat:?}: a real forward approach remains available, without pinning its selection frequency");
+            }
+        }
+    }
+
+    #[test]
+    fn baseline_far_attack_exception_never_commits_normals_jump_ins_or_routes() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let context = sc21_approach_context(revision, true).for_stronger();
+            for wanted in 0..3 {
+                if wanted == 2 && revision == crate::era::Revision::Arcade1987 {
+                    continue;
+                }
+                let requested = |act| match wanted {
+                    0 => matches!(act, game::Act::Do(Choice::Normal { .. })),
+                    1 => act == game::Act::Do(Choice::JumpIn),
+                    _ => act == game::Act::Route(crate::route_book::Reach::Ground),
+                };
+                let (mut cpu, view) =
+                    sc21_approach_history(&context, Sc21ApproachThreat::Active, 300, 200, 17);
+                sc21_install_approach_step(&mut cpu, &context, requested);
+                assert!(
+                    cpu.follow_game_plan(100, view, &context).is_none(),
+                    "{revision:?} action{wanted}: far-away attacks permit only movement"
+                );
+                assert!(cpu.game.is_none() && cpu.route.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn baseline_switch_off_and_later_sf6_keep_their_existing_walk_abort_behavior() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let attached = sc21_approach_context(revision, false);
+            let plain = Context::new(attached.level, attached.kit, &CoreToggles::definitive());
+            let (mut original, _) =
+                sc21_approach_history(&plain, Sc21ApproachThreat::Active, 500, 200, 17);
+            original.plan = Plan::of(PlanKind::Walk, &[RIGHT; 4]);
+            let mut with_identity = original;
+            assert_eq!(
+                original.press(100, true, &plain),
+                RIGHT,
+                "the old scorer's existing walk is not aborted"
+            );
+            assert_eq!(
+                with_identity.press(100, true, &attached),
+                RIGHT,
+                "the off switch retains that exact behavior"
+            );
+            assert_eq!(
+                hash(&original),
+                hash(&with_identity),
+                "deferred baseline identity changes no old controller state"
+            );
+        }
+        let context = sf6_ctx(Level::VeryHard).for_stronger();
+        for threat in [Sc21ApproachThreat::Startup, Sc21ApproachThreat::Active] {
+            let (mut cpu, view) = sc21_approach_history(&context, threat, 500, 200, 17);
+            sc21_install_approach_step(&mut cpu, &context, |act| {
+                matches!(act, game::Act::Reach { .. })
+            });
+            let mut pending = cpu;
+            assert!(
+                cpu.follow_game_plan(100, view, &context).is_none(),
+                "SF6 keeps its committed-step abort"
+            );
+            pending.plan = Plan::of(PlanKind::Walk, &[RIGHT; 4]);
+            assert_eq!(
+                pending.next_pad(100, view, &context),
+                0,
+                "SF6 keeps its pending-walk abort"
+            );
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    enum Sc21LearnHistory {
+        Adjacent,
+        Missing,
+        Jumped,
+        Overflow,
+    }
+
+    /// The observed Eagle native capacity samples, replayed through decide's
+    /// existing learning call. An idle pad sequence protects last_normal from
+    /// being replaced by a newly chosen action while the four poses pass.
+    fn sc21_decide_normal_reach_trace(
+        context: &Context,
+        forced: bool,
+        button: usize,
+        first_x: i16,
+        active_tip: i16,
+        mirrored: bool,
+        history: Sc21LearnHistory,
+    ) -> FairCpu {
+        let mirror = |x| if mirrored { 600 - x } else { x };
+        let view = |frame, x, attacking, active| {
+            let mut me = body(mirror(x));
+            me.facing_left = mirrored;
+            if attacking {
+                me.move_id = if button == 3 { 0x14 } else { 0x0f };
+                me.state = 0xc2;
+                me.active = active;
+                me.front = mirror(active_tip);
+            }
+            Percept {
+                frame,
+                fighting: true,
+                me,
+                foe: body(mirror(500)),
+                ..Percept::default()
+            }
+        };
+        let mut cpu = FairCpu::seeded(17).force_stronger(forced);
+        cpu.fighter = context.kit.fighter;
+        cpu.plan = Plan::of(PlanKind::Idle, &[0; 12]);
+        cpu.settle = 1_000;
+        cpu.reach[0][button] = 77;
+        cpu.reach_seen[0][button] = false;
+        for frame in 1..=40 {
+            cpu.observe(view(frame, 124, false, false));
+        }
+        cpu.last_normal = Some(Normal {
+            crouch: false,
+            button,
+            pressed: 40,
+            from: None,
+            best: 0,
+        });
+        let before = match history {
+            Sc21LearnHistory::Adjacent => Some(view(40, 124, false, false)),
+            Sc21LearnHistory::Missing => None,
+            Sc21LearnHistory::Jumped => Some(view(38, 124, false, false)),
+            Sc21LearnHistory::Overflow => Some(view(u32::MAX, 124, false, false)),
+        };
+        let poses = [
+            view(41, first_x, true, false),
+            view(42, first_x, true, true),
+            view(43, first_x, true, false),
+            view(44, 124, false, false),
+        ];
+        let mut prior = before;
+        for shown in poses {
+            cpu.observe(shown);
+            assert_eq!(
+                cpu.decide(shown.frame + 12, shown, prior, context),
+                0,
+                "the protected pending idle plan emits no replacement normal"
+            );
+            prior = Some(shown);
+        }
+        cpu
+    }
+
+    #[test]
+    fn effective_baseline_normal_reach_is_learned_from_the_adjacent_standing_center() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_approach_context(revision, configured).for_stronger();
+                for mirrored in [false, true] {
+                    // Native opening center124: LK first pose132/tip212;
+                    // MP first pose112/tip224. Expected stance-relative
+                    // reaches are explicit evidence, not a copied predicate.
+                    for (button, first_x, active_tip, expected) in
+                        [(3, 132, 212, 88), (1, 112, 224, 100)]
+                    {
+                        let cpu = sc21_decide_normal_reach_trace(
+                            &context,
+                            forced,
+                            button,
+                            first_x,
+                            active_tip,
+                            mirrored,
+                            Sc21LearnHistory::Adjacent,
+                        );
+                        assert_eq!(cpu.reach[0][button], expected, "{revision:?} configured{configured} forced{forced} mirrored{mirrored} button{button}: learned reach uses the stance coordinate that Reach/choose measure from");
+                        assert!(cpu.reach_seen[0][button]);
+                        assert!(
+                            cpu.last_normal.is_none(),
+                            "the completed native normal leaves one learned result"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn old_and_later_normal_learning_keep_the_first_drawn_attack_pose_origin() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            let off = sc21_approach_context(revision, false);
+            let plain = Context::new(off.level, off.kit, &CoreToggles::definitive());
+            for mirrored in [false, true] {
+                for history in [
+                    Sc21LearnHistory::Adjacent,
+                    Sc21LearnHistory::Jumped,
+                    Sc21LearnHistory::Overflow,
+                ] {
+                    for (button, first_x, active_tip, expected) in
+                        [(3, 132, 212, 80), (1, 112, 224, 112)]
+                    {
+                        let old = sc21_decide_normal_reach_trace(
+                            &plain, false, button, first_x, active_tip, mirrored, history,
+                        );
+                        let attached = sc21_decide_normal_reach_trace(
+                            &off, false, button, first_x, active_tip, mirrored, history,
+                        );
+                        assert_eq!(
+                            old.reach[0][button], expected,
+                            "plain old scorer retains its existing pose origin"
+                        );
+                        assert_eq!(
+                            attached.reach[0][button], expected,
+                            "off baseline retains its existing pose origin"
+                        );
+                        assert_eq!(hash(&old), hash(&attached), "deferred {revision:?} identity changes no old controller state: mirrored{mirrored} {history:?} button{button}");
+                        for forced in [false, true] {
+                            let mut later = sf6_ctx(Level::VeryHard).for_stronger();
+                            later.stronger = !forced;
+                            let cpu = sc21_decide_normal_reach_trace(
+                                &later, forced, button, first_x, active_tip, mirrored, history,
+                            );
+                            assert_eq!(
+                                cpu.reach[0][button], expected,
+                                "SF6 configured/forced stronger retains its established origin"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn effective_baseline_does_not_invent_a_stance_origin_across_missing_or_jumped_history() {
+        for revision in [
+            crate::era::Revision::Arcade1987,
+            crate::era::Revision::Sf1Plus,
+        ] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_approach_context(revision, configured).for_stronger();
+                for mirrored in [false, true] {
+                    for history in [
+                        Sc21LearnHistory::Missing,
+                        Sc21LearnHistory::Jumped,
+                        Sc21LearnHistory::Overflow,
+                    ] {
+                        for (button, first_x, active_tip) in [(3, 132, 212), (1, 112, 224)] {
+                            let cpu = sc21_decide_normal_reach_trace(
+                                &context, forced, button, first_x, active_tip, mirrored, history,
+                            );
+                            assert_eq!(cpu.reach[0][button], 77, "{revision:?} configured{configured} forced{forced} mirrored{mirrored} {history:?} button{button}: incomplete pre-pose history preserves prior reach");
+                            assert!(
+                                !cpu.reach_seen[0][button],
+                                "no sample was learned from an invented origin"
+                            );
+                            assert!(
+                                cpu.last_normal.is_none(),
+                                "the incomplete sample is abandoned"
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -3883,7 +5108,7 @@ mod tests {
                 p.me.front = 300 + reach;
             }
             cpu.observe(p);
-            cpu.learn(p, cpu.seen(f - 1));
+            cpu.learn(p, cpu.seen(f - 1), false);
             f += 1;
         }
         f
@@ -4459,6 +5684,227 @@ mod tests {
             }
         }
     }
+
+    #[derive(Clone, Copy, Debug)]
+    enum Sc21GuardScene {
+        QuietNear,
+        QuietFar,
+        MovingNear,
+        Startup,
+        Active,
+        Projectile,
+        ClearingAttack,
+    }
+
+    fn sc21_guard_view(frame: u32, scene: Sc21GuardScene, low: bool) -> Percept {
+        let foe_x = match scene {
+            Sc21GuardScene::QuietFar | Sc21GuardScene::ClearingAttack => 420,
+            Sc21GuardScene::MovingNear => 340 + (frame % 2) as i16,
+            _ => 340,
+        };
+        let mut view = percept(frame, body(foe_x));
+        // These are native, unlocked guard poses. Actual blockstun is the
+        // independent Context flag, not an invented pose-state restriction.
+        view.me.move_id = if low { 8 } else { 4 };
+        view.me.state = if low { 0x24 } else { 0x22 };
+        view.foe.facing_left = true;
+        if matches!(scene, Sc21GuardScene::Startup | Sc21GuardScene::Active)
+            || (matches!(scene, Sc21GuardScene::ClearingAttack) && frame <= 45)
+        {
+            view.foe.move_id = 0x10;
+            view.foe.state = 0xc2;
+            view.foe.front = 300;
+            view.foe.active = !matches!(scene, Sc21GuardScene::Startup);
+        }
+        if matches!(scene, Sc21GuardScene::Projectile) {
+            view.shot = true;
+            view.shot_x = 330;
+            view.shot_half = 8;
+        }
+        view
+    }
+
+    fn sc21_guard_cpu(scene: Sc21GuardScene, low: bool, forced: bool) -> FairCpu {
+        let mut cpu = FairCpu::seeded(17).force_stronger(forced);
+        for frame in 1..=40 {
+            cpu.observe(sc21_guard_view(frame, scene, low));
+        }
+        // An ordinary anticipated guard, with its original minimum pending.
+        cpu.plan = Plan::guard(low, 60);
+        cpu
+    }
+
+    fn sc21_guard_tick(cpu: &mut FairCpu, step: u32, scene: Sc21GuardScene, low: bool, context: &Context) -> u16 {
+        cpu.observe(sc21_guard_view(step, scene, low));
+        let view = cpu.seen(step - context.level.reaction()).expect("delayed guard observation");
+        let before = cpu.seen(view.frame - 1);
+        let reach = cpu.longest_reach();
+        cpu.judged = cpu.judge.judge(view, before, reach);
+        cpu.next_pad(step, view, context)
+    }
+
+    fn sc21_guard_context(revision: crate::era::Revision, configured: bool, throws: bool, blockstun: bool) -> Context {
+        let mut context = sc21_approach_context(revision, configured);
+        context.throws = throws;
+        context.with_baseline(
+            crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard),
+            blockstun,
+        ).for_stronger()
+    }
+
+    #[test]
+    fn sc21_baseline_guard_releases_a_clear_far_opponent_after_its_initial_hold() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for revision in [Arcade1987, Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                for low in [false, true] {
+                    let context = sc21_guard_context(revision, configured, true, false);
+                    let mut cpu = sc21_guard_cpu(Sc21GuardScene::QuietFar, low, forced);
+                    for step in 41..=48 {
+                        let pad = sc21_guard_tick(&mut cpu, step, Sc21GuardScene::QuietFar, low, &context);
+                        if step < 48 {
+                            assert_eq!(pad, LEFT | if low { DOWN } else { 0 });
+                            assert!(matches!(cpu.plan.kind, PlanKind::Guard { .. }), "{revision:?}: keep the initial eight-frame hold");
+                        } else {
+                            assert_eq!(pad, 0, "{revision:?} configured{configured} forced{forced}: a clear guard releases its stick");
+                            assert!(cpu.plan.done(), "the still-pending minimum does not add quiet guard dwell");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_guard_leaves_a_settled_close_opponent_without_waiving_the_throw_window() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for revision in [Arcade1987, Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                for throws in [false, true] {
+                    let context = sc21_guard_context(revision, configured, throws, false);
+                    assert_eq!(context.throws, throws && revision == Sf1Plus);
+                    let mut cpu = sc21_guard_cpu(Sc21GuardScene::QuietNear, true, forced);
+                    let mut ended = None;
+                    for step in 41..=55 {
+                        let pad = sc21_guard_tick(&mut cpu, step, Sc21GuardScene::QuietNear, true, &context);
+                        if cpu.plan.done() {
+                            assert_eq!(pad, 0);
+                            ended = Some(step - 40);
+                            break;
+                        }
+                        assert!(pad == LEFT | DOWN || (context.throws && pad == LEFT | button(2)),
+                            "keep the low guard or its permitted delayed throw-tech pulse: {pad:x}");
+                        assert!(matches!(cpu.plan.kind, PlanKind::Guard { .. }));
+                    }
+                    assert!(ended.is_some_and(|held| (8..=12).contains(&held)), "{revision:?} configured{configured} forced{forced} throws{}: keep the throw window, then leave a quiet guard: {ended:?}", context.throws);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_guard_waits_for_three_genuinely_observed_clear_frames() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for revision in [Arcade1987, Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_guard_context(revision, configured, true, false);
+                let mut cpu = sc21_guard_cpu(Sc21GuardScene::ClearingAttack, false, forced);
+                for step in 41..=60 {
+                    let pad = sc21_guard_tick(&mut cpu, step, Sc21GuardScene::ClearingAttack, false, &context);
+                    if step < 60 {
+                        assert_eq!(pad & LEFT, LEFT, "{revision:?} step{step}: live frame46 clearing is not visible until delayed frame46; two clear views still keep guard");
+                        assert!(!cpu.plan.done());
+                    } else {
+                        assert_eq!(pad, 0, "the third observed clear frame releases the guard");
+                        assert!(cpu.plan.done(), "{revision:?} configured{configured} forced{forced}: do not wait for the old sixty-frame minimum");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_guard_keeps_live_threats_actual_blockstun_and_a_held_bait() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for revision in [Arcade1987, Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                for (scene, locked, bait) in [
+                    (Sc21GuardScene::Startup, false, false),
+                    (Sc21GuardScene::Active, false, false),
+                    (Sc21GuardScene::Projectile, false, false),
+                    (Sc21GuardScene::QuietFar, true, false),
+                    (Sc21GuardScene::QuietFar, false, true),
+                ] {
+                    let context = sc21_guard_context(revision, configured, true, locked);
+                    let mut cpu = sc21_guard_cpu(scene, true, forced);
+                    if bait { cpu.bait_until = 100; }
+                    for step in 41..=64 {
+                        let pad = sc21_guard_tick(&mut cpu, step, scene, true, &context);
+                        assert!(matches!(cpu.plan.kind, PlanKind::Guard { .. }), "{revision:?} {scene:?} blockstun{locked} bait{bait}: keep the existing guard");
+                        assert_eq!(pad & LEFT, LEFT);
+                        assert_eq!(pad & BUTTONS, 0, "a real threat or a held bait receives no throw pulse");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_close_guard_respects_enabled_throws_until_the_foe_settles() {
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        for revision in [Arcade1987, Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                for throws in [false, true] {
+                    let context = sc21_guard_context(revision, configured, throws, false);
+                    let mut cpu = sc21_guard_cpu(Sc21GuardScene::MovingNear, false, forced);
+                    for step in 41..=48 {
+                        let pad = sc21_guard_tick(&mut cpu, step, Sc21GuardScene::MovingNear, false, &context);
+                        if step < 48 || context.throws {
+                            assert_eq!(pad & LEFT, LEFT);
+                            assert!(matches!(cpu.plan.kind, PlanKind::Guard { .. }));
+                        } else {
+                            assert_eq!(pad, 0, "{revision:?}: disabled throws do not invent a close throw threat");
+                            assert!(cpu.plan.done());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_guard_release_keeps_off_and_previous_later_cpu_state() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        use crate::era::Revision::{Arcade1987, Sf1Plus};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        let compare = |tagged: Context, legacy: Context| {
+            for scene in [Sc21GuardScene::QuietNear, Sc21GuardScene::QuietFar, Sc21GuardScene::ClearingAttack] {
+                let mut tagged_cpu = sc21_guard_cpu(scene, true, false);
+                let mut legacy_cpu = tagged_cpu;
+                for step in 41..=64 {
+                    assert_eq!(sc21_guard_tick(&mut tagged_cpu, step, scene, true, &tagged), sc21_guard_tick(&mut legacy_cpu, step, scene, true, &legacy), "{scene:?}: existing pad sequence stays exact");
+                    assert_eq!(hash(&tagged_cpu), hash(&legacy_cpu), "{scene:?}: whole canonical CPU state stays exact");
+                    assert!(matches!(tagged_cpu.plan.kind, PlanKind::Guard { .. }), "the existing minimum still holds this guard");
+                }
+            }
+        };
+        for revision in [Arcade1987, Sf1Plus] {
+            for throws in [false, true] {
+                let tagged = sc21_guard_context(revision, false, throws, false);
+                let legacy = Context { family: None, style: None, baseline: None, ..tagged };
+                compare(tagged, legacy);
+            }
+        }
+        for tagged in [sf3_ctx(Level::VeryHard), sf6_ctx(Level::VeryHard)] {
+            let legacy = Context { family: None, style: None, ..tagged };
+            compare(tagged, legacy);
+        }
+    }
+
 
     #[test]
     fn sf4_and_sf5_release_a_quiet_close_guard_but_keep_a_threat_locked_guard_and_bait() {

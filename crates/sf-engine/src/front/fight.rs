@@ -1514,6 +1514,14 @@ impl Fight {
         self.setup.kind == FightKind::TrainingDummy && self.active_trial() == Some(2)
     }
 
+    /// Claim the separate native CPU pad on this branch only.
+    pub(crate) fn claim_replay_baseline_cpu_pad(&mut self, pad: crate::run::ReplayCpuPad) -> bool {
+        if !self.machine.claim_replay_baseline_cpu_pad(pad) { return false }
+        self.setup.config.stronger_cpu = true;
+        self.setup.config.p2_fair_cpu = true;
+        true
+    }
+
     /// Return both pads to direct input for a live replay branch.
     pub(crate) fn release_training_pads(&mut self) {
         self.show = None;
@@ -2288,7 +2296,7 @@ impl Fight {
     /// is over (Local, Training) or the run has returned to the attract
     /// (Arcade).
     pub fn step(&mut self, assets: &Assets, p1: PlayerInputs, p2: PlayerInputs, start: bool) -> FightFrame {
-        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], [false; 2])
+        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], [false; 2], false)
     }
 
     pub(crate) fn step_with_pad_override(
@@ -2298,6 +2306,7 @@ impl Fight {
         start: bool,
         bypass: [bool; 2],
         override_pads: [bool; 2],
+        native_p1_override_only: bool,
     ) -> FightFrame {
         let [override_p1, override_p2] = override_pads;
         if self.black > 0 {
@@ -2406,7 +2415,14 @@ impl Fight {
             m.set_p2_direction(r, l, d, u);
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
-            m.step_with_training_pad(scripted_p2.is_some() || override_p2 || override_p1);
+            // In the new baseline mode4 branch, live human P2 is not an
+            // override of the native CPU. Leave recorded Capcom dispatch
+            // running until P1 is supplied by a live/reference/fallback pad.
+            if native_p1_override_only {
+                m.step_with_cpu_input_policy(scripted_p2.is_some() || override_p1, true);
+            } else {
+                m.step_with_training_pad(scripted_p2.is_some() || override_p2 || override_p1);
+            }
             for (slot, (fighter, contact)) in ImpactFighter::SLOTS.into_iter()
                 .zip(m.toggle_state().impact_contacts).enumerate()
             {

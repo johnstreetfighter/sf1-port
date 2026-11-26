@@ -971,6 +971,16 @@ pub fn cpu_opponent_setup(
 /// frame counter, round-time setting, the four score-tally counters).
 pub const TIMER_RAM: (u32, u32) = (0xff8e16, 0xff8e36);
 
+/// How a replay branch first acquires the native baseline CPU's pad.
+/// This is a transient command, never stored in a snapshot or wire state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ReplayCpuPad {
+    /// A new human or fallback controller starts with clean input history.
+    Fresh,
+    /// The recorded pad retains the native recognizer history it already had.
+    Recorded,
+}
+
 /// The era style slots of the fair CPU playing Player 2's pad and of its
 /// opponent, by game mode: in mode 4 the CPU's fighter holds slot 0.
 fn cpu_era_slots(mode: u8) -> [usize; 2] {
@@ -1618,6 +1628,13 @@ impl PowerOnMachine {
 
     /// A Training drill can supply P2's pad for this frame.
     pub(crate) fn step_with_training_pad(&mut self, scripted_p2: bool) {
+        self.step_with_cpu_input_policy(scripted_p2, scripted_p2);
+    }
+
+    /// A replay may suppress its internal Fair CPU while leaving an old
+    /// recorded Capcom opponent on native decision dispatch. Only an
+    /// externally supplied native CPU pad enables the player handler.
+    pub(crate) fn step_with_cpu_input_policy(&mut self, scripted_p2: bool, suppress_internal_cpu: bool) {
         self.program.toggle_state.era.gauge_drive_spends = [false; 3];
         self.program.toggle_state.era.gauge_v_trigger_spends = [false; 3];
         self.program.toggle_state.era.guard_contacts = [false; 2];
@@ -1641,7 +1658,7 @@ impl PowerOnMachine {
             return;
         }
         self.dramatic_cpu = None;
-        let cpu = !scripted_p2 && self.fair_cpu_press();
+        let cpu = !suppress_internal_cpu && self.fair_cpu_press();
         let p1_cpu = cpu && self.p1_fair_cpu_press();
         self.step_frame();
         if cpu {
@@ -1869,6 +1886,49 @@ impl PowerOnMachine {
         crate::config::stronger_arcade_cpu_uses_p1(
             owned, mode, family,
         )
+    }
+
+    /// A baseline native mode4 CPU can use a separate first pad in a live
+    /// replay branch, independently of the flag recorded with the fight.
+    /// Faithful, later eras and unavailable command banks keep their path.
+    pub(crate) fn replay_baseline_cpu_family(&self) -> Option<crate::era::EraFamily> {
+        let config = self.program.match_config;
+        if config.preset == crate::config::RulesetPreset::Faithful1987
+            || config.dramatic.is_some() || self.program.work[0x4002] != 4 || self.program.work[0x0003] == 0
+            || !self.utility_takeover_side_available(0)
+        {
+            return None;
+        }
+        let opponent = self.arcade_opponent()?;
+        let family = crate::config::arcade_cpu_family(
+            config.roster, crate::era_fight::EraRules::from(config).enabled,
+            self.program.toggle_state.era.selections, opponent, self.arcade_ladder_step(),
+        );
+        matches!(family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus).then_some(family)
+    }
+
+    /// The exact recorded pad when this native CPU was already pad-driven.
+    /// An old 1987 Capcom opponent has no synthetic pad to copy: it keeps
+    /// deciding normally until the live branch actually leaves the recording.
+    pub(crate) fn replay_recorded_baseline_cpu_pad(&self) -> Option<crate::front::PlayerInputs> {
+        let family = self.replay_baseline_cpu_family()?;
+        if family == crate::era::EraFamily::Sf1987 && !self.program.match_config.stronger_arcade_cpu() {
+            return None;
+        }
+        Some(if self.stronger_arcade_cpu_uses_p1() { self.applied_p1_pad() } else { self.applied_p2_pad() })
+    }
+
+    /// Install only developer/pad ownership on the live branch. The replay
+    /// and its reference stay untouched; its existing bookmark restores
+    /// these flags and the native command workspace on rewind.
+    pub(crate) fn claim_replay_baseline_cpu_pad(&mut self, pad: ReplayCpuPad) -> bool {
+        if self.replay_baseline_cpu_family().is_none() { return false }
+        if !self.stronger_arcade_cpu_uses_p1() {
+            self.program.match_config.stronger_cpu = true;
+            self.program.match_config.p2_fair_cpu = true;
+            self.program.bus(&mut self.state).prepare_replay_baseline_cpu_pad(pad);
+        }
+        true
     }
 
     fn fair_cpu_context(
