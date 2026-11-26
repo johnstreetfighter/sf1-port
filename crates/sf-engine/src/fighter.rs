@@ -460,6 +460,7 @@ impl Program {
             effect_stream_calls: &mut self.effect_stream_calls,
             toggles: self.match_config.toggles,
             preset: self.match_config.preset,
+            stronger_arcade_cpu: self.match_config.stronger_arcade_cpu(),
             roster: self.match_config.roster,
             dramatic: self.match_config.dramatic,
             world_tour: self.match_config.world_tour,
@@ -513,6 +514,9 @@ pub struct Bus<'a> {
     /// Faithful 1987 whatever else is switched on (the mirror palettes)
     /// read it.
     pub preset: crate::config::RulesetPreset,
+    /// The developer-only Fair CPU replacement for a native Arcade CPU.
+    /// Available during table binding, before any frame supplies a pad.
+    pub(crate) stronger_arcade_cpu: bool,
     /// 12-fighter roster binding (`#98`, `O7`). Ignored while `full_cast` is false.
     pub roster: crate::roster::RosterSettings,
     pub dramatic: Option<crate::dramatic::DramaticRules>,
@@ -5717,6 +5721,16 @@ impl Bus<'_> {
             self.button_latch(0xff86a0, CPU_STRUCT, group(p2, 0x30, 4, heavy1), 0x3b450);
             self.button_latch(0xff86a8, CPU_STRUCT + 1, group(p2, 0xc0, 6, heavy2), 0x3b506);
         }
+        // In mode 4 the human owns P2. The stronger baseline CPU uses
+        // the otherwise idle P1 port and latch groups, independently.
+        if self.arcade_cpu_uses_p1_pad() && matches!(scene, 0x80 | 0xc0)
+            && self.arcade_player_opponent().is_some()
+        {
+            let (heavy1, heavy2) = (!in0_hi & 2 != 0, !in0_lo & 4 != 0);
+            self.era_read_buttons(CPU_STRUCT, alpha_buttons(p1, heavy1, heavy2));
+            self.button_latch(0xff8690, CPU_STRUCT, group(p1, 0x30, 4, heavy1), 0x3b450);
+            self.button_latch(0xff8698, CPU_STRUCT + 1, group(p1, 0xc0, 6, heavy2), 0x3b506);
+        }
         if dramatic {
             let buttons = self.toggle_state.dramatic.boss_pad.buttons;
             for (offset, table) in [(0usize, 0x3b450), (3, 0x3b506)] {
@@ -6140,7 +6154,7 @@ impl Bus<'_> {
             .map_or_else(|| self.rl(self.rl(0xffc01c).wrapping_add(d0)), |opp| self.player_table(opp));
         self.wl(CPU_STRUCT + 0x12, moves);
         if player_opponent.is_some() {
-            self.wl(CPU_STRUCT + 2, 0xff868e);
+            self.wl(CPU_STRUCT + 2, self.arcade_cpu_input_copy());
             self.ww(CPU_STRUCT, 0);
             self.clear_all_trackers(CPU_STRUCT);
         }
@@ -6212,7 +6226,7 @@ impl Bus<'_> {
         }
         let native = self.era_state(CPU_STRUCT)
             .map_or_else(|| self.arcade_cpu_family(opp), |state| state.style.family);
-        (native != crate::era::EraFamily::Sf1987).then_some(opp)
+        (native != crate::era::EraFamily::Sf1987 || self.stronger_arcade_cpu).then_some(opp)
     }
 
     fn banked_cpu_opponent(&self) -> Option<crate::roster::TournamentFighter> {
@@ -6225,8 +6239,8 @@ impl Bus<'_> {
 
     fn arcade_player_opponent_at_round_start(&self) -> Option<crate::roster::TournamentFighter> {
         let opp = self.banked_cpu_opponent()?;
-        (self.roster.full_cast && self.era_rules.enabled
-            && self.arcade_cpu_family(opp) != crate::era::EraFamily::Sf1987).then_some(opp)
+        (self.stronger_arcade_cpu || (self.roster.full_cast && self.era_rules.enabled
+            && self.arcade_cpu_family(opp) != crate::era::EraFamily::Sf1987)).then_some(opp)
     }
 
     fn arcade_cpu_family(&self, fighter: crate::roster::TournamentFighter) -> crate::era::EraFamily {
@@ -6242,6 +6256,22 @@ impl Bus<'_> {
         }
     }
 
+    /// The stronger baseline CPU takes the free first cabinet pad when
+    /// the native human plays P2. Resolve the selected style before round
+    /// setup too, without relying on an already-created era fighter.
+    fn arcade_cpu_uses_p1_pad(&self) -> bool {
+        self.arcade_opponent().is_some_and(|opponent| {
+            crate::config::stronger_arcade_cpu_uses_p1(
+                self.stronger_arcade_cpu, self.rb(GAME_MODE), self.arcade_cpu_family(opponent),
+            )
+        })
+    }
+
+    fn arcade_cpu_input_copy(&self) -> u32 {
+        // IN1 is big-endian in RAM: P2 at +0, P1 at +1.
+        IN1_COPY + u32::from(self.arcade_cpu_uses_p1_pad())
+    }
+
     /// Whether `ps` is driven by the 1987 player handler (`P1_STRUCT`,
     /// `P2_STRUCT`, or `CPU_STRUCT` when the Arcade opponent plays on a
     /// 1987 player table).
@@ -6253,10 +6283,12 @@ impl Bus<'_> {
     /// Where command trackers (`+0x16`, `+0x19`, `+0x1c`) live for `ps`:
     /// `CPU_STRUCT` (`0xffc664..0xffc680`) is only `0x1c` bytes long, so a
     /// player-driven Arcade CPU opponent keeps its command trackers in
-    /// `P2_STRUCT` (unused in mode 2).
+    /// `P2_STRUCT` (unused in mode 2). The stronger baseline CPU in mode 4
+    /// uses the unused `P1_STRUCT`, leaving the human's trackers alone.
     fn tracker_base(&self, ps: u32) -> u32 {
         match ps {
             CPU_STRUCT if self.dramatic_rules().is_some() => BOSS_TRACKERS - 0x16,
+            CPU_STRUCT if self.arcade_cpu_uses_p1_pad() => P1_STRUCT,
             CPU_STRUCT => P2_STRUCT,
             _ => ps,
         }
@@ -6443,7 +6475,7 @@ impl Bus<'_> {
                 4 => {
                     self.input_handler(P2_STRUCT);
                     if let Some(opp) = self.arcade_player_opponent() {
-                        self.wl(CPU_STRUCT + 2, IN1_COPY);
+                        self.wl(CPU_STRUCT + 2, self.arcade_cpu_input_copy());
                         self.drive_roster_side(CPU_STRUCT, opp);
                     } else {
                         self.cpu_decide();
@@ -6471,7 +6503,7 @@ impl Bus<'_> {
                 // The selected arcade fighter is bound there without a versus join.
                 self.drive_roster_side(P2_STRUCT, self.roster.p1);
                 if let Some(opp) = self.arcade_player_opponent() {
-                    self.wl(CPU_STRUCT + 2, 0xff868e);
+                    self.wl(CPU_STRUCT + 2, self.arcade_cpu_input_copy());
                     self.drive_roster_side(CPU_STRUCT, opp);
                 } else {
                     self.cpu_decide();
@@ -8591,6 +8623,8 @@ impl Bus<'_> {
             x if x == P1_STRUCT + 1 => Some(1),
             CPU_STRUCT if self.dramatic_rules().is_some() => Some(4),
             x if x == CPU_STRUCT + 1 && self.dramatic_rules().is_some() => Some(5),
+            CPU_STRUCT if self.arcade_cpu_uses_p1_pad() => Some(0),
+            x if x == CPU_STRUCT + 1 && self.arcade_cpu_uses_p1_pad() => Some(1),
             P2_STRUCT | CPU_STRUCT => Some(2),
             x if x == P2_STRUCT + 1 || x == CPU_STRUCT + 1 => Some(3),
             _ => None,
@@ -8601,6 +8635,7 @@ impl Bus<'_> {
         match ps {
             P1_STRUCT => Some(0),
             P2_STRUCT if self.dramatic_rules().is_some() => Some(2),
+            CPU_STRUCT if self.arcade_cpu_uses_p1_pad() => Some(0),
             P2_STRUCT | CPU_STRUCT => Some(1),
             _ => None,
         }
@@ -10746,6 +10781,7 @@ mod tests {
                 effect_stream_calls: &mut self.calls,
                 toggles: self.toggles,
                 preset: crate::config::RulesetPreset::Faithful1987,
+                stronger_arcade_cpu: false,
                 roster: crate::roster::RosterSettings::faithful(),
                 dramatic: None,
                 world_tour: None,
@@ -10759,6 +10795,48 @@ mod tests {
                 fg_page: &mut self.fg_page,
             }
         }
+    }
+
+    #[test]
+    fn the_mode_four_baseline_cpu_has_its_own_pad_latches_and_trackers() {
+        use crate::roster::TournamentFighter::Ryu;
+        let mut ram = Ram::new();
+        ram.rom[0x100..0x104].copy_from_slice(&Ryu.move_table().to_be_bytes());
+        ram.rom[0x3b452] = 0xfe;
+        ram.rom[0x3b508] = 0xfe;
+        let mut bus = ram.bus();
+        bus.preset = crate::config::RulesetPreset::ClassicCompetitive;
+        bus.stronger_arcade_cpu = true;
+        bus.wb(MODE_DEMO, 1);
+        bus.wb(GAME_MODE, 4);
+        bus.wb(SCENE_MODE, 0x80);
+        bus.wl(0xffc01c, 0x100);
+        bus.wl(P2_STRUCT + 2, IN1_COPY);
+        assert!(!bus.toggle_state.scripted_cpu_pad, "round setup has no supplied pad yet");
+        assert_eq!(bus.arcade_player_opponent_at_round_start(), Some(Ryu));
+        bus.setup_cpu_opponent();
+        assert_eq!(bus.rl(CPU_STRUCT + 0x12), Ryu.move_table());
+        assert_eq!(bus.rl(CPU_STRUCT + 2), IN1_COPY + 1);
+        assert_eq!(bus.tracker_base(CPU_STRUCT), P1_STRUCT);
+        assert_eq!(bus.tracker_base(P2_STRUCT), P2_STRUCT);
+        assert_eq!(bus.player_slot_index(CPU_STRUCT), Some(0));
+        assert_eq!(bus.player_slot_index(P2_STRUCT), Some(1));
+        bus.set_neg_edge_latch(CPU_STRUCT, true);
+        bus.clear_neg_edge_latches_for_player(P2_STRUCT);
+        assert!(bus.is_neg_edge_latch(CPU_STRUCT), "clearing the human's latches leaves the CPU's alone");
+        assert!(!bus.is_neg_edge_latch(P2_STRUCT));
+        bus.latch_in1(0xfffd); // CPU holds left; human P2 is neutral.
+        assert_eq!(bus.pad_directions(CPU_STRUCT), 2);
+        assert_eq!(bus.pad_directions(P2_STRUCT), 0);
+        // P1 HP is IN0 bit 9, while the human's P2 HK is bit 8.
+        bus.vblank_buttons(0xfcff, 0xffff);
+        assert_eq!(bus.rb(0xff8694), 3, "CPU punch latch uses the free P1 group");
+        assert_eq!(bus.rb(0xff86ac), 3, "human kick latch keeps the P2 group");
+        bus.vblank_buttons(0xffff, 0xffff);
+        assert_eq!(bus.rb(CPU_STRUCT), 0xfe);
+        assert_eq!(bus.rb(CPU_STRUCT + 1), 0);
+        assert_eq!(bus.rb(P2_STRUCT), 0);
+        assert_eq!(bus.rb(P2_STRUCT + 1), 0xfe);
     }
 
     #[test]

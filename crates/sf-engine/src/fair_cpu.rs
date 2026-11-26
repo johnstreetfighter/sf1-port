@@ -849,6 +849,10 @@ pub struct Context {
     /// Its own fighter is in blockstun, as it feels its own state (SC15,
     /// `#207`). Kept under a mission that sets the era kit aside.
     own_blockstun: bool,
+    /// Baseline identity and felt blockstun, applied only to effective
+    /// stronger play (including the measuring/replay controller override).
+    /// Keeping it deferred leaves the old play's context unchanged.
+    baseline: Option<(crate::era::StylePick, bool)>,
 }
 
 impl Context {
@@ -874,6 +878,7 @@ impl Context {
             strong_kit: None,
             tools: cast::Tools::default(),
             own_blockstun: false,
+            baseline: None,
         }
     }
 
@@ -883,6 +888,18 @@ impl Context {
     /// ([`Self::normals_and_throws`]).
     pub(crate) fn for_stronger(&self) -> Context {
         let mut context = *self;
+        if let Some((style, blockstun)) = self.baseline {
+            context.family = Some(style.family);
+            context.style = Some((style.revision, style.loadout));
+            context.own_blockstun = blockstun;
+            // The 1987 style never brings overhaul offense with it.
+            // SF1+ keeps the configured, independent offense toggles.
+            if style.family == crate::era::EraFamily::Sf1987 {
+                context.true_combos = false;
+                context.cancels = false;
+                context.throws = false;
+            }
+        }
         if let Some(kit) = self.strong_kit {
             context.kit = kit;
         }
@@ -905,6 +922,25 @@ impl Context {
             context.tools = cast::Tools::default();
         }
         context
+    }
+
+    /// Attach the identity of a baseline style without changing a single
+    /// old-play choice. Baseline styles use their original kit, without
+    /// later-era tactics or gauges (SC21, `#213`).
+    pub(crate) fn with_baseline(mut self, style: crate::era::StylePick, blockstun: bool) -> Self {
+        if matches!(style.family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus) {
+            self.baseline = Some((style, blockstun));
+        }
+        self
+    }
+
+    fn baseline_rules(&self) -> bool {
+        matches!(self.family, Some(crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus))
+    }
+
+    /// A later era brings its offense rules; baseline styles do not.
+    fn era_offense(&self) -> bool {
+        self.family.is_some() && !self.baseline_rules()
     }
 
     /// SC20 extends the SF6 cast after Ryu's separately proven first pair.
@@ -1058,6 +1094,19 @@ fn era_ready(act: game::EraAct, ctx: &Context) -> bool {
 fn book_route(ctx: &Context, reach: crate::route_book::Reach) -> bool {
     let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
     crate::route_book::book(fighter, revision, loadout).is_some_and(|book| book.routes.iter().any(|route| route.reach == reach))
+}
+
+/// A baseline book contains material the actual offense rules and level
+/// permit. Spacing, stance and observed opponent restrictions are checked
+/// again by the route player at execution time.
+fn baseline_route(ctx: &Context, reach: crate::route_book::Reach) -> bool {
+    let (Some(fighter), Some((revision, loadout))) = (ctx.kit.fighter, ctx.style) else { return false };
+    crate::route_book::book(fighter, revision, loadout).is_some_and(|book| book.routes.iter().any(|route| {
+        route.reach == reach && (!route.true_combos || ctx.true_combos) && (!route.cancels || ctx.cancels)
+            && route.hits <= ctx.level.route_hits()
+            && (ctx.level.spends_meter() || route.super_spent + route.drive_spent == 0)
+            && (!ctx.pure_footsies || route.normals_only())
+    }))
 }
 
 /// What a plan is doing.
@@ -1646,7 +1695,7 @@ impl FairCpu {
         // Its fighter's specials as the stronger play reads them (SC15,
         // `#207`).
         let limited;
-        let ctx = if stronger && (ctx.pure_footsies || ctx.strong_kit.is_some()) {
+        let ctx = if stronger && (ctx.pure_footsies || ctx.strong_kit.is_some() || ctx.baseline.is_some()) {
             limited = ctx.for_stronger();
             &limited
         } else {
@@ -2075,9 +2124,9 @@ impl FairCpu {
         let foe = ctx.foe.map(|(who, style)| crate::route_book::opponent_key(who, style));
         let moment = game::Moment {
             reaches,
-            // An era style is in force (its kit may be set aside under a
-            // mission's rules, its true combos and cancels are not).
-            era: ctx.family.is_some(),
+            // Later eras bring offense rules even under a mission that
+            // sets the kit aside. Baseline styles keep their own toggles.
+            era: ctx.era_offense(),
             normals_only: ctx.pure_footsies,
             true_combos: ctx.true_combos,
             cancels: ctx.cancels,
@@ -2175,7 +2224,7 @@ impl FairCpu {
         let reset = |kind| game::Reset { kind, free: cut.free, ahead: cut.ahead, gap: cut.gap };
         let fits = |kind| self.reset_pads(reset(kind), 0, 0).len() <= PLAN_CAP;
         let weights = [
-            (ResetKind::Throw, if fits(ResetKind::Throw) { (RESET_THROW + lean.throw).max(0) } else { 0 }),
+            (ResetKind::Throw, if (!ctx.baseline_rules() || ctx.throws) && fits(ResetKind::Throw) { (RESET_THROW + lean.throw).max(0) } else { 0 }),
             (ResetKind::Low, if fits(ResetKind::Low) { (RESET_LOW + lean.low).max(0) } else { 0 }),
             (ResetKind::Bait, if cut.gap <= BAIT_NEAR { (RESET_BAIT + lean.bait).max(0) } else { 0 }),
         ];
@@ -2279,6 +2328,16 @@ impl FairCpu {
                 // Nor one needing a projectile, a tool or a route its
                 // fighter has not got (SC15, `#207`), a tool it cannot use
                 // from here, or an era tool not there now (SC16, `#208`).
+                // Baseline styles keep combos, cancels and throws
+                // independent. Do not take a plan whose ground route is
+                // forbidden or absent, including bookless SF1+ Geki.
+                && (!ctx.baseline_rules() || plan.steps.iter().all(|step| match step.act {
+                    game::Act::Do(Choice::Throw) => ctx.throws,
+                    game::Act::Do(Choice::Combo) => ctx.true_combos,
+                    game::Act::Do(Choice::Cancel { .. }) => ctx.cancels,
+                    game::Act::Route(reach) => baseline_route(ctx, reach),
+                    _ => true,
+                }))
                 && plan.playable(ctx.kit.projectile.is_some(), |tool| self.tool_ready(tool, &felt, ctx), |reach| book_route(ctx, reach), |act| era_ready(act, ctx))
             {
                 // A cornered opponent is pressed harder.
@@ -3136,13 +3195,14 @@ impl FairCpu {
         }
         // In SF2 (SC15, `#207`), SFZ (SC16, `#208`), SF3 (SC17, `#209`)
         // SF4 (SC18, `#210`), SF5 (SC19, `#211`) and the new SF6 cast
-        // (SC20, `#212`; Ryu keeps its established decisions):
+        // (SC20, `#212`; Ryu keeps its established decisions), and the
+        // baseline styles (SC21, `#213`):
         // his ground attack it has guarded, now recovering in reach, is
         // its turn. Out of its own
         // blockstun it takes a punish route, or a crouching light punch,
         // rather than guarding on while he presses again.
         if stronger
-            && (matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)) || ctx.sf6_cast())
+            && (ctx.baseline_rules() || matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)) || ctx.sf6_cast())
             && self.judge.recovering_after_meeting(view)
             && !ctx.own_blockstun
             && (view.me.free() || view.me.guarding())
@@ -3584,6 +3644,100 @@ mod tests {
 
     fn ctx(level: Level) -> Context {
         Context::new(level, Kit::of(TournamentFighter::Ryu, RulesetPreset::ClassicCompetitive, Some(RYU_SLOTS)), &CoreToggles::for_preset(RulesetPreset::ClassicCompetitive))
+    }
+
+    #[test]
+    fn baseline_identity_is_deferred_and_keeps_the_actual_offense_rules() {
+        use crate::era::{EraFamily, Loadout, Revision, StylePick};
+        for revision in [Revision::Arcade1987, Revision::Sf1Plus] {
+            let style = StylePick::for_revision(revision, Loadout::Standard);
+            for links in [false, true] {
+                for cancels in [false, true] {
+                    for throws in [false, true] {
+                        let mut toggles = CoreToggles::definitive();
+                        toggles.true_combos = links;
+                        toggles.cancels = cancels;
+                        toggles.throws = throws;
+                        let raw = Context::new(Level::VeryHard, ctx(Level::VeryHard).kit, &toggles)
+                            .with_baseline(style, true);
+                        assert_eq!((raw.family, raw.style, raw.own_blockstun), (None, None, false));
+                        assert_eq!((raw.true_combos, raw.cancels, raw.throws), (links, cancels, throws));
+                        let stronger = raw.for_stronger();
+                        assert_eq!(stronger.family, Some(style.family));
+                        assert_eq!(stronger.style, Some((revision, Loadout::Standard)));
+                        assert!(stronger.era.is_none() && stronger.own_blockstun);
+                        let expected = if style.family == EraFamily::Sf1987 { (false, false, false) } else { (links, cancels, throws) };
+                        assert_eq!((stronger.true_combos, stronger.cancels, stronger.throws), expected);
+                        assert!(!stronger.era_offense(), "baseline identity never overrides offense rules");
+                    }
+                }
+            }
+        }
+        for preset in [RulesetPreset::ClassicCompetitive, RulesetPreset::PureFootsies1987Plus] {
+            let raw = Context::new(Level::VeryHard, ctx(Level::VeryHard).kit, &CoreToggles::for_preset(preset));
+            let stronger = raw.with_baseline(StylePick::for_preset(preset), false).for_stronger();
+            assert_eq!(stronger.family, Some(EraFamily::Sf1Plus));
+            assert!(!stronger.true_combos && !stronger.cancels && !stronger.throws);
+        }
+    }
+
+    #[test]
+    fn a_deferred_baseline_identity_leaves_old_pads_and_controller_state_identical() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        use crate::era::{Loadout, Revision, StylePick};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        for fighter in TournamentFighter::ALL {
+            for revision in [Revision::Arcade1987, Revision::Sf1Plus] {
+                for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+                    let raw = Context::new(level, Kit::of(fighter, RulesetPreset::DefinitiveOverhaul, Some(RYU_SLOTS)), &CoreToggles::definitive());
+                    let baseline = raw.with_baseline(StylePick::for_revision(revision, Loadout::Standard), true);
+                    let mut old = FairCpu::seeded(17);
+                    let mut attached = old;
+                    for frame in 1..=160 {
+                        let foe = if (frame / 40) % 2 == 0 { body(380) } else {
+                            Body { move_id: 0x10, state: 0xc2, active: frame % 20 < 8, front: 310, ..body(350) }
+                        };
+                        let shown = percept(frame, foe);
+                        old.observe(shown);
+                        attached.observe(shown);
+                        assert_eq!(old.press(frame + 1, true, &raw), attached.press(frame + 1, true, &baseline), "{fighter:?}/{revision:?}/{level:?}/{frame}");
+                        assert_eq!(hash(&old), hash(&attached), "{fighter:?}/{revision:?}/{level:?}/{frame}: complete controller state");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn baseline_books_obey_independent_link_and_cancel_rules_and_missing_books_offer_no_route() {
+        use crate::era::{Loadout, Revision, StylePick};
+        use crate::route_book::Reach;
+        for links in [false, true] {
+            for cancels in [false, true] {
+                let mut raw = ctx(Level::VeryHard);
+                raw.true_combos = links;
+                raw.cancels = cancels;
+                let context = raw.with_baseline(StylePick::for_revision(Revision::Sf1Plus, Loadout::Standard), false).for_stronger();
+                assert_eq!(baseline_route(&context, Reach::Ground), links && cancels);
+                let mut cpu = FairCpu::seeded(3);
+                let view = Percept { frame: 100, fighting: true, me: body(200), foe: body(252), ..Percept::default() };
+                assert_eq!(cpu.take_route(&context, view, &[Reach::Ground], game::NEUTRAL_WALK), links && cancels,
+                    "the player does not infer later-era combo rules from baseline identity");
+            }
+        }
+        let mut geki = ctx(Level::VeryHard);
+        geki.kit = Kit { fighter: Some(TournamentFighter::Geki), ..Kit::default() };
+        geki.true_combos = true;
+        geki.cancels = true;
+        let geki = geki.with_baseline(StylePick::for_revision(Revision::Sf1Plus, Loadout::Standard), false).for_stronger();
+        assert!(!baseline_route(&geki, Reach::Ground));
+        let mut cpu = FairCpu::seeded(1);
+        let view = percept(100, body(325));
+        assert!(!cpu.take_route(&geki, view, &[Reach::Ground, Reach::Punish], game::NEUTRAL_WALK));
     }
 
     #[test]

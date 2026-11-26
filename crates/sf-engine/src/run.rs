@@ -1521,11 +1521,13 @@ impl PowerOnMachine {
         let config = self.program.match_config;
         let scheme = if bypass { ControlScheme::Classic } else { config.effective_control_schemes()[side] };
         let index = if side == 1 && config.dramatic.is_some() { 2 } else { side };
+        let cpu_on_p1 = self.stronger_arcade_cpu_uses_p1();
         let (facing_right, family, close) = if scheme == ControlScheme::Modern {
             let bus = self.program.bus(&mut self.state);
             // The second cabinet pad drives the opponent's CPU structure
             // when replay takeover overrides a one-player Arcade match.
             let ps = match (side, config.dramatic.is_some(), bus.rb(GAME_MODE)) {
+                (0, false, 4) if cpu_on_p1 => CPU_STRUCT,
                 (0, _, _) => P1_STRUCT,
                 (1, false, 2) => CPU_STRUCT,
                 _ => P2_STRUCT,
@@ -1683,7 +1685,7 @@ impl PowerOnMachine {
             if self.program.work[0x0003] == 0 {
                 return false;
             }
-            if family == crate::era::EraFamily::Sf1987 {
+            if family == crate::era::EraFamily::Sf1987 && !cfg.stronger_arcade_cpu() {
                 self.fair_cpu = None;
                 return false;
             }
@@ -1822,10 +1824,43 @@ impl PowerOnMachine {
         }
     }
 
+    /// The first physical cabinet pad, after a mode 4 baseline CPU has
+    /// supplied it: replay reference playback carries this exact pad over.
+    pub(crate) fn applied_p1_pad(&self) -> crate::front::PlayerInputs {
+        let held = |port: u16, bit: u8| port & (1 << bit) == 0;
+        crate::front::PlayerInputs {
+            directions: [0, 1, 2, 3].map(|bit| held(self.io.in1, bit)),
+            buttons: [
+                held(self.io.in1, 4),
+                held(self.io.in1, 5),
+                held(self.io.in0, 9),
+                held(self.io.in1, 6),
+                held(self.io.in1, 7),
+                held(self.io.in0, 2),
+            ],
+        }
+    }
+
     fn apply_cpu_pad(&mut self, input: crate::front::PlayerInputs) {
         let [right, left, down, up] = input.directions;
-        self.set_p2_direction(right, left, down, up);
-        self.set_p2_buttons(input.buttons);
+        if self.stronger_arcade_cpu_uses_p1() {
+            self.set_p1_direction(right, left, down, up);
+            self.set_p1_buttons(input.buttons);
+        } else {
+            self.set_p2_direction(right, left, down, up);
+            self.set_p2_buttons(input.buttons);
+        }
+    }
+
+    /// Mode 4 leaves the first cabinet pad free for the stronger baseline
+    /// CPU. The human's second pad and its command trackers stay separate.
+    pub(crate) fn stronger_arcade_cpu_uses_p1(&self) -> bool {
+        let mode = self.program.work[0x4002];
+        let [slot, _] = cpu_era_slots(mode);
+        crate::config::stronger_arcade_cpu_uses_p1(
+            self.program.match_config.stronger_arcade_cpu(), mode,
+            self.program.toggle_state.era.fighters[slot].style.family,
+        )
     }
 
     fn fair_cpu_context(
@@ -1877,7 +1912,24 @@ impl PowerOnMachine {
             }).unwrap_or_default();
             Context::with_era(level, fighter, slots, cfg, era, control)
         } else {
-            Context::new(level, Kit::of(fighter, cfg.preset, slots), &cfg.toggles)
+            let context = Context::new(level, Kit::of(fighter, cfg.preset, slots), &cfg.toggles);
+            // Baseline styles have plans but no later-era tactics. Delay
+            // their identity until the controller actually plays stronger,
+            // so forced measuring/replay CPUs work and switch-off choices
+            // retain the original kit and configured toggles (SC21).
+            let style = if crate::era_fight::EraRules::from(cfg).enabled {
+                (era.fighter == Some(fighter)).then_some(era.style)
+            } else if cfg.preset != crate::config::RulesetPreset::Faithful1987 {
+                Some(crate::era::StylePick::for_preset(cfg.preset))
+            } else {
+                None
+            };
+            if let Some(style) = style {
+                let slot = crate::combo::slot_in_fight(ps, self.program.work[0x4002], cfg.dramatic.is_some());
+                context.with_baseline(style, self.program.toggle_state.combo.blockstun[slot] != 0)
+            } else {
+                context
+            }
         };
         // Dramatic Battle's boss and ally play it too (SC23, `#215`).
         context.stronger = cfg.stronger_cpu;
@@ -3055,6 +3107,59 @@ mod tests {
         assert_eq!(cpu_era_slots(2), [1, 0]);
         assert_eq!(cpu_era_slots(4), [0, 1]);
         assert_eq!(cpu_era_slots(1), [1, 0]);
+    }
+
+    #[test]
+    fn the_stronger_mode_four_baseline_pad_keeps_all_human_second_pad_inputs() {
+        use crate::front::PlayerInputs;
+        let mut machine = PowerOnMachine::new(Vec::new());
+        let mut config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        machine.set_match_config(config);
+        machine.program.work[0x4002] = 4;
+        machine.program.toggle_state.era.fighters[0].style = crate::era::StylePick::default();
+        let human = PlayerInputs { directions: [false, false, true, false], buttons: [false, false, false, false, false, true] };
+        machine.set_p2_direction(false, false, true, false);
+        machine.set_p2_buttons(human.buttons);
+        let cpu = PlayerInputs { directions: [false, true, false, false], buttons: [true; 6] };
+        machine.apply_cpu_pad(cpu);
+        assert_eq!(machine.applied_p1_pad(), cpu, "replay reference gets every CPU button from P1");
+        assert_eq!(machine.applied_p2_pad(), human, "CPU cannot overwrite human directions or heavy buttons");
+        // The old game and later-era styles keep their existing P2 route.
+        for later_era in [false, true] {
+            machine.program.match_config.stronger_cpu = later_era;
+            machine.program.toggle_state.era.fighters[0].style.family = if later_era { crate::era::EraFamily::Sf6 } else { crate::era::EraFamily::Sf1Plus };
+            machine.apply_cpu_pad(PlayerInputs::default());
+            assert_eq!(machine.applied_p1_pad(), cpu);
+            assert_eq!(machine.applied_p2_pad(), PlayerInputs::default());
+        }
+    }
+
+    #[test]
+    fn modern_first_pad_takeover_uses_the_mode_four_baseline_opponents_facing() {
+        use crate::control::Shortcut;
+        use crate::fighter::{CPU_STRUCT, P1_STRUCT, WORK_BASE};
+        use crate::front::PlayerInputs;
+        use crate::session_io::ControlScheme;
+        let mut machine = PowerOnMachine::new(Vec::new());
+        let mut config = crate::config::MatchConfig::definitive();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        config.p1_scheme = ControlScheme::Modern;
+        machine.set_match_config(config);
+        machine.program.work[0x4002] = 4;
+        machine.program.toggle_state.era.fighters[0].style = crate::era::StylePick::default();
+        for (player, entity, facing) in [(CPU_STRUCT, 0x100u16, 4), (P1_STRUCT, 0x200, 0)] {
+            let at = (player + 0x10 - WORK_BASE) as usize;
+            machine.program.work[at..at + 2].copy_from_slice(&entity.to_be_bytes());
+            machine.state.objectram[usize::from(entity) + 0x37] = facing;
+        }
+        let mut input = PlayerInputs::default();
+        input.directions[1] = true;
+        input.buttons[3] = true;
+        machine.translate_player_controls(0, input, false);
+        assert_eq!(machine.program.toggle_state.schemes[0].shortcut, Some(Shortcut::AntiAir));
     }
 
     #[test]

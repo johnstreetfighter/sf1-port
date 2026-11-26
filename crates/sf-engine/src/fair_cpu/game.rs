@@ -20,6 +20,7 @@ use crate::era::EraFamily;
 use crate::roster::TournamentFighter;
 use crate::route_book::{Reach, Route, Stance};
 
+mod sf1;
 mod sf3;
 mod sf4;
 mod sf5;
@@ -1122,6 +1123,7 @@ pub(super) fn repeat_score(level: Level, worked: u8, last: bool) -> i32 {
 /// the CPU's single choices.
 pub(super) fn plans(fighter: Option<TournamentFighter>, family: Option<EraFamily>) -> &'static [GamePlan] {
     match (fighter, family) {
+        (Some(fighter), Some(EraFamily::Sf1987 | EraFamily::Sf1Plus)) => sf1::plans(fighter),
         (Some(TournamentFighter::Ryu), Some(EraFamily::Sf6)) => &RYU_SF6,
         (Some(fighter), Some(EraFamily::Sf6)) => sf6::plans(fighter),
         (Some(fighter), Some(EraFamily::SfZ)) => sfz::plans(fighter),

@@ -890,7 +890,11 @@ impl Fight {
         if config.preset == RulesetPreset::Faithful1987 && self.setup.players == Players::One {
             return false;
         }
+        if self.machine.stronger_arcade_cpu_uses_p1() {
+            return false;
+        }
         let fair_cpu = config.p2_fair_cpu && (self.setup.players == Players::Two
+            || config.stronger_arcade_cpu()
             || self.machine.era_fighters()[1].style.family != crate::era::EraFamily::Sf1987);
         self.drill.is_some() || self.practice_opponent().is_some()
             || fair_cpu || self.setup.kind == FightKind::TrainingDummy
@@ -2284,7 +2288,7 @@ impl Fight {
     /// is over (Local, Training) or the run has returned to the attract
     /// (Arcade).
     pub fn step(&mut self, assets: &Assets, p1: PlayerInputs, p2: PlayerInputs, start: bool) -> FightFrame {
-        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], false)
+        self.step_with_pad_override(assets, [p1, p2], start, [false; 2], false, false)
     }
 
     pub(crate) fn step_with_pad_override(
@@ -2294,6 +2298,7 @@ impl Fight {
         start: bool,
         bypass: [bool; 2],
         override_p2: bool,
+        override_p1: bool,
     ) -> FightFrame {
         if self.black > 0 {
             self.black -= 1;
@@ -2322,7 +2327,11 @@ impl Fight {
         if !self.over {
             // A Training dummy's pad is held still, and the fair CPU plays
             // P2's in the machine (SP21), so the pad's never reaches it.
-            let p2 = if !override_p2 && (self.setup.kind == FightKind::TrainingDummy || self.setup.config.p2_fair_cpu) {
+            // In native mode 4 the baseline CPU borrows P1 instead, so the
+            // human's second pad reaches the game unchanged.
+            let cpu_owns_p1 = self.machine.stronger_arcade_cpu_uses_p1();
+            let cpu_owns_p2 = self.setup.config.p2_fair_cpu && !cpu_owns_p1;
+            let p2 = if !override_p2 && (self.setup.kind == FightKind::TrainingDummy || cpu_owns_p2) {
                 PlayerInputs::default()
             } else {
                 p2
@@ -2377,9 +2386,9 @@ impl Fight {
                     ..PlayerInputs::default()
                 }));
             let p2 = scripted_p2.unwrap_or(p2);
-            let p1 = self.machine.translate_player_controls(0, p1, bypass[0] || showing || !in_fight);
+            let p1 = self.machine.translate_player_controls(0, p1, bypass[0] || showing || !in_fight || (cpu_owns_p1 && !override_p1));
             let p2 = self.machine.translate_player_controls(1, p2, bypass[1] || scripted_p2.is_some()
-                || !in_fight || (!override_p2 && self.setup.config.p2_fair_cpu));
+                || !in_fight || (!override_p2 && cpu_owns_p2));
             if let Some(coach) = &mut self.coach {
                 coach.input(p1, p1_facing_right(&self.machine));
             }
@@ -2397,7 +2406,7 @@ impl Fight {
             m.set_p2_direction(r, l, d, u);
             m.set_p2_buttons(p2.buttons);
             m.set_cabinet_inputs(coin, false, start1, false, false);
-            m.step_with_training_pad(scripted_p2.is_some() || override_p2);
+            m.step_with_training_pad(scripted_p2.is_some() || override_p2 || override_p1);
             for (slot, (fighter, contact)) in ImpactFighter::SLOTS.into_iter()
                 .zip(m.toggle_state().impact_contacts).enumerate()
             {

@@ -696,7 +696,22 @@ pub fn default_match_config_path() -> PathBuf {
     crate::user_folder::app_dir().join("match_config.toml")
 }
 
+/// A baseline Arcade CPU can borrow the unused first cabinet pad in
+/// mode 4, where the human plays the second pad. Later eras keep their
+/// established routing; the old game and Faithful 1987 never borrow it.
+pub(crate) const fn stronger_arcade_cpu_uses_p1(owned: bool, game_mode: u8, family: crate::era::EraFamily) -> bool {
+    owned && game_mode == 4 && matches!(family, crate::era::EraFamily::Sf1987 | crate::era::EraFamily::Sf1Plus)
+}
+
 impl MatchConfig {
+    /// The stronger Fair CPU may replace a native 1987 Arcade opponent
+    /// only when this overhaul fight gives it the CPU pad (SC21, `#213`).
+    /// Kept separate from era selection: the classic overhaul presets
+    /// still play through the original player's move tables.
+    pub(crate) const fn stronger_arcade_cpu(&self) -> bool {
+        self.stronger_cpu && self.p2_fair_cpu && !matches!(self.preset, RulesetPreset::Faithful1987)
+    }
+
     /// Whether Character Select offers the era, revision, and loadout choices.
     pub const fn era_select_enabled(&self) -> bool {
         matches!(self.preset, RulesetPreset::DefinitiveOverhaul)
@@ -1751,4 +1766,50 @@ pub struct CoreToggleState {
     pub(crate) next_theme_event: u32,
     /// This frame's presentation contact for each affected fighter.
     pub(crate) impact_contacts: [Option<crate::impact::ImpactContact>; 3],
+}
+
+#[cfg(test)]
+mod cpu_policy_tests {
+    use super::{MatchConfig, RulesetPreset};
+
+    #[test]
+    fn native_arcade_cpu_replacement_stays_off_until_the_overhaul_cpu_owns_the_pad() {
+        for preset in [RulesetPreset::DefinitiveOverhaul, RulesetPreset::ClassicCompetitive,
+            RulesetPreset::PureFootsies1987Plus, RulesetPreset::Custom]
+        {
+            let mut config = MatchConfig::from_preset(preset);
+            assert!(!config.stronger_arcade_cpu(), "{preset:?}: factory settings");
+            config.stronger_cpu = true;
+            assert!(!config.stronger_arcade_cpu(), "{preset:?}: no CPU owns the pad");
+            config.p2_fair_cpu = true;
+            assert!(config.stronger_arcade_cpu(), "{preset:?}: explicitly owned by the stronger CPU");
+            config.stronger_cpu = false;
+            assert!(!config.stronger_arcade_cpu(), "{preset:?}: the old game stays selected");
+        }
+    }
+
+    #[test]
+    fn faithful_1987_keeps_its_native_cpu_despite_the_developer_switch_and_pad_flag() {
+        let mut config = MatchConfig::faithful();
+        config.stronger_cpu = true;
+        config.p2_fair_cpu = true;
+        assert!(!config.stronger_arcade_cpu());
+    }
+
+    #[test]
+    fn the_unused_first_pad_is_borrowed_only_by_an_owned_baseline_cpu_in_mode_four() {
+        use crate::era::EraFamily;
+        for family in [EraFamily::Sf1987, EraFamily::Sf1Plus] {
+            assert!(super::stronger_arcade_cpu_uses_p1(true, 4, family));
+            assert!(!super::stronger_arcade_cpu_uses_p1(false, 4, family));
+            for mode in [0, 1, 2] {
+                assert!(!super::stronger_arcade_cpu_uses_p1(true, mode, family));
+            }
+        }
+        for family in [EraFamily::Sf2, EraFamily::SfZ, EraFamily::Sf3,
+            EraFamily::Sf4, EraFamily::Sf5, EraFamily::Sf6, EraFamily::Kessen]
+        {
+            assert!(!super::stronger_arcade_cpu_uses_p1(true, 4, family));
+        }
+    }
 }

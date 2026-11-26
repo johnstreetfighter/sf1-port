@@ -545,6 +545,11 @@ impl ReplayPlayback {
                 let other = 1 - controlled;
                 let (mut pads, start) = self.recorded();
                 let mut bypass = [false; 2];
+                // Only the new baseline Arcade route puts its CPU on P1.
+                // A takeover must suppress that internal CPU as soon as
+                // either live input or the reference/fallback owns its pad.
+                let cpu_on_p1 = self.fight.machine().stronger_arcade_cpu_uses_p1();
+                let mut override_p1 = cpu_on_p1 && controlled == 0;
                 let mut override_p2 = controlled == 1;
                 if let Some(reference) = &mut self.reference {
                     for command in commands_at(&self.replay, self.frame) {
@@ -563,6 +568,13 @@ impl ReplayPlayback {
                                 || live_state.health < recorded_state.health
                                 || live_state.getting_up));
                     reference.step(assets, pads[0], pads[1], start);
+                    if other == 0 && cpu_on_p1 && !self.fallback
+                        && self.fight.machine().utility_takeover_side_available(0)
+                    {
+                        pads[0] = reference.machine().applied_p1_pad();
+                        override_p1 = true;
+                        bypass[0] = true;
+                    }
                     if other == 1
                         && !self.fallback
                         && reference.replay_automated_p2()
@@ -581,11 +593,12 @@ impl ReplayPlayback {
                         None => machine.utility_takeover_pad(other, &mut self.utility),
                     };
                     bypass[other] = true;
+                    override_p1 |= cpu_on_p1 && other == 0;
                     override_p2 |= other == 1;
                 }
                 let result =
                     self.fight
-                        .step_with_pad_override(assets, pads, start, bypass, override_p2);
+                        .step_with_pad_override(assets, pads, start, bypass, override_p2, override_p1);
                 // It watches every frame from the takeover on, the
                 // recording's included, as its own reaction delay shows them.
                 if let Some(cpu) = self.fair_cpu.as_deref_mut() {
