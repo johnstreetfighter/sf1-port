@@ -6252,9 +6252,13 @@ impl Bus<'_> {
     /// the native human plays P2. Resolve the selected style before round
     /// setup too, without relying on an already-created era fighter.
     fn arcade_cpu_uses_p1_pad(&self) -> bool {
+        let mode = self.rb(GAME_MODE);
+        if !self.stronger_arcade_cpu || mode != 4 {
+            return false;
+        }
         self.arcade_opponent().is_some_and(|opponent| {
             crate::config::stronger_arcade_cpu_uses_p1(
-                self.stronger_arcade_cpu, self.rb(GAME_MODE), self.arcade_cpu_family(opponent),
+                self.stronger_arcade_cpu, mode, self.arcade_cpu_family(opponent),
             )
         })
     }

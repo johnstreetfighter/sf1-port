@@ -1855,15 +1855,19 @@ impl PowerOnMachine {
     /// Mode 4 leaves the first cabinet pad free for the stronger baseline
     /// CPU. The human's second pad and its command trackers stay separate.
     pub(crate) fn stronger_arcade_cpu_uses_p1(&self) -> bool {
-        let Some(opponent) = self.arcade_opponent() else { return false };
         let config = self.program.match_config;
         let mode = self.program.work[0x4002];
+        let owned = config.stronger_arcade_cpu();
+        if !owned || mode != 4 {
+            return false;
+        }
+        let Some(opponent) = self.arcade_opponent() else { return false };
         let family = crate::config::arcade_cpu_family(
             config.roster, crate::era_fight::EraRules::from(config).enabled,
             self.program.toggle_state.era.selections, opponent, self.arcade_ladder_step(),
         );
         crate::config::stronger_arcade_cpu_uses_p1(
-            config.stronger_arcade_cpu(), mode, family,
+            owned, mode, family,
         )
     }
 
@@ -3149,7 +3153,7 @@ mod tests {
     #[test]
     fn mode_four_pad_ownership_obeys_classic_rules_and_unsupported_style_fallbacks() {
         use crate::era::{Loadout, Revision, StylePick};
-        use crate::roster::TournamentFighter::Retsu;
+        use crate::roster::TournamentFighter::{Geki, Retsu};
         let mut config = crate::config::MatchConfig::from_preset(crate::config::RulesetPreset::ClassicCompetitive);
         config.stronger_cpu = true;
         config.p2_fair_cpu = true;
@@ -3162,10 +3166,11 @@ mod tests {
         config.stronger_cpu = true;
         config.p2_fair_cpu = true;
         config.roster.what_if_styles = false;
-        let mut fallback = mode_four_arcade_machine(config, Retsu);
+        assert!(!crate::era::families(Geki).contains(&crate::era::EraFamily::Sf6));
+        let mut fallback = mode_four_arcade_machine(config, Geki);
         fallback.program.toggle_state.era.selections[0] = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
         fallback.program.toggle_state.era.fighters[0].style = StylePick::for_revision(Revision::Sf6, Loadout::Standard);
-        assert!(fallback.stronger_arcade_cpu_uses_p1(), "unavailable SF6 Retsu falls back to SF1+");
+        assert!(fallback.stronger_arcade_cpu_uses_p1(), "unavailable SF6 Geki falls back to SF1+");
     }
 
     #[test]
