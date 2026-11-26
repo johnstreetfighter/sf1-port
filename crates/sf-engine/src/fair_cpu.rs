@@ -1874,6 +1874,13 @@ impl FairCpu {
             self.seeded = true;
         }
         let stronger = self.stronger(ctx);
+        // Its own hit reaction is felt now; opponent/contact evidence
+        // remains delayed. Other families keep their original feedback.
+        let own_reacting = if stronger && ctx.baseline_rules() {
+            self.felt(step, view).me.reacting()
+        } else {
+            view.me.reacting()
+        };
         self.learn(view, before, stronger && ctx.baseline_rules());
         // Whether its pads come from a game plan, before being hit ends it.
         let in_plan = self.game.is_some();
@@ -1900,13 +1907,13 @@ impl FairCpu {
                     self.jump_began = began;
                 }
             }
-            if view.me.reacting() {
+            if own_reacting {
                 // Being hit ends whatever it was following.
                 self.end_game_plan();
             }
             self.credit_answer(step, view);
         }
-        if view.me.reacting() {
+        if own_reacting {
             self.route = None;
             self.reset_wait = None;
             self.bait_until = 0;
@@ -2985,7 +2992,10 @@ impl FairCpu {
                 return;
             }
         };
-        let best = if view.me.active { best.max(((view.me.front - from) * view.toward()).clamp(16, 120)) } else { best };
+        // Its own visible facing defines its attack-box direction even
+        // when the delayed opponent crosses during that normal.
+        let forward = if from_stance { if view.me.facing_left { -1 } else { 1 } } else { view.toward() };
+        let best = if view.me.active { best.max(((view.me.front - from) * forward).clamp(16, 120)) } else { best };
         self.last_normal = Some(Normal { crouch, button: b, pressed, from: Some(from), best });
     }
 
@@ -4993,6 +5003,113 @@ mod tests {
                                 "the incomplete sample is abandoned"
                             );
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The same visible own normal keeps its direction while the delayed
+    /// opponent crosses its drawn center. An idle plan protects the normal
+    /// record while decide's real learning call observes every adjacent pose.
+    fn sc21_decide_reach_after_foe_crosses(
+        context: &Context,
+        forced: bool,
+        mirrored: bool,
+        crossed: bool,
+    ) -> FairCpu {
+        let mirror = |x| if mirrored { 600 - x } else { x };
+        let view = |frame, x, attacking, active| {
+            let mut me = body(mirror(x));
+            me.facing_left = mirrored;
+            if attacking {
+                me.move_id = 0x0f;
+                me.state = 0xc2;
+                me.active = active;
+                me.front = mirror(370);
+            }
+            Percept {
+                frame,
+                fighting: true,
+                me,
+                // The own attack pose crosses a stationary foe's drawn center.
+                foe: body(mirror(if crossed { 306 } else { 500 })),
+                ..Percept::default()
+            }
+        };
+        let mut cpu = FairCpu::seeded(17).force_stronger(forced);
+        cpu.fighter = context.kit.fighter;
+        cpu.plan = Plan::of(PlanKind::Idle, &[0; 12]);
+        cpu.settle = 1_000;
+        cpu.reach[0][1] = 77;
+        cpu.reach_seen[0][1] = false;
+        for frame in 1..=40 {
+            cpu.observe(view(frame, 300, false, false));
+        }
+        cpu.last_normal = Some(Normal {
+            crouch: false,
+            button: 1,
+            pressed: 40,
+            from: None,
+            best: 0,
+        });
+        let mut prior = Some(view(40, 300, false, false));
+        for shown in [
+            view(41, 312, true, false),
+            view(42, 312, true, true),
+            view(43, 312, true, false),
+            view(44, 300, false, false),
+        ] {
+            cpu.observe(shown);
+            assert_eq!(cpu.decide(shown.frame + 12, shown, prior, context), 0);
+            prior = Some(shown);
+        }
+        assert!(cpu.last_normal.is_none(), "the completed normal was learned once");
+        assert!(cpu.reach_seen[0][1]);
+        cpu
+    }
+
+    #[test]
+    fn sc21_effective_baseline_learns_own_normal_reach_when_the_delayed_foe_crosses() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_approach_context(revision, configured).for_stronger();
+                for mirrored in [false, true] {
+                    for crossed in [false, true] {
+                        let cpu = sc21_decide_reach_after_foe_crosses(&context, forced, mirrored, crossed);
+                        // Stance center300, first attack center312, active tip370:
+                        // seventy pixels in its own visible attack direction.
+                        assert_eq!(cpu.reach[0][1], 70, "{revision:?} configured{configured} forced{forced} mirrored{mirrored} crossed{crossed}: own reach is independent of the opponent's side");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_own_facing_reach_correction_keeps_off_and_later_learning_exact() {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let hash = |cpu: &FairCpu| {
+            let mut out = CanonicalHasher::new();
+            cpu.encode(&mut out);
+            out.finish()
+        };
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let off = sc21_approach_context(revision, false);
+            let plain = Context::new(off.level, off.kit, &CoreToggles::definitive());
+            for mirrored in [false, true] {
+                for crossed in [false, true] {
+                    let expected = if crossed { 16 } else { 58 };
+                    let old = sc21_decide_reach_after_foe_crosses(&plain, false, mirrored, crossed);
+                    let attached = sc21_decide_reach_after_foe_crosses(&off, false, mirrored, crossed);
+                    assert_eq!(old.reach[0][1], expected);
+                    assert_eq!(attached.reach[0][1], expected);
+                    assert_eq!(hash(&old), hash(&attached), "{revision:?} mirrored{mirrored} crossed{crossed}: deferred baseline identity keeps the old controller exact");
+                    for forced in [false, true] {
+                        let mut later = sf6_ctx(Level::VeryHard).for_stronger();
+                        later.stronger = !forced;
+                        let cpu = sc21_decide_reach_after_foe_crosses(&later, forced, mirrored, crossed);
+                        assert_eq!(cpu.reach[0][1], expected, "configured/forced later style keeps first-pose origin and target-side sign");
                     }
                 }
             }
@@ -7601,6 +7718,165 @@ mod tests {
                     a.seen = b.seen;
                     assert_eq!(a, b, "OFF/later decisions and RNG keep the delayed-own gate");
                 }
+            }
+        }
+    }
+
+    // The Gen native witness was old move0x34/state0x89 after its actual
+    // body had returned to move1/state0x12. These tests enter real decide,
+    // retaining delayed foe/contact history; they isolate cleanup, not Judge.
+    fn sc21_hurt_body(hurt: bool) -> Body {
+        if hurt { Body { move_id: 0x34, state: 0x89, ..body(200) } }
+        else { Body { move_id: 1, state: 0x12, ..body(200) } }
+    }
+
+    fn sc21_hurt_context(revision: crate::era::Revision, configured: bool) -> Context {
+        let mut context = sc21_own_advance_context(TournamentFighter::Gen, revision, configured, true, false).for_stronger();
+        context.foe = Some((TournamentFighter::Ryu, (revision, crate::era::Loadout::Standard)));
+        context
+    }
+
+    fn sc21_hurt_fixture(context: &Context, delayed_hurt: bool, current_hurt: bool, forced: bool) -> (FairCpu, Percept, Percept) {
+        let mut cpu = FairCpu::seeded(17).force_stronger(forced);
+        cpu.fighter = context.kit.fighter;
+        for frame in 1..=99 {
+            cpu.observe(Percept {
+                frame, fighting: true,
+                me: sc21_hurt_body(if frame <= 88 { delayed_hurt } else { current_hurt }),
+                // A younger foe on the opposite side must not become its aim.
+                foe: body(if frame <= 88 { 400 } else { 100 }),
+                ..Default::default()
+            });
+        }
+        let (index, entry) = game::plans(context.kit.fighter, context.family).iter().enumerate()
+            .find(|(_, p)| p.situation == Situation::NeutralFar && matches!(p.steps[0].act, game::Act::Reach { .. }))
+            .expect("Gen's actual baseline table has an ordinary far Reach");
+        assert!(matches!(entry.steps[0].act, game::Act::Reach { .. }));
+        cpu.game = Some(game::Running { plan: index as u8, step: 0, acted: true, pressed: 90, began: 90, hit: false });
+        cpu.plan = Plan::of(PlanKind::Walk, &[RIGHT; 8]);
+        cpu.plan.at = 1;
+        cpu.settle = 0;
+        (cpu, cpu.seen(88).unwrap(), cpu.seen(87).unwrap())
+    }
+
+    fn sc21_hurt_owned_route(cpu: &mut FairCpu, context: &Context) -> (game::RouteRun, game::Reset) {
+        use crate::route_book::{Reach, Stance};
+        let fighter = context.kit.fighter.unwrap();
+        let (revision, loadout) = context.style.unwrap();
+        let book = crate::route_book::book(fighter, revision, loadout).expect("Gen's real SF1+ book");
+        let (index, route) = book.routes.iter().enumerate().find(|(_, r)| r.reach == Reach::Ground
+            && !r.corner && r.super_spent == 0 && r.drive_spent == 0 && r.stances.contains(&Stance::Standing)
+            && !r.cuts.is_empty()).expect("an actual route with a recorded reset cut");
+        assert!(context.true_combos && context.cancels && route.hits <= context.level.route_hits());
+        let plan = game::plans(context.kit.fighter, context.family).iter().position(|p|
+            matches!(p.steps[0].act, game::Act::Route(Reach::Ground))).expect("the actual own-book plan");
+        cpu.game = Some(game::Running { plan: plan as u8, step: 0, acted: true, pressed: 90, began: 90, hit: false });
+        let run = game::RouteRun::new(fighter, revision, loadout, index as u8, 0, route.len() as u16, true);
+        let cut = &route.cuts[0];
+        let reset = game::Reset { kind: ResetKind::Bait, free: cut.free, ahead: cut.ahead, gap: cut.gap };
+        assert!(reset.free > 5, "the recorded reset is still waiting at step100");
+        (run, reset)
+    }
+
+    #[test]
+    fn sc21_baseline_decide_own_hurt_feedback_ends_or_keeps_real_game_run_now() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for forced in [false, true] {
+                let context = sc21_hurt_context(revision, !forced);
+                for delayed_hurt in [false, true] {
+                    for current_hurt in [false, true] {
+                        let (mut cpu, view, before) = sc21_hurt_fixture(&context, delayed_hurt, current_hurt, forced);
+                        let run = cpu.game;
+                        let pad = cpu.decide(100, view, Some(before), &context);
+                        assert_eq!(cpu.game, if current_hurt { None } else { run },
+                            "{revision:?}/forced{forced}/old{delayed_hurt}/now{current_hurt}: cleanup follows actual own reaction");
+                        assert_eq!(pad, RIGHT, "the already queued native walk still uses the delayed foe");
+                        assert_eq!(cpu.plan.at, 2, "the real decide/next_pad chain consumed one queued pad");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_decide_own_hurt_feedback_keeps_or_clears_actual_route_and_reset_bait() {
+        for forced in [false, true] {
+            let context = sc21_hurt_context(crate::era::Revision::Sf1Plus, !forced);
+            for reset_phase in [false, true] {
+                for delayed_hurt in [false, true] {
+                    for current_hurt in [false, true] {
+                        let (mut cpu, view, before) = sc21_hurt_fixture(&context, delayed_hurt, current_hurt, forced);
+                        let (route, reset) = sc21_hurt_owned_route(&mut cpu, &context);
+                        let run = cpu.game;
+                        let expected_route_pad = route.pad().unwrap();
+                        if reset_phase {
+                            cpu.reset_wait = Some(game::ResetWait { reset, cut: 95, facing_right: true, hit: false });
+                            cpu.plan = cpu.bait_plan(reset, 95);
+                        } else {
+                            cpu.route = Some(route);
+                        }
+                        let waiting = cpu.reset_wait;
+                        let bait = cpu.bait_until;
+                        let pad = cpu.decide(100, view, Some(before), &context);
+                        if current_hurt {
+                            assert!(cpu.game.is_none() && cpu.route.is_none() && cpu.reset_wait.is_none(), "current own hit cancels every active intent phase");
+                            assert_eq!(cpu.bait_until, 0);
+                        } else {
+                            assert_eq!(cpu.game, run, "stale own reaction cannot discard the live own-book intent");
+                            if reset_phase {
+                                assert!(cpu.route.is_none());
+                                assert_eq!(cpu.reset_wait, waiting, "the real recorded cut keeps waiting");
+                                assert_eq!(cpu.bait_until, bait, "its deliberately held bait is not erased by old hurt");
+                            } else {
+                                let next = cpu.route.expect("the actual owned route continues");
+                                assert_eq!(next.index, route.index);
+                                assert_eq!(next.at, route.at + 1);
+                                assert_eq!(pad, expected_route_pad, "a real book pad was consumed");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_decide_own_hurt_missing_history_retains_original_feedback() {
+        let context = sc21_hurt_context(crate::era::Revision::Sf1Plus, true);
+        for missing in [false, true] {
+            for delayed_hurt in [false, true] {
+                let (mut cpu, view, before) = sc21_hurt_fixture(&context, delayed_hurt, !delayed_hurt, false);
+                if missing { cpu.seen[99usize % RING] = Percept::default(); }
+                else { let mut now = cpu.seen(99).unwrap(); now.fighting = false; cpu.observe(now); }
+                assert_eq!(cpu.felt(100, view), view);
+                let run = cpu.game;
+                cpu.decide(100, view, Some(before), &context);
+                assert_eq!(cpu.game, if delayed_hurt { None } else { run }, "fallback preserves the available delayed feedback");
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_decide_own_hurt_change_preserves_off_and_later_state_and_rng() {
+        let baseline = sc21_hurt_context(crate::era::Revision::Sf1Plus, true);
+        let mut off = baseline; off.stronger = false;
+        let mut later = sf6_ctx(Level::VeryHard); later.pure_footsies = true;
+        let later = later.for_stronger();
+        for context in [off, later] {
+            assert!(!context.stronger || !context.baseline_rules());
+            for delayed_hurt in [false, true] {
+                let (mut a, view, before) = sc21_hurt_fixture(&baseline, delayed_hurt, !delayed_hurt, false);
+                // Keep an actual queued sequence noninterruptible, avoiding
+                // unrelated later-era own-readiness selection differences.
+                a.plan = Plan::of(PlanKind::Act, &[0; 8]); a.plan.at = 1;
+                a.bait_until = 160;
+                let mut b = a;
+                let mut now = b.seen(99).unwrap(); now.me = view.me; b.observe(now);
+                let answer_a = a.decide(100, view, Some(before), &context);
+                let answer_b = b.decide(100, view, Some(before), &context);
+                assert_eq!(answer_a, answer_b);
+                a.seen = b.seen;
+                assert_eq!(a, b, "OFF/later cleanup, queued pad and full RNG/state keep the delayed-own semantics");
             }
         }
     }

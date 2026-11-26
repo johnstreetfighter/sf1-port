@@ -889,7 +889,8 @@ fn native_arcade_modes_two_and_four_consume_stronger_pads_for_every_fighter_and_
                         sparring,
                     );
                     eprintln!("SC21 Arcade {fighter:?} mode{mode} level{level}: {out:?}");
-                    assert!(out.frames >= 600 && out.cpu_table_frames > 0 && out.pad_frames > 0 && out.pad_started_attacks > 0, "native CPU_STRUCT consumes its pad into real attacks: {fighter:?} mode{mode} level{level}: {out:?}");
+                    // A complete match can end before the observation minimum.
+                    assert!(out.frames > 0 && (out.frames >= 600 || out.matches_completed > 0) && out.cpu_table_frames > 0 && out.pad_frames > 0 && out.pad_started_attacks > 0, "native CPU_STRUCT consumes its pad into real attacks: {fighter:?} mode{mode} level{level}: {out:?}");
                     assert!(
                         out.human_attacks > 0 && out.human_moves > 0,
                         "mode{mode} independently consumes the scripted human pad: {out:?}"
@@ -919,7 +920,7 @@ fn native_sf1plus_arcade_modes_two_and_four_consume_every_fighters_stronger_pad(
                     sparring,
                 );
                 eprintln!("SC21 SF1+ Arcade {fighter:?} mode{mode} level4: {out:?}");
-                assert!(out.frames >= 600 && out.cpu_table_frames > 0 && out.pad_frames > 0 && out.pad_started_attacks > 0,
+                assert!(out.frames > 0 && (out.frames >= 600 || out.matches_completed > 0) && out.cpu_table_frames > 0 && out.pad_frames > 0 && out.pad_started_attacks > 0,
                     "SF1+ native CPU_STRUCT consumes its pad into real attacks: {fighter:?} mode{mode}: {out:?}");
                 assert!(
                     out.human_attacks > 0 && out.human_moves > 0,
