@@ -1085,6 +1085,7 @@ const SF2_ADON: [GamePlan; 6] = [ROUTE, FRAME_TRAP, WALK_THROW, BAIT, JUMP_IN, J
 pub(super) fn plan_rate(fighter: Option<TournamentFighter>, family: Option<EraFamily>) -> u32 {
     match (fighter, family) {
         (Some(TournamentFighter::Mike), Some(EraFamily::Sf2)) => 40,
+        (Some(TournamentFighter::Geki), Some(EraFamily::Sf1Plus)) => 40,
         _ => 100,
     }
 }
