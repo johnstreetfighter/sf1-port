@@ -366,6 +366,9 @@ pub(super) enum Act {
     Reach { crouch: bool, button: usize },
     /// One of the CPU's actions, pressed as it presses it today.
     Do(Choice),
+    /// Jump in only from this gap when ready, using its felt own place
+    /// and the delayed opponent. Otherwise the game plan ends.
+    JumpIn { gap: (i16, i16) },
     /// A route from the fighter's route book that starts this way, entered
     /// whole from its opener: its first cancel is committed before any hit
     /// is seen. With no route allowed, the plan ends.
@@ -413,6 +416,7 @@ impl Act {
         matches!(
             self,
             Act::Reach { .. }
+                | Act::JumpIn { .. }
                 | Act::Route(_)
                 | Act::Meaty { .. }
                 | Act::Edge

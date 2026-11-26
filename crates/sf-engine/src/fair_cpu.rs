@@ -2560,6 +2560,21 @@ impl FairCpu {
                     }
                     Outcome::Nothing
                 }
+                (Act::JumpIn { gap }, false) => {
+                    self.game = Some(run);
+                    if !self.ready(step, view, stronger) {
+                        return Some(wait);
+                    }
+                    let felt = self.felt(step, view);
+                    if !(gap.0..=gap.1).contains(&felt.gap()) {
+                        break;
+                    }
+                    run.acted = true;
+                    run.pressed = step;
+                    let plan = self.plan_for(Choice::JumpIn, step, felt, ctx, false);
+                    self.game = Some(run);
+                    return Some(plan);
+                }
                 (Act::Do(choice), false) => {
                     self.game = Some(run);
                     if !self.ready(step, view, stronger) {
@@ -8067,6 +8082,365 @@ mod tests {
                 }
             }
             assert!(pulses > 0, "the real SF1+ throw-tech branch must actually be exercised");
+        }
+    }
+
+    fn sc21_guarded_jump_location(context: &Context) -> (u8, u8) {
+        let table = game::plans(context.kit.fighter, context.family);
+        let (plan, step) = table.iter().enumerate()
+            .find_map(|(plan, entry)| entry.steps.iter()
+                .position(|step| matches!(step.act, game::Act::JumpIn { .. }))
+                .map(|step| (plan, step)))
+            .expect("Mike has an authored bounded jump action");
+        assert!(step > 0);
+        assert!(matches!(table[plan].steps[step - 1].act, game::Act::Space(120)));
+        (plan as u8, step as u8)
+    }
+
+    fn sc21_guarded_jump_fixture(
+        revision: crate::era::Revision,
+        gap: i16,
+        crossed: bool,
+        mirrored: bool,
+        seed: u64,
+    ) -> (FairCpu, Percept, Context) {
+        let context = sc21_hit_context(TournamentFighter::Mike, revision, Level::Hard);
+        let x = |value| if mirrored { 600 - value } else { value };
+        let view = Percept {
+            frame: 88,
+            fighting: true,
+            me: body(x(200)),
+            foe: body(x(330)),
+            ..Default::default()
+        };
+        let mut cpu = FairCpu::seeded(seed);
+        for frame in 1..=98 {
+            cpu.observe(Percept { frame, ..view });
+        }
+        let own_x = if crossed { 340 + gap } else { 320 - gap };
+        // Poison younger opponent/projectile history; only this own body
+        // belongs in felt. The delayed opponent stays at x330 (or its mirror).
+        cpu.observe(Percept {
+            frame: 99,
+            me: body(x(own_x)),
+            foe: Body { move_id: 0x35, state: 0x89, active: true, ..body(x(-250)) },
+            shot: true,
+            shot_x: x(own_x),
+            shot_half: 20,
+            ..view
+        });
+        let (plan, step) = sc21_guarded_jump_location(&context);
+        cpu.game = Some(game::Running { plan, step, acted: false, pressed: 0, began: 80, hit: false });
+        cpu.judged.situation = Situation::NeutralFar;
+        cpu.plan_worked[usize::from(plan)] = 2;
+        cpu.last_normal = Some(Normal { crouch: true, button: 0, pressed: 4, from: Some(x(200)), best: 40 });
+        (cpu, view, context)
+    }
+
+    #[test]
+    fn sc21_guarded_jump_uses_the_existing_generator_with_the_same_felt_percept() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for gap in [70, 120, 150] {
+                for crossed in [false, true] {
+                    for mirrored in [false, true] {
+                        for seed in [17, 29, 37] {
+                            let (mut actual, view, context) = sc21_guarded_jump_fixture(revision, gap, crossed, mirrored, seed);
+                            let felt = actual.felt(100, view);
+                            assert_eq!(felt.gap(), gap);
+                            assert_eq!(felt.foe, view.foe);
+                            assert_ne!(felt.shot, actual.seen(99).unwrap().shot);
+                            if crossed {
+                                assert_ne!(felt.toward(), view.toward(), "own crossing must exercise the new action's heading");
+                            }
+                            let mut expected = actual;
+                            let reference = expected.plan_for(Choice::JumpIn, 100, felt, &context, false);
+                            let mut run = expected.game.unwrap();
+                            run.acted = true;
+                            run.pressed = 100;
+                            expected.game = Some(run);
+                            let generated = actual.follow_game_plan(100, view, &context).expect("the inclusive jump band admits this action");
+                            assert_eq!(generated, reference, "entire pad stream, kind, length and answer flag stay the existing generator's");
+                            assert_eq!(generated.pads[0], UP | if felt.toward() > 0 { RIGHT } else { LEFT });
+                            assert_eq!(actual, expected, "all CPU fields, RNG, settle and last-normal effects match the same-felt generator reference");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_rejects_outside_the_band_without_action_or_credit() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for gap in [20, 69, 151, 260] {
+                for mirrored in [false, true] {
+                    let (mut actual, view, context) = sc21_guarded_jump_fixture(revision, gap, false, mirrored, 17);
+                    assert_eq!(view.gap(), 120, "all range-boundary cases retain this same delayed view");
+                    assert_eq!(actual.felt(100, view).gap(), gap, "only the latest own body moves the admission across its boundary");
+                    actual.answered_plan = Some((2, 180));
+                    let mut expected = actual;
+                    expected.end_game_plan();
+                    assert_eq!(actual.follow_game_plan(100, view, &context), None);
+                    assert_eq!(actual, expected, "only ordinary non-hit plan-end bookkeeping is allowed: no action, settle, RNG, route or answer credit");
+                    assert_eq!(actual.plan_worked[usize::from(sc21_guarded_jump_location(&context).0)], 0);
+                    assert_eq!(actual.last_plan, sc21_guarded_jump_location(&context).0 + 1);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_checks_range_after_own_readiness() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let (mut actual, view, context) = sc21_guarded_jump_fixture(revision, 260, false, false, 17);
+            let latest = actual.seen(99).unwrap();
+            actual.observe(Percept { me: Body { move_id: 0x35, state: 0x89, ..latest.me }, ..latest });
+            let before = actual;
+            let waiting = actual.follow_game_plan(100, view, &context).expect("recover before deciding whether to discard the jump");
+            assert_eq!(waiting, Plan::of(PlanKind::Idle, &[0]));
+            assert_eq!(actual, before, "a busy own body retains the unacted game step without draws or bookkeeping");
+            actual.observe(latest);
+            let mut expected = actual;
+            expected.end_game_plan();
+            assert_eq!(actual.follow_game_plan(100, view, &context), None);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_space_timeout_cannot_launch_from_a_far_gap() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for mirrored in [false, true] {
+                let (mut actual, view, context) = sc21_guarded_jump_fixture(revision, 260, false, mirrored, 17);
+                let (plan, jump) = sc21_guarded_jump_location(&context);
+                actual.game = Some(game::Running { plan, step: jump - 1, acted: true, pressed: 10, began: 10, hit: false });
+                let rng = actual.rng;
+                let walking = actual.follow_game_plan(100, view, &context).expect("at exactly90 frames Space still returns its bounded walk");
+                assert_eq!(walking.kind, PlanKind::Walk);
+                assert_eq!(walking.len, game::EDGE_WALK as u8);
+                assert_eq!(actual.game.unwrap().step, jump - 1);
+                assert_eq!(actual.rng, rng);
+                actual.plan = walking;
+                let latest = actual.seen(99).unwrap();
+                for step in 100..108 {
+                    let pad = actual.next_pad(step, view, &context);
+                    assert_eq!(pad, if mirrored { LEFT } else { RIGHT });
+                    actual.observe(Percept { frame: step, ..latest });
+                }
+                assert!(actual.plan.done());
+                let delayed = actual.seen(96).unwrap();
+                assert_eq!(actual.felt(108, delayed).gap(), 260);
+                let mut expected = actual;
+                expected.end_game_plan();
+                assert_eq!(actual.follow_game_plan(108, delayed, &context), None, "Space's deadline may advance, but the following action rejects the far gap");
+                assert_eq!(actual, expected);
+                assert_eq!(actual.rng, rng);
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_space_corner_exit_rejects_close_and_arrival_can_jump() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for mirrored in [false, true] {
+                let (mut close, view, context) = sc21_guarded_jump_fixture(revision, 20, false, mirrored, 17);
+                close.game.as_mut().unwrap().step = sc21_guarded_jump_location(&context).1 - 1;
+                close.judged.foe_cornered = true;
+                let mut expected = close;
+                expected.end_game_plan();
+                assert_eq!(close.follow_game_plan(100, view, &context), None, "Space must not back out of the corner, nor jump below its band");
+                assert_eq!(close, expected);
+
+                let (mut arrived, view, context) = sc21_guarded_jump_fixture(revision, 120, false, mirrored, 17);
+                arrived.game.as_mut().unwrap().step = sc21_guarded_jump_location(&context).1 - 1;
+                let mut reference = arrived;
+                let expected = reference.plan_for(Choice::JumpIn, 100, reference.felt(100, view), &context, false);
+                let mut run = reference.game.unwrap();
+                run.step = sc21_guarded_jump_location(&context).1;
+                run.acted = true;
+                run.pressed = 100;
+                reference.game = Some(run);
+                assert_eq!(arrived.follow_game_plan(100, view, &context), Some(expected));
+                assert_eq!(arrived, reference, "reaching Space's target enters the same-felt jump in the same interpreter call");
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_uses_only_latest_own_body_and_falls_back_without_it() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for mirrored in [false, true] {
+                let (base, view, context) = sc21_guarded_jump_fixture(revision, 120, true, mirrored, 17);
+                let latest = base.seen(99).unwrap();
+                let mut near = base;
+                let mut far = base;
+                near.observe(Percept { foe: body(latest.me.x + 11), shot: false, ..latest });
+                far.observe(Percept { foe: Body { active: true, move_id: 0x10, state: 0x10, ..body(latest.me.x - 1000) }, ..latest });
+                assert_eq!(near.follow_game_plan(100, view, &context), far.follow_game_plan(100, view, &context), "younger foe place, attack and projectile do not alter admission or jump pads");
+                assert_eq!(near.rng, far.rng);
+                assert_eq!(near.game, far.game);
+
+                for latest_fighting in [false, true] {
+                    let mut fallback = base;
+                    if latest_fighting {
+                        fallback.seen[99 % RING] = Percept::default();
+                    } else {
+                        fallback.observe(Percept { fighting: false, ..latest });
+                    }
+                    let mut reference = fallback;
+                    let expected = reference.plan_for(Choice::JumpIn, 100, view, &context, false);
+                    let mut run = reference.game.unwrap();
+                    run.acted = true;
+                    run.pressed = 100;
+                    reference.game = Some(run);
+                    assert_eq!(fallback.follow_game_plan(100, view, &context), Some(expected));
+                    assert_eq!(fallback, reference, "missing or nonfighting own observation retains the original delayed Percept");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_keeps_commit_focus_and_plain_action_permissions() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let (base, view, context) = sc21_guarded_jump_fixture(revision, 120, false, false, 17);
+            let (index, step) = sc21_guarded_jump_location(&context);
+            let plan = &game::plans(context.kit.fighter, context.family)[usize::from(index)];
+            let jump = &plan.steps[usize::from(step)];
+            assert!(jump.act.commits());
+            assert!(!jump.act.meets_the_rise());
+            assert!(!jump.act.needs_special());
+            assert_eq!(focus::step_focus(jump), Focus::Attack);
+            assert!(plan.playable(false, |_| false, |_| false, |_| false));
+            assert!(plan.keeps_to_normals(|_| false));
+            for incoming in ["attack", "projectile", "knockdown"] {
+                let mut actual = base;
+                let mut threat = view;
+                match incoming {
+                    "attack" => threat.foe = Body { move_id: 0x10, state: 0x10, active: true, ..view.foe },
+                    "projectile" => {
+                        threat.shot = true;
+                        threat.shot_x = view.me.x + 20;
+                        assert!(threat.shot_coming());
+                    }
+                    _ => actual.judged.situation = Situation::OpponentKnockedDown,
+                }
+                let mut expected = actual;
+                expected.end_game_plan();
+                assert_eq!(actual.follow_game_plan(100, threat, &context), None, "new jump obeys the existing committing-action abort checks");
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_completion_does_not_invent_a_hit_from_an_old_reaction() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let (mut actual, view, context) = sc21_guarded_jump_fixture(revision, 120, false, false, 17);
+            let pads = actual.follow_game_plan(100, view, &context).unwrap();
+            actual.plan = pads;
+            for step in 100..100 + u32::from(pads.len) {
+                assert_eq!(actual.next_pad(step, view, &context), pads.pads[(step - 100) as usize]);
+            }
+            assert!(actual.plan.done());
+            let reaction = Percept { frame: 132, foe: Body { move_id: 0x35, state: 0x89, health: 44, ..view.foe }, ..view };
+            let mut expected = actual;
+            expected.end_game_plan();
+            assert_eq!(actual.follow_game_plan(144, reaction, &context), None);
+            assert_eq!(actual, expected, "jump completion keeps legacy Nothing semantics, even if a delayed reaction is present");
+            assert_eq!(actual.plan_worked[usize::from(sc21_guarded_jump_location(&context).0)], 0);
+            assert!(actual.answered_plan.is_none());
+        }
+    }
+
+    #[test]
+    fn sc21_guarded_jump_leaves_existing_do_jump_in_off_and_later_paths_exact() {
+        let mut contexts = Vec::new();
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let mut off = sc21_hit_context(TournamentFighter::Retsu, revision, Level::Hard);
+            off.stronger = false;
+            contexts.push(off);
+        }
+        let mut later = ctx(Level::Hard);
+        later.kit = Kit::of(TournamentFighter::Retsu, RulesetPreset::DefinitiveOverhaul, None);
+        later.family = Some(crate::era::EraFamily::Sf2);
+        later.stronger = true;
+        contexts.push(later);
+        for context in contexts {
+            for mirrored in [false, true] {
+                let (mut actual, view, _) = sc21_guarded_jump_fixture(crate::era::Revision::Sf1Plus, 260, true, mirrored, 17);
+                let (index, step) = game::plans(context.kit.fighter, context.family).iter().enumerate()
+                    .find_map(|(index, entry)| entry.steps.iter().position(|step| step.act == game::Act::Do(Choice::JumpIn)).map(|step| (index, step)))
+                    .expect("this unchanged table has a legacy Do jump-in");
+                actual.game = Some(game::Running { plan: index as u8, step: step as u8, acted: false, pressed: 0, began: 80, hit: false });
+                let mut expected = actual;
+                let reference = expected.plan_for(Choice::JumpIn, 100, view, &context, false);
+                let mut run = expected.game.unwrap();
+                run.acted = true;
+                run.pressed = 100;
+                expected.game = Some(run);
+                assert_eq!(actual.follow_game_plan(100, view, &context), Some(reference));
+                assert_eq!(actual, expected, "old Do keeps delayed geometry, full pad stream and all CPU/RNG state");
+            }
+        }
+    }
+
+
+    #[test]
+    fn sc21_guarded_jump_appends_long_approach_without_replacing_the_direct_jump() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let (mut direct_cpu, view, context) = sc21_guarded_jump_fixture(revision, 260, true, false, 17);
+            let table = game::plans(context.kit.fighter, context.family);
+            let (long_index, _) = sc21_guarded_jump_location(&context);
+            assert_eq!(table.len(), 12);
+            assert_eq!(usize::from(long_index), table.len() - 1, "the new intent is appended after all original indices");
+            let direct = &table[9];
+            assert_eq!((direct.score, direct.gap, direct.corner_bonus, direct.cornered_only), (54, (70, 150), 0, false));
+            assert_eq!(direct.steps.len(), 1);
+            assert_eq!(direct.steps[0].act, game::Act::Do(Choice::JumpIn));
+            assert_eq!(direct.steps[0].then, [None; 5]);
+            assert_eq!(direct.lean, habit::Lean::JumpIn);
+            assert_eq!(direct.from, Level::Easy);
+            direct_cpu.game = Some(game::Running { plan: 9, step: 0, acted: false, pressed: 0, began: 80, hit: false });
+            let mut reference = direct_cpu;
+            let expected = reference.plan_for(Choice::JumpIn, 100, view, &context, false);
+            let mut run = reference.game.unwrap();
+            run.acted = true;
+            run.pressed = 100;
+            reference.game = Some(run);
+            assert_eq!(direct_cpu.follow_game_plan(100, view, &context), Some(expected));
+            assert_eq!(direct_cpu, reference, "direct9 retains old delayed geometry even with felt gap260");
+
+            for gap in [150, 151, 260, 261] {
+                let mut picked_direct = false;
+                let mut picked_long = false;
+                let mut picked_any = false;
+                // A fixed bounded set covers actual utility admission without
+                // depending on one particular noise/quality winner.
+                for seed in 1..=64 {
+                    let (mut cpu, _, context) = sc21_guarded_jump_fixture(revision, 120, false, false, seed);
+                    let view = Percept { frame: 88, fighting: true, me: body(200), foe: body(210 + gap), ..Default::default() };
+                    for frame in 1..=99 { cpu.observe(Percept { frame, ..view }); }
+                    cpu.game = None;
+                    cpu.plan_worked = [0; game::PLAN_SLOTS];
+                    cpu.last_plan = 0;
+                    if cpu.start_game_plan(100, view, &context) {
+                        picked_any = true;
+                        let index = cpu.game.unwrap().plan;
+                        if index == 9 {
+                            assert_eq!(gap, 150, "only the direct band reaches this tested endpoint");
+                            picked_direct = true;
+                        }
+                        if index == long_index {
+                            assert!((151..=260).contains(&gap));
+                            picked_long = true;
+                        }
+                    }
+                }
+                assert!(picked_any, "the real selector must produce a plan in this bounded set");
+                assert_eq!(picked_direct, gap == 150);
+                assert_eq!(picked_long, (151..=260).contains(&gap));
+            }
         }
     }
 

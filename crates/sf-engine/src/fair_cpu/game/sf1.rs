@@ -214,9 +214,24 @@ macro_rules! shared {
 }
 
 const MEDIUM: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
+// Approach before jumping; Space may end outside the jump band.
+const MIKE_FAR_JUMP_IN: [Step; 2] = [
+    step(Act::Space(120), always(Some(1))),
+    step(Act::JumpIn { gap: JUMP_IN_GAP }, always(None)),
+];
+// Preserve the direct jump's range; approach only from farther out.
+const MIKE_LONG_APPROACH: GamePlan = plan(
+    Situation::NeutralFar,
+    54,
+    0,
+    (JUMP_IN_GAP.1 + 1, 260),
+    &MIKE_FAR_JUMP_IN,
+    Lean::JumpIn,
+    Level::Easy,
+);
 // Preserve the shared plan order while giving far jump-ins more weight.
 const MIKE: &[GamePlan] = &{
-    let mut plans = *shared!(@close &MIKE_CLOSE_POKE, &POKE_MP, &MEATY_MP);
+    let mut plans = *shared!(@close &MIKE_CLOSE_POKE, &POKE_MP, &MEATY_MP, MIKE_LONG_APPROACH);
     plans[9].score = 54;
     plans
 };
