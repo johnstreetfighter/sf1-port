@@ -51,13 +51,55 @@ const fn meaty(crouch: bool, button: usize) -> [Step; 3] {
 // fixed gap is assumed across the twelve baseline books.
 const ROUTE: [Step; 1] = [step(Act::Route(Reach::Ground), always(None))];
 const POKE_MP: [Step; 5] = poke(false, 1);
+// Mike's close opener uses the ducking jab's quicker native startup.
+// Keep the straight's on-hit meaty and every branch of the existing poke.
+const MIKE_CLOSE_POKE: [Step; 5] = {
+    let mut steps = poke(false, 1);
+    steps[0].act = Act::Reach {
+        crouch: true,
+        button: 0,
+    };
+    steps[1].act = Act::Do(Choice::Normal {
+        crouch: true,
+        button: 0,
+    });
+    steps
+};
 const MEATY_MP: [Step; 3] = meaty(false, 1);
 const POKE_HP: [Step; 5] = poke(false, 2);
+// Lee opens close neutral with standing MP; retain HP on-hit timing
+// and every branch of the original HP poke.
+const LEE_CLOSE_MP_POKE: [Step; 5] = {
+    let mut steps = poke(false, 2);
+    steps[0].act = Act::Reach {
+        crouch: false,
+        button: 1,
+    };
+    steps[1].act = Act::Do(Choice::Normal {
+        crouch: false,
+        button: 1,
+    });
+    steps
+};
 const MEATY_HP: [Step; 3] = meaty(false, 2);
 const POKE_MK: [Step; 5] = poke(false, 4);
 const MEATY_MK: [Step; 3] = meaty(false, 4);
 const POKE_HK: [Step; 5] = poke(false, 5);
 const MEATY_HK: [Step; 3] = meaty(false, 5);
+// Geki opens close neutral from his crouching claw posture; keep the
+// on-hit meaty HK and every branch of the existing poke.
+const GEKI_CLOSE_POKE: [Step; 5] = {
+    let mut steps = poke(false, 5);
+    steps[0].act = Act::Reach {
+        crouch: true,
+        button: 1,
+    };
+    steps[1].act = Act::Do(Choice::Normal {
+        crouch: true,
+        button: 1,
+    });
+    steps
+};
 const ADVANCE: [Step; 3] = [
     step(Act::Do(Choice::Special(Role::Advance)), always(Some(1))),
     step(
@@ -151,8 +193,11 @@ const SPACED_ADVANCE_FAR: GamePlan = plan(
 
 macro_rules! shared {
     ($poke:expr, $meaty:expr $(, $extra:expr)*) => {
+        shared!(@close $poke, $poke, $meaty $(, $extra)*)
+    };
+    (@close $close:expr, $poke:expr, $meaty:expr $(, $extra:expr)*) => {
         &[
-            plan(Situation::NeutralClose, 60, 0, ANY, $poke, Lean::None, Level::Easy),
+            plan(Situation::NeutralClose, 60, 0, ANY, $close, Lean::None, Level::Easy),
             plan(Situation::NeutralClose, 62, 6, ANY, &ROUTE, Lean::None, Level::Easy),
             plan(Situation::ItWasBlocked, 60, 4, ANY, &SF2_FRAME_TRAP, Lean::FrameTrap, Level::Normal),
             plan(Situation::ItWasBlocked, 56, 12, ANY, &RYU_SF6_WALK_THROW, Lean::WalkThrow, Level::Easy),
@@ -169,6 +214,7 @@ macro_rules! shared {
 }
 
 const MEDIUM: &[GamePlan] = shared!(&POKE_MP, &MEATY_MP);
+const MIKE: &[GamePlan] = shared!(@close &MIKE_CLOSE_POKE, &POKE_MP, &MEATY_MP);
 const HEAVY_PUNCH: &[GamePlan] = shared!(&POKE_HP, &MEATY_HP);
 const MEDIUM_KICK: &[GamePlan] = shared!(&POKE_MK, &MEATY_MK);
 const GEN: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK, ADVANCE_CLOSE, SPACED_ADVANCE_FAR);
@@ -178,19 +224,23 @@ const BIRDIE: &[GamePlan] = shared!(
     BIRDIE_ADVANCE_CLOSE,
     BIRDIE_ADVANCE_FAR
 );
-const LEE: &[GamePlan] = shared!(&POKE_HP, &MEATY_HP, ADVANCE_CLOSE, SPACED_ADVANCE_FAR);
+const LEE: &[GamePlan] =
+    shared!(@close &LEE_CLOSE_MP_POKE, &POKE_HP, &MEATY_HP, ADVANCE_CLOSE, SPACED_ADVANCE_FAR);
 const HEAVY: &[GamePlan] = shared!(&POKE_HK, &MEATY_HK);
+const GEKI: &[GamePlan] = shared!(@close &GEKI_CLOSE_POKE, &POKE_HK, &MEATY_HK);
 
 pub(super) fn plans(fighter: TournamentFighter) -> &'static [GamePlan] {
     use TournamentFighter::*;
     match fighter {
-        Ryu | Ken | Geki | Sagat => HEAVY,
+        Ryu | Ken | Sagat => HEAVY,
+        Geki => GEKI,
         Gen => GEN,
         Birdie => BIRDIE,
         Lee => LEE,
         Joe => MEDIUM_KICK,
         Eagle => HEAVY_PUNCH,
-        Retsu | Mike | Adon => MEDIUM,
+        Mike => MIKE,
+        Retsu | Adon => MEDIUM,
     }
 }
 

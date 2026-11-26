@@ -2531,7 +2531,10 @@ impl FairCpu {
                 }
                 (Act::Reach { crouch, button }, acted) => {
                     let reach = self.reach[usize::from(crouch)][button] - 4;
-                    let gap = self.felt(step, view).gap();
+                    let felt = self.felt(step, view);
+                    // Baseline gap and direction use the same felt own pose;
+                    // the opponent still comes from the delayed view.
+                    let gap = felt.gap();
                     if gap > reach && !(acted && (step > run.pressed + game::EDGE_FRAMES || self.walk_stalled(step, run.pressed, ctx))) {
                         // A few frames at a time, looking again after each:
                         // the walk is reckoned at two pixels a frame, and a
@@ -2539,7 +2542,8 @@ impl FairCpu {
                         // so one walk the whole way in overshot the normal's
                         // reach into the opponent's (SC13, `#205`).
                         let frames = ((gap - reach + 1) / 2).clamp(1, game::EDGE_WALK) as usize;
-                        let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+                        let toward = if stronger && ctx.baseline_rules() { felt.toward() } else { view.toward() };
+                        let forward = if toward > 0 { RIGHT } else { LEFT };
                         if !acted {
                             run.pressed = step;
                         }
@@ -2670,7 +2674,7 @@ impl FairCpu {
                             // `#207`), as a player does over a long
                             // knockdown, rather than standing over him.
                             let shimmy = (ctx.family == Some(crate::era::EraFamily::Sf2)).then(|| rise - step - game::MEATY_LEAD);
-                            return Some(self.close_in(run, step, view, reach, shimmy));
+                            return Some(self.close_in(run, step, view, reach, shimmy, ctx));
                         }
                     }
                     self.game = Some(run);
@@ -2705,7 +2709,7 @@ impl FairCpu {
                     let rise = self.judge.rise_at();
                     if let Some(rise) = rise {
                         if step + game::GUARD_LEAD < rise {
-                            return Some(self.close_in(run, step, view, close, None));
+                            return Some(self.close_in(run, step, view, close, None, ctx));
                         }
                     }
                     let until = rise.unwrap_or(step) + game::BAIT_FRAMES;
@@ -2799,12 +2803,13 @@ impl FairCpu {
     /// inside the attack's reach ([`game::SHIMMY`]) or stopped against his
     /// body, it walks back out a few frames and in again, rather than
     /// standing, while there is time to come back.
-    fn close_in(&mut self, run: game::Running, step: u32, view: Percept, reach: i16, shimmy: Option<u32>) -> Plan {
+    fn close_in(&mut self, run: game::Running, step: u32, view: Percept, reach: i16, shimmy: Option<u32>, ctx: &Context) -> Plan {
         // Its own place is felt as it is now; his is seen late.
         let ready = self.ready(step, view, true);
         let felt = self.felt(step, view);
         let gap = felt.gap();
-        let forward = if view.toward() > 0 { RIGHT } else { LEFT };
+        let toward = if self.stronger(ctx) && ctx.baseline_rules() { felt.toward() } else { view.toward() };
+        let forward = if toward > 0 { RIGHT } else { LEFT };
         let back = RIGHT + LEFT - forward;
         self.game = Some(run);
         let Some(room) = shimmy.filter(|_| ready) else {
@@ -3005,7 +3010,10 @@ impl FairCpu {
 
     /// The next pad of the plan.
     fn next_pad(&mut self, step: u32, view: Percept, ctx: &Context) -> u16 {
-        if self.stronger(ctx) && self.judge.coming(view) && self.walking_in_next(view)
+        let stronger = self.stronger(ctx);
+        // Judge queued baseline walks from that same felt own position.
+        let walk_view = if stronger && ctx.baseline_rules() { self.felt(step, view) } else { view };
+        if stronger && self.judge.coming(view) && self.walking_in_next(walk_view)
             && !self.may_approach_attack(step, view, ctx)
         {
             // It does not walk into an attack or a projectile it has seen:
@@ -3215,6 +3223,14 @@ impl FairCpu {
             let low = foe.low_attack() || (ctx.standard_block && self.rng.chance(50));
             return Some(Plan::guard(low, 0));
         }
+        // Baseline stronger play feels when its own fighter can move;
+        // the opponent and its attack history still come through the delay.
+        // A current guard pose alone does not release native blockstun.
+        let (punish_me, punish_unlocked) = if stronger && ctx.baseline_rules() {
+            (self.felt(step, view).me, !ctx.own_blockstun)
+        } else {
+            (view.me, true)
+        };
         // A move that missed: its attack box has gone and it is recovering,
         // within reach of a heavy normal.
         // Not a move the CPU guarded: one hit a move, so a guarded move's box
@@ -3225,7 +3241,7 @@ impl FairCpu {
         // the CPU, so a move it guarded in case can be a whiff too.
         let whiff_seen = stronger
             && self.judged.situation == Situation::OpponentWhiffed
-            && (view.me.free() || view.me.guarding())
+            && punish_unlocked && (punish_me.free() || punish_me.guarding())
             && self.rng.chance(level.quality());
         // A whiffed attack still in the air is punished as it lands: as the
         // CPU sees it fall, it starts the route so its opener meets him on
@@ -3254,7 +3270,7 @@ impl FairCpu {
             && (ctx.baseline_rules() || matches!(ctx.family, Some(crate::era::EraFamily::Sf2 | crate::era::EraFamily::SfZ | crate::era::EraFamily::Sf3 | crate::era::EraFamily::Sf4 | crate::era::EraFamily::Sf5)) || ctx.sf6_cast())
             && self.judge.recovering_after_meeting(view)
             && !ctx.own_blockstun
-            && (view.me.free() || view.me.guarding())
+            && punish_unlocked && (punish_me.free() || punish_me.guarding())
             && view.gap() <= self.longest_reach() + 2 * i16::from(game::PUNISH_WALK)
             && self.settled(step, view, stronger)
             && self.rng.chance(level.quality())
@@ -3268,7 +3284,7 @@ impl FairCpu {
                 return Some(self.plan_for(Choice::Normal { crouch: true, button: 0 }, step, view, ctx, true));
             }
         }
-        if whiffed && view.me.free() && self.settled(step, view, stronger) {
+        if whiffed && punish_unlocked && punish_me.free() && self.settled(step, view, stronger) {
             let reach = self.reach[0][2].max(self.reach[0][5]) + 6;
             if view.gap() <= reach && self.rng.chance(level.quality()) {
                 let cancel_role = if ctx.kit.cancels_with(Role::AntiAir) {
@@ -4434,6 +4450,118 @@ mod tests {
         });
         cpu.plan = Plan::default();
         cpu.settle = 0;
+    }
+
+    /// Observe the opponent only through frame88 when deciding step100.
+    /// The CPU's newest own pose is frame99. The opponent's newer actual
+    /// position deliberately lies opposite the expected delayed target.
+    fn sc21_crossed_own_walk_history(context: &Context, mirrored: bool, meaty: bool) -> FairCpu {
+        let mut cpu = FairCpu::seeded(17);
+        cpu.fighter = context.kit.fighter;
+        let (old_own, latest_own, latest_foe) = if mirrored { (440, 200, 120) } else { (200, 440, 520) };
+        let mut before = None;
+        for frame in 1..=99 {
+            let mut view = Percept {
+                frame,
+                fighting: true,
+                me: body(if frame <= 88 { old_own } else { latest_own }),
+                foe: body(if frame <= 88 { 320 } else { latest_foe }),
+                ..Percept::default()
+            };
+            if meaty && frame >= 80 {
+                view.foe.move_id = 0x38;
+                view.foe.state = 0x31;
+            }
+            cpu.observe(view);
+            if frame <= 88 {
+                let reach = cpu.longest_reach();
+                cpu.judged = cpu.judge.judge(view, before, reach);
+                before = Some(view);
+            }
+        }
+        sc21_install_approach_step(&mut cpu, context, |act| {
+            if meaty { matches!(act, game::Act::Meaty { .. }) }
+            else { matches!(act, game::Act::Reach { .. }) }
+        });
+        cpu
+    }
+
+    #[test]
+    fn sc21_baseline_reach_walks_toward_delayed_foe_from_latest_own_position() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_approach_context(revision, true).for_stronger();
+            for (mirrored, expected) in [(false, LEFT), (true, RIGHT)] {
+                let mut cpu = sc21_crossed_own_walk_history(&context, mirrored, false);
+                assert_eq!(cpu.press(100, true, &context), expected,
+                    "{revision:?}/{mirrored}: after its own crossing, Reach must walk toward the same delayed foe");
+                assert_eq!(cpu.last_view().frame, 88);
+                assert_eq!(cpu.last_view().foe.x, 320, "a newer opponent position must not steer this decision");
+                assert!(cpu.following_game_plan());
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_meaty_walks_toward_delayed_foe_from_latest_own_position() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_approach_context(revision, true).for_stronger();
+            for (mirrored, expected) in [(false, LEFT), (true, RIGHT)] {
+                let mut cpu = sc21_crossed_own_walk_history(&context, mirrored, true);
+                assert_eq!(cpu.press(100, true, &context), expected,
+                    "{revision:?}/{mirrored}: an early meaty approach must close from its latest own position");
+                assert_eq!(cpu.last_view().frame, 88);
+                assert_eq!(cpu.last_view().foe.x, 320, "the downed opponent remains delayed");
+                assert!(cpu.following_game_plan());
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_reach_direction_change_keeps_off_and_later_family_walks_unchanged() {
+        for context in [
+            sc21_approach_context(crate::era::Revision::Arcade1987, false).for_stronger(),
+            sc21_approach_context(crate::era::Revision::Sf1Plus, false).for_stronger(),
+            sf6_ctx(Level::VeryHard).for_stronger(),
+        ] {
+            for meaty in [false, true] {
+                for (mirrored, legacy) in [(false, RIGHT), (true, LEFT)] {
+                    let mut cpu = sc21_crossed_own_walk_history(&context, mirrored, meaty);
+                    assert_eq!(cpu.press(100, true, &context), legacy,
+                        "{:?}/{mirrored}/{meaty}: OFF and later families retain their original delayed-own walk direction", context.family);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_queued_felt_forward_walk_stops_for_a_newly_seen_near_attack() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            let context = sc21_approach_context(revision, true).for_stronger();
+            for (mirrored, queued_forward, seen_foe_x) in [(false, LEFT, 390), (true, RIGHT, 250)] {
+                let mut cpu = sc21_crossed_own_walk_history(&context, mirrored, false);
+                let mut seen = cpu.seen(88).unwrap();
+                seen.foe = Body { move_id: 0x10, state: 0xc2, ..body(seen_foe_x) };
+                cpu.observe(seen);
+                cpu.focus = Focus::Attack;
+                // One pad of a four-frame felt-forward walk has already run.
+                // Delayed own/foe gap180 avoids the separate reactive guard;
+                // latest own/that SAME delayed foe has near gap40, so the
+                // existing far-attack exception cannot license another pad.
+                cpu.plan = Plan::of(PlanKind::Walk, &[queued_forward; 4]);
+                cpu.plan.at = 1;
+                cpu.pad = queued_forward;
+                let run = cpu.game.as_mut().unwrap();
+                run.acted = true;
+                run.pressed = 99;
+                assert_eq!(cpu.press(100, true, &context), 0,
+                    "{revision:?}/{mirrored}: a known nearby attack cancels a queued walk toward the delayed foe from the latest own position");
+                assert_eq!(cpu.last_view().frame, 88);
+                assert_eq!(cpu.last_view().foe.x, seen_foe_x);
+                assert!(cpu.last_view().foe.attacking(), "the new attack was actually shown, not hidden by focus delay");
+                // History99 still places the actual foe520/120, opposite the
+                // delayed target. Fresh opponent aiming would miss this stop.
+            }
+        }
     }
 
     #[test]
@@ -7196,6 +7324,283 @@ mod tests {
                     assert!(!plans_taken(&ctx, 270, 300, situation, 96).contains(&act), "{level:?} {act:?}: unavailable plans stay out");
                 }
                 assert!(!plans_taken(&ctx, 270, 300, Situation::NeutralClose, 96).is_empty(), "{level:?}: ordinary play remains available");
+            }
+        }
+    }
+
+    // These are gate regressions using delayed foe observations and Mike's
+    // real SF1+ book. Direct react calls isolate readiness from plan selection;
+    // they do not claim native route completion or public-entry delay coverage.
+    fn sc21_punish_ready_context(revision: crate::era::Revision, level: Level) -> Context {
+        let empty = SpecialSlot { tracker: 0, kick: false, melee: false, low_in_air: false, score: 0 };
+        // Mike's exact data_bank.rs player slots: Iron Upper and Bison Rush.
+        let slots = [
+            SpecialSlot { tracker: 0x19, kick: false, melee: true, low_in_air: false, score: 0x45f52 },
+            SpecialSlot { tracker: 0x1c, kick: false, melee: true, low_in_air: false, score: 0x4345e },
+            empty,
+        ];
+        let mut context = Context::new(level,
+            Kit::of(TournamentFighter::Mike, RulesetPreset::DefinitiveOverhaul, Some(slots)),
+            &CoreToggles::definitive())
+            .with_baseline(crate::era::StylePick::for_revision(revision, crate::era::Loadout::Standard), false);
+        context.stronger = true;
+        context.foe = Some((TournamentFighter::Ryu, (revision, crate::era::Loadout::Standard)));
+        // Isolate the existing single-normal punish under the supported
+        // mission; Mike otherwise always chooses Iron Upper here above Easy.
+        context.pure_footsies = revision == crate::era::Revision::Arcade1987;
+        context.for_stronger()
+    }
+
+    fn sc21_punish_ready_latest(cpu: &mut FairCpu, me: Body) {
+        // The latest opponent intentionally contradicts the delayed attack.
+        // Only own state is available without waiting out the reaction delay.
+        cpu.observe(Percept { frame: 99, fighting: true, me, foe: body(500), ..Default::default() });
+    }
+
+    fn sc21_punish_ready_fixture(seed: u64, met: bool, active_before: bool) -> (FairCpu, Percept, Percept) {
+        let mut cpu = FairCpu::seeded(seed);
+        cpu.fighter = Some(TournamentFighter::Mike);
+        let mut previous = None;
+        for frame in 84..=88 {
+            let mut me = body(200);
+            me.move_id = 0x10;
+            me.state = 0xc2;
+            let mut foe = body(242);
+            if frame >= 85 {
+                foe.move_id = 0x11;
+                foe.state = 0xc6;
+                foe.active = frame == 86 || (active_before && frame == 87);
+                foe.front = if met { 200 } else { 220 };
+            }
+            if met && frame == 86 { me.move_id = 4; me.state = 0x12; }
+            let view = Percept { frame, fighting: true, me, foe, ..Default::default() };
+            cpu.judged = cpu.judge.judge(view, previous, 66);
+            cpu.observe(view);
+            previous = Some(view);
+        }
+        let view = cpu.seen(88).unwrap();
+        let before = cpu.seen(87).unwrap();
+        assert!(view.me.attacking() && !view.me.free() && !view.me.reacting());
+        assert!(view.foe.attacking() && !view.foe.active && !view.foe.jumping());
+        assert_eq!(view.gap(), 32, "Mike's real Punish record gap");
+        assert_eq!(cpu.judge.recovering_after_meeting(view), met);
+        assert_eq!(cpu.judged.situation == Situation::OpponentWhiffed, !met);
+        let mut latest = body(200);
+        latest.move_id = 7;
+        latest.state = 0x14;
+        sc21_punish_ready_latest(&mut cpu, latest);
+        cpu.plan = Plan::guard(true, 10);
+        cpu.settle = 95;
+        assert!(cpu.plan.interruptible() && cpu.bait_until == 0);
+        (cpu, view, before)
+    }
+
+    #[test]
+    fn sc21_punish_readiness_fixture_existing_free_self_paths_are_real_positive_controls() {
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            for (revision, met, edge) in [
+                (crate::era::Revision::Sf1Plus, false, false),
+                (crate::era::Revision::Sf1Plus, true, false),
+                (crate::era::Revision::Arcade1987, false, true),
+            ] {
+                let context = sc21_punish_ready_context(revision, level);
+                let mut entered = 0;
+                for seed in 1..=64 {
+                    let (mut cpu, view, before) = sc21_punish_ready_fixture(seed, met, edge);
+                    let free_view = Percept { me: cpu.seen(99).unwrap().me, ..view };
+                    let answer = cpu.react(100, free_view, before, &context);
+                    let concrete = if revision == crate::era::Revision::Sf1Plus {
+                        cpu.route.is_some()
+                    } else {
+                        cpu.last_normal.is_some() && cpu.route.is_none()
+                    };
+                    if revision == crate::era::Revision::Sf1Plus {
+                        assert_eq!(answer.is_some(), concrete, "{revision:?}/{level:?}/met={met}/seed{seed}: positive entry has a real own-book route; answer={answer:?}");
+                    } else {
+                        assert!(!context.true_combos && !context.cancels && !context.throws);
+                        assert!(context.pure_footsies && context.kit.anti_air.is_none());
+                        assert!(cpu.route.is_none(), "1987 never enters an SF1+ route");
+                        assert_eq!(answer.is_some(), concrete, "the normals-only mission enters a real single-normal plan");
+                    }
+                    entered += usize::from(concrete);
+                }
+                assert!(entered > 0, "{revision:?}/{level:?}/met={met}: existing free-self path must actually enter a legal book route or 1987 single");
+            }
+        }
+    }
+
+    fn sc21_punish_ready_matches_existing_free_self_path(met: bool) {
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            for forced in [false, true] {
+                let mut context = sc21_punish_ready_context(crate::era::Revision::Sf1Plus, level);
+                context.stronger = !forced;
+                let mut routes = 0;
+                for seed in 1..=64 {
+                    let (mut actual, view, before) = sc21_punish_ready_fixture(seed, met, false);
+                    actual = actual.force_stronger(forced);
+                    let mut control = actual;
+                    let free_view = Percept { me: actual.seen(99).unwrap().me, ..view };
+                    let expected = control.react(100, free_view, before, &context);
+                    let answer = actual.react(100, view, before, &context);
+                    routes += usize::from(control.route.is_some());
+                    assert_eq!(answer, expected, "{level:?}, forced={forced}, seed={seed}: stale own attack must not deny the same delayed punish");
+                    assert_eq!(actual, control, "{level:?}, forced={forced}, seed={seed}: same existing quality/route decisions and RNG");
+                }
+                assert!(routes > 0, "{level:?}, forced={forced}: real legal Mike book positive control must select routes");
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_judged_whiff_uses_felt_self_readiness_without_younger_foe() {
+        sc21_punish_ready_matches_existing_free_self_path(false);
+    }
+
+    #[test]
+    fn sc21_baseline_guarded_recovery_uses_felt_self_readiness() {
+        sc21_punish_ready_matches_existing_free_self_path(true);
+    }
+
+    #[test]
+    fn sc21_baseline_1987_bookless_whiff_uses_felt_self_readiness_for_legal_single() {
+        for level in [Level::Easy, Level::Normal, Level::Hard, Level::VeryHard] {
+            for forced in [false, true] {
+                let mut context = sc21_punish_ready_context(crate::era::Revision::Arcade1987, level);
+                context.stronger = !forced;
+                assert!(!context.true_combos && !context.cancels && !context.throws);
+                let mut normals = 0;
+                for seed in 1..=64 {
+                    let (mut actual, view, before) = sc21_punish_ready_fixture(seed, false, true);
+                    actual = actual.force_stronger(forced);
+                    let mut control = actual;
+                    let free_view = Percept { me: actual.seen(99).unwrap().me, ..view };
+                    let expected = control.react(100, free_view, before, &context);
+                    let answer = actual.react(100, view, before, &context);
+                    normals += usize::from(control.last_normal.is_some());
+                    assert!(actual.route.is_none() && control.route.is_none(), "1987 cannot take an SF1+ route");
+                    assert_eq!(answer, expected, "{level:?}, forced={forced}, seed={seed}: same legal single after the actual own recovery");
+                    assert_eq!(actual, control, "same old single-normal choice and RNG after passing readiness");
+                }
+                assert!(normals > 0, "the positive control actually enters existing normal punish inputs");
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_punish_rejects_latest_busy_self_even_if_delayed_self_is_free() {
+        for (revision, met, edge) in [
+            (crate::era::Revision::Sf1Plus, false, false),
+            (crate::era::Revision::Sf1Plus, true, false),
+            (crate::era::Revision::Arcade1987, false, true),
+        ] {
+            let context = sc21_punish_ready_context(revision, Level::VeryHard);
+            for (move_id, state) in [(0x10, 0xc2), (0x30, 0x12), (9, 0x13), (1, 0x12)] {
+                for seed in 1..=32 {
+                    let (mut cpu, view, before) = sc21_punish_ready_fixture(seed, met, edge);
+                    let mut latest = body(200);
+                    latest.move_id = move_id;
+                    latest.state = state;
+                    if move_id == 1 { latest.present = false; }
+                    assert!(!latest.free() && !latest.guarding());
+                    sc21_punish_ready_latest(&mut cpu, latest);
+                    let delayed_free = Percept { me: body(200), ..view };
+                    assert!(cpu.react(100, delayed_free, before, &context).is_none(), "{revision:?}/{met}/{move_id:x}/{seed}: actual own busy cannot start a punish");
+                    assert!(cpu.route.is_none() && cpu.last_normal.is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_punish_current_blockstun_protects_a_free_guard_pose() {
+        for (revision, met, edge) in [
+            (crate::era::Revision::Sf1Plus, false, false),
+            (crate::era::Revision::Sf1Plus, true, false),
+            (crate::era::Revision::Arcade1987, false, true),
+        ] {
+            let mut context = sc21_punish_ready_context(revision, Level::VeryHard);
+            context.own_blockstun = true;
+            for seed in 1..=32 {
+                let (mut cpu, view, before) = sc21_punish_ready_fixture(seed, met, edge);
+                let mut guard = body(200);
+                guard.move_id = 4;
+                assert!(guard.free() && guard.guarding());
+                sc21_punish_ready_latest(&mut cpu, guard);
+                let delayed_free = Percept { me: body(200), ..view };
+                assert!(cpu.react(100, delayed_free, before, &context).is_none(), "{revision:?}/{met}/{seed}: native current blockstun still locks the guard");
+                assert!(cpu.route.is_none() && cpu.last_normal.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_punish_missing_or_nonfighting_own_history_keeps_delayed_readiness() {
+        let context = sc21_punish_ready_context(crate::era::Revision::Sf1Plus, Level::VeryHard);
+        for met in [false, true] {
+            for seed in 1..=32 {
+                for missing in [false, true] {
+                    let (mut cpu, view, before) = sc21_punish_ready_fixture(seed, met, false);
+                    cpu.settle = 0;
+                    if missing { cpu.seen[99usize % RING] = Percept::default(); }
+                    else { let mut latest = cpu.seen(99).unwrap(); latest.fighting = false; cpu.observe(latest); }
+                    assert_eq!(cpu.felt(100, view), view);
+                    let rng = cpu.rng;
+                    assert!(cpu.react(100, view, before, &context).is_none());
+                    assert!(cpu.route.is_none() && cpu.last_normal.is_none());
+                    assert_eq!(cpu.rng, rng, "missing own observation must not invent readiness or an extra quality roll");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_punish_ignores_younger_foe_history_and_waits_for_own_settle() {
+        let context = sc21_punish_ready_context(crate::era::Revision::Sf1Plus, Level::VeryHard);
+        for seed in 1..=32 {
+            let (mut a, view, before) = sc21_punish_ready_fixture(seed, false, false);
+            let mut b = a;
+            let mut latest = b.seen(99).unwrap();
+            latest.foe = body(100);
+            latest.foe.move_id = 0x10;
+            latest.foe.state = 0xc2;
+            latest.foe.active = true;
+            latest.foe.front = 205;
+            b.observe(latest);
+            assert_eq!(a.felt(100, view), b.felt(100, view), "felt preserves the exact delayed opponent");
+            assert_eq!(a.react(100, view, before, &context), b.react(100, view, before, &context));
+            a.seen = b.seen;
+            assert_eq!(a, b, "younger foe cannot alter the punish decision/RNG");
+            let (mut waiting, view, before) = sc21_punish_ready_fixture(seed, false, false);
+            waiting.settle = 101;
+            assert!(waiting.react(100, view, before, &context).is_none());
+            assert!(waiting.route.is_none() && waiting.last_normal.is_none());
+        }
+    }
+
+    #[test]
+    fn sc21_punish_readiness_off_and_later_eras_keep_old_self_gate_and_rng() {
+        let mut off = sc21_punish_ready_context(crate::era::Revision::Sf1Plus, Level::VeryHard);
+        off.stronger = false;
+        off.family = None;
+        off.style = None;
+        for context in [off, sf6_ctx(Level::VeryHard).for_stronger()] {
+            assert!(!context.stronger || !context.baseline_rules());
+            for (met, edge) in [(false, false), (true, false), (false, true)] {
+                for seed in 1..=32 {
+                    let (mut a, view, before) = sc21_punish_ready_fixture(seed, met, edge);
+                    a.settle = 0;
+                    let mut b = a;
+                    let mut latest = b.seen(99).unwrap();
+                    latest.me.move_id = 0x10;
+                    latest.me.state = 0xc2;
+                    b.observe(latest);
+                    let rng = a.rng;
+                    assert!(a.react(100, view, before, &context).is_none());
+                    assert!(b.react(100, view, before, &context).is_none());
+                    assert_eq!(a.rng, rng, "old delayed own attack blocks before quality, even if current own is free");
+                    a.seen = b.seen;
+                    assert_eq!(a, b, "OFF/later decisions and RNG keep the delayed-own gate");
+                }
             }
         }
     }
