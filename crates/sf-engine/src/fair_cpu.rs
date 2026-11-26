@@ -2378,6 +2378,17 @@ impl FairCpu {
         if rate < 100 && !self.rng.chance(rate) {
             return false;
         }
+        let selected = &table[usize::from(plan)];
+        // Joe SF1+ Normal uses its ordinary fallback after a dedicated rise
+        // plan wins admission. The poke's own meaty continuation stays intact.
+        if self.stronger(ctx)
+            && ctx.kit.fighter == Some(TournamentFighter::Joe)
+            && ctx.family == Some(crate::era::EraFamily::Sf1Plus)
+            && ctx.level == Level::Normal
+            && selected.situation == Situation::OpponentKnockedDown
+            && selected.steps.first().is_some_and(|step| matches!(step.act, game::Act::Meaty { .. })) {
+            return false;
+        }
         self.pressure_run = if pressure(&table[usize::from(plan)]) { self.pressure_run.saturating_add(1) } else { 0 };
         self.game = Some(game::Running { plan, step: 0, acted: false, pressed: 0, began: step, hit: false });
         true
