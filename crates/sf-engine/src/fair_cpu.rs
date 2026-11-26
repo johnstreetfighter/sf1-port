@@ -3033,7 +3033,13 @@ impl FairCpu {
             self.settle = 0;
             return 0;
         }
-        let back = if view.toward() > 0 { LEFT } else { RIGHT };
+        let back = if stronger && ctx.baseline_rules() {
+            if self.felt(step, view).me.facing_left { RIGHT } else { LEFT }
+        } else if view.toward() > 0 {
+            LEFT
+        } else {
+            RIGHT
+        };
         if let PlanKind::Await { choice, wait } = self.plan.kind {
             // The stronger play lets a jump it sees carry him away go by
             // (SC8, `#200`): there is nothing there to meet.
@@ -7880,4 +7886,188 @@ mod tests {
             }
         }
     }
+    fn sc21_guard_facing_context(revision: crate::era::Revision, configured: bool) -> Context {
+        let mut context = sc21_hit_context(TournamentFighter::Mike, revision, Level::Hard);
+        context.stronger = configured;
+        context.throws = false;
+        context
+    }
+
+    fn sc21_guard_facing_cpu(seed: u64, forced: bool, view: Percept, latest: Option<(bool, Body, Body)>, low: bool, min: u16) -> FairCpu {
+        let mut cpu = FairCpu::seeded(seed).force_stronger(forced);
+        for frame in 1..=98 { cpu.observe(Percept { frame, ..view }); }
+        if let Some((fighting, me, foe)) = latest {
+            cpu.observe(Percept { frame: 99, fighting, me, foe, ..view });
+        }
+        cpu.plan = Plan::guard(low, min);
+        cpu
+    }
+
+    fn sc21_guard_facing_hash(cpu: &FairCpu) -> u64 {
+        use crate::canonical::{Canonical, CanonicalHasher};
+        let mut hash = CanonicalHasher::new();
+        cpu.encode(&mut hash);
+        hash.finish()
+    }
+
+    #[test]
+    fn sc21_baseline_guard_uses_latest_own_native_facing_for_high_and_low_pads() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_guard_facing_context(revision, configured);
+                for left in [false, true] {
+                    for low in [false, true] {
+                        let mut view = percept(85, body(if left { 400 } else { 200 }));
+                        view.me.facing_left = !left;
+                        let me = Body { facing_left: left, ..view.me };
+                        // The younger opponent is deliberately on the other
+                        // side. Only the native own facing may set back.
+                        let foe = body(if left { 180 } else { 420 });
+                        let mut cpu = sc21_guard_facing_cpu(17, forced, view, Some((true, me, foe)), low, 20);
+                        let expected = (if left { RIGHT } else { LEFT }) | if low { DOWN } else { 0 };
+                        assert_eq!(cpu.next_pad(100, view, &context), expected, "{revision:?}/{configured}/{forced}/{left}/{low}: back follows the last completed own native frame");
+                        assert!(matches!(cpu.plan.kind, PlanKind::Guard { held: 1, .. }));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guard_facing_positive_control_preserves_matching_native_back() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_guard_facing_context(revision, configured);
+                for left in [false, true] {
+                    for low in [false, true] {
+                        let mut view = percept(85, body(if left { 200 } else { 400 }));
+                        view.me.facing_left = left;
+                        let mut cpu = sc21_guard_facing_cpu(17, forced, view, Some((true, view.me, view.foe)), low, 20);
+                        let rng = cpu.rng.0;
+                        assert_eq!(cpu.next_pad(100, view, &context), (if left { RIGHT } else { LEFT }) | if low { DOWN } else { 0 });
+                        assert_eq!(cpu.rng.0, rng, "a no-throw guard heading draws no randomness");
+                        assert!(matches!(cpu.plan.kind, PlanKind::Guard { low: chosen, min: 20, clear: 1, held: 1 } if chosen == low));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_baseline_guard_ignores_younger_foe_and_falls_back_to_as_seen_own_facing() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_guard_facing_context(revision, configured);
+                for left in [false, true] {
+                    let mut view = percept(85, body(if left { 400 } else { 200 }));
+                    view.me.facing_left = left;
+                    let expected = (if left { RIGHT } else { LEFT }) | DOWN;
+                    for latest in [None, Some((false, Body { facing_left: !left, ..view.me }, body(300)))] {
+                        let mut cpu = sc21_guard_facing_cpu(17, forced, view, latest, true, 20);
+                        assert_eq!(cpu.next_pad(100, view, &context), expected, "missing/nonfighting latest history retains the as-seen OWN orientation, not pair geometry");
+                    }
+                    let mut near = sc21_guard_facing_cpu(17, forced, view, Some((true, view.me, body(180))), true, 20);
+                    let mut far = sc21_guard_facing_cpu(17, forced, view, Some((true, view.me, body(420))), true, 20);
+                    assert_eq!(near.next_pad(100, view, &context), expected);
+                    assert_eq!(far.next_pad(100, view, &context), expected);
+                    assert_eq!(near.plan, far.plan);
+                    assert_eq!(near.rng.0, far.rng.0, "younger foe changes neither guard timing nor randomness");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guard_facing_keeps_off_and_later_geometric_pads_and_full_state() {
+        let free = EraControl { free: true, ..Default::default() };
+        let mut contexts = vec![ctx(Level::Hard), sfz_ctx(Level::Hard, crate::era::Loadout::AIsm, free), sf3_ctx(Level::Hard), sf4_ctx(Level::Hard, free), sf5_ctx(Level::Hard, free), sf6_ctx(Level::Hard)];
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            contexts.push(sc21_guard_facing_context(revision, false));
+        }
+        for context in contexts {
+            for low in [false, true] {
+                for foe_x in [200, 400] {
+                    let view = percept(85, body(foe_x));
+                    let mut a = sc21_guard_facing_cpu(17, false, view, Some((true, Body { facing_left: false, ..view.me }, view.foe)), low, 20);
+                    let mut b = a;
+                    b.seen[99 % RING].me.facing_left = true;
+                    let expected = (if foe_x > view.me.x { LEFT } else { RIGHT }) | if low { DOWN } else { 0 };
+                    assert_eq!(a.next_pad(100, view, &context), expected);
+                    assert_eq!(b.next_pad(100, view, &context), expected);
+                    assert_eq!(a.rng.0, b.rng.0);
+                    b.seen[99 % RING].me.facing_left = a.seen[99 % RING].me.facing_left;
+                    assert_eq!(sc21_guard_facing_hash(&a), sc21_guard_facing_hash(&b), "OFF/later own-facing perturbation changes no guard state or RNG");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guard_facing_change_preserves_release_bait_and_blockstun_timing() {
+        for revision in [crate::era::Revision::Arcade1987, crate::era::Revision::Sf1Plus] {
+            for (configured, forced) in [(true, false), (false, true)] {
+                let context = sc21_guard_facing_context(revision, configured);
+                let view = percept(85, body(400));
+                for (blockstun, bait, min) in [(false, false, 0), (false, false, 20), (true, false, 20), (false, true, 20)] {
+                    let mut c = context;
+                    c.own_blockstun = blockstun;
+                    let mut a = sc21_guard_facing_cpu(17, forced, view, Some((true, Body { facing_left: true, ..view.me }, view.foe)), true, min);
+                    a.bait_until = if bait { 120 } else { 0 };
+                    a.settle = 44;
+                    let mut b = a;
+                    b.seen[99 % RING].me.facing_left = false;
+                    for step in 100..=107 {
+                        // Replenish the latest own frame while retaining the
+                        // exact same delayed foe and chosen guard state.
+                        a.observe(Percept { frame: step - 1, me: Body { facing_left: true, ..view.me }, ..view });
+                        b.observe(Percept { frame: step - 1, me: Body { facing_left: false, ..view.me }, ..view });
+                        let pa = a.next_pad(step, view, &c);
+                        let pb = b.next_pad(step, view, &c);
+                        assert_eq!(pa & !3, pb & !3);
+                        assert_eq!(a.plan, b.plan, "heading alone changes no held/clear/min/release state");
+                        assert_eq!(a.rng.0, b.rng.0);
+                        assert_eq!(a.bait_until, b.bait_until);
+                        assert_eq!(a.settle, b.settle);
+                        for (observed, reference) in b.seen.iter_mut().zip(a.seen.iter()) { observed.me.facing_left = reference.me.facing_left; }
+                        assert_eq!(sc21_guard_facing_hash(&a), sc21_guard_facing_hash(&b));
+                        if !blockstun && !bait {
+                            let release_at = if min == 0 { 104 } else { 107 };
+                            assert_eq!(a.plan.done(), step >= release_at, "the existing five-clear/min or eight-held early-release boundary is unchanged");
+                        }
+                        if blockstun || bait { assert!(matches!(a.plan.kind, PlanKind::Guard { .. }), "native blockstun/chosen bait retain the initial hold"); }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sc21_guard_facing_preserves_sf1plus_tech_pulse_cadence_and_randomness() {
+        for (configured, forced) in [(true, false), (false, true)] {
+            let mut context = sc21_guard_facing_context(crate::era::Revision::Sf1Plus, configured);
+            context.throws = true;
+            let view = percept(85, body(330));
+            let mut pulses = 0;
+            for seed in 1..=64 {
+                let mut a = sc21_guard_facing_cpu(seed, forced, view, Some((true, Body { facing_left: true, ..view.me }, view.foe)), true, 20);
+                let mut b = a;
+                for step in 100..=108 {
+                    a.observe(Percept { frame: step - 1, me: Body { facing_left: true, ..view.me }, ..view });
+                    b.observe(Percept { frame: step - 1, me: Body { facing_left: false, ..view.me }, ..view });
+                    let pa = a.next_pad(step, view, &context);
+                    let pb = b.next_pad(step, view, &context);
+                    assert_eq!(pa & !3, pb & !3);
+                    assert_eq!(a.plan, b.plan);
+                    assert_eq!(a.rng.0, b.rng.0, "only existing eligible pulse frames draw their guard chance");
+                    if pa & BUTTONS != 0 {
+                        pulses += 1;
+                        assert_eq!(pa & BUTTONS, button(2));
+                        assert_eq!((step - 99) % 3, 0, "the existing every-third-held-frame tech pulse remains exact");
+                    }
+                }
+            }
+            assert!(pulses > 0, "the real SF1+ throw-tech branch must actually be exercised");
+        }
+    }
+
 }
