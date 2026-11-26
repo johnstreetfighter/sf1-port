@@ -599,8 +599,9 @@ fn a_world_tour_mission_of_normals_and_throws_is_kept_to_by_the_stronger_play() 
     // The Pure Footsies trial (normals and throws only). The engine refuses
     // a special to either fighter whatever is pressed, so what is checked
     // is what the Fair CPU presses for: no motion special, no era command
-    // and no route from its book. The same fight without the mission
-    // presses for them, so the check can fail. In the SF6 era style (game
+    // and no special-bearing route. Plain-normal routes remain legal under
+    // the mission. The same fight without it presses for specials, so the
+    // check can fail. In the SF6 era style (game
     // plans, routes, Drive moves) and in 1987+ (the trial's own style).
     let Some(assets) = assets() else { return };
     deep(move || {
@@ -608,8 +609,9 @@ fn a_world_tour_mission_of_normals_and_throws_is_kept_to_by_the_stronger_play() 
         for style in [Revision::Sf6, Revision::Sf1Plus] {
             let open = specials(&assets, &mut tour_fight(&assets, None, style), 4_800);
             let kept = specials(&assets, &mut tour_fight(&assets, Some(footsies), style), 4_800);
-            assert!(open.motions + open.chords + open.routes > 0, "{style:?}: without the mission it presses for specials: {open:?}");
-            assert_eq!((kept.motions, kept.chords, kept.routes), (0, 0, 0), "{style:?}: under the mission: {kept:?}");
+            assert!(open.unrecovered.is_empty() && kept.unrecovered.is_empty(), "{style:?}: native World Tour branches: open {:x?}, mission {:x?}", open.unrecovered, kept.unrecovered);
+            assert!(open.motions + open.chords + open.special_routes > 0, "{style:?}: without the mission it presses for specials: {open:?}");
+            assert_eq!((kept.motions, kept.chords, kept.special_routes), (0, 0, 0), "{style:?}: under the mission: {kept:?}");
             assert!(kept.buttons > 60, "{style:?}: it still attacks: {kept:?}");
         }
     });
